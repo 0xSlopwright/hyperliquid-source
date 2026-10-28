@@ -1,0 +1,191 @@
+{
+  "source_root": "/Users/shawwalters/hlproject",
+  "imported_on": "2026-10-28",
+  "files": [
+    {
+      "path": "research/imported/can1357-literal-classes.json",
+      "sha256": "4e05fc8eadc54aa4097ca5fb05ab54ce312ea9443f4ab557e6bd5d56f78a503d",
+      "size": 199089
+    },
+    {
+      "path": "research/imported/hl-node-115.inventory.json",
+      "sha256": "92d01191ecac0424f3df4e15df295362a2b6606b6260b28664438ef5e4903c11",
+      "size": 7411
+    },
+    {
+      "path": "research/imported/hl-node-115.vendor.txt",
+      "sha256": "621a625c5c14c9af108c175b74ed8ff943ea5c4f8cec184b607763bf252c9c41",
+      "size": 2126
+    },
+    {
+      "path": "research/imported/hl-node-94.inventory.json",
+      "sha256": "de874270101b4649d911ad8a4e62ee68d9af72cf19c2a1042116deaa3165e533",
+      "size": 10121
+    },
+    {
+      "path": "research/imported/visor.dis.txt",
+      "sha256": "9f080c84047d60fca0eff976524c0d1a7fdba173b76fcae74ec4d29f079a411a",
+      "size": 49132485
+    },
+    {
+      "path": "research/imported/visor.strings.txt",
+      "sha256": "32c54dd3186341af9da8182c1835b052aa4c6943cdbc9724fcd2cc3c3d3fb643",
+      "size": 348122
+    },
+    {
+      "path": "research/upstream-docs/block-importer.README.md",
+      "sha256": "5da35f657ea56cfbede9d5bdef79a42a31f430dcf3615469745933dbde9b8fc0",
+      "size": 516
+    },
+    {
+      "path": "research/upstream-docs/block-importer.tree.tsv",
+      "sha256": "64f56822991b5b90f233e45c0057cfe977deedf61b72f969f184744c700f8819",
+      "size": 94
+    },
+    {
+      "path": "research/upstream-docs/contracts.README.md",
+      "sha256": "9e83c47f2e501533719785cfca595a86d1d7887780b31de1f27e2f975cec1a2d",
+      "size": 12
+    },
+    {
+      "path": "research/upstream-docs/contracts.tree.tsv",
+      "sha256": "7609ae77b746daf3f3eaa5b85b57de4eccba704c908dbbabbcf7c7254d0cebf1",
+      "size": 91
+    },
+    {
+      "path": "research/upstream-docs/docs/audits.md",
+      "sha256": "cd9b2ff3062f193c2e50267f0d38ae99462d7780b0dda62993dae29e3047b949",
+      "size": 641
+    },
+    {
+      "path": "research/upstream-docs/docs/bug-bounty-program.md",
+      "sha256": "bd20791c574cd673dfc3c01f766fb7e3c8da22c03f611f664b37e15e4f3238fe",
+      "size": 4562
+    },
+    {
+      "path": "research/upstream-docs/docs/for-developers_hyperevm_dual-block-architecture.md",
+      "sha256": "862da061aeac86c24c4ba24a7e6d626a63388dedba03eab7c78075516067cd5c",
+      "size": 2364
+    },
+    {
+      "path": "research/upstream-docs/docs/for-developers_hyperevm_hypercore-less-than-greater-than-hyperevm-transfers.md",
+      "sha256": "0bb15976a4859332aa4c2da68bd3b5525ef75acc9224a6a5331dc997f45b0b9c",
+      "size": 6784
+    },
+    {
+      "path": "research/upstream-docs/docs/for-developers_hyperevm_interacting-with-hypercore.md",
+      "sha256": "30dc807f45a97e0f4bdf1eb5f37985bcebab2ea3fe441f58aae8a87e16b5f29e",
+      "size": 16356
+    },
+    {
+      "path": "research/upstream-docs/docs/for-developers_hyperevm_raw-hyperevm-block-data.md",
+      "sha256": "1fa1a412bfeb9739106d892210f23a737b70a510c6552a3f89c3f2b2b1e87522",
+      "size": 1814
+    },
+    {
+      "path": "research/upstream-docs/docs/for-developers_hyperevm_wrapped-hype.md",
+      "sha256": "0121b2757f5b16f7627ab7f53e609d6d211062186802825661999c133dd67999",
+      "size": 2346
+    },
+    {
+      "path": "research/upstream-docs/docs/for-developers_nodes_foundation-non-validating-node.md",
+      "sha256": "5fa86363d5d1cf056662687432eeb543b4c44aa905fd269af09548c8d64093da",
+      "size": 3348
+    },
+    {
+      "path": "research/upstream-docs/docs/historical-data.md",
+      "sha256": "b9ba8cc7be9949cb9911d09014b2577381deacdf1ea844a7a58dbf73b0cd11ae",
+      "size": 2331
+    },
+    {
+      "path": "research/upstream-docs/docs/hyperevm.md",
+      "sha256": "0c38c14d89f7f559e5a3a3d2d91f0953ac2c636f0fbc995b465abd4ead6c0d4c",
+      "size": 3989
+    },
+    {
+      "path": "research/upstream-docs/docs/hyperevm_tools-for-hyperevm-builders.md",
+      "sha256": "9c983d2d79b510b07d4ab6817313a763d136f5a95a059757be881865e6fb4aed",
+      "size": 444
+    },
+    {
+      "path": "research/upstream-docs/docs/validators.md",
+      "sha256": "cf17a1692b5d7f355c2d6b6dacdbda07f5d5a9e9993dd42570d22fd7de388415",
+      "size": 530
+    },
+    {
+      "path": "research/upstream-docs/historical_data.README.md",
+      "sha256": "e12bf0d1f4c65e95065ec75e0c9489614693ba2f6a9a72b024d710aa60469c91",
+      "size": 599
+    },
+    {
+      "path": "research/upstream-docs/historical_data.tree.tsv",
+      "sha256": "47ad995f7b468adcb19f12c01cbe781f0ac23f0c269447574f6b64c6d5313712",
+      "size": 94
+    },
+    {
+      "path": "research/upstream-docs/hyper-evm-sync.README.md",
+      "sha256": "ec2c268c9ef860682f163c228ff34f34ae028a63cc7ba2f5f05901214f76eb03",
+      "size": 1079
+    },
+    {
+      "path": "research/upstream-docs/hyper-evm-sync.tree.tsv",
+      "sha256": "e66697226ff7ab0bbcbd610caddb12f0c4d9b1da6726fba0be1484afd1c94fe7",
+      "size": 220
+    },
+    {
+      "path": "research/upstream-docs/llms.txt",
+      "sha256": "1c712a65803e2be8cda816d62167cfd41770cd6f1ab4e1c7ded8e79f1faa3071",
+      "size": 21219
+    },
+    {
+      "path": "research/upstream-docs/node.README.md",
+      "sha256": "51115647477b18c91e83739d8b26444ac6ab4ff15612101cae6c255a95d21f41",
+      "size": 23047
+    },
+    {
+      "path": "research/upstream-docs/node.tree.tsv",
+      "sha256": "f02fd3c6b228e94e61a574cf0554c2b9918373410d5c7220021d0fca469def80",
+      "size": 183
+    },
+    {
+      "path": "research/upstream-docs/order_book_server.README.md",
+      "sha256": "98334049722622af856dec0dd6980a0929c20bd4492913a9acda25adb17f6133",
+      "size": 2368
+    },
+    {
+      "path": "research/upstream-docs/order_book_server.tree.tsv",
+      "sha256": "f64d7eb89293508390cdfbe37280293d47342a13c5f5b414fadeda5aaab99cb2",
+      "size": 862
+    },
+    {
+      "path": "tools/legacy/ctx.py",
+      "sha256": "d0ff8b18f9307fd4fd0ba3697b0dc4cd4a7749f4deb01c8502a300013cfda0ca",
+      "size": 661
+    },
+    {
+      "path": "tools/legacy/drift.py",
+      "sha256": "d9738468bb2855676e600d74db183eaf36d31b50c06a2ef5c17e58fe9e1fb5b6",
+      "size": 5141
+    },
+    {
+      "path": "tools/legacy/elfrel.py",
+      "sha256": "eb661a3fda2b93010a76492780a042bd14a266f8826ed4983a37a293c60fb955",
+      "size": 2234
+    },
+    {
+      "path": "tools/legacy/fmtrefs.py",
+      "sha256": "2d98cca92d7063a88abb8b821d606c2aeb54449783f6bfbf9b59db7dcc8d10c6",
+      "size": 1534
+    },
+    {
+      "path": "tools/legacy/grounding.py",
+      "sha256": "8e57179b6ee0e623d3436ad264d8e1a6ca452b77be79344ea154880f18e04550",
+      "size": 2046
+    },
+    {
+      "path": "tools/legacy/inv.py",
+      "sha256": "49e97d13b7bea52b45db851b8f39f93b6197063a526ca08656de380f851255bc",
+      "size": 5199
+    }
+  ]
+}

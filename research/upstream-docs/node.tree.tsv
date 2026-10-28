@@ -1,0 +1,9 @@
+1427	Dockerfile
+9119	LICENSE
+23047	README.md
+1364	README_misc.md
+320	docker-compose.yml
+816	pruner/Dockerfile
+75	pruner/cron/cron.d/prune
+1395	pruner/scripts/prune.sh
+656	pub_key.asc

@@ -1,0 +1,40 @@
+{
+    "hvs": {
+        "hyperliquid_index": 115,
+        "c": {
+            "NodeMetadata": {
+                "hv": 109,
+                "bh": "0x81ce5bc57375a1d5f91d0fa7809023626ab04b5fe38f489102054d4b280c5d6b"
+            }
+        }
+    },
+    "a": [
+        {
+            "r": "0x426a7bc703a6dc8ca83672f903f98a3feafa81a850cf2d98ae8c2597410ced24",
+            "s": "0x10c9f08e2b62f1543da2a2f8fc2e5fef0441d108ce452c7b98eff39b148e24ec",
+            "v": 27
+        },
+        {
+            "r": "0xcbc9d98e57264897e6610e39c031259026a54cb32120a541a97a3fa793c1c1bb",
+            "s": "0x6066e6994a569639d77f468f5ab8265754046f2b82b50744761c7c3911bd2e1b",
+            "v": 28
+        },
+        {
+            "r": "0x2e3a80cf577d03b0bd1a32b8b7f88db647aa1118dc8e16399019466e6435804e",
+            "s": "0x12dc0a48922a3693d91894a1b11935569ec27b5e2ab68e720ff556294dfab28e",
+            "v": 28
+        },
+        {
+            "r": "0xdf44e8da587ccc8fca0f4032767e320763b649fcf776fd928d3a217c15358be2",
+            "s": "0x5eb44dc0cd55a9fddb130439d20aa9194ee1a19aab6a0d78fe7756a425b22b9e",
+            "v": 28
+        }
+    ],
+    "b": [
+        {
+            "r": "0xf21dd8ec8d30481fac4d130ed504175fb2589b5c0ddcb147ed4faf460f1fee6c",
+            "s": "0x558767c84f05dd63e150b6d59bd400673cd7bf0357f5610c3ad08131d29f88d0",
+            "v": 28
+        }
+    ]
+}

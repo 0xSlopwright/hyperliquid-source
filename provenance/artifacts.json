@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "signing_fingerprint": "CF2C2EA3DC3E8F042A55FB6503254A9349F1820B",
+  "files": [
+    {
+      "path": "artifacts/keys/pub_key.asc",
+      "size": 656,
+      "sha256": "586b5d1104da3b16df92f3901afa567231f813ae74f0660425c8dc07fb1a9872",
+      "recovery_url": "https://raw.githubusercontent.com/hyperliquid-dex/node/405cc08b17a727ee51b0f9128918955a84439915/pub_key.asc"
+    },
+    {
+      "path": "artifacts/node/115/hl-node",
+      "size": 105896032,
+      "sha256": "a6e2897cd051213d004802deca416e8eca62b7a8278fa39f249e98c3867b5301",
+      "recovery_url": null,
+      "recovery_note": "No verified immutable public URL retained; retrieve this historical capture via project Git LFS."
+    },
+    {
+      "path": "artifacts/node/115/hl-node.asc",
+      "size": 228,
+      "sha256": "39d8c909c183db929f9e6d2645a0e7a564a1aee1d04b346d4d293f2e44a519ca",
+      "recovery_url": null,
+      "recovery_note": "No verified immutable public URL retained; retrieve this historical capture via project Git LFS."
+    },
+    {
+      "path": "artifacts/node/115/node_metadata.json",
+      "size": 1352,
+      "sha256": "9d4e9dd2f8a832ed7cff5eeba815ee5db7665d467cc49957d32b615acbcfa87e",
+      "recovery_url": null
+    },
+    {
+      "path": "artifacts/node/94/hl-node",
+      "size": 91774280,
+      "sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",
+      "recovery_url": "https://media.githubusercontent.com/media/can1357/hl/999556f6e0a474b8312db96ec3149e1c44e97c23/bin/hl-node-mainnet-new"
+    },
+    {
+      "path": "artifacts/node/94/hl-node.asc",
+      "size": 228,
+      "sha256": "4c6a68fc0c6fc88f1059d414855235aa58e61dda742886fd0af5399b31aec376",
+      "recovery_url": "https://raw.githubusercontent.com/can1357/hl/999556f6e0a474b8312db96ec3149e1c44e97c23/bin/hl-node-mainnet-new.asc"
+    },
+    {
+      "path": "artifacts/visor/captured/hl-visor",
+      "size": 8305392,
+      "sha256": "89338207c793d80ac2fba75bb0d36c659e2cabc87a94e61a57ba532b8d212e31",
+      "recovery_url": "https://binaries.hyperliquid.xyz/Mainnet/hl-visor"
+    },
+    {
+      "path": "artifacts/visor/captured/hl-visor.asc",
+      "size": 228,
+      "sha256": "21c92eebdb66307ad4a41e4d38b78c7534ac21e2c1c62f6075bfb2645deb91ce",
+      "recovery_url": "https://binaries.hyperliquid.xyz/Mainnet/hl-visor.asc"
+    }
+  ]
+}

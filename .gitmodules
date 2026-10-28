@@ -1,0 +1,21 @@
+[submodule "references/can1357-hl"]
+	path = references/can1357-hl
+	url = https://github.com/can1357/hl.git
+[submodule "upstream/node"]
+	path = upstream/node
+	url = https://github.com/hyperliquid-dex/node.git
+[submodule "upstream/contracts"]
+	path = upstream/contracts
+	url = https://github.com/hyperliquid-dex/contracts.git
+[submodule "upstream/block-importer"]
+	path = upstream/block-importer
+	url = https://github.com/hyperliquid-dex/block-importer.git
+[submodule "upstream/hyper-evm-sync"]
+	path = upstream/hyper-evm-sync
+	url = https://github.com/hyperliquid-dex/hyper-evm-sync.git
+[submodule "upstream/order_book_server"]
+	path = upstream/order_book_server
+	url = https://github.com/hyperliquid-dex/order_book_server.git
+[submodule "upstream/historical_data"]
+	path = upstream/historical_data
+	url = https://github.com/hyperliquid-dex/historical_data.git

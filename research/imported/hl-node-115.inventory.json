@@ -1,0 +1,362 @@
+{
+ "file_size": 105896032,
+ "elf_type": "DYN (PIE)",
+ "machine": "x86-64",
+ "entry": "0x1419300",
+ "sections": {
+  ".interp": 28,
+  ".note.ABI-tag": 32,
+  ".note.gnu.build-id": 36,
+  ".dynsym": 12240,
+  ".gnu.version": 1020,
+  ".gnu.version_r": 960,
+  ".gnu.hash": 32,
+  ".dynstr": 12533,
+  ".rela.dyn": 1457352,
+  ".rela.plt": 6672,
+  ".gcc_except_table": 2900276,
+  ".rodata": 7792192,
+  ".eh_frame_hdr": 1082516,
+  ".eh_frame": 7803772,
+  ".text": 83719936,
+  ".init": 27,
+  ".fini": 13,
+  ".plt": 4464,
+  ".tdata": 2848,
+  ".tbss": 1632,
+  ".fini_array": 8,
+  ".init_array": 1344,
+  ".data.rel.ro": 964136,
+  ".dynamic": 528,
+  ".got": 60672,
+  ".got.plt": 2248,
+  ".relro_padding": 1504,
+  ".tm_clone_table": 0,
+  ".data": 66536,
+  ".bss": 2263780,
+  ".comment": 209,
+  ".shstrtab": 323
+ },
+ "has_symtab": false,
+ "debug_sections": [],
+ "comment": [
+  "rustc version 1.95.0 (59807616e 2026-04-14)",
+  "Linker: LLD 22.1.2 (/checkout/src/llvm-project/llvm 1cb4e3833c1919c2e6fb579a23ac0e2b22587b7e)",
+  "GCC: (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "clang version 22.1.0-rc2"
+ ],
+ "build_id": "ac2880fcda5e49007a8e4fb1ea6aa7dd1b2eae01",
+ "needed": [
+  "libstdc++.so.6",
+  "libssl.so.3",
+  "libcrypto.so.3",
+  "libgcc_s.so.1",
+  "libm.so.6",
+  "libc.so.6",
+  "ld-linux-x86-64.so.2"
+ ],
+ "dynsym_count": 510,
+ "fde_count_eh_frame_hdr": 135313,
+ "eh_frame_hdr_encodings": [
+  "0x1b",
+  "0x3",
+  "0x3b"
+ ],
+ "git_build_stamps": [],
+ "rustc_commits": [
+  "59807616e1fa2540724bfbac14d7976d7e4a3860"
+ ],
+ "source_roots": [
+  "/home/ubuntu/hl/code_Mainnet"
+ ],
+ "first_party_crates": {
+  "base": 33,
+  "db": 5,
+  "evm_rpc": 6,
+  "global_constants": 2,
+  "info_server": 7,
+  "l1": 77,
+  "net_utils": 12,
+  "node": 38,
+  "threadthread_spawn_forevertokio_spawn_foreverdiscriminantbase": 1
+ },
+ "first_party_files": {
+  "base": [
+   "api_secrets.rs",
+   "api_url.rs",
+   "bucket_guard.rs",
+   "build_mode.rs",
+   "c_guard.rs",
+   "chain_ext.rs",
+   "cid.rs",
+   "crit_msg.rs",
+   "curl.rs",
+   "daily_liner.rs",
+   "data_cache.rs",
+   "ema_tracker.rs",
+   "file_mod_time_tracker.rs",
+   "fodname.rs",
+   "fu.rs",
+   "http_client.rs",
+   "l1_map/entry.rs",
+   "lazy_mutex.rs",
+   "liner.rs",
+   "lock_id.rs",
+   "log/handle.rs",
+   "log/state.rs",
+   "lu.rs",
+   "production.rs",
+   "quorum_policy.rs",
+   "ren.rs",
+   "shell.rs",
+   "short_string.rs",
+   "singleton_set.rs",
+   "slack_alert.rs",
+   "time.rs",
+   "u.rs",
+   "wallet.rs"
+  ],
+  "db": [
+   "block_reader.rs",
+   "db_home.rs",
+   "db_hub.rs",
+   "owned_db_home.rs",
+   "rocks_db.rs"
+  ],
+  "evm_rpc": [
+   "evm_rpc.rs",
+   "evm_store.rs",
+   "evm_write_forwarder.rs",
+   "expensive_call_limiter.rs",
+   "method_router.rs",
+   "reth_rpc_helpers_copied.rs"
+  ],
+  "global_constants": [
+   "aws_name.rs",
+   "static_config.rs"
+  ],
+  "info_server": [
+   "abci_state_info_handler.rs",
+   "f_types/position.rs",
+   "handle_request.rs",
+   "handler.rs",
+   "router.rs",
+   "save_l4_snapshots.rs",
+   "user_ip.rs"
+  ],
+  "l1": [
+   "abci/abci_hash.rs",
+   "abci/engine.rs",
+   "abci/hash_signature_tracker.rs",
+   "abci/state.rs",
+   "action/rmp_signable.rs",
+   "action/user_outcome.rs",
+   "action/vault_transfer.rs",
+   "action/vote_global.rs",
+   "action/withdraw3.rs",
+   "agent_tracker.rs",
+   "asset/pdi.rs",
+   "bole/user_state.rs",
+   "book/book/impl_insert_order.rs",
+   "book/book/mod.rs",
+   "book/book_orders.rs",
+   "book/level.rs",
+   "books.rs",
+   "bridge2.rs",
+   "bridge_request.rs",
+   "c_staking/jailing.rs",
+   "chain_ext.rs",
+   "clearinghouse/cl_trait.rs",
+   "clearinghouse/clearinghouse.rs",
+   "clearinghouse/impl_first_dex.rs",
+   "clearinghouse/margin_table.rs",
+   "clearinghouse/oracle/oracle.rs",
+   "clearinghouse/oracle/oracle_kind.rs",
+   "clearinghouse/oracle/reference_oracle.rs",
+   "clearinghouse/position.rs",
+   "clearinghouse/position_map.rs",
+   "clearinghouse/user_state.rs",
+   "dex_registry/clearinghouses.rs",
+   "dex_registry/dex_registry.rs",
+   "dex_registry/perp_dex.rs",
+   "evm/evm_db.rs",
+   "evm/evm_state.rs",
+   "evm/hash.rs",
+   "evm/hyper_evm.rs",
+   "exchange/begin_block.rs",
+   "exchange/end_block.rs",
+   "exchange/exchange.rs",
+   "exchange/impl_abstraction.rs",
+   "exchange/impl_bole.rs",
+   "exchange/impl_global.rs",
+   "exchange/impl_ledger.rs",
+   "exchange/impl_outcome.rs",
+   "exchange/impl_outcome_deploy.rs",
+   "exchange/impl_spot_deploy.rs",
+   "exchange/impl_trading.rs",
+   "exchange/impl_user.rs",
+   "exchange/impl_vault.rs",
+   "exchange/simulate_portfolio_margin.rs",
+   "exchange/stake_requirement.rs",
+   "fees/compute.rs",
+   "fees/fees.rs",
+   "hyperliquidity.rs",
+   "nonce_set.rs",
+   "perp_meta.rs",
+   "qtys/impl_ntl.rs",
+   "qtys/impl_sz.rs",
+   "qtys/impl_wei.rs",
+   "qtys/mod.rs",
+   "raw_signature_tracker.rs",
+   "raw_vlm.rs",
+   "scaled_vlm.rs",
+   "simulate_panic.rs",
+   "slab/slab.rs",
+   "spot_clearinghouse/cl_trait.rs",
+   "spot_clearinghouse/impl_outcome.rs",
+   "spot_clearinghouse/spot_clearinghouse.rs",
+   "spot_clearinghouse/types.rs",
+   "spot_meta.rs",
+   "staking.rs",
+   "sub_account.rs",
+   "utils.rs",
+   "vault/mod.rs",
+   "wire_qty.rs"
+  ],
+  "net_utils": [
+   "async_sleep_retry.rs",
+   "channel.rs",
+   "ip_semaphore.rs",
+   "rate_limiter.rs",
+   "rw_lock.rs",
+   "tcp/lz4_stats.rs",
+   "tcp/read.rs",
+   "tcp/tcp_client.rs",
+   "tcp/tcp_listener.rs",
+   "tcp/tcp_stream.rs",
+   "tcp/traffic_recorder.rs",
+   "tcp/write.rs"
+  ],
+  "node": [
+   "abci_latency_sampler.rs",
+   "abci_stream.rs",
+   "artifact.rs",
+   "aux.rs",
+   "channel.rs",
+   "connections.rs",
+   "consensus/config.rs",
+   "consensus/execution_state.rs",
+   "consensus/heartbeat_tracker.rs",
+   "consensus/latency_samplers.rs",
+   "consensus/liner.rs",
+   "consensus/mempool.rs",
+   "consensus/network.rs",
+   "consensus/node_ips.rs",
+   "consensus/rpc.rs",
+   "consensus/server.rs",
+   "consensus/signature_tracker.rs",
+   "consensus/signed.rs",
+   "consensus/state.rs",
+   "consensus/timer.rs",
+   "consensus/types.rs",
+   "consensus/validator_set.rs",
+   "consensus/validator_stakes.rs",
+   "evm_kvs.rs",
+   "firewall_ips.rs",
+   "gossip_config.rs",
+   "gossip_rpc.rs",
+   "gossip_rpc_client.rs",
+   "group_and_seq_sampler.rs",
+   "hl_node.rs",
+   "local_abci_state.rs",
+   "node.rs",
+   "node_port.rs",
+   "nv_stream.rs",
+   "startup.rs",
+   "stream_msg.rs",
+   "utils.rs",
+   "visor_time_lock.rs"
+  ],
+  "threadthread_spawn_forevertokio_spawn_foreverdiscriminantbase": [
+   "lu.rs"
+  ]
+ },
+ "vendored_crates": {
+  "ark-ff": [
+   "0.5.0"
+  ],
+  "base64": [
+   "0.20.0"
+  ],
+  "block-buffer": [
+   "0.9.0"
+  ],
+  "hashbrown": [
+   "0.15.2",
+   "0.16.1"
+  ],
+  "http": [
+   "0.2.12"
+  ],
+  "itertools": [
+   "0.13.0"
+  ],
+  "rand": [
+   "0.8.5"
+  ],
+  "rand_chacha": [
+   "0.3.1"
+  ],
+  "rand_core": [
+   "0.6.4"
+  ],
+  "secp256k1": [
+   "0.29.0",
+   "0.30.0"
+  ],
+  "secp256k1-sys": [
+   "0.10.0"
+  ],
+  "sha2": [
+   "0.9.9"
+  ],
+  "shlex": [
+   "1.3.0"
+  ],
+  "socket2": [
+   "0.4.10",
+   "0.5.7"
+  ],
+  "tower": [
+   "0.4.13"
+  ]
+ },
+ "forked_crates": {
+  "bincode-fork": 4,
+  "hyper-fork": 200,
+  "hyper-tls-fork": 1,
+  "reth-chainspec": 1,
+  "reth-ethereum-forks": 1,
+  "reth-rpc-eth-types": 2,
+  "reth-rpc-server-types": 1,
+  "revm-precompile": 12
+ },
+ "std_deps": {
+  "addr2line": [
+   "0.25.1"
+  ],
+  "gimli": [
+   "0.32.3"
+  ],
+  "hashbrown": [
+   "0.16.1"
+  ],
+  "miniz_oxide": [
+   "0.8.9"
+  ],
+  "rustc-demangle": [
+   "0.1.27"
+  ]
+ },
+ "registry_crates": {}
+}

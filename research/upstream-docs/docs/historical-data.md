@@ -1,0 +1,37 @@
+> For the complete documentation index, see [llms.txt](https://hyperliquid.gitbook.io/hyperliquid-docs/llms.txt). Markdown versions of documentation pages are available by appending `.md` to page URLs; this page is available as [Markdown](https://hyperliquid.gitbook.io/hyperliquid-docs/historical-data.md).
+
+# Historical data
+
+### Exporting additional user trade history
+
+The Enigma team has built an interface for users to export trade history <https://trade-export.hypedexer.com/?v=1>. This is a third-party integration that is independently maintained. Any issues or feedback should be reported directly to the maintainers.&#x20;
+
+### Market Data (for advanced users)
+
+The examples below use the AWS CLI (see <https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html>) and LZ4 (<https://github.com/lz4/lz4> or install from your package manager).
+
+Note that the requester of the data must pay for transfer costs.
+
+#### Asset data
+
+Historical data is uploaded to the bucket `hyperliquid-archive`  approximately once a month. **There is no guarantee of timely updates and data may be missing.**&#x20;
+
+L2 book snapshots are available in market\_data and asset contexts are available in asset\_ctxs. No other historical data sets are provided via S3 (e.g. candles or spot asset data). You can use the API to record additional historical data sets yourself.&#x20;
+
+Format: `s3://hyperliquid-archive/market_data/[date]/[hour]/[datatype]/[coin].lz4` or `s3://hyperliquid-archive/asset_ctxs/[date].csv.lz4`
+
+```
+aws s3 cp s3://hyperliquid-archive/market_data/20230916/9/l2Book/SOL.lz4 /tmp/SOL.lz4 --request-payer requester
+unlz4 --rm /tmp/SOL.lz4
+head /tmp/SOL
+```
+
+#### Trade data
+
+`s3://hl-mainnet-node-data/node_fills_by_block` has fills which are streamed via `--write-fills --batch-by-block` from a non-validating node. Older data is in a different format at `s3://hl-mainnet-node-data/node_fills)` and `s3://hl-mainnet-node-data/node_trades` . `node_fills` matches the API format, while `node_trades` does not.
+
+#### Historical node data
+
+`s3://hl-mainnet-node-data/explorer_blocks` and `s3://hl-mainnet-node-data/replica_cmds` contain historical explorer blocks and L1 transactions.
+
+&#x20;`s3://hl-mainnet-node-data/misc_events_by_block` contains non-trade events such as transfers, staking, and funding.

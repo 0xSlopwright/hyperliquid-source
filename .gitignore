@@ -1,0 +1,18 @@
+# Local environments and generated analysis
+.DS_Store
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+target/
+.cache/
+work/
+*.part
+# Disassembler databases and local credentials
+*.i64
+*.idb
+*.gpr
+*.rep/
+.gnupg/

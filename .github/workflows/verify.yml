@@ -1,0 +1,15 @@
+name: Verify research inputs
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  static-research:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: recursive
+      - run: sudo apt-get update && sudo apt-get install -y ripgrep gnupg git-lfs
+      - run: git -C references/can1357-hl lfs pull
+      - run: make verify test reproduce

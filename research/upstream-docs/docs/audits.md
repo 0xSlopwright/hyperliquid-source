@@ -1,0 +1,17 @@
+> For the complete documentation index, see [llms.txt](https://hyperliquid.gitbook.io/hyperliquid-docs/llms.txt). Markdown versions of documentation pages are available by appending `.md` to page URLs; this page is available as [Markdown](https://hyperliquid.gitbook.io/hyperliquid-docs/audits.md).
+
+# Audits
+
+The Hyperliquid legacy bridge contract has been audited by Zellic.&#x20;
+
+Circle's contracts are audited independently: <https://github.com/circlefin/hyperevm-circle-contracts>
+
+{% file src="/files/6HQImWlcAsjk8f6xJnEy" %}
+Final report
+{% endfile %}
+
+{% file src="/files/Vnkes8g7IbP1zZQUKLHJ" %}
+First report
+{% endfile %}
+
+&#x20;

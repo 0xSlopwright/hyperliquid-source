@@ -1,0 +1,13 @@
+12	.gitignore
+139799	Cargo.lock
+870	Cargo.toml
+1079	README.md
+4447	src/cli.rs
+1557	src/evm_map.rs
+7265	src/fs.rs
+105	src/lib.rs
+188	src/main.rs
+1957	src/precompile.rs
+18495	src/run.rs
+4574	src/state.rs
+6677	src/types.rs
