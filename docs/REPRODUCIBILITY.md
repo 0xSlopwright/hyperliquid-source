@@ -15,12 +15,16 @@ compile-time attributes. It can include comments and test literals. Partial
 matches include three-word windows, short whole phrases and case-only matches.
 It does not prove semantic equivalence or validate tests.
 
-Outputs are compared with the imported classification by counts and by literal,
-crate and class, ignoring first-file attribution order. A mismatch fails the
-reproduction command. Inventories are compared as parsed JSON.
+The raw output is checked against the imported aggregate counts. The 46 imported
+item-level refinements in provenance/literal-overrides.json are then applied
+with exact class preconditions. Aggregate and per-crate totals are recomputed,
+and final items are compared by literal, crate and class, ignoring first-file
+attribution order. A mismatch fails the reproduction command. Inventories are
+compared as parsed JSON. Both raw and refined outputs are retained under work/.
 
 Never edit imported results to agree with a narrative. See research/STATUS.md
-for the discrepancy between the supplied written summary and saved JSON.
+for the stale aggregate fields in the saved JSON; its item-level labels
+match the supplied written summary.
 
 `make fetch` downloads only absent files and verifies bytes before an atomic
 rename. An existing damaged file fails rather than being overwritten. #94 has

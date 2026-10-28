@@ -7,7 +7,7 @@ stored #94 evidence. Captured executables are not run.
 
 ## Saved classification versus supplied narrative
 
-| Class | Saved JSON | Supplied written summary |
+| Class | Saved aggregate fields | Saved items / written summary |
 | --- | ---: | ---: |
 | Grounded in #94 and #115 | 822 | 822 |
 | Drift: #94 only | 60 | 60 |
@@ -17,9 +17,20 @@ stored #94 evidence. Captured executables are not run.
 | #115 only | 1 | 1 |
 | Total | 1452 | 1452 |
 
-The verbatim #94 total is 882/1452 (60.7%) in both. The supplied narrative
-reports manual-looking refinements not present in the saved artifact. Their
-provenance is unresolved; retain both views and do not silently substitute one.
+The saved JSON's aggregate `counts` and `per_crate` fields are stale: they
+represent the initial automated pass. Its **individual item classifications**
+match the supplied written summary exactly: 116 notes, 386 unanchored, and
+67 near-misses (56 partial + 11 case). The verbatim #94 total is 882/1452
+(60.7%) throughout.
+
+The 46 imported item refinements are now explicit in
+`provenance/literal-overrides.json`: 36 unanchored items become notes and 10
+become partial matches. `make reproduce` checks the raw pass against the stale
+aggregate counts, applies those imported refinements with preconditions,
+recomputes aggregate/per-crate fields, and checks every final item against the
+saved evidence. The refinements retain their imported provenance; the script
+does not independently establish their interpretation.
+
 The script deduplicates by (crate, literal), not globally by literal.
 
 The supplied narrative also reports 173 embedded first-party paths in #94,
