@@ -16,3 +16,6 @@ work/
 *.gpr
 *.rep/
 .gnupg/
+# Pinned local REA runtime dependencies
+node_modules/
+npm-debug.log*

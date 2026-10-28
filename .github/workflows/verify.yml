@@ -12,4 +12,9 @@ jobs:
           submodules: recursive
       - run: sudo apt-get update && sudo apt-get install -y ripgrep gnupg git-lfs
       - run: git -C references/can1357-hl lfs pull
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: make rea-install rea-smoke
       - run: make verify test catalogue-check index reproduce

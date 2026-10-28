@@ -13,8 +13,9 @@ The [component progress table](docs/PROGRESS.md) separates completion from
 reference-file coverage and records node #94, node #115 and visor independently.
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), [scope](docs/SCOPE.md), the
-[reverse-engineering guide](docs/REVERSE-ENGINEERING.md), and the
-[ready work queue](docs/TASKS.md). [AGENTS.md](AGENTS.md) gives agent-specific rules.
+[reverse-engineering guide](docs/REVERSE-ENGINEERING.md),
+[ready work queue](docs/TASKS.md), and [REA setup](docs/REA.md).
+[AGENTS.md](AGENTS.md) gives agent-specific rules.
 
 ## Get started
 
@@ -59,4 +60,7 @@ mutable publisher URLs may no longer serve the pinned release, so LFS is preferr
 
 See [research status](research/STATUS.md), [toolchains](docs/TOOLCHAINS.md),
 [reproducibility](docs/REPRODUCIBILITY.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
+REA is pinned locally: see [REA setup](docs/REA.md) for `make rea-install`,
+`make rea-doctor`, `make rea-smoke` and the existing Codex connection.
+
 New project work is MIT licensed; imported materials retain their original terms.

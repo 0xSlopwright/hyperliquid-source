@@ -7,7 +7,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from catalogue import owner, validate_progress
-from elf_index import sections, unwind_index
+from elf_index import entry_file_offset, sections, unwind_index
 
 
 def fixture():
@@ -31,6 +31,12 @@ def fixture():
 
 
 class UnwindTests(unittest.TestCase):
+    def test_entry_uses_source_offset_not_linked_or_rebased_address(self):
+        data = fixture()
+        struct.pack_into('<Q', data, 24, 0x108)
+        self.assertEqual(entry_file_offset(data), 264)
+
+
     def test_data_relative_negative_start(self):
         secs, rows = unwind_index(fixture())
         self.assertEqual(rows, [{'index':0, 'start':0x100, 'fde':0x300, 'section':'.text', 'next_index_upper_bound':0x120}])

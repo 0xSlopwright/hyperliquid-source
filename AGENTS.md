@@ -2,7 +2,7 @@
 
 ## Read first and preserve scope
 
-Read CONTRIBUTING.md, docs/SCOPE.md, docs/PROGRESS.md and docs/TASKS.md.
+Read CONTRIBUTING.md, docs/SCOPE.md, docs/PROGRESS.md, docs/TASKS.md and docs/REA.md.
 Node #94 is the initial Linux x86-64 baseline. #115 is a separate comparison
 and later target. Visor has its own artifact identity. Use
 provenance/artifacts.json for full SHA-256 values; bind every result to one.
@@ -41,6 +41,10 @@ return format; a worker's status message is not validation.
 - `make index` parses unwind start tables only. It does not establish all
   functions, exact body sizes or component ownership. Use actual FDE/CFG/data
   analysis before publishing a matched-window denominator.
+- Use the connected REA server directly when available; pin CLI work through
+  `python3 tools/rea.py` (6.8.0). `make rea-doctor` checks the selected native
+  provider; `make rea-install` restores its lockfile. Do not rerun user-level
+  registration setup when a working connection already exists.
 - Prefer installed native tools; `make doctor` reports their availability.
   Ghidra/IDA/REA are analysis providers, not evidence by themselves. Preserve
   options, tool versions, completeness, input digest and exported records.

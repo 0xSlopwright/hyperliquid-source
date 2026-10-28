@@ -17,3 +17,7 @@ Git submodules preserve the original repositories, history and terms without
 copying their code into the project's MIT implementation. The absence of a
 license is not a license grant. Consult the upstream owner before redistributing
 or adapting unlicensed reference code. `provenance/sources.json` pins imports.
+
+REA is pinned as an npm development dependency (`rea-agents` 6.8.0), from
+[the MIT-licensed morluto/rea project](https://github.com/morluto/rea). Installed
+packages under ignored node_modules/ retain their own upstream licenses.

@@ -2,6 +2,7 @@
 
 Start with [scope](docs/SCOPE.md), [current progress](docs/PROGRESS.md),
 [component map](docs/COMPONENTS.md), and [ready tasks](docs/TASKS.md).
+For REA CLI/MCP configuration and supported Node versions, see [REA.md](docs/REA.md).
 The project reconstructs Linux x86-64 Hyperliquid binaries from evidence.
 Node #94 is the initial baseline; #115 and visor remain separate targets.
 

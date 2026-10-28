@@ -37,6 +37,17 @@ def sections(data):
     return rows
 
 
+def entry_file_offset(data):
+    """Resolve the linked entry VA to source bytes, independently of loader rebasing."""
+    secs = sections(data)
+    entry = struct.unpack_from('<Q', data, 24)[0]
+    offsets = {s['offset'] + entry - s['address'] for s in secs
+               if s['type'] != 8 and s['address'] <= entry < s['address'] + s['size']}
+    if len(offsets) != 1:
+        raise ValueError('ELF entry does not have one unambiguous file mapping')
+    return offsets.pop()
+
+
 def unwind_index(data):
     secs = sections(data)
     header = next((s for s in secs if s['name'] == '.eh_frame_hdr'), None)

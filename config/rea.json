@@ -1,0 +1,22 @@
+{
+  "package": "rea-agents",
+  "version": "6.8.0",
+  "provider": "ghidra",
+  "preferred_node": "24.22.1",
+  "targets": {
+    "94": "artifacts/node/94/hl-node",
+    "115": "artifacts/node/115/hl-node",
+    "visor": "artifacts/visor/captured/hl-visor"
+  },
+  "default_target": "94",
+  "policy": "Static analysis only. Original executable execution is not authorized by setup.",
+  "profiles": {
+    "native-smoke": {
+      "disabled_analyzers": [
+        "Decompiler Switch Analysis",
+        "Decompiler Parameter ID"
+      ],
+      "coverage": "Reduced analysis for setup verification only; not a reconstruction acceptance profile."
+    }
+  }
+}
