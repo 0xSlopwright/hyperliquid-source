@@ -1,0 +1,302 @@
+{
+  "schema_version": 1,
+  "baseline": "node94",
+  "reviewed_on": "2026-10-28",
+  "metric": "Four acceptance gates per component; completed gates / 4. Not an estimate of effort or binary window coverage.",
+  "gates": {
+    "mapped": "Target-bound function/data inventory and entrypoints reviewed for the full component scope.",
+    "built": "Project-authored Rust implementation builds from a pinned dependency/toolchain lock.",
+    "behavior": "Differential or equivalent target-grounded boundary/adversarial tests pass for the declared full scope.",
+    "identity": "Rebuilt code/data/calls/relocations match the target for the declared full scope; normalization explicitly bounded."
+  },
+  "components": {
+    "foundation": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "serialization": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "storage": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "transport": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "consensus": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "node-runtime": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "abci": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "action-wire": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "action-dispatch": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "exchange": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "orderbook": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "risk": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "assets": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "fees": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "vaults": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "bridge": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "evm": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "staking": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "dex-registry": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "l1-shared": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "info-api": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "evm-rpc": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "constants": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    },
+    "visor": {
+      "gates": {
+        "mapped": false,
+        "built": false,
+        "behavior": false,
+        "identity": false
+      },
+      "evidence": [],
+      "raw_equal_bodies": 0,
+      "normalized_only_bodies": 0,
+      "total_function_windows": null
+    }
+  }
+}

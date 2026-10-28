@@ -1,5 +1,5 @@
 PYTHON ?= python3
-.PHONY: setup pull fetch verify test reproduce
+.PHONY: setup pull fetch verify test reproduce doctor index catalogue catalogue-check
 setup:
 	./scripts/setup.sh
 pull:
@@ -15,3 +15,12 @@ test:
 	$(PYTHON) -m unittest discover -s tests -v
 reproduce:
 	$(PYTHON) tools/reproduce.py
+doctor:
+	$(PYTHON) tools/doctor.py
+index:
+	$(PYTHON) tools/elf_index.py --release 94
+	$(PYTHON) tools/elf_index.py --release 115
+catalogue:
+	$(PYTHON) tools/catalogue.py
+catalogue-check:
+	$(PYTHON) tools/catalogue.py --check

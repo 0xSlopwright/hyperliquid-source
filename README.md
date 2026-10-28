@@ -5,6 +5,17 @@ This repository consolidates original binary evidence, static-analysis tools,
 research results, and pinned public source references. It is not an official
 Hyperliquid source release. No buildable or equivalent node is claimed.
 
+## Reconstruction progress
+
+Static inputs and research tooling are ready. A compilable, verified node is
+not yet recovered.
+The [component progress table](docs/PROGRESS.md) separates completion from
+reference-file coverage and records node #94, node #115 and visor independently.
+
+Start with [CONTRIBUTING.md](CONTRIBUTING.md), [scope](docs/SCOPE.md), the
+[reverse-engineering guide](docs/REVERSE-ENGINEERING.md), and the
+[ready work queue](docs/TASKS.md). [AGENTS.md](AGENTS.md) gives agent-specific rules.
+
 ## Get started
 
 Prerequisites: Git, Git LFS, Python 3.10+, ripgrep, GnuPG and rustup.
@@ -18,6 +29,9 @@ cd hyperliquid-source
 ./scripts/setup.sh
 make verify
 make test
+make catalogue-check
+make doctor
+make index
 make reproduce
 ```
 
@@ -38,7 +52,10 @@ mutable publisher URLs may no longer serve the pinned release, so LFS is preferr
 - `research/upstream-docs/`: collected documentation and repository inventories.
 - `provenance/`: imported file hashes, artifact identities and source commit pins.
 - `src/`: home for future project-authored reconstruction code.
-- `work/`: ignored output from local analysis.
+- `research/catalogue/`: generated component map and unverified address leads.
+- `research/progress.json`: reviewed acceptance gates; `make catalogue` regenerates tables.
+- `research/rea/`: retained static REA dependency-metadata evidence.
+- `work/`: ignored output from local analysis, unwind indices and Ghidra projects.
 
 See [research status](research/STATUS.md), [toolchains](docs/TOOLCHAINS.md),
 [reproducibility](docs/REPRODUCIBILITY.md) and [third-party notices](THIRD_PARTY_NOTICES.md).

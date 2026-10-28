@@ -12,4 +12,4 @@ jobs:
           submodules: recursive
       - run: sudo apt-get update && sudo apt-get install -y ripgrep gnupg git-lfs
       - run: git -C references/can1357-hl lfs pull
-      - run: make verify test reproduce
+      - run: make verify test catalogue-check index reproduce
