@@ -75,5 +75,24 @@ class DeriveTests(unittest.TestCase):
             derive(b'not an elf' * 10)
 
 
+def captured(release):
+    path = ROOT / TARGETS[release]
+    return path.is_file() and path.stat().st_size > 1_000_000
+
+
+@unittest.skipUnless(all(captured(r) for r in TARGETS), 'captured binaries not materialized (git lfs pull)')
+class CapturedTargetTests(unittest.TestCase):
+    def test_committed_records_reproduce_from_verified_targets(self):
+        for release in TARGETS:
+            committed = json.loads((OUT / f'provenance-{release}.json').read_text())
+            self.assertEqual(committed, json.loads(json.dumps(record(release))), release)
+
+    def test_node_94_and_115_toolchains_differ(self):
+        def commits(release):
+            return {i['value'] for i in record(release)['facts'] if i['key'] == 'rustc.commit_path'}
+        self.assertEqual(commits('94'), {'e408947bfd200af42db322daf0fadfe7e26d3bd1'})
+        self.assertEqual(commits('115'), {'59807616e1fa2540724bfbac14d7976d7e4a3860'})
+
+
 if __name__ == '__main__':
     unittest.main()
