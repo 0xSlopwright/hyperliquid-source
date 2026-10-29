@@ -53,8 +53,10 @@ DECODERS = (
         (0x25593f7, '488d3dd21d1603', 'lea rdi,[de/impls.rs:499:20 Location]'),
     ), 0x3e5984, (0x2558f6d, 0x2558f86, 0x2558f7a, 0x25591a1)),
 )
-# Group 1 marks the 0x81 opcode, so a stray 0x41 data byte before it never shifts the address.
-DISPATCH = re.compile(rb'(?=(\x81[\xc0-\xc7]\x05\xff\xff\xff(?:\x41)?\x83[\xf8-\xff]\x03))', re.S)
+# `add r32,-0xfb` (81 /0) then `cmp r32,3` (83 /7) on the same register. A byte 0x40-0x4f before
+# 0x81 is taken as the add's REX prefix only when both it and the cmp carry REX.B, so the
+# recorded VA is the instruction start (as objdump prints it), never a stray preceding byte.
+DISPATCH = re.compile(rb'\x81([\xc0-\xc7])\x05\xff\xff\xff([\x40-\x4f])?\x83([\xf8-\xff])\x03', re.S)
 CMP_FB = re.compile(rb'\x81[\xf8-\xff]\xfb\x00\x00\x00', re.S)
 DISPATCH_SITES = 21
 DISPATCH_FUNCTIONS = 16
@@ -91,11 +93,20 @@ def scan(data, expected_sha256=bv.SHA256):
     starts = sorted(fdes)
     sites = []
     for m in DISPATCH.finditer(tb):
-        va = text['addr'] + m.start(1)
+        add_reg, cmp_reg = m.group(1)[0] & 7, m.group(3)[0] & 7
+        cmp_b = (m.group(2)[0] & 1) if m.group(2) else 0
+        if add_reg != cmp_reg:
+            continue
+        pos = m.start()
+        if cmp_b and pos and 0x40 <= tb[pos - 1] <= 0x4f and tb[pos - 1] & 1:
+            pos -= 1  # REX.B of the add (the cmp names r8d-r15d, so the add must too)
+        elif cmp_b:
+            raise bv.EvidenceError(f'dispatch at {text["addr"] + pos:#x}: cmp uses REX.B but add has no prefix')
+        va = text['addr'] + pos
         i = bisect.bisect_right(starts, va) - 1
         if i < 0 or va >= fdes[starts[i]]:
             raise bv.EvidenceError(f'dispatch at {va:#x} outside every FDE')
-        if not CMP_FB.search(tb, starts[i] - text['addr'], m.start(1)):
+        if not CMP_FB.search(tb, starts[i] - text['addr'], pos):
             raise bv.EvidenceError(f'dispatch at {va:#x} has no earlier cmp reg,0xfb in its function')
         sites.append({'va': f'{va:#x}', 'fde_start': f'{starts[i]:#x}'})
     nfn = len({s['fde_start'] for s in sites})

@@ -14,7 +14,7 @@ import bincode_varint as bv  # noqa: E402
 import bincode_varint_decode as dv  # noqa: E402
 
 PACKET = ROOT / 'research/work-items/RE-005-bincode-varint'
-OUTPUT_SHA256 = '65238cb68a246710e7daa777f3997ab3c5db1db03e3868754b338821d6935909'
+OUTPUT_SHA256 = '6da03736b718d6c7db769a0a1be7e9131a6229cea6b198dd85d535282be5a56f'
 _DATA = None
 
 
@@ -30,6 +30,18 @@ def mutate(va, new):
     o = bv.va_to_off(bv.sections(data()), va)
     buf[o:o + len(new)] = new
     return bytes(buf)
+
+
+def boundary_misses(sites):
+    """Return each (va, func_start) whose va is not an instruction start in objdump's linear sweep."""
+    misses = []
+    for va, start in sites:
+        out = subprocess.run(['objdump', '-d', '--no-show-raw-insn', f'--start-address={start:#x}',
+                              f'--stop-address={va + 16:#x}', str(bv.TARGET)],
+                             check=True, capture_output=True, text=True).stdout
+        if not any(l.strip().startswith(f'{va:x}:') for l in out.splitlines()):
+            misses.append(va)
+    return misses
 
 
 def scan_mutated(buf):
@@ -122,6 +134,25 @@ class Binutils(unittest.TestCase):
                 line = [l for l in out.splitlines() if l.strip().startswith(f'{va:x}:')]
                 self.assertEqual(len(line), 1, a['va'])
                 self.assertEqual(line[0].split('\t')[1].replace(' ', ''), a['bytes'], a['va'])
+
+    def sites(self):
+        return [(int(s['va'], 16), int(s['fde_start'], 16)) for s in dv.scan(data())['tag_dispatch_sites']]
+
+    def test_dispatch_vas_are_objdump_instruction_starts(self):
+        self.assertEqual(boundary_misses(self.sites()), [])
+
+    def test_rex_b_sites_start_at_prefix(self):
+        rex = sorted(va for va, _ in self.sites() if data()[bv.va_to_off(bv.sections(data()), va)] == 0x41)
+        self.assertEqual([f'{va:#x}' for va in rex], [
+            '0x2558fe2', '0x2559079', '0x2561b18', '0x2973ac6', '0x2973bb6',
+            '0x466d895', '0x466d9c5', '0x466db15'])
+
+    def test_off_by_one_va_rejected(self):
+        sites = self.sites()
+        for i in (sites.index((0x2558fe2, 0x2558ee0)), sites.index((0x466bd5b, 0x466bd10))):
+            shifted = list(sites)
+            shifted[i] = (sites[i][0] + 1, sites[i][1])
+            self.assertEqual(boundary_misses(shifted), [sites[i][0] + 1])
 
 
 if __name__ == '__main__':

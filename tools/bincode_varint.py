@@ -246,7 +246,14 @@ def scan(data, expected_sha256=SHA256):
     for k, p in sorted(IDIOMS.items()):
         hits = []
         for m in p.finditer(tbytes):
-            va = text['addr'] + m.start()
+            pos = m.start()
+            if k.startswith('cmp_r32'):
+                # A REX.W byte before 0x81 makes this the r64 form, which has its own row.
+                if pos and 0x48 <= tbytes[pos - 1] <= 0x4f:
+                    continue
+                if pos and 0x40 <= tbytes[pos - 1] <= 0x47:
+                    pos -= 1  # REX without W belongs to the instruction: record its start
+            va = text['addr'] + pos
             i = bisect.bisect_right(starts, va) - 1
             owner = starts[i] if i >= 0 and va < fdes[starts[i]] else None
             if owner not in pinned:

@@ -11,10 +11,10 @@ Static and offline. The binary is never executed.
 ```sh
 make verify                                                     # artifact digests
 python3 -I -B tools/bincode_varint.py > /tmp/varint-sites.json  # recompute
-sha256sum /tmp/varint-sites.json                                # 48636be33d50d4c9f7f164bb7ef4ebbd2766b6af0d52cd1633b1c8a2bd9b86ea
+sha256sum /tmp/varint-sites.json                                # 7e7a06b035c5b223cfa4573b9f315e344db2207c88c967e8079b88a0093a7657
 python3 -I -B research/work-items/RE-005-bincode-varint/verify.py
 python3 -O -B research/work-items/RE-005-bincode-varint/verify.py
-python3 -I -B tools/bincode_varint_decode.py | sha256sum            # 65238cb68a246710e7daa777f3997ab3c5db1db03e3868754b338821d6935909
+python3 -I -B tools/bincode_varint_decode.py | sha256sum            # 6da03736b718d6c7db769a0a1be7e9131a6229cea6b198dd85d535282be5a56f
 python3 -m unittest tests.test_bincode_varint tests.test_bincode_varint_decode -v
 ```
 
@@ -24,9 +24,9 @@ Files:
 
 | file | sha256 |
 |---|---|
-| `varint-sites.json` | `48636be33d50d4c9f7f164bb7ef4ebbd2766b6af0d52cd1633b1c8a2bd9b86ea` |
+| `varint-sites.json` | `7e7a06b035c5b223cfa4573b9f315e344db2207c88c967e8079b88a0093a7657` |
 | `objdump-excerpts.txt` | `d4ac4801d3dedb823964a2ffcbb50b1034ea4a33411b19a1817f4da2271329de` |
-| `decode-sites.json` | `65238cb68a246710e7daa777f3997ab3c5db1db03e3868754b338821d6935909` |
+| `decode-sites.json` | `6da03736b718d6c7db769a0a1be7e9131a6229cea6b198dd85d535282be5a56f` |
 | `decode-objdump-excerpts.txt` | `6271d7c6badeb6f4e6bd0aabefafa0b756bf15b0c8f2ae352363a586a7a91701` |
 
 The objdump excerpts were made with GNU objdump 2.44 (Debian), using `objdump -d -M intel` over the seven FDE ranges. They are for human reading only. The tool and tests never parse them, so a different binutils version may change their text but not the evidence.
@@ -51,11 +51,11 @@ The tool checks every anchor's exact bytes; the full list is in `varint-sites.js
 
 - **Panic Locations.** The `lea` instructions at `0x27ab2e8` and `0x27ab63e` both point to Location `0x56c2e78`. The `lea` at `0x4aaa2be` points to `0x5737ce8`. Through the `R_X86_64_RELATIVE` relocations, all three resolve to `/home/ubuntu/hl/bincode-fork/src/enc/write.rs:78:9`. The path string is at `0x1e533e`, length 45.
 - **Closure of the idiom scan.** The scan searches all of `.text` for three patterns:
-  - `cmp r32,0xfb` followed by `cmp 0x10000`: 7 sites;
+  - `cmp r32,0xfb` followed by `cmp 0x10000`: 3 sites (a hit preceded by a REX.W byte is the `r64` form and is counted only there);
   - the `r64` form of the same: 4 sites;
   - `mov byte [..],0xfd`: 2 sites.
 
-  All 13 sites fall inside the 7 FDEs listed above. The tool rejects any site outside them.
+  All 9 sites fall inside the 7 FDEs listed above. The tool rejects any site outside them.
 - **Thresholds and markers.** The observed values are `<251`, `0xfb`+u16, `0xfc`+u32 (selected when the high half is zero), and `0xfd`+u64. No `0xfe` (u128) arm was seen in these functions.
 - **Every count is pinned exactly.** That covers the FDE count, the call hits per function, the idiom sites and the Location tuples. No `>=` comparisons are used.
 
@@ -80,7 +80,7 @@ How the fast path works, observed at `0x466bd3d..0x466bdb0`:
 
 The inlined copy `0x2558ee0` has the same shape. Its `0xfe` arm (`0x25591a1`) and its out-of-range arm (`0x25591bb`) both build an error with `esi=2`, using `edx=4` and `edx=0xc` respectively. In the same function, `lea` instructions at `0x25593ea` and `0x25593f7` point to `de/decoder.rs:93:13` (Location `0x56bb278`) and `de/impls.rs:499:20` (Location `0x56bb1d0`).
 
-**Closure:** `.text` contains exactly 21 `add r32,-0xfb; cmp r32,3` tag dispatches, in 16 functions. Each one has a `cmp reg,0xfb` earlier in the same function. The site addresses point at the `0x81` opcode, not at any REX prefix. The tool rejects any other count.
+**Closure:** `.text` contains exactly 21 `add r32,-0xfb; cmp r32,3` tag dispatches, in 16 functions. Each one has a `cmp reg,0xfb` earlier in the same function. Every site address is the instruction start as objdump prints it: for the 8 `add r8d..r15d` sites that is the REX.B `0x41` prefix, not the `0x81` opcode. A test checks every recorded encode and decode VA against objdump instruction boundaries, and a control shows an off-by-one VA is rejected. The tool rejects any other count.
 
 ## Inferences (not observations)
 

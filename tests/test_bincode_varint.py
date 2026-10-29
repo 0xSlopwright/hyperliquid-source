@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 import bincode_varint as bv  # noqa: E402
 
 PACKET = ROOT / 'research/work-items/RE-005-bincode-varint'
-OUTPUT_SHA256 = '48636be33d50d4c9f7f164bb7ef4ebbd2766b6af0d52cd1633b1c8a2bd9b86ea'
+OUTPUT_SHA256 = '7e7a06b035c5b223cfa4573b9f315e344db2207c88c967e8079b88a0093a7657'
 _DATA = None
 
 
@@ -30,6 +30,18 @@ def mutate(va, new):
     o = bv.va_to_off(bv.sections(data()), va)
     buf[o:o + len(new)] = new
     return bytes(buf)
+
+
+def boundary_misses(sites):
+    """Return each (va, func_start) whose va is not an instruction start in objdump's linear sweep."""
+    misses = []
+    for va, start in sites:
+        out = subprocess.run(['objdump', '-d', '--no-show-raw-insn', f'--start-address={start:#x}',
+                              f'--stop-address={va + 16:#x}', str(bv.TARGET)],
+                             check=True, capture_output=True, text=True).stdout
+        if not any(l.strip().startswith(f'{va:x}:') for l in out.splitlines()):
+            misses.append(va)
+    return misses
 
 
 def scan_mutated(buf):
@@ -50,7 +62,7 @@ class PinnedOutput(unittest.TestCase):
             'varint_encode_u32_le_ptr', 'varint_encode_u64_vec_b', 'varint_size_u64_b'])
         self.assertEqual([f['direct_calls'] for f in r['functions']], [3, 2, 25, 25, 75, 86, 87])
         self.assertEqual({k: len(v) for k, v in r['text_idiom_sites'].items()}, {
-            'cmp_r32_0xfb_then_cmp_0x10000': 7, 'cmp_r64_0xfb_then_cmp_0x10000': 4,
+            'cmp_r32_0xfb_then_cmp_0x10000': 3, 'cmp_r64_0xfb_then_cmp_0x10000': 4,
             'store_marker_0xfd_imm8': 2})
         self.assertEqual(r['fde_count'], 121299)
         self.assertEqual([(p['location'], p['path'], p['line'], p['column']) for p in r['panic_locations']], [
@@ -165,6 +177,25 @@ class BinutilsCrossCheck(unittest.TestCase):
                 line = [l for l in out.splitlines() if l.strip().startswith(f'{va:x}:')]
                 self.assertEqual(len(line), 1, a['va'])
                 self.assertEqual(line[0].split('\t')[1].replace(' ', ''), a['bytes'], a['va'])
+
+    def idiom_sites(self):
+        starts = sorted(bv.fde_extents(data(), bv.sections(data())))
+        out = []
+        for vas in bv.scan(data())['text_idiom_sites'].values():
+            for v in vas:
+                va = int(v, 16)
+                out.append((va, max(s for s in starts if s <= va)))
+        return out
+
+    def test_idiom_vas_are_objdump_instruction_starts(self):
+        self.assertEqual(boundary_misses(self.idiom_sites()), [])
+
+    def test_off_by_one_idiom_va_rejected(self):
+        sites = self.idiom_sites()
+        i = [va for va, _ in sites].index(0x27ab30b)
+        shifted = list(sites)
+        shifted[i] = (sites[i][0] + 1, sites[i][1])
+        self.assertEqual(boundary_misses(shifted), [0x27ab30c])
 
 
 if __name__ == '__main__':

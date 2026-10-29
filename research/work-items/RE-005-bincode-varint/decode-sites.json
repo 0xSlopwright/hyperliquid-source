@@ -238,11 +238,11 @@
     },
     {
       "fde_start": "0x2558ee0",
-      "va": "0x2558fe3"
+      "va": "0x2558fe2"
     },
     {
       "fde_start": "0x2558ee0",
-      "va": "0x255907a"
+      "va": "0x2559079"
     },
     {
       "fde_start": "0x25596b0",
@@ -254,7 +254,7 @@
     },
     {
       "fde_start": "0x25618f0",
-      "va": "0x2561b19"
+      "va": "0x2561b18"
     },
     {
       "fde_start": "0x25618f0",
@@ -266,11 +266,11 @@
     },
     {
       "fde_start": "0x2973aa0",
-      "va": "0x2973ac7"
+      "va": "0x2973ac6"
     },
     {
       "fde_start": "0x2973b90",
-      "va": "0x2973bb7"
+      "va": "0x2973bb6"
     },
     {
       "fde_start": "0x466bc10",
@@ -286,15 +286,15 @@
     },
     {
       "fde_start": "0x466d850",
-      "va": "0x466d896"
+      "va": "0x466d895"
     },
     {
       "fde_start": "0x466d980",
-      "va": "0x466d9c6"
+      "va": "0x466d9c5"
     },
     {
       "fde_start": "0x466dad0",
-      "va": "0x466db16"
+      "va": "0x466db15"
     },
     {
       "fde_start": "0x4b6fa60",

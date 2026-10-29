@@ -828,11 +828,7 @@
     "cmp_r32_0xfb_then_cmp_0x10000": [
       "0x27ab0aa",
       "0x27ab281",
-      "0x27ab30c",
-      "0x27ab5b2",
-      "0x4aa9aea",
-      "0x4aa9f8c",
-      "0x4aaa232"
+      "0x4aa9aea"
     ],
     "cmp_r64_0xfb_then_cmp_0x10000": [
       "0x27ab30b",
