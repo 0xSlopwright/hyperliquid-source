@@ -130,6 +130,31 @@ def validate_request(request: dict, fixtures_by_id: dict) -> dict:
     if not isinstance(request['declared_side_effects'], list):
         raise ValueError('declared_side_effects must be a list')
 
+    required_effects = []
+    seen_effects = set()
+    for fid in fixture_ids:
+        effects = fixtures_by_id[fid].get('declared_side_effects', [])
+        if not isinstance(effects, list):
+            raise ValueError(f'fixture {fid} declared_side_effects must be a list')
+        for effect in effects:
+            if effect not in seen_effects:
+                seen_effects.add(effect)
+                required_effects.append(effect)
+
+    missing_effects = [
+        effect for effect in required_effects
+        if effect not in request['declared_side_effects']
+    ]
+    if missing_effects:
+        raise ValueError(
+            'request declared_side_effects omits selected fixture effects: '
+            f'{missing_effects}'
+        )
+
+    plan_effects = list(dict.fromkeys(
+        [*required_effects, *request['declared_side_effects']]
+    ))
+
     execute = bool(request['execute_target'])
     network_allow = request['network'] == 'allow'
     approval_claimed = bool(request['approval_present'])
@@ -165,7 +190,7 @@ def validate_request(request: dict, fixtures_by_id: dict) -> dict:
         'fixture_ids': fixture_ids,
         'network': request['network'],
         'execute_target': False,
-        'declared_side_effects': request['declared_side_effects'],
+        'declared_side_effects': plan_effects,
         'workdir': 'work/harness/',
         'note': 'Plan only. No captured binary was executed.',
     }

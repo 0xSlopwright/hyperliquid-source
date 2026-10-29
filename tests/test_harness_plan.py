@@ -99,6 +99,60 @@ class RequestGateTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'plan-only and refuses'):
                     hp.validate_request(req, self.fixtures)
 
+    def _fixtures_with_effect(self, effect='writes_fixture_output'):
+        import copy
+        fixtures = copy.deepcopy(self.fixtures)
+        fid = 'syn-94-pos-equal-window-v1'
+        fixtures[fid]['declared_side_effects'] = [effect]
+        return fixtures, fid
+
+    def test_omitted_fixture_effects_rejected(self):
+        fixtures, fid = self._fixtures_with_effect()
+        req = self._load('plan-only.json')
+        req['fixture_ids'] = [fid]
+        req['declared_side_effects'] = []
+        with self.assertRaisesRegex(
+            ValueError, r"omits selected fixture effects: \['writes_fixture_output'\]"
+        ):
+            hp.validate_request(req, fixtures)
+
+    def test_underdeclared_fixture_effects_rejected(self):
+        import copy
+        fixtures = copy.deepcopy(self.fixtures)
+        fid = 'syn-94-pos-equal-window-v1'
+        fixtures[fid]['declared_side_effects'] = [
+            'writes_fixture_output',
+            'touches_workdir',
+        ]
+        req = self._load('plan-only.json')
+        req['fixture_ids'] = [fid]
+        req['declared_side_effects'] = ['writes_fixture_output']
+        with self.assertRaisesRegex(
+            ValueError, r"omits selected fixture effects: \['touches_workdir'\]"
+        ):
+            hp.validate_request(req, fixtures)
+
+    def test_exact_fixture_effect_cover_accepted(self):
+        fixtures, fid = self._fixtures_with_effect()
+        req = self._load('plan-only.json')
+        req['fixture_ids'] = [fid]
+        req['declared_side_effects'] = ['writes_fixture_output']
+        plan = hp.validate_request(req, fixtures)
+        self.assertEqual(plan['status'], 'planned')
+        self.assertEqual(plan['declared_side_effects'], ['writes_fixture_output'])
+
+    def test_superset_fixture_effect_cover_accepted(self):
+        fixtures, fid = self._fixtures_with_effect()
+        req = self._load('plan-only.json')
+        req['fixture_ids'] = [fid]
+        req['declared_side_effects'] = ['writes_fixture_output', 'extra_declared']
+        plan = hp.validate_request(req, fixtures)
+        self.assertEqual(plan['status'], 'planned')
+        self.assertEqual(
+            plan['declared_side_effects'],
+            ['writes_fixture_output', 'extra_declared'],
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
