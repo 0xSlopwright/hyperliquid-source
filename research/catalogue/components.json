@@ -7,6 +7,11 @@
       "threadthread_spawn_forevertokio_spawn_foreverdiscriminantbase": [
         "lu.rs"
       ]
+    },
+    "visor": {
+      "threadthread_spawn_forevertokio_spawn_foreverdiscriminantbase": [
+        "lu.rs"
+      ]
     }
   },
   "limitations": "Path and literal observations do not prove module ABI, function ownership or logic. The ordered component taxonomy is a research partition, not a recovered Cargo dependency graph.",
