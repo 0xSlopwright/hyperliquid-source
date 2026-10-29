@@ -30,6 +30,31 @@ def elf(comment, rodata):
     return bytes(body), offsets
 
 
+def dynamic_elf(tags):
+    names = b'\0.shstrtab\0.dynstr\0.dynamic\0'
+    dynstr = b'\0libfixture.so\0'
+    blob = b''.join(struct.pack('<qQ', *tag) for tag in tags)
+    body = bytearray(64)
+    body[:6] = b'\x7fELF\x02\x01'
+    struct.pack_into('<HH', body, 16, 3, 0x3E)
+    rows = [(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)]
+    for name, kind, data, link, entsize in ((b'.shstrtab', 3, names, 0, 0), (b'.dynstr', 3, dynstr, 0, 0),
+                                             (b'.dynamic', 6, blob, 2, 16)):
+        body += b'\0' * (-len(body) % 8)
+        rows.append((names.index(name + b'\0'), kind, 0, 0, len(body), len(data), link, 0, 8, entsize))
+        body += data
+    body += b'\0' * (-len(body) % 8)
+    struct.pack_into('<Q', body, 40, len(body))
+    struct.pack_into('<HHH', body, 58, 64, len(rows), 1)
+    for row in rows:
+        body += struct.pack('<IIQQQQIIQQ', *row)
+    return bytes(body)
+
+
+def dynamic_facts(tags):
+    return {i['key']: i['value'] for i in derive(dynamic_elf(tags))}
+
+
 def by_key(items, key):
     return [i for i in items if i['key'] == key]
 
@@ -69,6 +94,12 @@ class DeriveTests(unittest.TestCase):
         new = {'facts': [{'key': 'k', 'label': 'exact', 'value': 3, 'evidence': {}},
                          {'key': 'same', 'label': 'exact', 'value': 2, 'evidence': {'file_offset': '0x9'}}]}
         self.assertEqual(diff(old, new), ([('k', 'exact', '1')], [('k', 'exact', '3')]))
+
+    def test_dynamic_entries_after_dt_null_are_ignored(self):
+        facts = dynamic_facts([(1, 1), (0, 0), (30, 8), (1, 1), (15, 1)])
+        self.assertEqual(facts['dynamic.needed'], ['libfixture.so'])
+        self.assertIs(facts['dynamic.bind_now'], False)
+        self.assertEqual(facts['dynamic.runpath'], [])
 
     def test_non_elf_input_is_rejected(self):
         with self.assertRaises(ValueError):
