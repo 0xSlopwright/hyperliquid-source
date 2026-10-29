@@ -47,6 +47,7 @@ def generate(root=ROOT):
     progress = json.loads((root / 'research/progress.json').read_text())
     validate_progress(components, progress, root)
     inventories = {v: json.loads((root / f'research/imported/hl-node-{v}.inventory.json').read_text()) for v in ['94', '115']}
+    inventories['visor'] = json.loads((root / 'research/imported/hl-visor.inventory.json').read_text())
     paths = {}
     excluded = {}
     for v, inv in inventories.items():
@@ -115,7 +116,7 @@ def generate(root=ROOT):
               '## Binary coverage', '', '| Target | Unwind-index entries | Accepted raw bodies | Accepted normalized-only bodies | Whole ELF reproduced |', '| --- | ---: | ---: | ---: | --- |']
     for v in ['94','115']:
         lines.append(f"| Node #{v} | {inventories[v]['fde_count_eh_frame_hdr']:,} | 0 credited; comparator pending | 0 credited; comparator pending | No |")
-    lines += ['| Captured visor | Not yet inventoried | 0 credited | 0 credited | No |', '',
+    lines += [f"| Captured visor | {inventories['visor']['fde_count_eh_frame_hdr']:,} | 0 credited; comparator pending | 0 credited; comparator pending | No |", '',
               'Unwind entries are not a complete function census. Never use them as a verified matching-window denominator without validating bounds and duplicates.', '',
               '## Next work', '', 'Start with [the ready task queue](TASKS.md) and [reverse-engineering setup](REVERSE-ENGINEERING.md). Updates require the [contribution evidence packet](../CONTRIBUTING.md).', '',
               'The format follows the separation of matched bodies, normalized matches and whole-ELF status in [pumpfun-source at dc8f791](https://github.com/lalalune/pumpfun-source/tree/dc8f791d32ae7fd6d9660cd1bf003fb02737f78f). Its progress numbers do not transfer to this project.', '']

@@ -7,7 +7,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from catalogue import owner, validate_progress
-from elf_index import entry_file_offset, sections, unwind_index
+from elf_index import entry_file_offset, sections, target_for, unwind_index
 
 
 def fixture():
@@ -86,3 +86,35 @@ class CatalogueTests(unittest.TestCase):
     def test_missing_component_rejected(self):
         d = copy.deepcopy(self.progress); del d['components']['visor']
         with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
+
+
+class VisorIndexTests(unittest.TestCase):
+    def test_target_for_maps_nodes_and_visor(self):
+        self.assertEqual(
+            target_for('94')[0],
+            'artifacts/node/94/hl-node',
+        )
+        self.assertEqual(
+            target_for('visor'),
+            (
+                'artifacts/visor/captured/hl-visor',
+                'research/imported/hl-visor.inventory.json',
+                'visor-unwind',
+            ),
+        )
+
+    def test_retained_visor_inventory_matches_unwind_when_bytes_present(self):
+        root = Path(__file__).resolve().parents[1]
+        binary = root / 'artifacts/visor/captured/hl-visor'
+        inventory = json.loads((root / 'research/imported/hl-visor.inventory.json').read_text())
+        self.assertEqual(inventory['file_size'], 8305392)
+        self.assertEqual(
+            inventory['build_id'],
+            'b55c82cd4de234f23c768e5adff1e84e6adbc9a6',
+        )
+        data = binary.read_bytes()
+        if data.startswith(b'version https://git-lfs.github.com/spec/v1'):
+            self.skipTest('visor LFS object not pulled in this checkout')
+        self.assertEqual(len(data), inventory['file_size'])
+        _secs, rows = unwind_index(data)
+        self.assertEqual(len(rows), inventory['fde_count_eh_frame_hdr'])

@@ -20,6 +20,7 @@ doctor:
 index:
 	$(PYTHON) tools/elf_index.py --release 94
 	$(PYTHON) tools/elf_index.py --release 115
+	$(PYTHON) tools/elf_index.py --release visor
 catalogue:
 	$(PYTHON) tools/catalogue.py
 catalogue-check:

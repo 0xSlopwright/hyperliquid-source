@@ -100,17 +100,28 @@ def generate(binary, prefix):
     return summary
 
 
+def target_for(release):
+    """Map a release label to its artifact path, inventory path and unwind prefix."""
+    if release == 'visor':
+        return ('artifacts/visor/captured/hl-visor',
+                'research/imported/hl-visor.inventory.json',
+                'visor-unwind')
+    return (f'artifacts/node/{release}/hl-node',
+            f'research/imported/hl-node-{release}.inventory.json',
+            f'node-{release}-unwind')
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--release', choices=['94', '115'], required=True)
+    p.add_argument('--release', choices=['94', '115', 'visor'], required=True)
     p.add_argument('--output-dir', type=Path, default=ROOT / 'work/index')
     args = p.parse_args()
     from artifacts import check
-    rel = f'artifacts/node/{args.release}/hl-node'
+    rel, inventory, prefix = target_for(args.release)
     item = next(i for i in json.loads((ROOT / 'provenance/artifacts.json').read_text())['files'] if i['path'] == rel)
     check(ROOT / rel, item)
-    summary = generate(ROOT / rel, args.output_dir / f'node-{args.release}-unwind')
-    expected = json.loads((ROOT / f'research/imported/hl-node-{args.release}.inventory.json').read_text())['fde_count_eh_frame_hdr']
+    summary = generate(ROOT / rel, args.output_dir / prefix)
+    expected = json.loads((ROOT / inventory).read_text())['fde_count_eh_frame_hdr']
     if summary['unwind_entries'] != expected:
         raise ValueError('Parsed unwind count differs from retained inventory')
     print(json.dumps(summary, indent=2))
