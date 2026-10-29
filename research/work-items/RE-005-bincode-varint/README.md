@@ -1,6 +1,6 @@
-# RE-005 — bincode-fork varint / integer-encoding boundary (node #94, encode side)
+# RE-005 — bincode-fork varint / integer-encoding boundary (node #94)
 
-Status: **evidence packet, no gate claimed.** Encode side located. Decode side **INCONCLUSIVE** (see Limits).
+Status: **evidence packet, no gate claimed.** The encode and size side is pinned (7 functions). On the decode side, only the u64 *slice fast path* is pinned: 2 decoders in full and 21 tag-dispatch sites in 16 functions. The slow reader path and the other integer widths are not claimed (see Limits).
 
 ## Reproduce
 
@@ -14,7 +14,8 @@ python3 -I -B tools/bincode_varint.py > /tmp/varint-sites.json  # recompute
 sha256sum /tmp/varint-sites.json                                # 48636be33d50d4c9f7f164bb7ef4ebbd2766b6af0d52cd1633b1c8a2bd9b86ea
 python3 -I -B research/work-items/RE-005-bincode-varint/verify.py
 python3 -O -B research/work-items/RE-005-bincode-varint/verify.py
-python3 -m unittest tests.test_bincode_varint -v
+python3 -I -B tools/bincode_varint_decode.py | sha256sum            # 65238cb68a246710e7daa777f3997ab3c5db1db03e3868754b338821d6935909
+python3 -m unittest tests.test_bincode_varint tests.test_bincode_varint_decode -v
 ```
 
 The output is identical under any `PYTHONHASHSEED` (tested with seeds 0, 1 and 4242).
@@ -25,6 +26,8 @@ Files:
 |---|---|
 | `varint-sites.json` | `48636be33d50d4c9f7f164bb7ef4ebbd2766b6af0d52cd1633b1c8a2bd9b86ea` |
 | `objdump-excerpts.txt` | `d4ac4801d3dedb823964a2ffcbb50b1034ea4a33411b19a1817f4da2271329de` |
+| `decode-sites.json` | `65238cb68a246710e7daa777f3997ab3c5db1db03e3868754b338821d6935909` |
+| `decode-objdump-excerpts.txt` | `6271d7c6badeb6f4e6bd0aabefafa0b756bf15b0c8f2ae352363a586a7a91701` |
 
 The objdump excerpts were made with GNU objdump 2.44 (Debian), using `objdump -d -M intel` over the seven FDE ranges. They are for human reading only. The tool and tests never parse them, so a different binutils version may change their text but not the evidence.
 
@@ -56,10 +59,34 @@ The tool checks every anchor's exact bytes; the full list is in `varint-sites.js
 - **Thresholds and markers.** The observed values are `<251`, `0xfb`+u16, `0xfc`+u32 (selected when the high half is zero), and `0xfd`+u64. No `0xfe` (u128) arm was seen in these functions.
 - **Every count is pinned exactly.** That covers the FDE count, the call hits per function, the idiom sites and the Location tuples. No `>=` comparisons are used.
 
+
+### Decode side (observations; `tools/bincode_varint_decode.py`)
+
+| decoder (my label) | FDE | jump table | targets for tag 0xfb / 0xfc / 0xfd / 0xfe |
+|---|---|---|---|
+| `varint_decode_u64_slice` | `0x466bd10..0x466bdf5` | `0x6f6ea8` | `0x466bd76` / `0x466bd8e` / `0x466bd82` / `0x466bdc5` |
+| `varint_decode_u64_inlined_a` | `0x2558ee0..0x2559404` | `0x3e5984` | `0x2558f6d` / `0x2558f86` / `0x2558f7a` / `0x25591a1` |
+
+How the fast path works, observed at `0x466bd3d..0x466bdb0`:
+- It is taken only when more than 8 bytes remain (`cmp rax,8; jbe slow`).
+- It reads the tag byte with `movzx edx,byte [rcx]` (`0x466bd47`).
+- If the tag is below `0xfb` (`cmp rdx,0xfb` at `0x466bd4a`), the tag is the value and 1 byte is consumed.
+- Otherwise `add edx,-0xfb; cmp edx,3; ja err` (`0x466bd5b`/`0x466bd61`) indexes a relative jump table:
+  - `0xfb`: `movzx word [rcx+1]`, 3 bytes consumed;
+  - `0xfc`: `mov dword [rcx+1]`, 5 bytes consumed;
+  - `0xfd`: `mov qword [rcx+1]`, 9 bytes consumed;
+  - `0xfe`: an error arm, with no 16-byte read.
+- On success it writes result tag `0x12` (`0x466bda9`).
+
+The inlined copy `0x2558ee0` has the same shape. Its `0xfe` arm (`0x25591a1`) and its out-of-range arm (`0x25591bb`) both build an error with `esi=2`, using `edx=4` and `edx=0xc` respectively. In the same function, `lea` instructions at `0x25593ea` and `0x25593f7` point to `de/decoder.rs:93:13` (Location `0x56bb278`) and `de/impls.rs:499:20` (Location `0x56bb1d0`).
+
+**Closure:** `.text` contains exactly 21 `add r32,-0xfb; cmp r32,3` tag dispatches, in 16 functions. Each one has a `cmp reg,0xfb` earlier in the same function. The site addresses point at the `0x81` opcode, not at any REX prefix. The tool rejects any other count.
+
 ## Inferences (not observations)
 
 - The arms match the bincode 2 `varint` encoding rules. On that basis these seven functions are taken to be the fork's `varint_encode_u32` / `varint_encode_u64` writer paths and their `SizeWriter` counterparts (the size functions only count bytes and never store them).
 - The `dl`/byte-swap arm in the `*_vec` encoders looks like a big-endian configuration flag compiled into one shared body. `varint_encode_u32_le_ptr` looks like a little-endian-only monomorphization. Neither inference has been checked against source.
+- On the decode side, `0x12` looks like the `Ok` niche of the result enum. The error arms look like an `InvalidIntegerType`-style error, and the `esi`/`edx` values look like expected/found integer-type codes. None of that has been checked against source.
 - The function names are our labels. The binary has no symbols for them.
 
 ## Implementation and comparison
@@ -81,16 +108,19 @@ The following inputs are rejected:
 - a call count off by 1;
 - dropping the second family of functions, which leaves idiom sites outside every pinned function.
 
-An identity "mutation" serves as the baseline and reproduces the output exactly.
+On the decode side, the tests also reject a changed tag threshold, swapped jump-table entries, a changed load width and an injected extra dispatch site. An identity "mutation" serves as the baseline and reproduces the output exactly.
 
 ## Limits / what this does not claim
 
-- **Decode side: INCONCLUSIVE.** Two signature scans found no decoder:
-  1. `0xfb`/`0xfc`/`0xfd` compares close together: 1 hit, at `0x29de1d2`, which is unrelated.
-  2. `cmp 0xfa`/`0xfb` followed by `sub 0xfb`, an add, or a jump table: 9 hits, all unrelated.
+- **Decode side: only the u64 slice fast path is claimed.** The following are **not** pinned:
+  - the slow path when 8 bytes or fewer remain (it branches out, e.g. `0x466bdb1`, and goes through reader calls via `0x57745e0`/`0x57745e8`);
+  - u16 and u32 decoders;
+  - the meaning of the error codes;
+  - which callers decode which types.
 
-  The fork's `de/impls.rs:499:20` and `de/decoder.rs:93:13` Locations exist (for example at `0x56bb1d0` and `0x56bb278`) but were not tied to a varint decoder. The decoder may be inlined into its callers or compiled as a jump table on the tag byte.
+  Two earlier signature scans missed these sites because they looked for `cmp r8,imm` byte compares. The decoder widens the tag with `movzx` and compares it as a 64-bit value.
 - `e8` hits are byte-pattern matches, not a control-flow graph. Calls through pointers, tail `jmp`s (0 found) and inlined copies are not counted.
 - The idiom scan proves closure **for those three byte patterns only**. Varint logic that compiles to a different instruction shape would not be found.
 - The packet covers node #94 only. #115 is rejected by design and was not ported.
+- On the decode side, only the 2 tabulated decoders are pinned in full. The other 14 functions with dispatch sites are listed, but their arms are not anchored.
 - No semantic gate, no source equivalence, and no claim about zigzag/signed handling, u128, or `fixint` config paths.
