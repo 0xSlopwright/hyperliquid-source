@@ -1,4 +1,4 @@
-# BR-001: requestWithdrawal payload hash and signature chain-id selection (node #94)
+# bridge: requestWithdrawal payload hash and signature chain-id selection (node #94)
 
 - Component ID: `bridge` (path rules `l1/bridge2.rs`, `l1/bridge_request.rs`)
 - Target release and full SHA-256: `hl-node` #94,
@@ -13,7 +13,7 @@
   pruning, validator-set votes, nonce lifecycle, signing, serialization of the
   whole `BridgeRequest`, and any execution of the binary.
 
-Task ID `BR-001` is new; `docs/TASKS.md` lists bridge only as an extra area, so
+Task ID `bridge` is new; `docs/TASKS.md` lists bridge only as an extra area, so
 nothing in the ready queue is claimed twice. No `Makefile`, catalogue or progress
 file is touched ("no gate change").
 
@@ -23,7 +23,7 @@ All commands run from the repository root on macOS 26.4.1/arm64, offline, with
 no captured binary executed.
 
 ```sh
-python3.12 tools/bridge_inventory.py --out research/work-items/BR-001-bridge-withdrawal-hash/evidence
+python3.12 tools/bridge_inventory.py --out research/work-items/bridge/evidence
 ```
 
 The tool checks the artifact SHA-256 before parsing, converts between linked VAs
