@@ -50,12 +50,14 @@ Function bounds come from this binary's own `.eh_frame_hdr`/`.eh_frame` FDEs (12
 The tool checks every anchor's exact bytes; the full list is in `varint-sites.json`.
 
 - **Panic Locations.** The `lea` instructions at `0x27ab2e8` and `0x27ab63e` both point to Location `0x56c2e78`. The `lea` at `0x4aaa2be` points to `0x5737ce8`. Through the `R_X86_64_RELATIVE` relocations, all three resolve to `/home/ubuntu/hl/bincode-fork/src/enc/write.rs:78:9`. The path string is at `0x1e533e`, length 45.
-- **Closure of the idiom scan.** The scan searches all of `.text` for three patterns:
-  - `cmp r32,0xfb` followed by `cmp 0x10000`: 3 sites (a hit preceded by a REX.W byte is the `r64` form and is counted only there);
-  - the `r64` form of the same: 4 sites;
-  - `mov byte [..],0xfd`: 2 sites.
+- **Closure of the idiom scan.** The scan searches all of `.text` for exactly three byte-level idioms (definitions in `IDIOMS`, `tools/bincode_varint.py`):
+  - `cmp_r32_0xfb_then_cmp_0x10000`: `cmp r32,0xfb` (`81 /7 fb000000`, no REX.W), then `jae`, then within 48 bytes `cmp r32,0x10000`: **3** sites;
+  - `cmp_r64_0xfb_then_cmp_0x10000`: the same with REX.W (`48`/`49`) on both compares: **4** sites;
+  - `store_marker_0xfd_imm8`: the specific SIB store `42 c6 04 0f fd` (`mov byte [rdi+r9],0xfd`): **2** sites.
 
   All 9 sites fall inside the 7 FDEs listed above. The tool rejects any site outside them.
+
+  Looser patterns match more, and those extras are **not claimed**. Across `.text`, a bare `cmp r32,0xfb` with no REX prefix gives 5 instruction starts; the 2 extras, `0x4587475` (`cmp ecx,0xfb`) and `0x466bc4a` (`cmp edx,0xfb`), have no `cmp 0x10000` follow-on. Any `cmp r64,0xfb` gives 27. A store of `0xfd` in any addressing form gives 3 (independent verifier's count); the extra one is `0x3cd50ac` (`mov byte [r13+0x8],0xfd`). All three named extras were checked with objdump and lie outside the 7 pinned functions.
 - **Thresholds and markers.** The observed values are `<251`, `0xfb`+u16, `0xfc`+u32 (selected when the high half is zero), and `0xfd`+u64. No `0xfe` (u128) arm was seen in these functions.
 - **Every count is pinned exactly.** That covers the FDE count, the call hits per function, the idiom sites and the Location tuples. No `>=` comparisons are used.
 
