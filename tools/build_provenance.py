@@ -121,7 +121,8 @@ def derive(data):
         f.exact('dynamic.needed', [name(v) for t, v in tags if t == 1], by_name['.dynamic']['offset'])
         flags = [v for t, v in tags if t == 30]
         flags1 = [v for t, v in tags if t == 0x6FFFFFFB]
-        f.exact('dynamic.bind_now', bool(flags and flags[0] & 8) or bool(flags1 and flags1[0] & 1),
+        f.exact('dynamic.bind_now', any(t == 24 for t, _ in tags)  # DT_BIND_NOW
+                or bool(flags and flags[0] & 8) or bool(flags1 and flags1[0] & 1),
                 by_name['.dynamic']['offset'])
         f.exact('dynamic.pie_flag', bool(flags1 and flags1[0] & 0x08000000), by_name['.dynamic']['offset'])
         f.exact('dynamic.runpath', [name(v) for t, v in tags if t in (15, 29)], by_name['.dynamic']['offset'])

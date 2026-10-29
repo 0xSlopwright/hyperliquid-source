@@ -101,6 +101,11 @@ class DeriveTests(unittest.TestCase):
         self.assertIs(facts['dynamic.bind_now'], False)
         self.assertEqual(facts['dynamic.runpath'], [])
 
+    def test_bind_now_accepts_every_abi_encoding(self):
+        self.assertIs(dynamic_facts([(0, 0)])['dynamic.bind_now'], False)
+        for tags in ([(30, 8), (0, 0)], [(0x6FFFFFFB, 1), (0, 0)], [(24, 0), (0, 0)]):
+            self.assertIs(dynamic_facts(tags)['dynamic.bind_now'], True, tags)
+
     def test_non_elf_input_is_rejected(self):
         with self.assertRaises(ValueError):
             derive(b'not an elf' * 10)
