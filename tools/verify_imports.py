@@ -10,7 +10,12 @@ manifest = json.loads((root / 'provenance/imports.json').read_text())
 for item in manifest['files']:
     check(root / item['path'], item)
 for repo in json.loads((root / 'provenance/sources.json').read_text())['repositories']:
-    actual = subprocess.check_output(['git', '-C', str(root / repo['path']), 'rev-parse', 'HEAD'], text=True).strip()
+    if not (root / repo['path'] / '.git').exists():
+        raise ValueError(f'Missing pinned source: {repo["path"]}; run git submodule update --init --recursive')
+    try:
+        actual = subprocess.check_output(['git', '-C', str(root / repo['path']), 'rev-parse', 'HEAD'], text=True).strip()
+    except subprocess.CalledProcessError:
+        raise ValueError(f'Unreadable pinned source: {repo["path"]}; run git submodule update --init --recursive') from None
     if actual != repo['commit']:
         raise ValueError(f"Source commit mismatch: {repo['path']}")
     dirty = subprocess.check_output(['git', '-C', str(root / repo['path']), 'status', '--porcelain'], text=True)
