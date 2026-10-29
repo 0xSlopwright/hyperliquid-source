@@ -18,8 +18,8 @@ Unwind windows are bounded by the next `.eh_frame_hdr` start. They are index
 bounds, not decoded FDE extents, and are labelled that way in the output.
 
 Usage:
-    python3 tools/constants_scan.py --release 94 --out research/work-items/RE-015-constants
-    python3 tools/constants_scan.py --release 94 --check research/work-items/RE-015-constants
+    python3 tools/constants_scan.py --release 94 --out research/work-items/constants
+    python3 tools/constants_scan.py --release 94 --check research/work-items/constants
 
 Exit status is non-zero on any failed invariant; the tool does not guess.
 """

@@ -1,4 +1,4 @@
-# RE-015: Which global_constants literals does #94 carry, and how does code reach them?
+# constants: Which global_constants literals does #94 carry, and how does code reach them?
 
 - Component ID: `constants` (path rule `global_constants/*`)
 - Target release and full SHA-256: node #94
@@ -23,8 +23,8 @@ Static parsing only; the captured binary is never executed.
 
 ```sh
 shasum -a 256 artifacts/node/94/hl-node
-python3 tools/constants_scan.py --release 94 --out research/work-items/RE-015-constants
-python3 tools/constants_scan.py --release 94 --check research/work-items/RE-015-constants
+python3 tools/constants_scan.py --release 94 --out research/work-items/constants
+python3 tools/constants_scan.py --release 94 --check research/work-items/constants
 python3 -m unittest tests.test_constants_scan -v
 ```
 
