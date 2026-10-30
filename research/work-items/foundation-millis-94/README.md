@@ -8,9 +8,10 @@
   Its time-related labels were search leads; no reference implementation was copied.
 - Status: observed instructions/edges and exact integer identities; source-level
   names, units of the input fields, types and calendar semantics remain inferred.
-- Included: one 323-byte conversion window and its 76-byte error formatter,
-  unsigned reciprocal-division certificates, and static overflow/error routing.
-- Excluded: execution, reconstructed Rust, full calendar helper, other callers,
+- Included: one 323-byte conversion window, its 76-byte error formatter and
+  378-byte calendar helper; unsigned division certificates, 801 table bytes
+  and source-attribution records.
+- Excluded: execution, reconstructed Rust, full calendar semantics, other callers,
   all #115 addresses, source equivalence and any component completion gate.
 
 ## Problem and result
@@ -18,7 +19,7 @@
 The component map calls for target-grounded mapping of time conversions. A
 reference method name or error string does not establish the actual arithmetic,
 widths, overflow policy or failure path. This packet connects the string to its
-formatter and one actual caller, decodes both complete FDE windows, and proves
+formatter and one actual caller, decodes three complete FDE windows, and proves
 the caller's three reciprocal divisions over their entire integer domains.
 
 This is separate from PR #12's hour extraction window at `0x14509f0`. No window
@@ -54,19 +55,21 @@ Raw exports, with no execution of the target:
 ```sh
 llvm-objdump -d --start-address=0x13c8e10 --stop-address=0x13c8f53 artifacts/node/94/hl-node
 llvm-objdump -d --start-address=0x14509a0 --stop-address=0x14509ec artifacts/node/94/hl-node
+llvm-objdump -d --start-address=0x151f6f0 --stop-address=0x151f86a artifacts/node/94/hl-node
 llvm-objdump --dwarf=frames artifacts/node/94/hl-node > work/node94-frames.txt
 ```
 
 `conversion.objdump.txt` and `error_formatter.objdump.txt` retain the complete
-first two outputs. `frames.txt` retains the full two FDE blocks selected from
-the third output. `records.json` retains the raw FDE/CIE records, body hashes
+first two outputs; `calendar_helper.objdump.txt` retains the third.
+`frames.txt` and `calendar-helper.frames.txt` retain the corresponding FDE blocks
+selected from the final output. `records.json` retains the raw FDE/CIE records, body hashes
 and relative slots. `MANIFEST.sha256` covers the exact packet file hashes.
 The checker authenticates the complete target before reading any evidence.
 `--objdump` reruns the decoder and compares all bytes and contiguous addresses
 rather than relying on the saved text.
 
 The baseline's 20 tests, doctor, input/import verification and catalogue checks
-pass. The change has 29 passing tests. Required verification, reproduction,
+pass. The initial packet had 29 passing tests; the calendar follow-up has 33. Required verification, reproduction,
 packet regeneration and fresh LLVM checks pass. GPG uses an isolated temporary
 home; in this environment its sandbox restriction required the verification
 command outside that sandbox. No personal keys were read. Doctor reports
@@ -82,6 +85,7 @@ the section table; `.text` here has file offset = VA minus `0x1000`.
 | --- | --- | --- | --- |
 | conversion candidate | `0x2e46bc` | `0x13c8e10..0x13c8f53` | 323 / 78 |
 | error formatter | `0xace0` | `0x14509a0..0x14509ec` | 76 / 20 |
+| calendar helper | `0x15070` | `0x151f6f0..0x151f86a` | 378 / 92 |
 
 LLVM frame exports independently agree with the ranges. Continuous full-range
 linear disassembly validates the listed instruction boundaries and byte
@@ -125,12 +129,13 @@ millisecond-derived domain, the continuation is exactly
 largest continued value becomes `2147483647`.
 
 The next call uses slot `0x576e890`, whose `R_X86_64_RELATIVE` addend is
-`0x151f6f0`. A zero `eax` also goes to the error arm. This helper's calendar
-semantics and additional rejection range are **unresolved**; passing the first
-gate does not establish conversion success. Source names such as Chrono,
-NaiveDate or `from_num_days_from_ce` are not assigned to it by this packet.
-The successful-path register dataflow assumes ordinary preservation of the
-callee-saved registers across this call; its transitive closure is not proven.
+`0x151f6f0`. A zero `eax` also goes to the error arm. The additional rejection range remains
+**unresolved**; passing the first gate does not establish conversion success.
+The follow-up below supports a Chrono-compatible source attribution, while
+leaving its full calendar semantics and transitive closure unproven. The full
+helper export contains no reference to rbx/rbp/r12-r15 or their subregisters.
+Its normal returns precede the outgoing error-call block; the continuation
+therefore retains the caller's r12/r14/r15 values on those return paths.
 
 On the continuation after a nonzero helper result, stores at `0x13c8ec0` onward
 assemble the helper's 32-bit result, seconds-within-day and nanoseconds, then
@@ -167,10 +172,67 @@ byte-corrupted or truncated disassembly. Structural controls bypass only the
 digest gate in tests so downstream checks are actually exercised. The CLI
 always checks size and full SHA-256 first.
 
+## Calendar attribution follow-up
+
+The initial packet deliberately left `0x151f6f0` unnamed. The follow-up adds
+its complete FDE/disassembly and closes a bounded ownership/data question.
+It does not establish the complete accepted date range or a reconstructed build.
+
+Four actual RIP-relative references lead through `R_X86_64_RELATIVE` path
+relocations to Location-shaped records:
+
+| Record VA | Chrono 0.4.38 recorded source path suffix | Line:column |
+| --- | --- | --- |
+| `0x5672140` | `src/naive/date/mod.rs` | 2325:9 |
+| `0x5672158` | `src/naive/date/mod.rs` | 2326:27 |
+| `0x5672170` | `src/naive/date/mod.rs` | 2326:9 |
+| `0x56721a0` | `src/naive/internals.rs` | 80:9 |
+
+The checker verifies the complete paths, path lengths, line/column values,
+relocation types/addends and each referring instruction boundary/target.
+The first three locations align with `cycle_to_yo` in the published source;
+the fourth aligns with indexing the year-flags table. The entry's checked
+addition of 365, 146097-day cycle arithmetic, year/ordinal assembly and these
+inlined locations support the **inferred** method mapping
+`NaiveDate::from_num_days_from_ce_opt`.
+
+Primary-source references are pinned to Chrono commit
+`352a35203a140e2352e5a5be62ba8dfd03b616e1`:
+[date module](https://github.com/chronotope/chrono/blob/352a35203a140e2352e5a5be62ba8dfd03b616e1/src/naive/date/mod.rs#L378),
+[year internals](https://github.com/chronotope/chrono/blob/352a35203a140e2352e5a5be62ba8dfd03b616e1/src/naive/internals.rs#L80).
+`calendar-source.json` records full-file SHA-256 and Git blob SHA-1 identities.
+Both locally read official files were matched to that commit's GitHub blob IDs;
+no upstream source text or table initializer is copied into the implementation.
+Upstream Chrono is MIT OR Apache-2.0. Network access was used only to read these
+public source references; no captured code was executed.
+
+Two instruction references connect the helper to target table bytes:
+
+- `0x151f755 -> 0x250354`: all **401/401** leap-correction bytes equal
+  `(y+3)//4 - (y+99)//100 + (y+399)//400`, for `y=0..400`.
+- `0x151f7fb -> 0x2504e5`: all **400/400** flags equal an independent computation
+  using Python's `calendar.isleap` and `datetime` for years 400..799. The high
+  bit is set for common years; the low bits encode the preceding year's final
+  weekday, with Monday represented as 7. The 400-year offset avoids Python's
+  absent year zero without changing the Gregorian cycle.
+
+These checks cover all entries, including the non-leap century boundaries.
+Target byte mutations at century entries, even with the per-table hash lock
+recomputed in the control, fail the independent Gregorian comparison. Other
+controls reject changed source lines/relocations and an off-by-one helper
+instruction address. The public CLI still requires the original complete
+binary digest; the test-only mutations deliberately reach downstream checks.
+
+**Attribution limit:** matching these paths, operations and tables supports
+library ownership compatible with published Chrono 0.4.38. It does not rule out
+a local fork or prove that this exact pristine source generated the target.
+The outgoing error helpers remain unnamed and unclosed. No final acceptance
+range, runtime date validity, source-equivalent build or ABI claim is added.
+
 ## Results and limitations
 
-The explicit denominator is **two retained FDE windows**, 399 bytes and 98
-instructions. It is not all time helpers or all references to the formatter.
+The explicit denominator is **three retained FDE windows**, 777 bytes and 190
+instructions, plus 801 bytes of calendar tables. It is not all time helpers or all references to the formatter.
 Their complete retained bytes match fresh LLVM decoding. No raw/normalized
 Rust-body comparison, reconstructed Cargo component, runtime differential
 result or whole-ELF identity was implemented or measured. No normalization
@@ -179,5 +241,5 @@ rights; new checker/tests/docs are independently authored.
 
 **No gate requested:** all Foundation gates and generated progress stay false
 and unchanged. Next question: establish the input fields' units and the exact
-accepted domain/return encoding of `0x151f6f0`, including its own helpers and
-private-versus-library ownership, before reconstructing a Rust conversion.
+accepted domain/return encoding of `0x151f6f0`, including its outgoing error
+helpers and source/build identity, before reconstructing a Rust conversion.

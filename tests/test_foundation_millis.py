@@ -1,5 +1,6 @@
 """Target-grounded corruption controls and finite reciprocal-division proofs."""
 import copy
+import hashlib
 import json
 from pathlib import Path
 import struct
@@ -87,6 +88,38 @@ class MillisEvidenceTests(unittest.TestCase):
         off=self.offset(start);body=self.data[off:off+end-start]
         for text in [raw.replace('13c8ef3:','13c8ef4:'),
                      raw.replace('e8 a8 7a 08 00','e8 a9 7a 08 00'),raw.rsplit('\n',2)[0]]:
+            with self.assertRaises(ValueError):millis.decode_export(text,start,end,body)
+
+    def test_calendar_tables_reject_corruption_past_digest_lock(self):
+        for index,byte_index in [(0,100),(1,100)]:
+            with self.subTest(table=index):
+                data=bytearray(self.data);records=copy.deepcopy(self.records)
+                table=records['calendar_tables'][index]
+                off=self.offset(int(table['start_va'],16));data[off+byte_index]^=1
+                # Recompute this lock only, so the independent Gregorian check
+                # sees the altered century entry rather than stopping at SHA.
+                table['sha256']=hashlib.sha256(data[off:off+table['bytes']]).hexdigest()
+                with self.assertRaisesRegex(ValueError,'Gregorian table identity'):
+                    millis.analyze(data,records)
+
+    def test_calendar_location_line_corruption_rejected(self):
+        data=bytearray(self.data)
+        off=self.offset(0x5672140)+16
+        struct.pack_into('<I',data,off,2324)
+        with self.assertRaisesRegex(ValueError,'Calendar source location'):
+            millis.analyze(data,self.records)
+
+    def test_calendar_source_relocation_corruption_rejected(self):
+        records=copy.deepcopy(self.records)
+        records['calendar_source_locations'][0]['path_va']='0x1'
+        with self.assertRaisesRegex(ValueError,'Calendar source relocation'):
+            millis.analyze(self.data,records)
+
+    def test_calendar_helper_disassembly_boundary_control(self):
+        row=self.records['windows'][2];start=int(row['start_va'],16);end=int(row['end_va_exclusive'],16)
+        raw=(millis.PACKET/'calendar_helper.objdump.txt').read_text()
+        off=self.offset(start);body=self.data[off:off+end-start]
+        for text in [raw.replace('151f755:','151f756:'),raw.rsplit('\n',2)[0]]:
             with self.assertRaises(ValueError):millis.decode_export(text,start,end,body)
 
     def test_millisecond_split_boundary_cases(self):
