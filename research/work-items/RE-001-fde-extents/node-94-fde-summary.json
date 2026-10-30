@@ -12,7 +12,7 @@
   "unique_fde_starts": 121299,
   "duplicate_start": 0,
   "zero_length": 0,
-  "overlapping_pairs": 0,
+  "starts_inside_earlier_extent": 0,
   "extent_crosses_section_end": 0,
   "end_equals_next_index_upper_bound": 8145,
   "end_exceeds_next_index_upper_bound": 0,
@@ -27,25 +27,25 @@
   "executable_sections": {
     ".text": {
       "section_bytes": 70370352,
-      "fde_extent_bytes": 69397415,
+      "fde_covered_bytes": 69397415,
       "bytes_before_first_fde": 0,
       "bytes_after_last_fde": 0
     },
     ".init": {
       "section_bytes": 27,
-      "fde_extent_bytes": 0,
+      "fde_covered_bytes": 0,
       "bytes_before_first_fde": 27,
       "bytes_after_last_fde": 0
     },
     ".fini": {
       "section_bytes": 13,
-      "fde_extent_bytes": 0,
+      "fde_covered_bytes": 0,
       "bytes_before_first_fde": 13,
       "bytes_after_last_fde": 0
     },
     ".plt": {
       "section_bytes": 4464,
-      "fde_extent_bytes": 0,
+      "fde_covered_bytes": 0,
       "bytes_before_first_fde": 4464,
       "bytes_after_last_fde": 0
     }

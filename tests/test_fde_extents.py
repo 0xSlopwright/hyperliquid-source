@@ -94,7 +94,24 @@ class FdeExtentTests(unittest.TestCase):
         self.assertEqual(summary['same_section_gaps'],
                          {'int3_only_gaps': 1, 'int3_only_bytes': 16, 'other_bytes_gaps': 1, 'other_bytes_bytes': 8})
         self.assertEqual(summary['executable_sections']['.text'],
-                         {'section_bytes': 64, 'fde_extent_bytes': 40, 'bytes_before_first_fde': 0, 'bytes_after_last_fde': 0})
+                         {'section_bytes': 64, 'fde_covered_bytes': 40, 'bytes_before_first_fde': 0, 'bytes_after_last_fde': 0})
+
+    def test_nested_extents_leave_no_false_gap(self):
+        # Reported in review of PR #2: the first extent covers the whole section.
+        functions = [(0x1000, 0x40, None, 'zR'), (0x1020, 8, None, 'zR'), (0x1038, 8, None, 'zR')]
+        summary, _, gaps = fde_extents(build(functions)[0])
+        self.assertEqual(gaps, [])
+        self.assertEqual(summary['starts_inside_earlier_extent'], 2)
+        self.assertEqual(summary['executable_sections']['.text'],
+                         {'section_bytes': 64, 'fde_covered_bytes': 64, 'bytes_before_first_fde': 0, 'bytes_after_last_fde': 0})
+
+    def test_gap_and_tail_measured_from_running_end(self):
+        # A nested extent ends before its parent; the gap and tail start at the parent's end.
+        functions = [(0x1000, 0x18, None, 'zR'), (0x1004, 4, None, 'zR'), (0x1020, 0x10, None, 'zR')]
+        summary, _, gaps = fde_extents(build(functions)[0])
+        self.assertEqual([(g['start'], g['end']) for g in gaps], [(0x1018, 0x1020)])
+        self.assertEqual(summary['executable_sections']['.text']['fde_covered_bytes'], 0x28)
+        self.assertEqual(summary['executable_sections']['.text']['bytes_after_last_fde'], 0x10)
 
     def test_zero_lsda_is_null_not_a_pointer(self):
         functions = [FUNCTIONS[0], (0x1020, 0x10, None, 'zPLR'), FUNCTIONS[2]]
@@ -110,7 +127,10 @@ class FdeExtentTests(unittest.TestCase):
     def test_counts_overlap_instead_of_hiding_it(self):
         data, layout = build()
         struct.pack_into('<I', data, OFFSET[FRAME] + layout['fde'][0] + 12, 0x28)  # first range now ends at 0x1028
-        self.assertEqual(fde_extents(data)[0]['overlapping_pairs'], 1)
+        summary, _, gaps = fde_extents(data)
+        self.assertEqual(summary['starts_inside_earlier_extent'], 1)
+        self.assertEqual(summary['executable_sections']['.text']['fde_covered_bytes'], 0x38)  # union, not the 0x40 sum
+        self.assertEqual([(g['start'], g['end']) for g in gaps], [(0x1030, 0x1038)])
 
     def test_counts_table_start_that_differs_from_fde(self):
         data, layout = build()

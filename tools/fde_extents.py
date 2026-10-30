@@ -206,26 +206,31 @@ def fde_extents(data):
             counts['end_equals_next_index_upper_bound'] += fde['end'] == fde['next_index_upper_bound']
             counts['end_exceeds_next_index_upper_bound'] += fde['end'] > fde['next_index_upper_bound']
     ordered = sorted(fdes, key=lambda f: (f['start'], f['end'], f['fde']))
-    by_name = {s['name']: s for s in executable}
-    gaps, gap_counts = [], collections.Counter()
     for previous, current in zip(ordered, ordered[1:]):
         counts['duplicate_start'] += current['start'] == previous['start']
-        if current['start'] < previous['end']:
-            counts['overlapping_pairs'] += 1
-        elif current['start'] > previous['end'] and current['section'] == previous['section']:
-            section = by_name[current['section']]
-            int3 = is_int3_fill(data, section, previous['end'], current['start'])
-            gaps.append({'start': previous['end'], 'end': current['start'], 'section': section['name'], 'int3_only': int3})
-            kind = 'int3_only' if int3 else 'other_bytes'
-            gap_counts[f'{kind}_gaps'] += 1
-            gap_counts[f'{kind}_bytes'] += current['start'] - previous['end']
+    # Sweep each section with the running covered end, so nested or overlapping
+    # extents never produce a false gap or double-counted coverage.
+    gaps, gap_counts, covered = [], collections.Counter(), collections.Counter()
+    edges = {}
     for section in executable:
-        inside = [f for f in ordered if f['section'] == section['name']]
-        counts[f"{section['name']}:before_first"] = inside[0]['start'] - section['address'] if inside else section['size']
-        counts[f"{section['name']}:after_last"] = section['address'] + section['size'] - inside[-1]['end'] if inside else 0
-    covered = collections.Counter()
-    for fde in fdes:
-        covered[fde['section']] += fde['end'] - fde['start']
+        name, lower, upper = section['name'], section['address'], section['address'] + section['size']
+        inside = [f for f in ordered if f['section'] == name]
+        reach = None  # Running maximum covered end within this section.
+        for fde in inside:
+            if reach is None:
+                reach = fde['start']
+            elif fde['start'] < reach:
+                counts['starts_inside_earlier_extent'] += 1
+            elif fde['start'] > reach:
+                int3 = is_int3_fill(data, section, reach, fde['start'])
+                gaps.append({'start': reach, 'end': fde['start'], 'section': name, 'int3_only': int3})
+                kind = 'int3_only' if int3 else 'other_bytes'
+                gap_counts[f'{kind}_gaps'] += 1
+                gap_counts[f'{kind}_bytes'] += fde['start'] - reach
+            end = min(fde['end'], upper)
+            covered[name] += max(0, end - max(fde['start'], reach))
+            reach = max(reach, end)
+        edges[name] = ((inside[0]['start'] - lower, upper - reach) if inside else (section['size'], 0))
     summary = {
         'binary_sha256': hashlib.sha256(data).hexdigest(),
         'cie_records': len(cies),
@@ -235,13 +240,13 @@ def fde_extents(data):
         'fde_records_not_in_unwind_table': len(fdes) - len(referenced),
         'unwind_start_differs_from_fde_start': start_mismatch,
         'unique_fde_starts': len({f['start'] for f in fdes}),
-        **{k: counts[k] for k in ['duplicate_start', 'zero_length', 'overlapping_pairs', 'extent_crosses_section_end',
+        **{k: counts[k] for k in ['duplicate_start', 'zero_length', 'starts_inside_earlier_extent', 'extent_crosses_section_end',
                                   'end_equals_next_index_upper_bound', 'end_exceeds_next_index_upper_bound',
                                   'with_lsda', 'lsda_outside_gcc_except_table']},
         'same_section_gaps': {k: gap_counts[k] for k in ['int3_only_gaps', 'int3_only_bytes', 'other_bytes_gaps', 'other_bytes_bytes']},
-        'executable_sections': {s['name']: {'section_bytes': s['size'], 'fde_extent_bytes': covered[s['name']],
-                                            'bytes_before_first_fde': counts[f"{s['name']}:before_first"],
-                                            'bytes_after_last_fde': counts[f"{s['name']}:after_last"]}
+        'executable_sections': {s['name']: {'section_bytes': s['size'], 'fde_covered_bytes': covered[s['name']],
+                                            'bytes_before_first_fde': edges[s['name']][0],
+                                            'bytes_after_last_fde': edges[s['name']][1]}
                                 for s in executable},
         'limitations': LIMITATIONS,
     }

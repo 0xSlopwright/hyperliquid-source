@@ -39,10 +39,10 @@ Generated outputs (identical on a second run; SHA-256):
 | --- | ---: | --- |
 | node-94-fde.tsv | 121,299 | `2bd6c306cf4eaceea349118d5db0cb681f9ca2d857bb9594d6220b2e62ba512a` |
 | node-94-fde-gaps.tsv | 113,154 | `592f88ef313db06a2b1aae40e533e6e3e0aebfd421b1fe2b5936e74f68b7b4cc` |
-| node-94-fde.json | — | `81019ea6e508a15c60106145556efa848b2a6c75a21bcc22ca1b334f6f307cbc` |
+| node-94-fde.json | — | `5a91b9e6e4fb189324540ac4de84744a076693eb9ff9975c8241936d3d0bfa7b` |
 | node-115-fde.tsv | 135,313 | `bb2dc2ed0f9871d854460d4ea04b8b9c8a7512b91e5b5dd5ee319f20ef566447` |
 | node-115-fde-gaps.tsv | 126,775 | `808ba65fe81d9bd50dca252d521a449c620b53cdb3363f2e741c393d7d66765b` |
-| node-115-fde.json | — | `92dc640e69f705551db09393cbdceaf088d9bd35bf2961e7c5a6d3605f97cee1` |
+| node-115-fde.json | — | `2d41a3c991af26b1627a324b1ca203b079dd9d2ed337580e892bdfff84b6eadf` |
 
 The full TSVs stay in ignored `work/`. Retained here: each JSON summary
 (`node-*-fde-summary.json`), the readelf comparison (`node-*-readelf-crosscheck.json`)
@@ -59,7 +59,7 @@ Coordinates are linked virtual addresses from the ELF section table.
 | `.eh_frame_hdr` table entries | 121,299 | 135,313 |
 | FDEs absent from the table | 0 | 0 |
 | Table start ≠ its FDE's `pc_begin` | 0 | 0 |
-| Duplicate starts / zero-length / overlapping pairs | 0 / 0 / 0 | 0 / 0 / 0 |
+| Duplicate starts / zero-length / starts inside an earlier extent | 0 / 0 / 0 | 0 / 0 / 0 |
 | Extents crossing a section end | 0 | 0 |
 | FDEs with an LSDA (all inside `.gcc_except_table`) | 50,493 | 52,682 |
 | Extent end = next index start (old upper bound exact) | 8,145 | 8,538 |
@@ -92,14 +92,20 @@ Coordinates are linked virtual addresses from the ELF section table.
 No Rust implementation or binary comparator: this packet is deterministic offline
 tooling and static observation. Tooling controls in `tests/test_fde_extents.py`
 build a synthetic ELF with both augmentation kinds, an LSDA, a null LSDA, an
-int3 gap and a non-int3 gap. They check decoding, and that corruption is either
+int3 gap and a non-int3 gap. They check decoding; that gaps, coverage and the
+section tail are measured from the running maximum covered end, so nested or
+overlapping extents produce no false gap and no double-counted coverage; and
+that corruption is either
 counted (overlap, table start ≠ FDE start, FDE missing from the table) or
 rejected (unsupported pointer encoding or augmentation, 64-bit length, bad CIE
 pointer, augmentation length mismatch, negative range, missing terminator,
 bytes after the terminator, `eh_frame_ptr` mismatch, table entry that is not an
-FDE). Seven deliberate decoder mutations (pc-relative base, null LSDA, negative
-range, start mismatch, overlap test, gap class, terminator tail) each fail
-those tests.
+FDE). Nine deliberate decoder mutations (pc-relative base, null LSDA, negative
+range, start mismatch, overlap diagnostic, previous-end instead of running-end
+sweep, summed instead of unioned coverage, gap class, terminator tail) each
+fail those tests. The nested-extent control reproduces a false gap reported in
+review of PR #2 against the first revision; neither node has overlaps, so the
+retained FDE and gap TSVs are byte-identical before and after that fix.
 
 ## Results and limitations
 
