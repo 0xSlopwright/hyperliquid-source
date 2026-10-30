@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "task_id": "RE-003",
+  "note": "Synthetic fixture identities for protocol validation. No captured binary was executed to produce these rows.",
+  "fixtures": [
+    {
+      "fixture_id": "syn-94-pos-equal-window-v1",
+      "kind": "synthetic_expectation",
+      "target_release": "94",
+      "target_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",
+      "payload_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "declared_side_effects": [],
+      "positive_or_negative": "positive",
+      "control_id": "pos-equal-window",
+      "notes": "Empty payload placeholder; replace with a real expectation blob only after RE-001 windows exist."
+    },
+    {
+      "fixture_id": "syn-94-neg-corrupt-byte-v1",
+      "kind": "synthetic_corruption",
+      "target_release": "94",
+      "target_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",
+      "payload_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "declared_side_effects": [],
+      "positive_or_negative": "negative",
+      "control_id": "neg-corrupt-byte",
+      "notes": "Corruption control template; comparator must fail when one expectation byte flips."
+    },
+    {
+      "fixture_id": "syn-94-neg-wrong-digest-v1",
+      "kind": "synthetic_mismatch",
+      "target_release": "94",
+      "target_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "payload_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "declared_side_effects": [],
+      "positive_or_negative": "negative",
+      "control_id": "neg-wrong-digest",
+      "notes": "Intentionally wrong digest; harness_plan must reject binding to node #94."
+    }
+  ]
+}
