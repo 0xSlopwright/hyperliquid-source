@@ -18,6 +18,8 @@ import bincode_varint_slow as sv  # noqa: E402
 EXPECTED_READER_CALL_COUNTS = {'0x466d850': 2, '0x466d980': 12}
 EXPECTED_VECTORS = 22
 EXPECTED_READERS = 2
+EXPECTED_CMP_FB_SITES = 35
+EXPECTED_LEN2_HITS = ['0x134698d']
 
 
 def fail(msg):
@@ -41,6 +43,11 @@ def main():
         fail(f'reader count {len(result["readers"])} != {EXPECTED_READERS}')
     if len(result['decode_vectors']) != EXPECTED_VECTORS:
         fail(f'vector count {len(result["decode_vectors"])} != {EXPECTED_VECTORS}')
+    u = result['u16_marker_scan']
+    if u['cmp_0xfb_instruction_count'] != EXPECTED_CMP_FB_SITES or len(u['sites']) != EXPECTED_CMP_FB_SITES:
+        fail(f'cmp 0xfb site count {u["cmp_0xfb_instruction_count"]} != {EXPECTED_CMP_FB_SITES}')
+    if u['length2_adjacent_hits'] != EXPECTED_LEN2_HITS:
+        fail(f'length-2-adjacent hits {u["length2_adjacent_hits"]!r} != {EXPECTED_LEN2_HITS!r}')
     if result['negative_control_fast_path_json_sha256'] != sv.FAST_PATH_JSON_SHA256:
         fail('negative-control hash field drifted')
     text = sv.render(result)

@@ -19,7 +19,7 @@ import bincode_varint_slow as sv  # noqa: E402
 
 PACKET = ROOT / 'research/work-items/RE-005-bincode-slow-widths'
 FAST_PACKET = ROOT / 'research/work-items/RE-005-bincode-varint'
-OUTPUT_SHA256 = 'a05884dbc25bd01c6cc92e633b33d7b80e8b6e45cf03ef1bc9f00672d34d8122'
+OUTPUT_SHA256 = '2a997306317bd14b243d1f780501514707f3b4a5d75726555a0156608867df14'
 _CACHE = {}
 
 
@@ -159,6 +159,16 @@ class TestTamper(unittest.TestCase):
         with self.assertRaises(bv.EvidenceError):
             scan_mut(buf)
 
+    def test_scan_removed_hit_rejected(self):
+        buf = mutate(0x134690d, b'\x48\x83\xf9\x03')  # cmp rcx,3: hit disappears
+        with self.assertRaisesRegex(bv.EvidenceError, 'length-2-adjacent hits'):
+            scan_mut(buf)
+
+    def test_scan_site_bytes_rejected(self):
+        buf = mutate(0x3959c68 + 3, b'\xfc')  # cmp rcx,0xfc at a pinned 0xfb site
+        with self.assertRaises(bv.EvidenceError):
+            scan_mut(buf)
+
     def test_wrong_digest_rejected(self):
         buf = bytearray(data()); buf[0x100] ^= 1
         with self.assertRaisesRegex(bv.EvidenceError, 'SHA-256'):
@@ -221,6 +231,37 @@ class TestGnu(unittest.TestCase):
                 if va not in starts:
                     misses.append(va)
         self.assertEqual(misses, [])
+
+    @requires_gnu
+    def test_cmp_fb_sites_equal_full_text_disassembly(self):
+        secs = bv.sections(data())
+        tx = secs['.text']
+        out = subprocess.run([gnu_objdump(), '-d', '-M', 'intel', '--no-show-raw-insn',
+                              f'--start-address={tx["addr"]:#x}',
+                              f'--stop-address={tx["addr"] + tx["size"]:#x}', str(bv.TARGET)],
+                             check=True, capture_output=True, text=True).stdout
+        got = [int(m.group(1), 16) for m in
+               re.finditer(r'^\s+([0-9a-f]+):\tcmp +[^,]+,0xfb$', out, re.M)]
+        self.assertEqual(len(got), 35)
+        self.assertEqual(got, [va for va, _ in sv.CMP_FB_SITES])
+        c2 = {int(m.group(1), 16) for m in
+              re.finditer(r'^\s+([0-9a-f]+):\tcmp +[^,]+,0x2$', out, re.M)}
+        rows = result()['u16_marker_scan']['sites']
+        for row in rows:
+            self.assertTrue({int(x, 16) for x in row['cmp2_sites_in_window']} <= c2, row['va'])
+
+    @requires_gnu
+    def test_chain_id_fn_reads_no_buffer(self):
+        out = subprocess.run([gnu_objdump(), '-d', '-M', 'intel', '--no-show-raw-insn',
+                              '--start-address=0x1346860', '--stop-address=0x1346daf', str(bv.TARGET)],
+                             check=True, capture_output=True, text=True).stdout
+        insns = [l.split('\t', 1)[1] for l in out.splitlines() if re.match(r'\s+[0-9a-f]+:\t', l)]
+        mem = [i for i in insns if '[' in i and 'rip' not in i
+               and 'rdx+rcx*4' not in i and not i.startswith('lea ')]
+        self.assertEqual(mem, [])
+        starts = objdump_starts(0x1346860, 0x1346daf)
+        for a in result()['u16_marker_scan']['hit_characterisation']['anchors']:
+            self.assertIn(int(a['va'], 16), starts)
 
     @requires_gnu
     def test_off_by_one_rejected(self):

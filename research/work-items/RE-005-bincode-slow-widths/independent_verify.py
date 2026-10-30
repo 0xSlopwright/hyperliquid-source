@@ -4,12 +4,14 @@
 Re-derives from artifacts/node/94/hl-node with its own ELF/relocation/FDE
 reader: the two Reader FDEs and jump tables, the u32 slice decoder and its
 slow-branch GOT, the u64 slice slow-branch GOT, the shared error builder, and
-the call-site counts into each Reader. Prints exactly one verdict line:
+the call-site counts into each Reader, and the u16 length-marker scan
+(every cmp <reg>,0xfb instruction in .text and its length-2 adjacency). Prints exactly one verdict line:
 PASS, FAIL or INCONCLUSIVE. Exit codes: 0 PASS, 1 FAIL, 2 INCONCLUSIVE.
 No assert; valid under -O.
 """
 import hashlib
 import json
+import re
 from pathlib import Path
 import struct
 import sys
@@ -41,6 +43,73 @@ ANCHORS = (
     (0x466d930, bytes.fromhex('be02000000')),
     (0x466dac3, bytes.fromhex('c60703')),
 )
+
+# Own copy of the 35 cmp <reg>,0xfb instruction starts (VA only; the bytes are
+# re-read and must decode as an 81 /7 or 3d compare with imm32 0xfb).
+FB_SITES = (
+    0x134698d, 0x1583bb7, 0x2558975, 0x2558aae, 0x2558cca, 0x2558dba, 0x2558f3c,
+    0x2558fd1, 0x2559068, 0x255979a, 0x25598db, 0x2561ab5, 0x2561b05, 0x27ab0aa,
+    0x27ab281, 0x27ab30b, 0x27ab5b1, 0x288f50d, 0x2973ab6, 0x2973ba6, 0x33355b7,
+    0x3959c68, 0x395b069, 0x4587475, 0x466bc4a, 0x466bd4a, 0x466beaa, 0x466d870,
+    0x466d9a0, 0x466daf0, 0x4aa9aea, 0x4aa9c93, 0x4aa9f8b, 0x4aaa231, 0x4b6fa7d,
+)
+FB_CANDIDATES = 354
+LEN2_HITS = [0x134698d]
+
+
+def fb_at(b):
+    k = 1 if 0x40 <= b[0] <= 0x4f else 0
+    if b[k] == 0x3d:
+        return b[k + 1:k + 5] == b'\xfb\0\0\0'
+    return b[k] == 0x81 and (b[k + 1] & 0xf8) == 0xf8 and b[k + 2:k + 6] == b'\xfb\0\0\0'
+
+
+def cmp2_in(b, base):
+    out = []
+    for i in range(len(b) - 2):
+        if b[i] == 0x3c and b[i + 1] == 2:
+            out.append(base + i)
+        elif b[i] in (0x83, 0x80) and (b[i + 1] & 0xf8) == 0xf8 and b[i + 2] == 2:
+            out.append(base + i - (1 if i and b[i - 1] in (0x48, 0x49) and b[i] == 0x83 else 0))
+    return out
+
+
+def has_dispatch(b):
+    for i in range(len(b) - 7):
+        if b[i] in (0x48, 0x4c) and b[i + 1] == 0x8d and (b[i + 2] & 0xc7) == 0x05:
+            tail = b[i + 7:i + 7 + 15]
+            for j in range(len(tail) - 1):
+                if tail[j] == 0xff and 0xe0 <= tail[j + 1] <= 0xe7:
+                    return True
+    return False
+
+
+def u16_scan(img, fdes):
+    text = img.sec['.text']
+    _t, tva, toff, tsize = text
+    tb = img.d[toff:toff + tsize]
+    pat = re.compile(rb'[\x40-\x4f]?\x81[\xf8-\xff]\xfb\0\0\0|[\x40-\x4f]?\x3d\xfb\0\0\0'
+                     rb'|[\x40-\x4f]?\x80[\xf8-\xff]\xfb|\x3c\xfb')
+    n = len(pat.findall(tb))
+    if n != FB_CANDIDATES:
+        raise Bad(f'0xfb byte candidates {n}')
+    ext = sorted(fdes.items())
+    hits = []
+    for va in FB_SITES:
+        if not fb_at(img.rd(va, 8)):
+            raise Bad(f'0xfb site {va:#x}')
+        lo, hi = next(((s, e) for s, e in ext if s <= va < e), (None, None))
+        if lo is None:
+            raise Bad(f'0xfb site {va:#x} outside FDEs')
+        wl, wh = max(lo, va - 0x80), min(hi, va + 0x80)
+        c2 = cmp2_in(img.rd(wl, wh - wl), wl)
+        if c2 and has_dispatch(img.rd(va, min(hi, va + 0x20) - va)):
+            hits.append(va)
+    if hits != LEN2_HITS:
+        raise Bad(f'length-2 hits {[hex(x) for x in hits]}')
+    if img.rd(0x134690d, 4) != bytes.fromhex('4883f902') or img.rd(0x1346906, 7) != bytes.fromhex('488d8fd8dcffff'):
+        raise Bad('0x134698d hit: cmp rcx,2 is not on rdi-0x2328')
+    return hits
 
 
 class Bad(Exception):
@@ -187,6 +256,14 @@ def check(img, js):
     br = js['u64_slice_slow_branch']
     if (h(br['slow_path']['got_slot']), h(br['slow_path']['reader'])) != U64_SLOW_GOT:
         raise Bad('json u64 slow branch')
+    hits = u16_scan(img, fdes)
+    u = js['u16_marker_scan']
+    if u['cmp_0xfb_instruction_count'] != len(FB_SITES) or [h(s['va']) for s in u['sites']] != list(FB_SITES):
+        raise Bad('json 0xfb sites')
+    if [h(x) for x in u['length2_adjacent_hits']] != hits or u['length2_adjacent_hit_count'] != 1:
+        raise Bad('json length-2 hits')
+    if u['cmp_0xfb_byte_candidates_in_text'] != FB_CANDIDATES:
+        raise Bad('json 0xfb candidates')
     return counts
 
 
@@ -202,7 +279,7 @@ def main():
         counts = check(Img(d), js)
     except (Bad, KeyError, ValueError, struct.error, IndexError) as e:
         verdict('FAIL', str(e), 1)
-    verdict('PASS', f'readers {[hex(k) for k in CALL_COUNTS]}, calls {list(counts.values())}, vectors 22', 0)
+    verdict('PASS', f'readers {[hex(k) for k in CALL_COUNTS]}, calls {list(counts.values())}, vectors 22, 0xfb sites {len(FB_SITES)}, length-2 hits {[hex(x) for x in LEN2_HITS]}', 0)
 
 
 if __name__ == '__main__':

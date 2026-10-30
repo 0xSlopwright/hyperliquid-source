@@ -114,14 +114,46 @@ Reached through GOT `0x57745e8`.
 | `0xfe` | error; `found_code=4`; **no u128 read** |
 | `0xff` | error; `found_code=0xc` |
 
+## u16 length-marker scan (`u16_marker_scan`)
+
+The scan covered 35 `0xfb` sites, exactly one length-2-adjacent hit at
+`0x134698d`, which is a chain-id lookup, not a u16 decoder, so there is no u16
+slice decoder.
+
+- Sites: every `cmp <reg>,0xfb` instruction start in `.text`, 35 in total. The
+  list is pinned in the tool and re-proved equal to GNU objdump 2.44's full
+  `.text` disassembly by a GNU-only test. Memory-operand forms: 0. 8-bit forms:
+  0. A raw byte-pattern search finds 354 candidates; the other 319 are not
+  instruction starts. `83 /7 fb` is a sign-extended `-5` compare and is
+  excluded.
+- Rule: a site is `length2_adjacent` when a `cmp <reg>,2` starts in
+  `[site-0x80, site+0x80)` and a `lea r,[rip+disp] ... jmp r` dispatch starts in
+  `[site, site+0x20)`, both clipped to the containing FDE. Every site's window
+  contents and classification are written to `slow-sites.json`.
+- Result: 1 hit, `0x134698d`. 34 sites have no `cmp <reg>,2` in the window. The
+  next closest is `0x3959c68`, whose nearest `cmp <reg>,2` is 271 bytes away.
+- `0x134698d` (FDE `0x1346860..0x1346daf`): `lea rcx,[rdi-1]; cmp rcx,0xfb; ja`
+  then a jump table at `0x2096fc`, so it tests whether `rdi` is in 1..252. The
+  `cmp rcx,2` at `0x134690d` (128 bytes earlier) follows
+  `lea rcx,[rdi-0x2328]`, so it tests whether `rdi` is in {9000, 9001}. It is not
+  a remaining-length check. The function has 87 `cmp rdi,imm` or
+  `lea rcx,[rdi-imm]` instructions on the integer in `rdi`, with values such as 31337, 42161, 8453 and 11155111. It returns
+  `xor eax,eax; mov rdx,rdi; ret`. GNU disassembly shows no memory operand
+  other than RIP-relative operands and the jump-table load, so the function
+  never reads a tag byte from a buffer. That makes it an EVM chain-id
+  membership lookup, not a decoder.
+
 ## What this does not claim
 
 - No claim that the binary executes these paths at runtime; evidence is static.
 - No claim about the `0x466dad0` Reader (`esi=5` on its `0xfe` arm); different
   expected-type code, out of scope.
-- No dedicated u16-width slice decoder was found (no `cmp`-remaining,`2` gate
-  next to a tag dispatch). u16 appears only as the `0xfb` payload width; u128
-  appears only as the `0xfe` error marker.
+- No claim that the scan rule catches every conceivable u16 decoder shape; it
+  proves the absence of the bincode idiom (a `cmp <reg>,2` within `0x80` bytes
+  of a `cmp <reg>,0xfb`, plus a jump-table dispatch within `0x20` bytes).
+- The chain names for the `0x1346860` immediates are an inference from the
+  numbers, not an observation. u16 appears only as the `0xfb` payload width;
+  u128 appears only as the `0xfe` error marker.
 - The merged RE-005 fast-path packet (u64 slice + 21 dispatch sites) is not
   modified; its JSON hash
   `6da03736b718d6c7db769a0a1be7e9131a6229cea6b198dd85d535282be5a56f` is the

@@ -17,7 +17,11 @@ Adds:
 * a closure count of every `call [rip+disp32]` in .text whose GOT slot
   relocates to either Reader;
 * decode vectors for inputs of length <= 8 and for the 0xfe/0xff markers,
-  derived from the observed little-endian (dl == 0) instruction semantics.
+  derived from the observed little-endian (dl == 0) instruction semantics;
+* a u16 length-marker scan over every `cmp <reg>,0xfb` instruction in .text
+  (the bincode 0xfb marker compare): for each site, whether a `cmp <reg>,2`
+  lies within 0x80 bytes in the same FDE AND a jump-table dispatch follows
+  within 0x20 bytes; the one site that matches is characterised.
 
 Addresses are virtual addresses of instruction starts.
 """
@@ -26,6 +30,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 import struct
 import sys
@@ -205,6 +210,125 @@ def _call_got_sites(data, secs, relocs):
     return {f'{t:#x}': sites[t] for t in sorted(want)}
 
 
+# ---- u16 length-marker scan -------------------------------------------------
+# Every `cmp <reg>,0xfb` instruction start in .text. The set is pinned here and
+# re-proved equal to GNU objdump's complete .text disassembly by the GNU-only
+# test (byte patterns alone over-match: they also fire inside other
+# instructions). Each entry is (va, instruction bytes).
+CMP_FB_SITES = (
+    (0x134698d, '4881f9fb000000'), (0x1583bb7, '4881fefb000000'),
+    (0x2558975, '4881fbfb000000'), (0x2558aae, '4881fffb000000'),
+    (0x2558cca, '4881fafb000000'), (0x2558dba, '4881fafb000000'),
+    (0x2558f3c, '4881fbfb000000'), (0x2558fd1, '4981fefb000000'),
+    (0x2559068, '4981fffb000000'), (0x255979a, '4881fbfb000000'),
+    (0x25598db, '4881f9fb000000'), (0x2561ab5, '4981fffb000000'),
+    (0x2561b05, '4881fdfb000000'), (0x27ab0aa, '81f9fb000000'),
+    (0x27ab281, '81f9fb000000'), (0x27ab30b, '4881f9fb000000'),
+    (0x27ab5b1, '4881f9fb000000'), (0x288f50d, '4881f9fb000000'),
+    (0x2973ab6, '4181f8fb000000'), (0x2973ba6, '4981f8fb000000'),
+    (0x33355b7, '4881fdfb000000'), (0x3959c68, '4881f9fb000000'),
+    (0x395b069, '4981fdfb000000'), (0x4587475, '81f9fb000000'),
+    (0x466bc4a, '81fafb000000'), (0x466bd4a, '4881fafb000000'),
+    (0x466beaa, '4881fafb000000'), (0x466d870, '4181f8fb000000'),
+    (0x466d9a0, '4981f8fb000000'), (0x466daf0, '4981f8fb000000'),
+    (0x4aa9aea, '81fbfb000000'), (0x4aa9c93, '3dfb000000'),
+    (0x4aa9f8b, '4881f9fb000000'), (0x4aaa231, '4881f9fb000000'),
+    (0x4b6fa7d, '4881f9fb000000'),
+)
+CMP_FB_SITE_COUNT = 35
+# Byte-pattern candidates for cmp-imm-0xfb in .text (all encodings incl. 8-bit);
+# a superset of instruction starts, recorded so a mutation shows up.
+CMP_FB_BYTE_CANDIDATES = 354
+CMP_FB_RE = re.compile(rb'[\x40-\x4f]?\x81[\xf8-\xff]\xfb\x00\x00\x00|[\x40-\x4f]?\x3d\xfb\x00\x00\x00'
+                       rb'|[\x40-\x4f]?\x80[\xf8-\xff]\xfb|\x3c\xfb')
+CMP2_RE = re.compile(rb'[\x48\x49]?\x83[\xf8-\xff]\x02|\x3c\x02|\x80[\xf8-\xff]\x02')
+DISPATCH_RE = re.compile(rb'[\x48\x4c]\x8d[\x05\x0d\x15\x1d\x25\x2d\x35\x3d]....(?:.){0,12}?\x41?\xff[\xe0-\xe7]', re.S)
+LEN2_WINDOW = 0x80       # [site-0x80, site+0x80) clipped to the FDE
+DISPATCH_WINDOW = 0x20   # [site, site+0x20) clipped to the FDE
+LEN2_HITS = (0x134698d,)
+
+CHAIN_ID_FN = (0x1346860, 0x1346daf)
+CHAIN_ID_ANCHORS = (
+    (0x1346906, '488d8fd8dcffff', 'lea rcx,[rdi-0x2328]: rdi-9000'),
+    (0x134690d, '4883f902', 'cmp rcx,2: rdi in {9000,9001} (the length-2-adjacent cmp; operand is rdi-9000, not a remaining length)'),
+    (0x1346989, '488d4fff', 'lea rcx,[rdi-1]'),
+    (0x134698d, '4881f9fb000000', 'cmp rcx,0xfb: rdi-1 <= 251, i.e. rdi in 1..252'),
+    (0x134699a, '488d155b2decfe', 'lea rdx,[rip+disp]: jump table 0x2096fc indexed by rdi-1'),
+    (0x1346a08, '488d8f4f5bffff', 'lea rcx,[rdi-0xa4b1]: rdi-42161'),
+    (0x1346a29, '4881ff697a0000', 'cmp rdi,0x7a69: 31337'),
+    (0x1346d38, '4881ff05210000', 'cmp rdi,0x2105: 8453'),
+    (0x1346d4c, '4881ffa736aa00', 'cmp rdi,0xaa36a7: 11155111'),
+    (0x1346da9, '31c04889fac3', 'xor eax,eax ; mov rdx,rdi ; ret: match / no-match exits return rdi unchanged in rdx'),
+)
+
+
+def _u16_marker_scan(data, secs, fdes):
+    text = secs['.text']
+    tb = data[text['offset']:text['offset'] + text['size']]
+    base = text['addr']
+    cands = sum(1 for _ in CMP_FB_RE.finditer(tb))
+    if cands != CMP_FB_BYTE_CANDIDATES:
+        raise EvidenceError(f'cmp-0xfb byte candidates {cands} != {CMP_FB_BYTE_CANDIDATES}')
+    if len(CMP_FB_SITES) != CMP_FB_SITE_COUNT:
+        raise EvidenceError('pinned cmp-0xfb site list length changed')
+    starts = sorted(fdes)
+
+    def fde_of(va):
+        import bisect
+        j = bisect.bisect_right(starts, va) - 1
+        if j >= 0 and va < fdes[starts[j]]:
+            return starts[j], fdes[starts[j]]
+        raise EvidenceError(f'{va:#x} outside every FDE')
+
+    rows, hits = [], []
+    for va, hexbytes in CMP_FB_SITES:
+        want = bytes.fromhex(hexbytes)
+        o = bv.va_to_off(secs, va)
+        if data[o:o + len(want)] != want or not CMP_FB_RE.match(data, o):
+            raise EvidenceError(f'cmp-0xfb site {va:#x}: bytes are not {hexbytes}')
+        lo, hi = fde_of(va)
+        wl, wh = max(lo, va - LEN2_WINDOW), min(hi, va + LEN2_WINDOW)
+        w = data[bv.va_to_off(secs, wl):bv.va_to_off(secs, wl) + (wh - wl)]
+        len2 = [wl + m.start() for m in CMP2_RE.finditer(w)]
+        dend = min(hi, va + DISPATCH_WINDOW)
+        dm = DISPATCH_RE.search(data[o:o + (dend - va)])
+        disp = va + dm.start() if dm else None
+        hit = bool(len2) and disp is not None
+        if hit:
+            hits.append(va)
+        rows.append({'va': f'{va:#x}', 'bytes': hexbytes, 'fde': f'{lo:#x}..{hi:#x}',
+                     'cmp2_sites_in_window': [f'{x:#x}' for x in len2],
+                     'dispatch_va': None if disp is None else f'{disp:#x}',
+                     'classification': 'length2_adjacent' if hit else 'no_length2_adjacent'})
+    if tuple(hits) != LEN2_HITS:
+        raise EvidenceError(f'length-2-adjacent hits {[hex(h) for h in hits]} != {[hex(h) for h in LEN2_HITS]}')
+    lo, hi = CHAIN_ID_FN
+    if fdes.get(lo) != hi:
+        raise EvidenceError(f'chain-id FDE is not {lo:#x}..{hi:#x}')
+    anchors = _check_anchors(data, secs, 'chain_id_membership', lo, hi, CHAIN_ID_ANCHORS)
+    return {
+        'rule': ('a cmp <reg>,0xfb instruction is length2_adjacent iff a cmp <reg>,2 starts in '
+                 '[site-0x80, site+0x80) and a lea r,[rip+disp] ... jmp r dispatch starts in '
+                 '[site, site+0x20), both clipped to the containing FDE'),
+        'cmp_0xfb_byte_candidates_in_text': CMP_FB_BYTE_CANDIDATES,
+        'cmp_0xfb_instruction_count': len(rows),
+        'sites': rows,
+        'length2_adjacent_hits': [f'{h:#x}' for h in hits],
+        'length2_adjacent_hit_count': len(hits),
+        'hit_characterisation': {
+            'site': '0x134698d', 'fde_start': f'{lo:#x}', 'fde_end': f'{hi:#x}',
+            'anchors': anchors,
+            'observed': ('input is the integer in rdi; the function compares rdi (or rdi-k) against '
+                         'immediates and a 252-entry jump table, and reads no non-RIP memory operand; '
+                         'it never loads a tag byte from a buffer'),
+            'interpretation': ('EVM chain-id membership test (immediates include 1..252, 8453, 9000/9001, '
+                               '31337, 42161, 11155111); not a u16 decoder. The chain names are an '
+                               'inference from the immediates, not an observation'),
+        },
+        'conclusion': 'no u16 slice decoder: the only length2_adjacent 0xfb site is the chain-id lookup',
+    }
+
+
 def _decode_vectors():
     return [
         {'reader': 'varint_decode_u32_reader', 'input_hex': '', 'len': 0,
@@ -308,6 +432,7 @@ def scan(data, expected_sha256=bv.SHA256, check_fast_path=True):
     _got_target(relocs, eb_got, eb_start)
 
     call_sites = _call_got_sites(data, secs, relocs)
+    u16_scan = _u16_marker_scan(data, secs, fdes)
 
     return {
         'schema': 're005-bincode-varint-slow-widths/1',
@@ -337,6 +462,7 @@ def scan(data, expected_sha256=bv.SHA256, check_fast_path=True):
         'reader_call_sites': call_sites,
         'reader_call_counts': {f'{k:#x}': v for k, v in sorted(READER_CALL_COUNTS.items())},
         'decode_vectors': _decode_vectors(),
+        'u16_marker_scan': u16_scan,
         'wire_rule_observed': {
             'lt_0xfb': 'tag byte is the value, 1 consumed',
             '0xfb': 'u16 LE at +1 (rol/bswap when dl!=0), 3 consumed',
@@ -349,7 +475,7 @@ def scan(data, expected_sha256=bv.SHA256, check_fast_path=True):
         'what_this_does_not_claim': [
             'No claim that the binary executes these paths at runtime; evidence is static.',
             'No claim about the 0x466dad0 Reader (esi=5 on its 0xfe arm); different expected-type code.',
-            'No dedicated u16-width slice decoder was found (no cmp-remaining,2 gate next to a tag dispatch).',
+            'No u16-width slice decoder: of the 35 cmp <reg>,0xfb instructions in .text exactly one (0x134698d) has a cmp <reg>,2 within 0x80 bytes and a jump-table dispatch within 0x20, and it is a chain-id lookup on an integer, not a decoder (see u16_marker_scan).',
             'u16 appears only as the 0xfb payload width; u128 appears only as the 0xfe error marker.',
             'The merged RE-005 fast-path packet (u64 slice + 21 dispatch sites) is not modified.',
             'Function names are our labels; the binary has no symbols for them.',
