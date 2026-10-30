@@ -6,9 +6,10 @@
 - Source commit / reference commit: repository `1f8c67c63ca4794c9689235471c60297f8a5c985`;
   reference lead `references/can1357-hl/l1/qtys/impl_px.rs` and `references/can1357-hl/l1/qtys/mod.rs`
   (diagnostic labels and visitor search leads only; zero code copied)
-- Claim status: observation for byte-level disassembly facts, rodata diagnostic pieces,
-  and control flow graphs; inference for visitor/serde role names and struct monomorphizations;
-  unresolved items listed at the end
+- Claim status:
+  - Observation for byte-level disassembly facts, exact instruction addresses, rodata diagnostic pieces, FDE boundaries, direct calls (`call rel32`), and caller guard byte sequences.
+  - Inference for the simulated predicate models evaluated over sample inputs, caller serialization roles (JSON, MessagePack, Bincode), and visitor monomorphizations.
+  - Unresolved items listed at the end.
 - Scope included and excluded:
   - Included: the three rodata diagnostic pieces:
     1. `invalid value {} for PxPriv when visiting u64`
