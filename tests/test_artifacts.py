@@ -42,6 +42,21 @@ class ArtifactTests(unittest.TestCase):
         with patch.object(a.urllib.request, 'urlopen', side_effect=AssertionError('network')):
             a.fetch_one(self.root, self.item)
 
+    def test_missing_pinned_reference_names_the_fix(self):
+        with self.assertRaises(ValueError) as caught:
+            a.verify_pinned_pairs(self.root)
+        self.assertIn('git submodule update --init --recursive', str(caught.exception))
+
+    def test_pinned_reference_mismatch_rejected(self):
+        for left, right in a.PAIRS:
+            for relative in (left, right):
+                (self.root / relative).parent.mkdir(parents=True, exist_ok=True)
+                (self.root / relative).write_bytes(b'good')
+        a.verify_pinned_pairs(self.root)
+        (self.root / a.PAIRS[0][1]).write_bytes(b'evil')
+        with self.assertRaises(ValueError):
+            a.verify_pinned_pairs(self.root)
+
     def test_corrupt_existing_file_not_overwritten(self):
         p = self.root / self.item['path']
         p.parent.mkdir()

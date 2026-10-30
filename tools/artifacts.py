@@ -68,6 +68,22 @@ def verify_signatures(root, fingerprint):
             print(f'Valid signature: {rel}')
 
 
+PAIRS = [
+    ('artifacts/node/94/hl-node', 'references/can1357-hl/bin/hl-node-mainnet-new'),
+    ('artifacts/node/94/hl-node.asc', 'references/can1357-hl/bin/hl-node-mainnet-new.asc'),
+    ('artifacts/keys/pub_key.asc', 'upstream/node/pub_key.asc'),
+]
+
+
+def verify_pinned_pairs(root):
+    """Compare retained artifacts with the pinned submodule copies."""
+    for left, right in PAIRS:
+        if not (root / right).is_file():
+            raise ValueError(f'Missing pinned reference: {right}; run git submodule update --init --recursive')
+        if digest(root / left) != digest(root / right):
+            raise ValueError(f'Pinned upstream mismatch: {left} != {right}')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['verify', 'fetch'])
@@ -79,14 +95,7 @@ def main():
         check(ROOT / item['path'], item)
         print(f"SHA-256 OK: {item['path']}")
     verify_signatures(ROOT, manifest['signing_fingerprint'])
-    pairs = [
-        ('artifacts/node/94/hl-node', 'references/can1357-hl/bin/hl-node-mainnet-new'),
-        ('artifacts/node/94/hl-node.asc', 'references/can1357-hl/bin/hl-node-mainnet-new.asc'),
-        ('artifacts/keys/pub_key.asc', 'upstream/node/pub_key.asc'),
-    ]
-    for a, b in pairs:
-        if digest(ROOT / a) != digest(ROOT / b):
-            raise ValueError(f'Pinned upstream mismatch: {a} != {b}')
+    verify_pinned_pairs(ROOT)
     print('Pinned upstream binary, signature and public key match.')
 
 
