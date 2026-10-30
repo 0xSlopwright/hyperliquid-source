@@ -3,8 +3,9 @@
 
 Stdlib only. Reads the ELF, decodes the jump table of the dispatcher that the
 can1357 reconstruction places at 0x2759240, finds the rel32 direct calls (and
-RIP-relative indirect calls through RELATIVE-relocated slots) inside each
-case arm, and compares them with the HandlerRef addresses written in
+RIP-relative indirect calls through RELATIVE-relocated slots) on each case
+arm's straight-line path (strict subset decoder; conditional branches on that
+path are followed one level), and compares them with the HandlerRef addresses written in
 references/can1357-hl/l1/exchange/impl_execute_action.rs.
 
 Addresses are virtual addresses of instruction starts (REX prefix included).
@@ -124,37 +125,121 @@ def parse_reconstruction(text: str):
     return rows
 
 
-def arm_calls(elf, lo, hi, starts, ends, relocs):
-    """Direct E8 calls to FDE starts and FF 15 calls through RELATIVE slots."""
-    code = elf.read(lo, hi - lo)
-    calls = []
-    for i in range(len(code) - 4):
-        va = lo + i
-        if code[i] == 0xE8 and i + 5 <= len(code):
-            tgt = va + 5 + struct.unpack_from("<i", code, i + 1)[0]
-            if containing(starts, ends, tgt) and starts[bisect.bisect_left(starts, tgt)] == tgt:
-                calls.append({"site": va, "kind": "rel32", "target": tgt})
-        elif code[i] == 0xFF and code[i + 1] == 0x15 and i + 6 <= len(code):
-            slot = va + 6 + struct.unpack_from("<i", code, i + 2)[0]
-            if slot in relocs:
-                tgt = relocs[slot]
-                calls.append({"site": va, "kind": "rip_slot", "slot": slot, "target": tgt})
-    return calls
+class Insn:
+    __slots__ = ("va", "size", "kind", "target", "slot")
+
+    def __init__(self, va, size, kind="other", target=None, slot=None):
+        self.va, self.size, self.kind, self.target, self.slot = va, size, kind, target, slot
 
 
-def entry_branches(elf, lo, first_call_site, flo, fhi):
-    """jcc rel32 (0F 80..8F) between the arm entry and its first call, into the dispatcher."""
-    end = first_call_site if first_call_site is not None else None
-    out = []
-    if end is None:
-        return out
-    code = elf.read(lo, end - lo)
-    for i in range(len(code) - 5):
-        if code[i] == 0x0F and 0x80 <= code[i + 1] <= 0x8F:
-            tgt = lo + i + 6 + struct.unpack_from("<i", code, i + 2)[0]
-            if flo <= tgt < fhi:
-                out.append({"site": lo + i, "target": tgt})
-    return out
+def _modrm(code, i):
+    """Return (length of ModRM+SIB+displacement, RIP displacement or None, reg field)."""
+    m = code[i]
+    mod, reg, rm = m >> 6, (m >> 3) & 7, m & 7
+    n = 1
+    rip = None
+    if mod != 3 and rm == 4:
+        sib = code[i + 1]
+        n += 1
+        if mod == 0 and sib & 7 == 5:
+            n += 4
+    if mod == 0 and rm == 5:
+        rip = struct.unpack_from("<i", code, i + 1)[0]
+        n += 4
+    elif mod == 1:
+        n += 1
+    elif mod == 2:
+        n += 4
+    return n, rip, reg
+
+
+def decode_one(code, i, va):
+    """Strict length decoder for the opcode subset used on the dispatcher arm paths.
+
+    Anything outside the subset raises EvidenceError instead of being guessed.
+    """
+    start = i
+    opsize16 = False
+    if code[i] == 0x66:
+        opsize16 = True
+        i += 1
+    rex_w = False
+    if 0x40 <= code[i] <= 0x4F:
+        rex_w = bool(code[i] & 8)
+        i += 1
+    op = code[i]
+    i += 1
+    if op == 0x0F:
+        op2 = code[i]
+        i += 1
+        if op2 in (0x10, 0x11, 0x28, 0x29, 0xB6, 0xB7):
+            i += _modrm(code, i)[0]
+        elif 0x80 <= op2 <= 0x8F:
+            rel = struct.unpack_from("<i", code, i)[0]
+            i += 4
+            return Insn(va, i - start, "jcc", va + i - start + rel)
+        else:
+            raise EvidenceError(f"unsupported opcode 0f {op2:02x} at {va:#x}")
+    elif op in (0x39, 0x89, 0x8B, 0x8D):
+        i += _modrm(code, i)[0]
+    elif op in (0x80, 0x83, 0xC6):
+        i += _modrm(code, i)[0] + 1
+    elif op == 0x81:
+        i += _modrm(code, i)[0] + 4
+    elif op == 0xC7:
+        i += _modrm(code, i)[0] + (2 if opsize16 else 4)
+    elif op == 0x3C or 0xB0 <= op <= 0xB7:
+        i += 1
+    elif 0xB8 <= op <= 0xBF:
+        i += 8 if rex_w else 4
+    elif op in (0xE8, 0xE9):
+        rel = struct.unpack_from("<i", code, i)[0]
+        i += 4
+        return Insn(va, i - start, "call" if op == 0xE8 else "jmp", va + i - start + rel)
+    elif op == 0xEB or 0x70 <= op <= 0x7F:
+        rel = struct.unpack_from("<b", code, i)[0]
+        i += 1
+        return Insn(va, i - start, "jmp" if op == 0xEB else "jcc", va + i - start + rel)
+    elif op == 0xFF:
+        n, rip, reg = _modrm(code, i)
+        i += n
+        if reg == 2 and rip is not None:
+            return Insn(va, i - start, "call_slot", None, va + i - start + rip)
+        raise EvidenceError(f"unsupported ff /{reg} at {va:#x}")
+    else:
+        raise EvidenceError(f"unsupported opcode {op:02x} at {va:#x}")
+    return Insn(va, i - start)
+
+
+MAX_PATH = 48
+
+
+def walk(elf, va, relocs, starts):
+    """Decode linearly from va to the first call or unconditional jmp.
+
+    Returns (instruction addresses, conditional branches seen, terminator).
+    """
+    code = elf.read(va, 15 * MAX_PATH)
+    i = 0
+    addrs, jccs = [], []
+    for _ in range(MAX_PATH):
+        ins = decode_one(code, i, va + i)
+        addrs.append(ins.va)
+        i += ins.size
+        if ins.kind == "jcc":
+            jccs.append({"site": ins.va, "target": ins.target})
+        elif ins.kind == "call":
+            if not is_fde_start(starts, ins.target):
+                raise EvidenceError(f"call at {ins.va:#x} to non-FDE-start {ins.target:#x}")
+            return addrs, jccs, {"site": ins.va, "kind": "rel32", "target": ins.target}
+        elif ins.kind == "call_slot":
+            if ins.slot not in relocs:
+                raise EvidenceError(f"call slot {ins.slot:#x} has no RELATIVE relocation")
+            return addrs, jccs, {"site": ins.va, "kind": "rip_slot", "slot": ins.slot,
+                                 "target": relocs[ins.slot]}
+        elif ins.kind == "jmp":
+            return addrs, jccs, {"site": ins.va, "kind": "jmp", "target": ins.target}
+    raise EvidenceError(f"no call/jmp within {MAX_PATH} instructions of {va:#x}")
 
 
 def is_fde_start(starts, va):
@@ -162,19 +247,16 @@ def is_fde_start(starts, va):
     return j < len(starts) and starts[j] == va
 
 
-def classify(claim, calls, branch_calls, starts, ends):
+def classify(claim, first_call, branch_calls, starts):
     ea = claim["claimed_ea"]
-    targets = [c["target"] for c in calls]
-    if not targets and branch_calls and branch_calls[0]["target"] == ea:
-        return "real_first_call_on_branch"
     if ea == DISPATCHER:
-        return "inline_claim_no_call" if not calls else "inline_claim_but_arm_calls"
+        return "inline_claim_no_call" if first_call is None else "inline_claim_but_arm_calls"
     if not is_fde_start(starts, ea):
         return "claimed_not_fde_start"
-    if targets and targets[0] == ea:
+    if first_call is not None and first_call["target"] == ea:
         return "real_first_call"
-    if ea in targets:
-        return "real_called_not_first"
+    if first_call is None and ea in branch_calls:
+        return "real_first_call_on_branch"
     return "fde_start_not_called_from_arm"
 
 
@@ -245,30 +327,30 @@ def build(data: bytes, rs: Path = SOURCE, expected_sha256: str = EXPECTED_SHA256
         targets.append(tgt)
     if len(set(targets)) != len(targets):
         raise EvidenceError("duplicate jump-table targets")
-    order = sorted(targets)
     claims = parse_reconstruction(rs.read_text(encoding="utf-8"))
     cases = []
     for idx, tgt in enumerate(targets):
-        k = order.index(tgt)
-        rend = order[k + 1] if k + 1 < len(order) else hi
-        calls = arm_calls(elf, tgt, rend, starts, ends, relocs)
+        addrs, jccs, term = walk(elf, tgt, relocs, starts)
+        first_call = None
+        if term["kind"] != "jmp":
+            first_call = dict(term, target_fde_end=ends[bisect.bisect_left(starts, term["target"])]
+                              if is_fde_start(starts, term["target"]) else None)
         branch_calls = []
-        branches = []
-        if not calls:
-            branches = entry_branches(elf, tgt, rend, lo, hi)
-            for br in branches:
-                bk = bisect.bisect_right(order, br["target"])
-                bend = order[bk] if bk < len(order) else hi
-                br["calls"] = arm_calls(elf, br["target"], bend, starts, ends, relocs)
-                branch_calls.extend(br["calls"])
+        for br in jccs:
+            if not lo <= br["target"] < hi:
+                raise EvidenceError(f"jcc at {br['site']:#x} leaves the dispatcher")
+            _a, _j, bterm = walk(elf, br["target"], relocs, starts)
+            br["path_end"] = bterm
+            if bterm["kind"] != "jmp":
+                branch_calls.append(bterm["target"])
         row = {
             "index": idx,
             "discriminant": TAG_BASE + idx,
             "arm": tgt,
-            "arm_region_end": rend,
-            "entry_branches": branches,
-            "calls": [dict(c, target_fde_end=ends[bisect.bisect_left(starts, c["target"])]
-                           if is_fde_start(starts, c["target"]) else None) for c in calls],
+            "arm_path_insns": len(addrs),
+            "arm_path_end": term,
+            "first_call": first_call,
+            "entry_branches": jccs,
         }
         claim = claims.get(idx)
         if claim:
@@ -278,7 +360,7 @@ def build(data: bytes, rs: Path = SOURCE, expected_sha256: str = EXPECTED_SHA256
                 claim,
                 claimed_is_fde_start=is_fde_start(starts, ea),
                 claimed_containing_fde=list(cf) if cf else None,
-                status=classify(claim, calls, branch_calls, starts, ends),
+                status=classify(claim, first_call, branch_calls, starts),
             )
         cases.append(row)
     extra = sorted(set(claims) - set(range(len(targets))))
@@ -309,7 +391,7 @@ def build(data: bytes, rs: Path = SOURCE, expected_sha256: str = EXPECTED_SHA256
     }
 
 
-ADDR_KEYS = {"start", "end", "jump_table", "arm", "arm_region_end", "site", "slot",
+ADDR_KEYS = {"start", "end", "jump_table", "arm", "site", "slot",
              "target", "target_fde_end", "fde_start", "fde_end", "claimed_ea", "claimed_containing_fde", "va"}
 
 
