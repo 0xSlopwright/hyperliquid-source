@@ -20,6 +20,7 @@ row is a bounded starting task, not a claim that its subsystem is recovered.
 | RE-012 | P2 | APIs/gossip/startup | `info_server/*`, `net_utils/*`, `node/hl_node.rs` | One request/frame/CLI path mapped to binary; identify writes and external side effects | RE-001, RE-005 |
 | RE-013 | P2 | Visor | Captured visor, imported disassembly | Separate compiler/index inventory and static download/verify/spawn control flow | None |
 | RE-014 | P2 | Release drift | #94/#115 inventories and catalogue path lists | Target-bound cross-version mapping; qualify changed code separately from missing diagnostic paths | RE-001 |
+| RE-015 | P2 | `global_constants/*` | `/static_config` `0x1ef5f7`, `/cham` `0x1fc0ee`, `NvTestnet` `0x2180ff` | Digest-bound literal inventory, pool-entry xrefs, 76-entry discriminant table and reference comparison; no gate | RE-001 |
 
 The component map also names vaults, bridge, staking, fees, DEX registry and
 remaining shared state. Each accepts a bounded packet under the same process;
