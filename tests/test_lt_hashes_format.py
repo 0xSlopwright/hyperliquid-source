@@ -116,6 +116,54 @@ class Scripts(unittest.TestCase):
         for rel, h in RE009_MERGED.items():
             self.assertEqual(hashlib.sha256((ROOT / rel).read_bytes()).hexdigest(), h, rel)
 
+def _load_iv():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('re009b_iv', PKT / 'independent_verify.py')
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _quiet(fn, *a, **k):
+    import contextlib
+    import io
+    with contextlib.redirect_stdout(io.StringIO()):
+        return fn(*a, **k)
+
+
+@requires_bin
+class KeyVaTamper(unittest.TestCase):
+    def _run(self, mutate):
+        import tempfile
+        iv = _load_iv()
+        j = json.loads((PKT / 'lt-hashes-format.json').read_text())
+        mutate(j)
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / 'lt-hashes-format.json'
+            p.write_text(json.dumps(j))
+            return _quiet(iv.main, json_path=p)
+
+    def test_untampered_passes(self):
+        self.assertEqual(self._run(lambda j: None), 0)
+
+    def test_every_key_va_mutation_fails(self):
+        for i in range(3):
+            def mut(j, i=i):
+                f = j['fields'][i]
+                f['key_va'] = hex(int(f['key_va'], 16) + 1)
+            self.assertEqual(self._run(mut), 1, i)
+
+    def test_key_pool_va_mutation_fails(self):
+        def mut(j):
+            j['key_pool']['va'] = hex(int(j['key_pool']['va'], 16) + 1)
+        self.assertEqual(self._run(mut), 1)
+
+    def test_pinned_key_constant_mutation_fails(self):
+        iv = _load_iv()
+        iv.KEYS = [(0x59b249, b'accounts_hash'), (0x59b257, b'contracts_hash'), (0x59b264, b'storage_hash')]
+        self.assertEqual(_quiet(iv.main), 1)
+
+
 
 @requires_bin
 @requires_gnu

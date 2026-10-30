@@ -27,10 +27,11 @@ def verdict(v, ev):
     return {'PASS': 0, 'FAIL': 1, 'INCONCLUSIVE': 2}[v]
 
 
-def main():
+def main(json_path=None):
+    json_path = Path(json_path) if json_path else JSON_PATH
     ev = []
-    if not BIN.exists() or not JSON_PATH.exists():
-        return verdict('INCONCLUSIVE', [f'missing: {BIN if not BIN.exists() else JSON_PATH}'])
+    if not BIN.exists() or not json_path.exists():
+        return verdict('INCONCLUSIVE', [f'missing: {BIN if not BIN.exists() else json_path}'])
     b = BIN.read_bytes()
     h = hashlib.sha256(b).hexdigest()
     ev.append(f'binary sha256 {h}')
@@ -89,6 +90,9 @@ def main():
     for enc, leas in ((0x37e2510, (0x37e2581, 0x37e25a8, 0x37e25cc)), (0x37e21c0, (0x37e2215, 0x37e227d, 0x37e22e9))):
         got = [(rip(va, 7, 3), rd(rip(va, 7, 3), len(k))) for va, (_, k) in zip(leas, KEYS)]
         checks.append((f'{enc:#x} keys {[g[1].decode() for g in got]}', got == KEYS))
+    # 5b. every pinned key VA holds exactly its key bytes in the binary
+    for va, k in KEYS:
+        checks.append((f'key bytes at {va:#x} == {k.decode()}', rd(va, len(k)) == k))
     # 6. JSON markers and MessagePack header bytes
     checks.append(('json "{" store 0x37e21fe', rd(0x37e21fe, 4)[-1:] == b'{'))
     checks.append(('json ": " store 0x37e2256', b'\x3a\x20' in rd(0x37e2256, 8)))
@@ -97,8 +101,16 @@ def main():
     checks.append(('array header 0x90/0xdd', rd(0x3598e37, 2) == b'\x34\xdd' and rd(0x3598e3f, 5) == b'\xbd\x90\x00\x00\x00'))
     checks.append(('msgpack config 0x1000400', rd(0x3c1688e, 8) == bytes.fromhex('c744246000040001')))
     # 7. JSON packet agrees
-    j = json.loads(JSON_PATH.read_text())
+    j = json.loads(json_path.read_text())
     checks.append(('json fields', [f['name'] for f in j['fields']] == [k.decode() for _, k in KEYS]))
+    # every JSON key VA is read back from the binary and must match name, length and the pinned VA
+    for f, (va, k) in zip(j['fields'], KEYS):
+        jva, jlen = int(f['key_va'], 16), f['key_len']
+        checks.append((f"json key_va {f['key_va']} len {jlen} -> {rd(jva, jlen)!r}",
+                       jva == va and jlen == len(k) and rd(jva, jlen) == f['name'].encode() == k))
+    pool_va = int(j['key_pool']['va'], 16)
+    pool = j['key_pool']['text'].encode()
+    checks.append((f"json key_pool {j['key_pool']['va']}", pool_va == KEYS[0][0] and rd(pool_va, len(pool)) == pool))
     checks.append(('json callers', j['rel32_callers']['0x32699c0'] == [hex(x) for x in WRITER_CALLERS]))
     for name, ok in checks:
         ev.append(('ok   ' if ok else 'FAIL ') + name)
