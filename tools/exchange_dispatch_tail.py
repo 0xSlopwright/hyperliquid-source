@@ -204,11 +204,13 @@ def tail_facts(elf, starts):
     }
 
 
-def build(data: bytes, rs: Path = ed.SOURCE) -> dict:
-    base = ed.build(data, rs)
+def build(data: bytes, rs: Path = ed.SOURCE, expected_sha256: str = ed.EXPECTED_SHA256,
+          check_base: bool = True) -> dict:
+    """check_base=False is only for tamper tests on a mutated copy of the binary."""
+    base = ed.build(data, rs, expected_sha256=expected_sha256)
     base_text = ed.render(base)
     base_sha = hashlib.sha256(base_text).hexdigest()
-    if base_sha != BASE_JSON_SHA256:
+    if check_base and base_sha != BASE_JSON_SHA256:
         raise EvidenceError(f"base exchange_dispatch output changed: {base_sha}")
     elf = ed.Elf(data)
     starts, ends = ed.fde_index(elf)
