@@ -1,0 +1,170 @@
+{
+ "constants": {
+  "f64_table": 5786376,
+  "f64_table_exact_entries": 23,
+  "native_exponent": 10,
+  "record_exponent_offset": 209,
+  "record_flag_offset": 188,
+  "record_stride": 232,
+  "record_wei_decimals_offset": 73,
+  "token0_limit": 1000000000000000
+ },
+ "copies": [
+  {
+   "data_slot": 528,
+   "end": 40987575,
+   "entry": 40981956,
+   "exact_test": 40985220,
+   "exponent_load": 40982157,
+   "fail": 40985229,
+   "float_slot": 64,
+   "guard_at": 40982081,
+   "limit_tag_at": 40981984,
+   "meta_slot": 24,
+   "native_block": 40982351,
+   "out_slot": 496,
+   "panic": 40986964,
+   "start": 40981280,
+   "success": 40983081,
+   "tail": 40985316,
+   "tail_data": 40985329,
+   "token_reg": "r15",
+   "token_slot": 48,
+   "wei_slot": 88
+  },
+  {
+   "data_slot": 560,
+   "end": 80789398,
+   "entry": 80783738,
+   "exact_test": 80787079,
+   "exponent_load": 80783939,
+   "fail": 80787088,
+   "float_slot": 48,
+   "guard_at": 80783863,
+   "limit_tag_at": 80783766,
+   "meta_slot": 16,
+   "native_block": 80784133,
+   "out_slot": 528,
+   "panic": 80788790,
+   "start": 80783056,
+   "success": 80784954,
+   "tail": 80787175,
+   "tail_data": 80787188,
+   "token_reg": "rbp",
+   "token_slot": 64,
+   "wei_slot": 72
+  },
+  {
+   "data_slot": 560,
+   "end": 80795750,
+   "entry": 80790090,
+   "exact_test": 80793431,
+   "exponent_load": 80790291,
+   "fail": 80793440,
+   "float_slot": 48,
+   "guard_at": 80790215,
+   "limit_tag_at": 80790118,
+   "meta_slot": 16,
+   "native_block": 80790485,
+   "out_slot": 528,
+   "panic": 80795142,
+   "start": 80789408,
+   "success": 80791306,
+   "tail": 80793527,
+   "tail_data": 80793540,
+   "token_reg": "rbp",
+   "token_slot": 64,
+   "wei_slot": 72
+  }
+ ],
+ "gate_function_scan": {
+  "both": [
+   40981280,
+   80783056,
+   80789408
+  ],
+  "limit_functions": 27,
+  "load_functions": 81
+ },
+ "guarded_range": {
+  "largest_product": 18446744073709551615000000000000000000,
+  "largest_product_bits": 124,
+  "max": 18,
+  "min": -2
+ },
+ "helpers": {
+  "0x27a1150": {
+   "end": 41555503,
+   "executed": 260,
+   "start": 41554256
+  },
+  "0x4de5500": {
+   "end": 81680842,
+   "executed": 498,
+   "start": 81679616
+  }
+ },
+ "lead": {
+  "name": "evm_amount_to_internal_wei",
+  "witnesses": [
+   {
+    "amount": 100000000,
+    "binary": 100000000000000000000000000,
+    "exponent": 18,
+    "lead": null
+   },
+   {
+    "amount": 5000000000,
+    "binary": 50000000000000000000,
+    "exponent": 10,
+    "lead": null
+   },
+   {
+    "amount": 1000,
+    "binary": 10,
+    "exponent": -2,
+    "lead": 10
+   },
+   {
+    "amount": 1001,
+    "binary": null,
+    "exponent": -2,
+    "lead": null
+   },
+   {
+    "amount": 18446744073709551615,
+    "binary": 18446744073709551615,
+    "exponent": 0,
+    "lead": 18446744073709551615
+   },
+   {
+    "amount": 2,
+    "binary": 20000000000000000000,
+    "exponent": 19,
+    "lead": null
+   }
+  ]
+ },
+ "target": {
+  "coordinates": "ELF virtual addresses",
+  "path": "artifacts/node/94/hl-node",
+  "sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
+ },
+ "texts": {
+  "0x148": "Send to EVM with data not configured",
+  "0x14a": "EVM transfer not configured",
+  "0x28": "Withdrawal amount over single withdrawal limit.",
+  "0xba": "Invalid number of decimals: {}"
+ },
+ "vectors": {
+  "copies": 3,
+  "mismatches": 0,
+  "per_copy": {
+   "gates": 288,
+   "scale": 2086,
+   "scale_ok": 995,
+   "scale_tag": 1091
+  },
+  "sha256": "447082a429961c6fe1fa04b44b1442bf631735854ad933bec62440ae12c4a46a"
+ }
+}
