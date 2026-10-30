@@ -72,3 +72,22 @@ cargo build --locked --manifest-path src/bincode-varint/Cargo.toml
 cargo test --locked --manifest-path src/bincode-varint/Cargo.toml
 cargo clippy --locked --manifest-path src/bincode-varint/Cargo.toml --all-targets -- -D warnings
 ```
+
+The integration vectors are not produced by the reconstructed encoder. Their
+expected marker, width, byte order and consumed length are transcribed from the
+following independently verified node #94 instructions:
+
+| property | target evidence |
+| --- | --- |
+| value `< 251` is one byte | `0x27ab0aa..0x27ab0c3`, `0x27ab30b..0x27ab325` |
+| `0xfb` + u16 payload | `0x27ab0cf..0x27ab0fc`, `0x27ab331..0x27ab36f` |
+| `0xfc` + u32 payload | `0x27ab128..0x27ab13a`, `0x27ab397..0x27ab3b9` |
+| `0xfd` + u64 payload | `0x27ab3d4..0x27ab3f7` |
+| 1/3/5/9 size thresholds | `0x27ab5b1..0x27ab623` |
+| little-endian u16/u32/u64 loads | `0x466bd76`, `0x466bd8e`, `0x466bd82` |
+| consumed 1/3/5/9 | `0x466bd53`, `0x466bd7a`, `0x466bd91`, `0x466bd86` |
+| fast path requires more than 8 bytes | `0x466bd3d..0x466bd41` |
+| `0xfe` and out-of-range error arms | `0x466bdc5`, `0x466bddd` |
+
+`research/work-items/RE-005-bincode-varint/verify.py` authenticates those bytes
+against the captured artifact before the Rust test results are interpreted.
