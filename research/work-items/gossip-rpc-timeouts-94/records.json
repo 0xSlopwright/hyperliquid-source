@@ -1,0 +1,103 @@
+{
+  "retries": [
+    {
+      "f64_immediates": [
+        2.0,
+        60.0
+      ],
+      "fde": "0x2039060",
+      "format_slot": "0x576e040",
+      "format_slot_target": "0x1344760",
+      "record_base": "[rbx+0x148]",
+      "sixty_sites": [
+        "0x20399c0"
+      ],
+      "sleep_seconds": 2.0,
+      "sleep_store": "0x20392c5",
+      "template": "0x1f2107",
+      "tries": 10,
+      "tries_store": "0x20392ba",
+      "writer_call": "0x20399f7",
+      "writer_target": "0x204b340"
+    },
+    {
+      "f64_immediates": [
+        2.0,
+        60.0
+      ],
+      "fde": "0x4387f40",
+      "format_slot": "0x576e040",
+      "format_slot_target": "0x1344760",
+      "record_base": "[rbx+0x148]",
+      "sixty_sites": [
+        "0x43888a0"
+      ],
+      "sleep_seconds": 2.0,
+      "sleep_store": "0x43881a5",
+      "template": "0x1f2107",
+      "tries": 10,
+      "tries_store": "0x438819a",
+      "writer_call": "0x43888d7",
+      "writer_target": "0x43a17c0"
+    }
+  ],
+  "seconds_to_micros": 1000000.0,
+  "target": "artifacts/node/94/hl-node",
+  "target_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",
+  "timeouts": [
+    {
+      "descriptor": "gossip_rpc_request",
+      "descriptor_len": 18,
+      "descriptor_va": "0x3c4610",
+      "fde": "0x1fd4570",
+      "micros_multiplies": [
+        "0x1fd475e",
+        "0x1fd500c"
+      ],
+      "name": "gossip_rpc_request (4001 verified path)",
+      "seconds": 10.0,
+      "seconds_const": "0x20a8a8",
+      "seconds_imm_at": "0x1fd4678"
+    },
+    {
+      "descriptor": "verify_rpc",
+      "descriptor_len": 10,
+      "descriptor_va": "0x3c4639",
+      "fde": "0x1fd4570",
+      "micros_multiplies": [
+        "0x1fd475e",
+        "0x1fd500c"
+      ],
+      "name": "verify_rpc (4001 verified path)",
+      "seconds": 5.0,
+      "seconds_const": "0x20a890",
+      "seconds_imm_at": "0x1fd4f26"
+    },
+    {
+      "descriptor": "gossip_rpc_request",
+      "descriptor_len": 18,
+      "descriptor_va": "0x3d7a0d",
+      "fde": "0x226bb20",
+      "micros_multiplies": [
+        "0x226bcd0"
+      ],
+      "name": "gossip_rpc_request wrapper",
+      "seconds": 10.0,
+      "seconds_const": "0x20a8a8",
+      "seconds_imm_at": "0x226bba4"
+    },
+    {
+      "descriptor": "gossip_rpc_request",
+      "descriptor_len": 18,
+      "descriptor_va": "0x6f10af",
+      "fde": "0x435cb20",
+      "micros_multiplies": [
+        "0x435ccc6"
+      ],
+      "name": "gossip_rpc_request wrapper",
+      "seconds": 10.0,
+      "seconds_const": "0x20a8a8",
+      "seconds_imm_at": "0x435cb95"
+    }
+  ]
+}
