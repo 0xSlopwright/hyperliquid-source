@@ -45,7 +45,7 @@ Path counts describe error/source strings that survived compilation. Missing pat
 | --- | ---: | ---: | ---: | --- |
 | Node #94 | 121,299 | 0 credited; comparator pending | 0 credited; comparator pending | No |
 | Node #115 | 135,313 | 0 credited; comparator pending | 0 credited; comparator pending | No |
-| Captured visor | Not yet inventoried | 0 credited | 0 credited | No |
+| Captured visor | 11,028 | 0 credited; comparator pending | 0 credited; comparator pending | No |
 
 Unwind entries are not a complete function census. Never use them as a verified matching-window denominator without validating bounds and duplicates.
 

@@ -25,6 +25,8 @@ index:
 fde-index:
 	$(PYTHON) tools/fde_extents.py --release 94
 	$(PYTHON) tools/fde_extents.py --release 115
+visor-index:
+	$(PYTHON) tools/elf_index.py --release visor
 catalogue:
 	$(PYTHON) tools/catalogue.py
 catalogue-check:

@@ -15,6 +15,11 @@ for release in ['94', '115']:
                     str(root / f'artifacts/node/{release}/hl-node'), str(out / name)], check=True)
     if json.loads((out / name).read_text()) != json.loads((root / 'research/imported' / name).read_text()):
         raise ValueError(f'Inventory differs: {name}')
+name = 'hl-visor.inventory.json'
+subprocess.run([sys.executable, '-I', str(root / 'tools/legacy/inv.py'),
+                str(root / 'artifacts/visor/captured/hl-visor'), str(out / name)], check=True)
+if json.loads((out / name).read_text()) != json.loads((root / 'research/imported' / name).read_text()):
+    raise ValueError(f'Inventory differs: {name}')
 name = 'can1357-literal-classes.json'
 subprocess.run([sys.executable, '-I', str(root / 'tools/legacy/drift.py'),
                 str(root / 'references/can1357-hl'), str(root / 'artifacts/node/94/hl-node'),
