@@ -67,6 +67,11 @@ class Results(unittest.TestCase):
         sixty = [(r['call'], r['owner_fde'], r['arg0']) for r in decoded if r['chunk_timeout_selected'] == 60.0]
         self.assertEqual(sixty, [('0x203b588', '0x203a190', 1)])
         self.assertEqual([r['call'] for r in rows if 'arg0' not in r], [hex(tw.INLINE_POLL_CALL)])
+        labels = {r['call']: r['label'] for r in rows if 'label' in r}
+        self.assertEqual(sorted(set(labels.values())),
+                         ['abci_stream send tcp greeting', 'send gossip rpc request', 'write evm kv batch'])
+        self.assertTrue(all(r['chunk_timeout_selected'] == 20.0 for r in rows if 'label' in r))
+        self.assertNotIn('0x203b588', labels)
 
     def test_packet_matches_regeneration(self):
         expected = json.loads(PACKET.read_text())
@@ -159,6 +164,9 @@ class CorruptionControls(unittest.TestCase):
         va = 0x3723000
         rel = struct.pack('<i', tw.WRITERS[0] - (va + 5))
         self.refuses(va, b'\xe8' + rel, 'writer call 0x3723000')
+
+    def test_caller_label_length(self):
+        self.refuses(0x2039993 + 2, b'\x16', 'label length in r8d')
 
     def test_caller_flag_is_read_not_assumed(self):
         """Sensitivity: flipping one zero flag to 1 must move that call to the 60 s selection."""

@@ -44,9 +44,9 @@ complete output; the test suite regenerates and compares it.
 
 `excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47 (windows
 start at instruction boundaries of the FDE's linear decoding; 21 windows). All
-106 `.text` VAs in the `writers`, `wrappers`, `inline_pair` and `callers`
-records are instruction starts in GNU objdump's linear decoding of the owning
-FDEs.
+121 `.text` VAs in the `writers`, `wrappers`, `inline_pair` and `callers`
+records and in the pinned label setups are instruction starts in GNU objdump's
+linear decoding of the owning FDEs.
 
 ## Evidence
 
@@ -116,21 +116,33 @@ Each writer has its own `tcp_chunk` literal (`0x3c4c05`, `0x6f1640`,
   `0x4b363b0`) is the inline future's poll, which builds its own pair (see
   above).
 
-  | Call | Writer | Owner FDE | Pair base | `arg0` | Chunk timeout selected |
-  | --- | --- | --- | --- | ---: | ---: |
-  | `0x1fd7930` | `0x204b340` | `0x1fd7810` | `[rbx+0x58]` | 0 | 20.0 |
-  | `0x2034387` | `0x204b340` | `0x2033080` | `[rbx+0x200]` | 0 | 20.0 |
-  | `0x203812e` | `0x204b340` | `0x2037ac0` | `[rbx+0x218]` | 0 | 20.0 |
-  | `0x20399f7` | `0x204b340` | `0x2039060` | `[rbx+0x158]` | 0 | 20.0 |
-  | `0x203b588` | `0x204b340` | `0x203a190` | `[rbx+0x200]` | **1** | **60.0** |
-  | `0x438384e` | `0x43a17c0` | `0x43831e0` | `[rbx+0x218]` | 0 | 20.0 |
-  | `0x438726d` | `0x43a17c0` | `0x4386f70` | `[rbx+0x250]` | 0 | 20.0 |
-  | `0x43888d7` | `0x43a17c0` | `0x4387f40` | `[rbx+0x158]` | 0 | 20.0 |
-  | `0x439f983` | `0x43a17c0` | `0x439f860` | `[rbx+0x40]` | 0 | 20.0 |
+  | Call | Writer | Owner FDE | Pair base | `arg0` | Label | Chunk timeout selected |
+  | --- | --- | --- | --- | ---: | --- | ---: |
+  | `0x1fd7930` | `0x204b340` | `0x1fd7810` | `[rbx+0x58]` | 0 | `write evm kv batch` | 20.0 |
+  | `0x2034387` | `0x204b340` | `0x2033080` | `[rbx+0x200]` | 0 | none | 20.0 |
+  | `0x203812e` | `0x204b340` | `0x2037ac0` | `[rbx+0x218]` | 0 | `abci_stream send tcp greeting` | 20.0 |
+  | `0x20399f7` | `0x204b340` | `0x2039060` | `[rbx+0x158]` | 0 | `send gossip rpc request` | 20.0 |
+  | `0x203b588` | `0x204b340` | `0x203a190` | `[rbx+0x200]` | **1** | none | **60.0** |
+  | `0x438384e` | `0x43a17c0` | `0x43831e0` | `[rbx+0x218]` | 0 | `abci_stream send tcp greeting` | 20.0 |
+  | `0x438726d` | `0x43a17c0` | `0x4386f70` | `[rbx+0x250]` | 0 | from future state | 20.0 |
+  | `0x43888d7` | `0x43a17c0` | `0x4387f40` | `[rbx+0x158]` | 0 | `send gossip rpc request` | 20.0 |
+  | `0x439f983` | `0x43a17c0` | `0x439f860` | `[rbx+0x40]` | 0 | none | 20.0 |
+
+  Labels: for five calls, the owner sets up `lea rcx,[rip+label];
+  mov r8d,len(label)` and a helper call (`0x28c0110`, `0x28c0b90`,
+  `0x28c0650`, `0x4b74e50`, `0x4b74ff0`) at most 0x30 bytes before the pair
+  build. The tool checks the string bytes and length.
+  `research/imported/can1357-literal-classes.json` lists `write evm kv batch`
+  and `abci_stream send tcp greeting` under `net_utils/tcp/write.rs`; `send
+  gossip rpc request` is not listed. That they name the send is an inference,
+  and what the helper does is not analysed. `0x438726d` calls helper
+  `0x4b75190` with `rcx`/`r8` loaded from future state `[rbx+0x240]`/`[rbx+0x248]`.
+  That label is not resolved statically.
 
   So exactly one statically visible send path selects the 60.0 s per-chunk
-  timeout; every other path, including both wrappers and the inline writer,
-  gets 20.0 s. The 60 s owner `0x203a190` and its zero-flag twin `0x2033080`
+  timeout; every other path, including both wrappers, the inline writer and
+  every labelled send (EVM kv batch, ABCI greeting, gossip RPC request), gets
+  20.0 s. The 60 s owner `0x203a190` and its zero-flag twin `0x2033080`
   both LEA the text blobs containing `sending abci_state` and `sending evm kvs`.
   Only `0x203a190` also LEAs the blob starting
   `ReplicaCmd::compute_abci_greeting`. Which message each call sends is not
@@ -202,6 +214,7 @@ Corruption controls (all must refuse):
 - compressor slot relocation addend
 - wrapper first word 0→1
 - removed caller 60.0 load
+- caller label length
 - caller pair base moved
 - injected direct writer call
 - inline pair flag
@@ -219,12 +232,12 @@ exactly that call into the 60.0 s selection.
 | `lz4_stats` record callers (writers + readers) | 8 FDEs |
 | Direct writer calls (wrappers + decoded + inline poll) | 12 (2 + 9 + 1) |
 | Calls selecting the 60.0 s chunk timeout | 1 (`0x203b588`) |
-| Record VAs that are GNU objdump instruction starts | 106 / 106 |
+| Record and label-setup VAs that are GNU objdump instruction starts | 121 / 121 |
 | Model lengths where capacity / prefix differ from the lead | 10 / 10, 2 / 10 |
 
 Validation on this branch (macOS arm64, Python 3.14.7, GNU binutils 2.47 for the
 full suite): `make verify`, `make test`, `make catalogue-check`; the new module
-(30 tests) also passes with only macOS LLVM tools on `PATH`.
+(31 tests) also passes with only macOS LLVM tools on `PATH`.
 
 Not established:
 

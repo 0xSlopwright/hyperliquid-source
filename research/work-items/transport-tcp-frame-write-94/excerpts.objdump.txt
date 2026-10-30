@@ -943,7 +943,36 @@
 
 ######## direct writer call sites (argument pair and call)
 
-## 0x1fd7930 in FDE 0x1fd7810 arg0=0 [0x1fd7900, 0x1fd7935)
+## 0x1fd7930 in FDE 0x1fd7810 arg0=0 label='write evm kv batch' [0x1fd786f, 0x1fd7935)
+ 1fd786f:	48 8d 0d f3 cd 3e fe 	lea    rcx,[rip+0xfffffffffe3ecdf3]        # 3c4669 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4be3797>
+ 1fd7876:	48 89 4b 48          	mov    QWORD PTR [rbx+0x48],rcx
+ 1fd787a:	48 c7 43 50 12 00 00 	mov    QWORD PTR [rbx+0x50],0x12
+ 1fd7881:	00
+ 1fd7882:	4c 89 ab 60 03 00 00 	mov    QWORD PTR [rbx+0x360],r13
+ 1fd7889:	48 89 b3 68 03 00 00 	mov    QWORD PTR [rbx+0x368],rsi
+ 1fd7890:	48 8d ab 70 03 00 00 	lea    rbp,[rbx+0x370]
+ 1fd7897:	66 c7 83 70 03 00 00 	mov    WORD PTR [rbx+0x370],0x0
+ 1fd789e:	00 00
+ 1fd78a0:	41 b8 12 00 00 00    	mov    r8d,0x12
+ 1fd78a6:	31 c0                	xor    eax,eax
+ 1fd78a8:	eb 3f                	jmp    1fd78e9 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2fd0517>
+ 1fd78aa:	48 8d ab 70 03 00 00 	lea    rbp,[rbx+0x370]
+ 1fd78b1:	0f b6 83 70 03 00 00 	movzx  eax,BYTE PTR [rbx+0x370]
+ 1fd78b8:	4c 8d 7b 48          	lea    r15,[rbx+0x48]
+ 1fd78bc:	48 8d 0d c9 c0 3e fe 	lea    rcx,[rip+0xfffffffffe3ec0c9]        # 3c398c <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4be4474>
+ 1fd78c3:	48 63 04 81          	movsxd rax,DWORD PTR [rcx+rax*4]
+ 1fd78c7:	48 01 c8             	add    rax,rcx
+ 1fd78ca:	ff e0                	jmp    rax
+ 1fd78cc:	4c 8b ab 60 03 00 00 	mov    r13,QWORD PTR [rbx+0x360]
+ 1fd78d3:	48 8b b3 68 03 00 00 	mov    rsi,QWORD PTR [rbx+0x368]
+ 1fd78da:	0f b6 83 71 03 00 00 	movzx  eax,BYTE PTR [rbx+0x371]
+ 1fd78e1:	48 8b 4b 48          	mov    rcx,QWORD PTR [rbx+0x48]
+ 1fd78e5:	4c 8b 43 50          	mov    r8,QWORD PTR [rbx+0x50]
+ 1fd78e9:	48 8d bb 48 03 00 00 	lea    rdi,[rbx+0x348]
+ 1fd78f0:	0f b6 d0             	movzx  edx,al
+ 1fd78f3:	e8 18 88 8e 00       	call   28c0110 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x26e7cf0>
+ 1fd78f8:	66 0f 10 83 50 03 00 	movupd xmm0,XMMWORD PTR [rbx+0x350]
+ 1fd78ff:	00
  1fd7900:	48 c7 43 58 00 00 00 	mov    QWORD PTR [rbx+0x58],0x0
  1fd7907:	00
  1fd7908:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
@@ -973,7 +1002,22 @@
  2034384:	4c 89 e6             	mov    rsi,r12
  2034387:	e8 b4 6f 01 00       	call   204b340 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5cac0>
 
-## 0x203812e in FDE 0x2037ac0 arg0=0 [0x20380eb, 0x2038133)
+## 0x203812e in FDE 0x2037ac0 arg0=0 label='abci_stream send tcp greeting' [0x2038096, 0x2038133)
+ 2038096:	48 8d 0d a6 c2 38 fe 	lea    rcx,[rip+0xfffffffffe38c2a6]        # 3c4343 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4be3abd>
+ 203809d:	48 89 8b 08 02 00 00 	mov    QWORD PTR [rbx+0x208],rcx
+ 20380a4:	48 c7 83 10 02 00 00 	mov    QWORD PTR [rbx+0x210],0x1d
+ 20380ab:	1d 00 00 00
+ 20380af:	48 89 ab 20 05 00 00 	mov    QWORD PTR [rbx+0x520],rbp
+ 20380b6:	48 89 b3 28 05 00 00 	mov    QWORD PTR [rbx+0x528],rsi
+ 20380bd:	4c 8d a3 30 05 00 00 	lea    r12,[rbx+0x530]
+ 20380c4:	66 c7 83 30 05 00 00 	mov    WORD PTR [rbx+0x530],0x0
+ 20380cb:	00 00
+ 20380cd:	41 b8 1d 00 00 00    	mov    r8d,0x1d
+ 20380d3:	31 c0                	xor    eax,eax
+ 20380d5:	48 8d bb 08 05 00 00 	lea    rdi,[rbx+0x508]
+ 20380dc:	0f b6 d0             	movzx  edx,al
+ 20380df:	e8 ac 8a 88 00       	call   28c0b90 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x26e7270>
+ 20380e4:	0f 10 83 10 05 00 00 	movups xmm0,XMMWORD PTR [rbx+0x510]
  20380eb:	48 c7 83 18 02 00 00 	mov    QWORD PTR [rbx+0x218],0x0
  20380f2:	00 00 00 00
  20380f6:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
@@ -988,7 +1032,24 @@
  203812b:	48 89 ee             	mov    rsi,rbp
  203812e:	e8 0d 32 01 00       	call   204b340 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5cac0>
 
-## 0x20399f7 in FDE 0x2039060 arg0=0 [0x20399b5, 0x20399fc)
+## 0x20399f7 in FDE 0x2039060 arg0=0 label='send gossip rpc request' [0x203995c, 0x20399fc)
+ 203995c:	48 8d 0d bf ac 38 fe 	lea    rcx,[rip+0xfffffffffe38acbf]        # 3c4622 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4be37de>
+ 2039963:	48 89 8b 48 01 00 00 	mov    QWORD PTR [rbx+0x148],rcx
+ 203996a:	48 c7 83 50 01 00 00 	mov    QWORD PTR [rbx+0x150],0x17
+ 2039971:	17 00 00 00
+ 2039975:	48 89 ab 60 04 00 00 	mov    QWORD PTR [rbx+0x460],rbp
+ 203997c:	48 89 b3 68 04 00 00 	mov    QWORD PTR [rbx+0x468],rsi
+ 2039983:	4c 8d bb 70 04 00 00 	lea    r15,[rbx+0x470]
+ 203998a:	66 c7 83 70 04 00 00 	mov    WORD PTR [rbx+0x470],0x0
+ 2039991:	00 00
+ 2039993:	41 b8 17 00 00 00    	mov    r8d,0x17
+ 2039999:	31 c0                	xor    eax,eax
+ 203999b:	4d 89 f5             	mov    r13,r14
+ 203999e:	48 8d bb 48 04 00 00 	lea    rdi,[rbx+0x448]
+ 20399a5:	0f b6 d0             	movzx  edx,al
+ 20399a8:	e8 a3 6c 88 00       	call   28c0650 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x26e77b0>
+ 20399ad:	f3 0f 6f 83 50 04 00 	movdqu xmm0,XMMWORD PTR [rbx+0x450]
+ 20399b4:	00
  20399b5:	48 c7 83 58 01 00 00 	mov    QWORD PTR [rbx+0x158],0x0
  20399bc:	00 00 00 00
  20399c0:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
@@ -1020,7 +1081,22 @@
  203b585:	4c 89 e6             	mov    rsi,r12
  203b588:	e8 b3 fd 00 00       	call   204b340 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5cac0>
 
-## 0x438384e in FDE 0x43831e0 arg0=0 [0x438380b, 0x4383853)
+## 0x438384e in FDE 0x43831e0 arg0=0 label='abci_stream send tcp greeting' [0x43837b6, 0x4383853)
+ 43837b6:	48 8d 0d 2c d8 36 fc 	lea    rcx,[rip+0xfffffffffc36d82c]        # 6f0fe9 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x48b6e17>
+ 43837bd:	48 89 8b 08 02 00 00 	mov    QWORD PTR [rbx+0x208],rcx
+ 43837c4:	48 c7 83 10 02 00 00 	mov    QWORD PTR [rbx+0x210],0x1d
+ 43837cb:	1d 00 00 00
+ 43837cf:	48 89 ab 20 05 00 00 	mov    QWORD PTR [rbx+0x520],rbp
+ 43837d6:	48 89 b3 28 05 00 00 	mov    QWORD PTR [rbx+0x528],rsi
+ 43837dd:	4c 8d a3 30 05 00 00 	lea    r12,[rbx+0x530]
+ 43837e4:	66 c7 83 30 05 00 00 	mov    WORD PTR [rbx+0x530],0x0
+ 43837eb:	00 00
+ 43837ed:	41 b8 1d 00 00 00    	mov    r8d,0x1d
+ 43837f3:	31 c0                	xor    eax,eax
+ 43837f5:	48 8d bb 08 05 00 00 	lea    rdi,[rbx+0x508]
+ 43837fc:	0f b6 d0             	movzx  edx,al
+ 43837ff:	e8 4c 16 7f 00       	call   4b74e50 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x432fb0>
+ 4383804:	0f 10 83 10 05 00 00 	movups xmm0,XMMWORD PTR [rbx+0x510]
  438380b:	48 c7 83 18 02 00 00 	mov    QWORD PTR [rbx+0x218],0x0
  4383812:	00 00 00 00
  4383816:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
@@ -1049,7 +1125,24 @@
  4387268:	48 8b 74 24 70       	mov    rsi,QWORD PTR [rsp+0x70]
  438726d:	e8 4e a5 01 00       	call   43a17c0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc06640>
 
-## 0x43888d7 in FDE 0x4387f40 arg0=0 [0x4388895, 0x43888dc)
+## 0x43888d7 in FDE 0x4387f40 arg0=0 label='send gossip rpc request' [0x438883c, 0x43888dc)
+ 438883c:	48 8d 0d 7e 88 36 fc 	lea    rcx,[rip+0xfffffffffc36887e]        # 6f10c1 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x48b6d3f>
+ 4388843:	48 89 8b 48 01 00 00 	mov    QWORD PTR [rbx+0x148],rcx
+ 438884a:	48 c7 83 50 01 00 00 	mov    QWORD PTR [rbx+0x150],0x17
+ 4388851:	17 00 00 00
+ 4388855:	48 89 ab 60 04 00 00 	mov    QWORD PTR [rbx+0x460],rbp
+ 438885c:	48 89 b3 68 04 00 00 	mov    QWORD PTR [rbx+0x468],rsi
+ 4388863:	4c 8d bb 70 04 00 00 	lea    r15,[rbx+0x470]
+ 438886a:	66 c7 83 70 04 00 00 	mov    WORD PTR [rbx+0x470],0x0
+ 4388871:	00 00
+ 4388873:	41 b8 17 00 00 00    	mov    r8d,0x17
+ 4388879:	31 c0                	xor    eax,eax
+ 438887b:	4d 89 f5             	mov    r13,r14
+ 438887e:	48 8d bb 48 04 00 00 	lea    rdi,[rbx+0x448]
+ 4388885:	0f b6 d0             	movzx  edx,al
+ 4388888:	e8 63 c7 7e 00       	call   4b74ff0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x432e10>
+ 438888d:	f3 0f 6f 83 50 04 00 	movdqu xmm0,XMMWORD PTR [rbx+0x450]
+ 4388894:	00
  4388895:	48 c7 83 58 01 00 00 	mov    QWORD PTR [rbx+0x158],0x0
  438889c:	00 00 00 00
  43888a0:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000

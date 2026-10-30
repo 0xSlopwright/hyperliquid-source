@@ -353,6 +353,26 @@ def caller_arg(img, call):
             'chunk_timeout_selected': 60.0 if flag & 0xff else DEFAULT_TIMEOUT}
 
 
+CALL_LABELS = {  # writer call -> (lea rcx,[rip+label], mov r8d,len, helper call) before the pair build
+    0x1fd7930: (0x1fd786f, 0x1fd78a0, 0x1fd78f3, b'write evm kv batch'),
+    0x203812e: (0x2038096, 0x20380cd, 0x20380df, b'abci_stream send tcp greeting'),
+    0x20399f7: (0x203995c, 0x2039993, 0x20399a8, b'send gossip rpc request'),
+    0x438384e: (0x43837b6, 0x43837ed, 0x43837ff, b'abci_stream send tcp greeting'),
+    0x43888d7: (0x438883c, 0x4388873, 0x4388888, b'send gossip rpc request'),
+}
+
+
+def call_label(img, call, arg0_store):
+    lea, r8, helper, text = CALL_LABELS[call]
+    img.expect(lea, '488d0d', 'label lea rcx,[rip+X]')
+    target = img.rel32(lea, 7)
+    require(img.read(target, len(text)) == text, f'label at {target:#x} is not {text!r}')
+    img.expect(r8, '41b8' + struct.pack('<I', len(text)).hex(), 'label length in r8d')
+    img.expect(helper, 'e8', 'label helper call')
+    require(lea < r8 < helper < arg0_store and arg0_store - helper <= 0x30, f'label setup for {call:#x} out of order')
+    return {'label': text.decode(), 'label_va': hex(target), 'helper': hex(img.rel32(helper, 5)), 'helper_call': hex(helper)}
+
+
 def check_callers(img):
     """Every direct call to a writer in .text: decoded argument pair, or the inline future's poll."""
     base, text = img.text_bytes()
@@ -376,6 +396,8 @@ def check_callers(img):
         require(target != WRITERS[2], f'unexpected direct call {call:#x} to the inline writer')
         row = caller_arg(img, call)
         row['target'] = hex(target)
+        if call in CALL_LABELS:
+            row.update(call_label(img, call, int(row['arg0_store'], 16)))
         rows.append(row)
     require(len(calls) == 12, f'direct writer call census {[hex(c) for c in calls]}')
     return rows
