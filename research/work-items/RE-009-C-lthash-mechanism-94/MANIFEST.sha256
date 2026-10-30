@@ -1,0 +1,6 @@
+82d7dc57c4d67feb556d7d4dc76b725b8a8b5fd6b94dc963edb4e4d88f5f1214  README.md
+338d1fa10cf5abc2ec1a7b184efdac411936da11c7e6dfe6ee03d21576a3eb36  independent_verify.py
+9450c6225fbc78446bfd7813592ec7e9700006c1fa0bf9ad567216ddb703b12a  lthash-mechanism.json
+3a440054441154f3159f07853639a9612d8205eafebb81ac48e20de5cdac8802  verify.py
+8209769434ff10047dd0e32778dd698542ec601ea6bf4e4a05c6ec4682b92c1a  ../../../tools/lthash_mechanism.py
+6e274ba095786c3f5283d300f4868877bad30d1192b50a583b8caec97618cd1f  ../../../tests/test_lthash_mechanism.py

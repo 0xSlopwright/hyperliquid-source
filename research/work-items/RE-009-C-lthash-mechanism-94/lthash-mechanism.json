@@ -1,0 +1,348 @@
+{
+  "binary_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",
+  "coordinates": "virtual addresses (VA), ELF64 x86-64",
+  "counts": {
+    "count_blocks": 3,
+    "lattice_loops": 6,
+    "leaves": 3
+  },
+  "leaves": [
+    {
+      "blake3_calls": {
+        "finalize_xof": "0x37f408f",
+        "new": "0x37f3f96",
+        "update": "0x37f4045"
+      },
+      "blake3_slots": {
+        "finalize_xof": "0x57700b0",
+        "new": "0x57700c0",
+        "update": "0x57700c8"
+      },
+      "chain": {
+        "fold": "0x3bc4760",
+        "preparer": "0x3284d90",
+        "producer": "0x37d3070",
+        "rayon": "0x3443160"
+      },
+      "chain_calls": {
+        "fold_rayon_call": "0x3bc47f4",
+        "leaf_preparer_call": "0x37f3f59",
+        "producer_fold_calls": [
+          "0x37d3574",
+          "0x37d386c"
+        ],
+        "rayon_leaf_call": "0x344320e",
+        "top_call": "0x3269cbe"
+      },
+      "count_add": {
+        "block": [
+          "0x37f4170",
+          "0x37f41ba"
+        ],
+        "block_len": 74,
+        "block_sha256": "f101b382045ca6bb4de0683b7ed0c8b6120ba43cb39242bbb71ba5de5808ead3",
+        "cmovae": 3,
+        "cmovb": 1,
+        "overflow": "saturating-u64",
+        "rsp_operands": [
+          "0xfc0",
+          "0xfc8",
+          "0x17d0",
+          "0x17d8"
+        ],
+        "saturate_const": "0xffffffffffffffff",
+        "u64_adds": 2
+      },
+      "fde_end": "0x37f4277",
+      "field_inference": "accounts",
+      "lattice_entry_add": {
+        "accumulator_base": "0x7c0",
+        "add_width_bits": 32,
+        "addend_minus_accumulator": "0x1020",
+        "body": [
+          "0x37f40d0",
+          "0x37f4128"
+        ],
+        "body_len": 88,
+        "body_sha256": "bc9f85950b5b128667509e5bd44bf7fd0ea6b82d23c3ed47efd6cf2651ba7f56",
+        "byte_order": "big-endian",
+        "bytes_covered": 2048,
+        "index_bound": "0x401",
+        "index_start": 1,
+        "index_step": 2,
+        "iterations": 512,
+        "lanes_per_iteration": 2,
+        "overflow": "wrapping-mod-2^16",
+        "rol16_8_swaps": 6,
+        "store_width_bits": 16,
+        "u16_stores": 2,
+        "u16_words_total": 1024,
+        "word_loads": 4
+      },
+      "lattice_merge_add": {
+        "accumulator_base": "0x7c0",
+        "add_width_bits": 32,
+        "addend_minus_accumulator": "0x810",
+        "body": [
+          "0x37f41c0",
+          "0x37f4218"
+        ],
+        "body_len": 88,
+        "body_sha256": "bfa6bec51222ef69acde34eacbe117378e28c9c1875cde2692a9383a6ed5a9bf",
+        "byte_order": "big-endian",
+        "bytes_covered": 2048,
+        "index_bound": "0x400",
+        "index_start": 0,
+        "index_step": 2,
+        "iterations": 512,
+        "lanes_per_iteration": 2,
+        "overflow": "wrapping-mod-2^16",
+        "rol16_8_swaps": 6,
+        "store_width_bits": 16,
+        "u16_stores": 2,
+        "u16_words_total": 1024,
+        "word_loads": 4
+      },
+      "leaf": "0x37f3f00",
+      "state_layout": {
+        "lattice": [
+          "0x0",
+          "0x800"
+        ],
+        "size": "0x810",
+        "u64_counters": [
+          "0x800",
+          "0x808"
+        ]
+      },
+      "xof_len": "0x800",
+      "xof_len_va": "0x37f408a"
+    },
+    {
+      "blake3_calls": {
+        "finalize_xof": "0x37f4420",
+        "new": "0x37f4324",
+        "update": "0x37f43d6"
+      },
+      "blake3_slots": {
+        "finalize_xof": "0x57700b0",
+        "new": "0x57700c0",
+        "update": "0x57700c8"
+      },
+      "chain": {
+        "fold": "0x3bc50e0",
+        "preparer": "0x3284ad0",
+        "producer": "0x37d3bd0",
+        "rayon": "0x3440b50"
+      },
+      "chain_calls": {
+        "fold_rayon_call": "0x3bc5174",
+        "leaf_preparer_call": "0x37f42e7",
+        "producer_fold_calls": [
+          "0x37d4080",
+          "0x37d43ae"
+        ],
+        "rayon_leaf_call": "0x3440bfe",
+        "top_call": "0x3269ed9"
+      },
+      "count_add": {
+        "block": [
+          "0x37f4500",
+          "0x37f454a"
+        ],
+        "block_len": 74,
+        "block_sha256": "129eb13f4d859d6c2ff945f2f51b71675b7ad9ef3dfdb173850c9a4194e0d42b",
+        "cmovae": 3,
+        "cmovb": 1,
+        "overflow": "saturating-u64",
+        "rsp_operands": [
+          "0xfd0",
+          "0xfd8",
+          "0x17e0",
+          "0x17e8"
+        ],
+        "saturate_const": "0xffffffffffffffff",
+        "u64_adds": 2
+      },
+      "fde_end": "0x37f4607",
+      "field_inference": "contracts",
+      "lattice_entry_add": {
+        "accumulator_base": "0x7d0",
+        "add_width_bits": 32,
+        "addend_minus_accumulator": "0x1020",
+        "body": [
+          "0x37f4460",
+          "0x37f44b8"
+        ],
+        "body_len": 88,
+        "body_sha256": "553407a90166478d63e856f509c4cf89cf036524bfccbe8de7b3bff5a8d754bf",
+        "byte_order": "big-endian",
+        "bytes_covered": 2048,
+        "index_bound": "0x401",
+        "index_start": 1,
+        "index_step": 2,
+        "iterations": 512,
+        "lanes_per_iteration": 2,
+        "overflow": "wrapping-mod-2^16",
+        "rol16_8_swaps": 6,
+        "store_width_bits": 16,
+        "u16_stores": 2,
+        "u16_words_total": 1024,
+        "word_loads": 4
+      },
+      "lattice_merge_add": {
+        "accumulator_base": "0x7d0",
+        "add_width_bits": 32,
+        "addend_minus_accumulator": "0x810",
+        "body": [
+          "0x37f4550",
+          "0x37f45a8"
+        ],
+        "body_len": 88,
+        "body_sha256": "abdf5e7c5cba79a9919c090fe9e21522fe2d682837ee6fdf7a7d17782100b9ed",
+        "byte_order": "big-endian",
+        "bytes_covered": 2048,
+        "index_bound": "0x400",
+        "index_start": 0,
+        "index_step": 2,
+        "iterations": 512,
+        "lanes_per_iteration": 2,
+        "overflow": "wrapping-mod-2^16",
+        "rol16_8_swaps": 6,
+        "store_width_bits": 16,
+        "u16_stores": 2,
+        "u16_words_total": 1024,
+        "word_loads": 4
+      },
+      "leaf": "0x37f4280",
+      "state_layout": {
+        "lattice": [
+          "0x0",
+          "0x800"
+        ],
+        "size": "0x810",
+        "u64_counters": [
+          "0x800",
+          "0x808"
+        ]
+      },
+      "xof_len": "0x800",
+      "xof_len_va": "0x37f441b"
+    },
+    {
+      "blake3_calls": {
+        "finalize_xof": "0x37f47c5",
+        "new": "0x37f46c6",
+        "update": "0x37f477b"
+      },
+      "blake3_slots": {
+        "finalize_xof": "0x57700b0",
+        "new": "0x57700c0",
+        "update": "0x57700c8"
+      },
+      "chain": {
+        "fold": "0x3bc4a40",
+        "preparer": "0x3284c70",
+        "producer": "0x37d2550",
+        "rayon": "0x343c390"
+      },
+      "chain_calls": {
+        "fold_rayon_call": "0x3bc4ad4",
+        "leaf_preparer_call": "0x37f4689",
+        "producer_fold_calls": [
+          "0x37d29c2",
+          "0x37d2d00"
+        ],
+        "rayon_leaf_call": "0x343c43e",
+        "top_call": "0x326a0e5"
+      },
+      "count_add": {
+        "block": [
+          "0x37f48a0",
+          "0x37f48ea"
+        ],
+        "block_len": 74,
+        "block_sha256": "74122bacf7b1c0d01b2788fcf55e4a9a6ab0772e6a86d8658773cc1e46170e8c",
+        "cmovae": 3,
+        "cmovb": 1,
+        "overflow": "saturating-u64",
+        "rsp_operands": [
+          "0xfe0",
+          "0xfe8",
+          "0x17f0",
+          "0x17f8"
+        ],
+        "saturate_const": "0xffffffffffffffff",
+        "u64_adds": 2
+      },
+      "fde_end": "0x37f49a7",
+      "field_inference": "storage",
+      "lattice_entry_add": {
+        "accumulator_base": "0x7e0",
+        "add_width_bits": 32,
+        "addend_minus_accumulator": "0x1020",
+        "body": [
+          "0x37f4800",
+          "0x37f4858"
+        ],
+        "body_len": 88,
+        "body_sha256": "5478aba72f647f63ce13caa4757da2b663ac0b004a72f0ce5a542890f84dbeb3",
+        "byte_order": "big-endian",
+        "bytes_covered": 2048,
+        "index_bound": "0x401",
+        "index_start": 1,
+        "index_step": 2,
+        "iterations": 512,
+        "lanes_per_iteration": 2,
+        "overflow": "wrapping-mod-2^16",
+        "rol16_8_swaps": 6,
+        "store_width_bits": 16,
+        "u16_stores": 2,
+        "u16_words_total": 1024,
+        "word_loads": 4
+      },
+      "lattice_merge_add": {
+        "accumulator_base": "0x7e0",
+        "add_width_bits": 32,
+        "addend_minus_accumulator": "0x810",
+        "body": [
+          "0x37f48f0",
+          "0x37f4948"
+        ],
+        "body_len": 88,
+        "body_sha256": "4870ac9a5cb7deacbba85b6b5c32e1972c833cf13a367f767a8bf639d2511a80",
+        "byte_order": "big-endian",
+        "bytes_covered": 2048,
+        "index_bound": "0x400",
+        "index_start": 0,
+        "index_step": 2,
+        "iterations": 512,
+        "lanes_per_iteration": 2,
+        "overflow": "wrapping-mod-2^16",
+        "rol16_8_swaps": 6,
+        "store_width_bits": 16,
+        "u16_stores": 2,
+        "u16_words_total": 1024,
+        "word_loads": 4
+      },
+      "leaf": "0x37f4610",
+      "state_layout": {
+        "lattice": [
+          "0x0",
+          "0x800"
+        ],
+        "size": "0x810",
+        "u64_counters": [
+          "0x800",
+          "0x808"
+        ]
+      },
+      "xof_len": "0x800",
+      "xof_len_va": "0x37f47c0"
+    }
+  ],
+  "schema": "re009c-lthash-mechanism/1",
+  "top_function": "0x3269ae0",
+  "writer": "0x32699c0",
+  "writer_call": "0x326a2e0"
+}
