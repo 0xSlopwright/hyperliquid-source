@@ -9,7 +9,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 BINARY_SHA256 = "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
-EVIDENCE_SHA256 = "abc27de8b5272d77bb72ab33c96e0e28299c46ce1ecbb4777de006be6e481d8d"
+EVIDENCE_SHA256 = "59a0302ec33323c1825295b59386cafe1f1817b0a8303ac2285f9535718b5ba7"
 
 
 def fail(message):
@@ -64,9 +64,9 @@ def main():
     check(transition["callers"] == ["0x44b17cf", "0x44b2629"], "round callers")
 
     branches = {item["case"]: item for item in evidence["branch_table"]}
-    check(branches["individual timeout duplicate"]["state_mutation_before_outcome"] is False,
+    check(branches["individual timeout duplicate"]["caller_state_write_before_outcome"] is False,
           "duplicate mutation ordering")
-    check(branches["individual timeout signature rejection"]["state_mutation_before_outcome"] is False,
+    check(branches["individual timeout signature rejection"]["caller_state_write_before_outcome"] is False,
           "signature-rejection mutation ordering")
     check(branches["individual timeout strict quorum"]["predicate"] ==
           "2*total < 3*signed_weight", "strict quorum predicate")

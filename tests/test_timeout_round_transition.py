@@ -87,8 +87,8 @@ class TimeoutRoundTransitionTests(unittest.TestCase):
         table = {x["case"]: x for x in self.result["branch_table"]}
         wrong = table["individual timeout wrong round"]
         duplicate = table["individual timeout duplicate"]
-        self.assertFalse(wrong["state_mutation_before_outcome"])
-        self.assertFalse(duplicate["state_mutation_before_outcome"])
+        self.assertFalse(wrong["caller_state_write_before_outcome"])
+        self.assertFalse(duplicate["caller_state_write_before_outcome"])
         self.assertLess(wrong["sites"][-1], 0x44b1560)
         self.assertLess(duplicate["sites"][-1], 0x44b1560)
 

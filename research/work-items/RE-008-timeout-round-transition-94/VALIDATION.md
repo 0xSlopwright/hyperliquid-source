@@ -40,3 +40,11 @@ PATH=/opt/homebrew/opt/binutils/bin:$PATH \
 Result: **PASS, 447/447 tests** in 124.844 seconds.
 
 The repository was not changed to accommodate the host-tool difference.
+
+After the final caller-local mutation-claim wording change, a second complete
+447-test attempt reached 446 passes and one environment error: a pre-existing
+foundation-hour corruption test could not write its 91,774,280-byte temporary
+copy because the shared volume returned `ENOSPC`. The new RE-008 module was
+green in that run. The affected `test_foundation_hour.py` module was then run
+alone after temporary space was released and passed 10/10. No source or test
+expectation was changed in response.

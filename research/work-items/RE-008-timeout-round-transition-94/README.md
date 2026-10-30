@@ -51,11 +51,11 @@ types and full semantics remain unresolved.
 | case | observed predicate / action | mutation ordering |
 |---|---|---|
 | Direct TC stale | `incoming_round < [state+0x918]` at `0x44af51f..0x44af526` | branches before `verify_tc` and before any observed state-method call |
-| Direct TC verification | call `0x47594f0` at `0x44af543`; error sentinel branch at `0x44af55a` | failure exits before state-method calls |
-| Direct TC post-check | unknown helper `0x47593a0` at `0x44af570`; error branch at `0x44af587` | failure exits before state-method calls |
+| Direct TC verification | call `0x47594f0` at `0x44af543`; error sentinel branch at `0x44af55a` | failure exits before any caller-local state write; verifier transitive effects remain unresolved |
+| Direct TC post-check | unknown helper `0x47593a0` at `0x44af570`; error branch at `0x44af587` | failure exits before any caller-local state write; helper transitive effects remain unresolved |
 | Timeout round mismatch | `timeout_round != [state+0x918]` at `0x44b035e..0x44b0368` | branches before duplicate lookup and signature verification |
-| Timeout duplicate | lookup using container `state+0x9b8`; present result avoids `0x44b1548` | no observed state mutation and no signature verification |
-| Timeout signature failure | call `0x454aa10` at `0x44b1560`, sentinel branch at `0x44b157d` | branches before first observed state-container update |
+| Timeout duplicate | lookup using container `state+0x9b8`; present result avoids `0x44b1548` | no caller-local write and no signature verification; lookup-helper transitive effects remain unresolved |
+| Timeout signature failure | call `0x454aa10` at `0x44b1560`, sentinel branch at `0x44b157d` | branches before first caller-local state-container update; verifier transitive effects remain unresolved |
 | Unknown validator key | stake helper compares 20-byte keys and adds stake only on equality | no separate membership rejection is visible; an absent key contributes zero weight, subject to unresolved earlier signature/key semantics |
 | Insufficient or exact 2/3 stake | `2*total >= 3*signed_weight` at `0x44b2544..0x44b255f` | branches away after timeout insertion and before the timeout-container move/clear and round call |
 | Strict quorum | `2*total < 3*signed_weight` | moves/clears the timeout container, builds a payload, calls `0x44b6670` |
@@ -224,6 +224,8 @@ is performed.
 - No captured-node execution, live P2P traffic, or persistence claim.
 - No complete receipt/dispatch caller above the large state FDE.
 - No recovered signature algorithm or exact error enum values.
+- Rejection-before-write claims are caller-local unless the branch precedes
+  all calls; transitive callee aliasing/mutation is not proved absent.
 - No proof yet of the duplicate policy within a TC itself.
 - `0x47593a0`, `0x4768f80`, `0x44ab560`, notification, queue, timer, and
   lock/wake callees retain unknown effects.
@@ -234,4 +236,3 @@ is performed.
 The next bounded question is whether `0x4768f80` verifies every remaining TC
 record exactly once and whether `0x4451690` rejects, coalesces, or preserves
 duplicate validator keys before stake aggregation.
-

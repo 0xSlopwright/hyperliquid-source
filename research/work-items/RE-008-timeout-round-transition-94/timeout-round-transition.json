@@ -628,6 +628,7 @@
  ],
  "branch_table": [
   {
+   "caller_state_write_before_outcome": false,
    "case": "direct certificate stale",
    "outcome": "exit before certificate verifier and before round-transition call",
    "predicate": "incoming_round < state[+0x918] (unsigned)",
@@ -635,10 +636,10 @@
     "0x44af51f",
     "0x44af526"
    ],
-   "state_mutation_before_outcome": false,
    "status": "observed"
   },
   {
+   "caller_state_write_before_outcome": false,
    "case": "direct certificate verifier or post-verifier helper error",
    "outcome": "error cleanup; no observed state-method call has occurred",
    "predicate": "result sentinel differs from success sentinel",
@@ -646,10 +647,10 @@
     "0x44af55a",
     "0x44af587"
    ],
-   "state_mutation_before_outcome": false,
-   "status": "observed; helper semantics unresolved"
+   "status": "observed in caller; verifier and helper transitive effects unresolved"
   },
   {
+   "caller_state_write_before_outcome": false,
    "case": "individual timeout wrong round",
    "outcome": "exit before duplicate lookup and signature verification",
    "predicate": "timeout_round != state[+0x918]",
@@ -657,10 +658,10 @@
     "0x44b035e",
     "0x44b0368"
    ],
-   "state_mutation_before_outcome": false,
    "status": "observed"
   },
   {
+   "caller_state_write_before_outcome": false,
    "case": "individual timeout duplicate",
    "outcome": "does not reach signature verifier or later insertion path",
    "predicate": "lookup in state+0x9b8 returns present",
@@ -668,10 +669,10 @@
     "0x44b0376",
     "0x44b038b"
    ],
-   "state_mutation_before_outcome": false,
-   "status": "observed"
+   "status": "observed in caller; lookup-helper transitive effects unresolved"
   },
   {
+   "caller_state_write_before_outcome": false,
    "case": "individual timeout signature rejection",
    "outcome": "error path before first observed state-container update at 0x44b15a1",
    "predicate": "verify_signed_timeout result is not success sentinel",
@@ -679,10 +680,10 @@
     "0x44b1560",
     "0x44b157d"
    ],
-   "state_mutation_before_outcome": false,
-   "status": "observed; signature algorithm is outside this packet"
+   "status": "observed in caller; signature algorithm and verifier transitive effects are outside this packet"
   },
   {
+   "caller_state_write_before_outcome": true,
    "case": "validator key absent from stake tree",
    "outcome": "no stake is added for that key; no separate membership rejection is shown",
    "predicate": "20-byte vote key has no equal stake-tree key",
@@ -690,10 +691,10 @@
     "0x4b33be5",
     "0x4b33c60"
    ],
-   "state_mutation_before_outcome": true,
    "status": "observed weight behavior; earlier signature/key semantics unresolved"
   },
   {
+   "caller_state_write_before_outcome": true,
    "case": "individual timeout insufficient or exact two-thirds stake",
    "outcome": "branch away after insertion; round and timeout-map clearing path not taken",
    "predicate": "2*total >= 3*signed_weight",
@@ -701,10 +702,10 @@
     "0x44b2544",
     "0x44b255f"
    ],
-   "state_mutation_before_outcome": true,
    "status": "observed"
   },
   {
+   "caller_state_write_before_outcome": true,
    "case": "individual timeout strict quorum",
    "outcome": "move/clear timeout container, construct payload, call round transition",
    "predicate": "2*total < 3*signed_weight",
@@ -713,10 +714,10 @@
     "0x44b2565",
     "0x44b2629"
    ],
-   "state_mutation_before_outcome": true,
    "status": "observed"
   },
   {
+   "caller_state_write_before_outcome": false,
    "case": "round transition stale",
    "outcome": "cleanup path without +0x918 store",
    "predicate": "accepted_round < state[+0x918]",
@@ -724,10 +725,10 @@
     "0x44b668e",
     "0x44b66a5"
    ],
-   "state_mutation_before_outcome": false,
    "status": "observed"
   },
   {
+   "caller_state_write_before_outcome": true,
    "case": "round transition accepted",
    "outcome": "state[+0x918] := saturating_add(accepted_round, 1), then downstream queue/timer/container work",
    "predicate": "accepted_round >= state[+0x918]",
@@ -735,7 +736,6 @@
     "0x44b66a7",
     "0x44b66b8"
    ],
-   "state_mutation_before_outcome": true,
    "status": "observed"
   }
  ],
