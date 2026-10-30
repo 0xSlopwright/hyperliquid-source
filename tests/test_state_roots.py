@@ -4,7 +4,6 @@ import importlib.util
 import json
 import os
 import re
-import shutil
 import struct
 import subprocess
 import sys
@@ -13,7 +12,6 @@ import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from gnu_binutils import requires_gnu  # noqa: E402
-from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("state_roots", ROOT / "tools/state_roots.py")
@@ -24,10 +22,6 @@ PACKET = ROOT / "research/work-items/RE-009-storage-state-roots"
 OUTPUT_SHA256 = "1ac3af0abe3b12e44819f117d3288a2e7e7ae336934cb6927d566142bc8387a8"
 SCHEMA_SHA256 = "ae0c6815914486fefb7092a697f3748c39caaad6131a6f93de339814c45429e4"
 DATA = BIN.read_bytes() if BIN.exists() else None
-
-
-def tool(name):
-    return shutil.which(name)
 
 
 @unittest.skipIf(DATA is None, "pinned binary not present")

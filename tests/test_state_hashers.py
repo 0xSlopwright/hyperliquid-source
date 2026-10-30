@@ -3,7 +3,6 @@ import importlib.util
 import json
 import os
 import re
-import shutil
 import struct
 import subprocess
 import sys
@@ -11,7 +10,6 @@ import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from gnu_binutils import requires_gnu  # noqa: E402
-from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("state_hashers", ROOT / "tools/state_hashers.py")

@@ -4,7 +4,6 @@ import importlib.util
 import json
 import os
 import re
-import shutil
 import struct
 import subprocess
 import sys
@@ -13,7 +12,6 @@ import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from gnu_binutils import requires_gnu  # noqa: E402
-from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("consensus_wire", ROOT / "tools/consensus_wire.py")
@@ -23,10 +21,6 @@ BIN = ROOT / "artifacts/node/94/hl-node"
 PACKET = ROOT / "research/work-items/RE-008-consensus-wire-state"
 OUTPUT_SHA256 = "c3be6de771cf5856b5e36560f3ac93d13168f78e7991870b7b870fef4ad3dd3a"
 DATA = BIN.read_bytes() if BIN.exists() else None
-
-
-def tool(name):
-    return shutil.which(name)
 
 
 @unittest.skipIf(DATA is None, "pinned binary not present")

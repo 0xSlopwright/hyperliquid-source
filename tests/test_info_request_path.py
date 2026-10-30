@@ -4,7 +4,6 @@ import importlib.util
 import json
 import os
 import re
-import shutil
 import struct
 import subprocess
 import sys
@@ -12,7 +11,6 @@ import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from gnu_binutils import requires_gnu  # noqa: E402
-from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
@@ -36,10 +34,6 @@ SCOPED_COUNTS = {
     "info_server/src/router.rs": 1,
     "info_server/src/user_ip.rs": 1,
 }
-
-
-def tool(name):
-    return shutil.which(name)
 
 
 @unittest.skipIf(DATA is None, "pinned binary not present")
