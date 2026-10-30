@@ -1,0 +1,10 @@
+9f8af3f0cec24570454bf477a704042af770f70e99f5be0de63fbae7742a2530  tools/short_string_alias.py
+54199c1a6854804bff2a98a1804755455430eb50f1f0cbd1d22a304ab5cfdf41  tests/test_short_string_alias.py
+c56a54075a5974816a73991339f9b86befc50203300cd116cea3905d49e67c8b  research/work-items/RE-001-short-string-alias-94/README.md
+9d9b5c087f8ddeb86a4804bfc6cf381c3a0f85b3703e3299e04cfba68c35377d  research/work-items/RE-001-short-string-alias-94/observed/feed.gnu.txt
+fb1d84c49274336b8203e3da2522ecf69766890f7a8c28f9063e77c408e551c4  research/work-items/RE-001-short-string-alias-94/observed/feed.llvm.txt
+459b7011dcddfd7c2f028d937075dde6558627c826d2693b83a49e3dfadfc0e9  research/work-items/RE-001-short-string-alias-94/observed/frames.txt
+ac5ebf16ffe0b32bb7911bec25e1d622eb89367e7ed725037218fcd85ebee776  research/work-items/RE-001-short-string-alias-94/observed/producer.gnu.txt
+a51b3ddaa4d7aaa8c1931ed00df5557e78a571799bddba98b5095d21fe87b56d  research/work-items/RE-001-short-string-alias-94/observed/producer.llvm.txt
+a81d9b454a1d8f38850c957cef6d503729ff346dbb8c9311f8d73fb79836657e  research/work-items/RE-001-short-string-alias-94/observed/records.json
+4ce49eb4adcf68ae2dfa618275339913a61711224ad39c2177948fec81647422  research/work-items/RE-001-short-string-alias-94/validation.txt
