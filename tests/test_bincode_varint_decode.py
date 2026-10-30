@@ -7,6 +7,8 @@ import struct
 import subprocess
 import sys
 import unittest
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from gnu_binutils import requires_gnu  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
@@ -115,7 +117,7 @@ class Determinism(unittest.TestCase):
         self.assertEqual(hashlib.sha256(outs.pop()).hexdigest(), OUTPUT_SHA256)
 
 
-@unittest.skipUnless(shutil.which('readelf') and shutil.which('objdump'), 'binutils required')
+@requires_gnu('objdump', 'readelf')
 class Binutils(unittest.TestCase):
     def test_fde_readelf(self):
         out = subprocess.run(['readelf', '--debug-dump=frames', str(bv.TARGET)], check=True,
