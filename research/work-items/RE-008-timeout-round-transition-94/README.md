@@ -196,7 +196,7 @@ python3 -I -B -m unittest discover -s tests -p test_timeout_round_transition.py 
 cargo test --manifest-path src/consensus-timeout-transition/Cargo.toml
 cargo fmt --manifest-path src/consensus-timeout-transition/Cargo.toml -- --check
 make verify PYTHON=python3
-make test PYTHON=python3
+PATH=/opt/homebrew/opt/binutils/bin:$PATH make test PYTHON=python3  # macOS/Homebrew
 make reproduce PYTHON=python3
 make catalogue-check PYTHON=python3
 ```
@@ -205,6 +205,10 @@ The Python collector is stdlib-only and does not require a disassembler. The
 human disassembly export can be regenerated with GNU or LLVM objdump over the
 listed ranges; the verifier relies on ELF bytes/FDEs/relocations, not rendered
 assembly syntax.
+
+`VALIDATION.md` preserves the exact pass counts and the initial unqualified
+Apple-tool failure before the GNU-binutils rerun. It is a sanitized result
+summary, not a claim that the unavailable exact-rebuild prerequisites exist.
 
 ## Corruption controls
 
