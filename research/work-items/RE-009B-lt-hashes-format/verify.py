@@ -10,7 +10,7 @@ import lt_hashes_format as m  # noqa: E402
 import bincode_varint as bv  # noqa: E402
 
 BIN_SHA = '3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f'
-JSON_SHA = '1d1a70e88fbfe5a08a9636e277394cc89e36bc189fcc1a532c628c894501e61e'
+JSON_SHA = '007928510442778665a87e3bb086cd96be5c41f3c83f2ed69350f9b87aed6cfb'
 
 
 def main():

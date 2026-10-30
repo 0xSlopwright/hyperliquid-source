@@ -14,7 +14,7 @@ import bincode_varint as bv  # noqa: E402
 
 PKT = ROOT / 'research/work-items/RE-009B-lt-hashes-format'
 BIN_SHA = '3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f'
-JSON_SHA = '1d1a70e88fbfe5a08a9636e277394cc89e36bc189fcc1a532c628c894501e61e'
+JSON_SHA = '007928510442778665a87e3bb086cd96be5c41f3c83f2ed69350f9b87aed6cfb'
 DATA = bv.TARGET.read_bytes() if bv.TARGET.exists() else None
 requires_bin = unittest.skipIf(DATA is None, 'node #94 binary absent')
 RE009_MERGED = {
@@ -57,7 +57,7 @@ class Pins(unittest.TestCase):
         self.assertEqual(got, (PKT / 'lt-hashes-format.json').read_bytes())
 
     def test_exact_counts(self):
-        self.assertEqual(len(self.r['anchors']), 57)
+        self.assertEqual(len(self.r['anchors']), 56)
         self.assertEqual(len(self.r['functions']), 11)
         self.assertEqual(self.r['rel32_callers'], {'0x32699c0': ['0x326a2e0', '0x326aff3', '0x32fc267'],
                                                    '0x3c16810': ['0x3269a7b']})

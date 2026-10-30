@@ -58,7 +58,7 @@ Run from the repo root on Linux x86-64 with Python 3.13.5 (standard library only
 
 ```sh
 python3 -B tools/lt_hashes_format.py | sha256sum
-# 1d1a70e88fbfe5a08a9636e277394cc89e36bc189fcc1a532c628c894501e61e = lt-hashes-format.json
+# 007928510442778665a87e3bb086cd96be5c41f3c83f2ed69350f9b87aed6cfb = lt-hashes-format.json
 python3 -I -B research/work-items/RE-009B-lt-hashes-format/verify.py
 python3 -O -B research/work-items/RE-009B-lt-hashes-format/verify.py
 python3 -I -B research/work-items/RE-009B-lt-hashes-format/independent_verify.py
