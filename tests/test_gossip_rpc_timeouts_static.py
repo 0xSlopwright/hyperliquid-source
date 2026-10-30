@@ -66,6 +66,10 @@ class Results(unittest.TestCase):
         self.assertEqual(statics, [('0x22689f0', 'gossip rpc height'), ('0x22c54a0', 'NodePort::listen'),
                                    ('0x438ed70', 'NodePort::listen'), ('0x47b4950', 'NodePort::listen')])
         self.assertEqual({r['va'] for r in rows} >= {r['tries_store'] for r in self.result['retries']}, True)
+        formatted = [(r['fde'], r['template'], r['template_literal']) for r in rows if 'template' in r]
+        self.assertEqual(formatted, [('0x2039060', '0x1f2107', 'rpc connect '), ('0x4387f40', '0x1f2107', 'rpc connect '),
+                                     ('0x439fa90', '0x1ffb5e', 'tcp_stream_with_retry '),
+                                     ('0x4b399a0', '0x1ffb5e', 'tcp_stream_with_retry ')])
 
     def test_packet_matches_regeneration(self):
         expected = json.loads(PACKET.read_text())
@@ -124,6 +128,12 @@ class Corruptions(unittest.TestCase):
 
     def test_census_descriptor_not_printable(self):
         self.refuses(patched(0x209360, b'\x01'), 'static descriptor at 0x209360 is not printable')
+
+    def test_census_format_call_redirected(self):
+        self.refuses(patched(0x439fb14 + 2, b'\x00\x00\x00\x00'), 'census site 0x439fb54: no format call')
+
+    def test_census_template_literal_changed(self):
+        self.refuses(patched(0x1ffb5e + 3, b'\x01'), 'template 0x1ffb5e literal is not printable')
 
     def test_writer_call_moved(self):
         self.refuses(patched(gt.RETRIES[1]['writer_call'], b'\x90'), 'writer call opcode')

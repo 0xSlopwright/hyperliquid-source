@@ -37,7 +37,7 @@ Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
 `excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 18
-windows. All 22 instruction VAs in `records.json` are instruction starts in
+windows. All 30 instruction VAs in `records.json` are instruction starts in
 those windows.
 
 ## Evidence
@@ -100,16 +100,23 @@ immediate length store to `[rbx+d-8]`.
 | `0x22c54a0` | `0x22c55c2` | static `NodePort::listen` (`0x209360`, 16) |
 | `0x438ed70` | `0x438f2c1` | static `NodePort::listen` |
 | `0x47b4950` | `0x47b4b79` | static `NodePort::listen` |
-| `0x439fa90` | `0x439fb54` | not static |
-| `0x4b399a0` | `0x4b39c79` | not static |
+| `0x439fa90` | `0x439fb54` | formatted `tcp_stream_with_retry …` (`0x1ffb5e`) |
+| `0x4b399a0` | `0x4b39c79` | formatted `tcp_stream_with_retry …` (`0x1ffb5e`) |
 
 `0x22c54a0`, `0x438ed70` and `0x47b4950` are the three NodePort
 listen-port FDEs. Inference: a {descriptor, 10, 2.0} sleep-retry record is
 a shared default for NodePort listen, the gossip RPC connect, and the
 `gossip rpc height` step of the wrapper the lead seeds as `AsyncSleepRetry`
-(`0x22689f0`). `0x439fa90` and `0x4b399a0` follow a format call that uses the
-`tcp_stream_with_retry ` template (`0x1ffb5e`). That association is by
-proximity only and is not checked by the tool.
+(`0x22689f0`).
+
+For each of the other four sites, the tool takes the last call through
+`0x576e040` within 0x90 bytes before the count store. It then takes the last
+`lea rsi,[rip+t]` within 0x40 bytes before that call. It reads the template's
+first byte as a literal length N and requires the next N bytes to be
+printable. This gives `rpc connect ` (12) twice and `tcp_stream_with_retry `
+(22) twice (`0x439fb14`, `0x4b39c22`). The header-length reading is an
+inference from rustc 1.94's packed format templates; the two pinned literals
+are what the tests check.
 
 ### The only 60.0 in the request futures is a writer argument (observation)
 
@@ -146,7 +153,7 @@ so the 60.0 goes unused there.
 
 ## Controls
 
-`tests/test_gossip_rpc_timeouts_static.py` (15 tests) regenerates
+`tests/test_gossip_rpc_timeouts_static.py` (18 tests) regenerates
 `records.json`. It also refuses each of these corruptions:
 
 - Any timeout immediate replaced by 60.0.
@@ -158,6 +165,7 @@ so the 60.0 goes unused there.
 - An extra 60.0 `movabs` planted in `0x2039060`.
 - An extra (10, 2.0) census site planted, or a static census descriptor made
   non-printable.
+- A census format call redirected, or a template literal made non-printable.
 - The writer call opcode removed.
 - A window attributed to the wrong FDE.
 

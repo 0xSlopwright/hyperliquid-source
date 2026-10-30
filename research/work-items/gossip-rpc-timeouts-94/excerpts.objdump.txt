@@ -354,7 +354,25 @@
  438f2cc:	48 b8 00 00 00 00 00 	movabs rax,0x4000000000000000
  438f2d3:	00 00 40
 
-## census 0x439fa90 (10, 2.0) non-static descriptor [0x439fb54, 0x439fb69)
+## census 0x439fa90 (10, 2.0) formatted 'tcp_stream_with_retry ' [0x439fb00, 0x439fb69)
+ 439fb00:	48 8d 35 57 00 e6 fb 	lea    rsi,[rip+0xfffffffffbe60057]        # 1ffb5e <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4da82a2>
+ 439fb07:	48 8d bc 24 a8 00 00 	lea    rdi,[rsp+0xa8]
+ 439fb0e:	00
+ 439fb0f:	48 8d 54 24 30       	lea    rdx,[rsp+0x30]
+ 439fb14:	ff 15 26 e5 3c 01    	call   QWORD PTR [rip+0x13ce526]        # 576e040 <__register_atfork@plt+0x10ce00>
+ 439fb1a:	48 8d 43 30          	lea    rax,[rbx+0x30]
+ 439fb1e:	48 8b 8c 24 b8 00 00 	mov    rcx,QWORD PTR [rsp+0xb8]
+ 439fb25:	00
+ 439fb26:	48 89 4b 70          	mov    QWORD PTR [rbx+0x70],rcx
+ 439fb2a:	0f 10 84 24 a8 00 00 	movups xmm0,XMMWORD PTR [rsp+0xa8]
+ 439fb31:	00
+ 439fb32:	0f 11 43 60          	movups XMMWORD PTR [rbx+0x60],xmm0
+ 439fb36:	48 8b 53 68          	mov    rdx,QWORD PTR [rbx+0x68]
+ 439fb3a:	48 8b 73 70          	mov    rsi,QWORD PTR [rbx+0x70]
+ 439fb3e:	48 8d 4b 78          	lea    rcx,[rbx+0x78]
+ 439fb42:	48 89 43 78          	mov    QWORD PTR [rbx+0x78],rax
+ 439fb46:	48 89 93 80 00 00 00 	mov    QWORD PTR [rbx+0x80],rdx
+ 439fb4d:	48 89 b3 88 00 00 00 	mov    QWORD PTR [rbx+0x88],rsi
  439fb54:	48 c7 83 90 00 00 00 	mov    QWORD PTR [rbx+0x90],0xa
  439fb5b:	0a 00 00 00
  439fb5f:	48 b8 00 00 00 00 00 	movabs rax,0x4000000000000000
@@ -370,7 +388,27 @@
  47b4b84:	48 b8 00 00 00 00 00 	movabs rax,0x4000000000000000
  47b4b8b:	00 00 40
 
-## census 0x4b399a0 (10, 2.0) non-static descriptor [0x4b39c79, 0x4b39c8e)
+## census 0x4b399a0 (10, 2.0) formatted 'tcp_stream_with_retry ' [0x4b39c0b, 0x4b39c8e)
+ 4b39c0b:	48 8d 35 4c 5f 6c fb 	lea    rsi,[rip+0xfffffffffb6c5f4c]        # 1ffb5e <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4da82a2>
+ 4b39c12:	48 8d bc 24 40 01 00 	lea    rdi,[rsp+0x140]
+ 4b39c19:	00
+ 4b39c1a:	48 8d 94 24 f0 04 00 	lea    rdx,[rsp+0x4f0]
+ 4b39c21:	00
+ 4b39c22:	ff 15 18 44 c3 00    	call   QWORD PTR [rip+0xc34418]        # 576e040 <__register_atfork@plt+0x10ce00>
+ 4b39c28:	48 8d 83 f0 01 00 00 	lea    rax,[rbx+0x1f0]
+ 4b39c2f:	48 8b 8c 24 50 01 00 	mov    rcx,QWORD PTR [rsp+0x150]
+ 4b39c36:	00
+ 4b39c37:	48 89 8b 30 02 00 00 	mov    QWORD PTR [rbx+0x230],rcx
+ 4b39c3e:	66 0f 10 84 24 40 01 	movupd xmm0,XMMWORD PTR [rsp+0x140]
+ 4b39c45:	00 00
+ 4b39c47:	66 0f 11 83 20 02 00 	movupd XMMWORD PTR [rbx+0x220],xmm0
+ 4b39c4e:	00
+ 4b39c4f:	48 8b 93 28 02 00 00 	mov    rdx,QWORD PTR [rbx+0x228]
+ 4b39c56:	48 8b b3 30 02 00 00 	mov    rsi,QWORD PTR [rbx+0x230]
+ 4b39c5d:	48 8d 8b 38 02 00 00 	lea    rcx,[rbx+0x238]
+ 4b39c64:	48 89 83 38 02 00 00 	mov    QWORD PTR [rbx+0x238],rax
+ 4b39c6b:	48 89 93 40 02 00 00 	mov    QWORD PTR [rbx+0x240],rdx
+ 4b39c72:	48 89 b3 48 02 00 00 	mov    QWORD PTR [rbx+0x248],rsi
  4b39c79:	48 c7 83 50 02 00 00 	mov    QWORD PTR [rbx+0x250],0xa
  4b39c80:	0a 00 00 00
  4b39c84:	48 b8 00 00 00 00 00 	movabs rax,0x4000000000000000

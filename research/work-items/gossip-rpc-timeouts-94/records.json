@@ -47,6 +47,10 @@
       "descriptor": "not static (no RIP LEA + immediate length store before the count)",
       "end": "0x20392cf",
       "fde": "0x2039060",
+      "format_call": "0x203926a",
+      "template": "0x1f2107",
+      "template_lea": "0x2039253",
+      "template_literal": "rpc connect ",
       "va": "0x20392ba"
     },
     {
@@ -72,6 +76,10 @@
       "descriptor": "not static (no RIP LEA + immediate length store before the count)",
       "end": "0x43881af",
       "fde": "0x4387f40",
+      "format_call": "0x438814a",
+      "template": "0x1f2107",
+      "template_lea": "0x4388133",
+      "template_literal": "rpc connect ",
       "va": "0x438819a"
     },
     {
@@ -88,6 +96,10 @@
       "descriptor": "not static (no RIP LEA + immediate length store before the count)",
       "end": "0x439fb69",
       "fde": "0x439fa90",
+      "format_call": "0x439fb14",
+      "template": "0x1ffb5e",
+      "template_lea": "0x439fb00",
+      "template_literal": "tcp_stream_with_retry ",
       "va": "0x439fb54"
     },
     {
@@ -104,6 +116,10 @@
       "descriptor": "not static (no RIP LEA + immediate length store before the count)",
       "end": "0x4b39c8e",
       "fde": "0x4b399a0",
+      "format_call": "0x4b39c22",
+      "template": "0x1ffb5e",
+      "template_lea": "0x4b39c0b",
+      "template_literal": "tcp_stream_with_retry ",
       "va": "0x4b39c79"
     }
   ],

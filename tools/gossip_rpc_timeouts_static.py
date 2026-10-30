@@ -196,12 +196,32 @@ def check_retry(img, r):
                 f64_immediates=sorted({v for _, v in imms if 1e-6 < abs(v) < 1e7}))
 
 
+def formatted_template(img, va):
+    """Last call through FMT_SLOT within 0x90 bytes before va, and the last `lea rsi,[rip+t]` within 0x40 before it."""
+    window = img.read(va - 0x90, 0x90)
+    calls = [va - 0x90 + m.start() for m in re.finditer(rb'\xff\x15', window)
+             if img.rip(va - 0x90 + m.start(), 6) == FMT_SLOT]
+    require(calls, f'census site {va:#x}: no format call through {FMT_SLOT:#x} before it')
+    call = calls[-1]
+    before = img.read(call - 0x40, 0x40)
+    leas = [call - 0x40 + m.start() for m in re.finditer(rb'\x48\x8d\x35', before) if m.start() + 7 <= 0x40]
+    require(leas, f'census site {va:#x}: no lea rsi template before format call {call:#x}')
+    template = img.rip(leas[-1], 7)
+    n = img.read(template, 1)[0]
+    literal = img.read(template + 1, n)
+    require(all(0x20 <= c < 0x7f for c in literal), f'template {template:#x} literal is not printable')
+    return dict(template_lea=hex(leas[-1]), format_call=hex(call), template=hex(template),
+                template_literal=literal.decode())
+
+
 def retry_census(img):
     """Every `mov QWORD [rbx+d],10; movabs rax,2.0` in .text, with the descriptor stored before it."""
     text = next(s for s in img.secs if s['name'] == '.text' and s['type'] != 8)
     body = img.data[text['offset']:text['offset'] + text['size']]
+    matches = list(CENSUS.finditer(body))
+    require(len(matches) == CENSUS_COUNT, f'{len(matches)} retry-record sites, expected {CENSUS_COUNT}')
     rows = []
-    for m in CENSUS.finditer(body):
+    for m in matches:
         va = text['address'] + m.start()
         disp = struct.unpack('<b', m.group(1))[0] if m.group(1) is not None else struct.unpack('<i', m.group(2))[0]
         start = [f for f in img.fdes if f[0] <= va < f[1]]
@@ -217,9 +237,9 @@ def retry_census(img):
             row.update(descriptor='static', descriptor_va=hex(desc_va), descriptor_text=text_.decode())
         else:
             row.update(descriptor='not static (no RIP LEA + immediate length store before the count)')
+            row.update(formatted_template(img, va))
         row['end'] = hex(va + m.end() - m.start())
         rows.append(row)
-    require(len(rows) == CENSUS_COUNT, f'{len(rows)} retry-record sites, expected {CENSUS_COUNT}')
     return rows
 
 
