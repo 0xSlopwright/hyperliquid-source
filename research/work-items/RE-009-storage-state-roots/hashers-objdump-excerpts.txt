@@ -1,0 +1,20 @@
+# hasher call sites (objdump -d -M intel)
+## 0x3269d90
+ 3269d90:	00 ba 00 08 00 00    	add    BYTE PTR [rdx+0x800],bh
+ 3269d96:	ff 15 2c 63 50 02    	call   QWORD PTR [rip+0x250632c]        # 57700c8
+## 0x2209250
+ 2209250:	8b 74 24 08          	mov    esi,DWORD PTR [rsp+0x8]
+ 2209254:	48 8b 54 24 68       	mov    rdx,QWORD PTR [rsp+0x68]
+ 2209259:	4c 89 f1             	mov    rcx,r14
+ 220925c:	ff 15 96 a7 56 03    	call   QWORD PTR [rip+0x356a796]        # 57739f8
+## 0x394b4d0
+ 394b4d0:	48 8d bc 24 90 00 00 	lea    rdi,[rsp+0x90]
+ 394b4d7:	00 
+ 394b4d8:	4c 89 ee             	mov    rsi,r13
+ 394b4db:	4c 89 e2             	mov    rdx,r12
+ 394b4de:	ff 15 e4 4b e2 01    	call   QWORD PTR [rip+0x1e24be4]        # 57700c8
+## 0x37e5720
+ 37e5720:	48 8d bc 24 80 00 00 	lea    rdi,[rsp+0x80]
+ 37e5727:	00 
+ 37e5728:	4c 89 fe             	mov    rsi,r15
+ 37e572b:	ff 15 97 a9 f8 01    	call   QWORD PTR [rip+0x1f8a997]        # 57700c8
