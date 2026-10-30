@@ -192,6 +192,12 @@ Lead corrections:
   timeout per 4,000,000-byte chunk, defaulting to 20.0 s. The two bincode
   wrappers and the inline writer select that default, even though the wrappers
   carry 60.0.
+- **`0x439f860`'s 60.0:** the lead's `reconnecting_tcp_client.rs` reads the
+  `60.0` built in `0x439f860` as a connect timeout. In the bytes, the only
+  `60.0` immediate in that FDE (`movabs` at `0x439f958`) is the seconds word of
+  the `{0, 60.0}` pair passed to writer `0x43a17c0` at `0x439f983`. Its flag 0
+  selects the 20.0 s chunk default (table above). Whether a connect timeout is
+  set elsewhere is not analysed.
 - **Agreements:** the lead's compression threshold (`>= 0x401`), port rule
   (`(port & !1) != 0x0f9e`) and `[u32 BE][flag][payload]` frame agree with the
   bytes.
