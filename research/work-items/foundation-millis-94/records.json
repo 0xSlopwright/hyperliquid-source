@@ -1,0 +1,30 @@
+{
+  "target_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",
+  "windows": [
+    {
+      "name": "conversion",
+      "start_va": "0x13c8e10",
+      "end_va_exclusive": "0x13c8f53",
+      "body_sha256": "84076a4477d6ee72922b6e0300998d4cef6af83c017126017ba58660300b1048",
+      "fde_offset": "0x2e46bc",
+      "fde_hex": "3c000000ac7f0000343240004301000004eb9295ff420e10420e18420e20410e28440e4083058c048e038f0202c80e28410e20420e18420e10420e08410e4000",
+      "cie_offset": "0x2dc714",
+      "cie_hex": "1c00000000000000017a504c5200017810079b29ca7b041b1b0c070890010000"
+    },
+    {
+      "name": "error_formatter",
+      "start_va": "0x14509a0",
+      "end_va_exclusive": "0x14509ec",
+      "body_sha256": "f94b05f7f7670a6918cbfc1f8f20d7820e2009cb1fbfe41bff46e090cfd083cc",
+      "fde_offset": "0xace0",
+      "fde_hex": "24000000e4ac0000a04776004c00000000420e10410e18440e4083038e0202410e18410e10420e08",
+      "cie_offset": "0x0",
+      "cie_hex": "1400000000000000017a5200017810011b0c070890010000"
+    }
+  ],
+  "relative_slots": {
+    "0x576e890": "0x151f6f0",
+    "0x576e040": "0x1344760"
+  },
+  "original_error_message": "from_unix_millis: out-of-range input "
+}
