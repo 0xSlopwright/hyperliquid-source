@@ -1,4 +1,10 @@
-# RE-005 sibling: bincode-fork varint SLOW reader path and u32 width (node #94)
+# RE-005 sibling: which bincode-fork varint slow Reader paths and integer widths does node #94 contain?
+
+- Component ID: RE-005 (bincode-fork varint / integer-encoding boundary; slow Reader path and u32 width)
+- Target release and full SHA-256: node #94 `artifacts/node/94/hl-node`, `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`
+- Source commit / reference commit: base `main` @ `1f8c67c63ca4794c9689235471c60297f8a5c985`; no upstream source commit (the bincode fork source is not available)
+- Claim status: observation (static disassembly); inference where marked below
+- Scope included and excluded: included are the u32 slice decoder, the u64 slice slow branch, both Readers, the error builder, decode vectors and the u16 length-marker scan. Excluded are the u64 fast-path body (merged packet), Reader `0x466dad0`, and runtime behaviour.
 
 Status: **evidence packet, no gate claimed.** Sibling to
 `../RE-005-bincode-varint/` (the merged u64 *slice fast path*). This packet does
@@ -28,30 +34,34 @@ Static and offline. The binary is never executed.
 
 ```sh
 python3 -B tools/bincode_varint_slow.py | sha256sum
-# a05884dbc25bd01c6cc92e633b33d7b80e8b6e45cf03ef1bc9f00672d34d8122 = slow-sites.json
+# 2a997306317bd14b243d1f780501514707f3b4a5d75726555a0156608867df14 = slow-sites.json
 python3 -I -B research/work-items/RE-005-bincode-slow-widths/verify.py
 python3 -O -B research/work-items/RE-005-bincode-slow-widths/verify.py
 python3 -I -B research/work-items/RE-005-bincode-slow-widths/independent_verify.py
-# PASS / FAIL / INCONCLUSIVE
+# prints PASS / FAIL / INCONCLUSIVE
 python3 -I -B tools/bincode_varint_decode.py | sha256sum
 # negative control: 6da03736b718d6c7db769a0a1be7e9131a6229cea6b198dd85d535282be5a56f, unchanged
 python3 -m unittest tests.test_bincode_varint_slow -v
 ```
 
+Tools: Python 3 standard library only; GNU objdump 2.44 for the GNU-only tests
+(they skip under an LLVM-shaped objdump). Working directory: repo root. Platform:
+Linux x86-64. Side effects: none, apart from stdout.
+
 Output is byte-identical under `PYTHONHASHSEED` 0, 7 and 99.
 
 | file | sha256 |
 |---|---|
-| `slow-sites.json` | `a05884dbc25bd01c6cc92e633b33d7b80e8b6e45cf03ef1bc9f00672d34d8122` |
+| `slow-sites.json` | `2a997306317bd14b243d1f780501514707f3b4a5d75726555a0156608867df14` |
 | `objdump-excerpts.txt` | `0a8b937e511c334bc640b417042359a864051e8b758de85b5aeadefbe1e9eb03` |
 
 The objdump excerpts were made with GNU objdump (`-d -M intel --no-show-raw-insn`)
 over the five FDE ranges. They are for human reading only. The tool and tests
 never parse them.
 
-## Evidence (observations)
+## Evidence
 
-Coordinates are virtual addresses. Function bounds come from this binary's own
+Coordinates are virtual addresses (VA), not file offsets. Analysis was complete over the five FDE ranges and the full `.text` scan; nothing timed out. Function bounds come from this binary's own
 `.eh_frame_hdr` / `.eh_frame` FDEs.
 
 ### u32 slice decoder
@@ -114,7 +124,7 @@ Reached through GOT `0x57745e8`.
 | `0xfe` | error; `found_code=4`; **no u128 read** |
 | `0xff` | error; `found_code=0xc` |
 
-## u16 length-marker scan (`u16_marker_scan`)
+### u16 length-marker scan (`u16_marker_scan`)
 
 The scan covered 35 `0xfb` sites, exactly one length-2-adjacent hit at
 `0x134698d`, which is a chain-id lookup, not a u16 decoder, so there is no u16
@@ -143,7 +153,27 @@ slice decoder.
   never reads a tag byte from a buffer. That makes it an EVM chain-id
   membership lookup, not a decoder.
 
-## What this does not claim
+## Implementation and comparison
+
+Independent Rust path: not yet implemented. No Cargo.lock, compiler/linker flags,
+two-build result, or normalized comparison/masks exist for this packet. Fixture
+identity is the binary SHA-256 above. Boundary and error cases are covered by the
+22 decode vectors (inputs of length ≤ 8 and the `0xfe` / `0xff` markers). The
+corruption control is the negative-control hash below.
+
+## Results and limitations
+
+Metrics (machine-readable in `slow-sites.json`):
+
+- Readers pinned: 2 of 2 slow-branch targets (`0x466d850`, `0x466d980`).
+- Reader call sites: `0x466d850` 2, `0x466d980` 12, over all `call [rip+disp32]` in `.text`.
+- Decode vectors: 22.
+- `0xfb` compare sites: 35 of 35 instruction starts. `length2_adjacent` hits: 1 of 35 (`0x134698d`, not a decoder).
+
+Passed: `verify.py` (`-I -B`, `-O -B`) and `independent_verify.py` (PASS).
+No progress gate is requested.
+
+### What this does not claim
 
 - No claim that the binary executes these paths at runtime; evidence is static.
 - No claim about the `0x466dad0` Reader (`esi=5` on its `0xfe` arm); different
@@ -162,8 +192,13 @@ slice decoder.
 - `esi`/`edx` are pinned as raw codes; mapping them onto a source-level
   `IntegerType` enum is an inference, not an observation.
 
-## Negative control
+### Negative control
 
 `tools/bincode_varint_decode.py` recompute must stay at
 `6da03736b718d6c7db769a0a1be7e9131a6229cea6b198dd85d535282be5a56f`. The slow
 tool refuses to emit if that hash moves.
+
+### Next question
+
+What does the `0x466dad0` Reader decode (`esi=5` on its `0xfe` arm), and which
+source-level `IntegerType` variants do the raw `esi`/`edx` codes correspond to?
