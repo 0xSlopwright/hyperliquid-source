@@ -38,11 +38,17 @@ python3 tools/pxpriv_admission.py --out research/work-items/RE-004-pxpriv-admiss
 python3 -m unittest tests.test_pxpriv_admission -v
 sha256sum -c research/work-items/RE-004-pxpriv-admission-94/MANIFEST.sha256
 # optional human cross-check: objdump disassemble selected caller and constructor FDEs
-# objdump -d -M intel --start-address=<start> --stop-address=<end> artifacts/node/94/hl-node
+# objdump -d -M intel --start-address=0x199fa00 --stop-address=0x199ff99 artifacts/node/94/hl-node
 ```
 
 The tool refuses to run if the input SHA-256 differs. It writes `evidence.json`,
 `call-sites.tsv`, and `guard-bytes.txt` alongside `MANIFEST.sha256`.
+
+### Repository verification status & environment limits
+- `tools/artifacts.py verify`: All 8 artifact SHA-256 digests verified OK (including `artifacts/node/94/hl-node: 3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`).
+- `tools/verify_imports.py`: Verified 37 imported files and all pinned source repositories.
+- `make verify` / `make test` / `make catalogue-check`: Full repo-level make harness was not run directly in this environment due to missing native POSIX make/gpg toolchains on Windows. All unit tests for this packet (`tests/test_pxpriv_admission.py`) pass 8/8 cleanly.
+- Differential/runtime execution: Intentionally excluded. Offline static observation only; no binary execution or runtime equivalence claim.
 
 ## Evidence
 
