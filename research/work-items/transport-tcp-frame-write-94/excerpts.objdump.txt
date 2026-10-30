@@ -33,7 +33,7 @@
  204b3dc:	0f 80 e6 04 00 00    	jo     204b8c8 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5c538>
  204b3e2:	48 c1 e8 02          	shr    rax,0x2
  204b3e6:	48 b9 c3 f5 28 5c 8f 	movabs rcx,0x28f5c28f5c28f5c3
- 204b3ed:	c2 f5 28 
+ 204b3ed:	c2 f5 28
  204b3f0:	48 f7 e1             	mul    rcx
  204b3f3:	49 89 d7             	mov    r15,rdx
  204b3f6:	49 c1 ef 02          	shr    r15,0x2
@@ -50,7 +50,7 @@
  204b427:	48 89 44 24 40       	mov    QWORD PTR [rsp+0x40],rax
  204b42c:	4c 89 7c 24 48       	mov    QWORD PTR [rsp+0x48],r15
  204b431:	48 c7 44 24 50 00 00 	mov    QWORD PTR [rsp+0x50],0x0
- 204b438:	00 00 
+ 204b438:	00 00
  204b43a:	49 81 fc ff ff 00 00 	cmp    r12,0xffff
  204b441:	0f 83 0a 01 00 00    	jae    204b551 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5c8af>
  204b447:	41 bf 00 20 00 00    	mov    r15d,0x2000
@@ -60,12 +60,12 @@
  204b45d:	48 85 c0             	test   rax,rax
  204b460:	0f 84 d4 04 00 00    	je     204b93a <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5c4c6>
  204b466:	48 89 84 24 40 01 00 	mov    QWORD PTR [rsp+0x140],rax
- 204b46d:	00 
+ 204b46d:	00
  204b46e:	66 0f 57 c0          	xorpd  xmm0,xmm0
  204b472:	66 0f 11 04 24       	movupd XMMWORD PTR [rsp],xmm0
  204b477:	48 8d 4c 24 40       	lea    rcx,[rsp+0x40]
  204b47c:	4c 8d 84 24 40 01 00 	lea    r8,[rsp+0x140]
- 204b483:	00 
+ 204b483:	00
  204b484:	41 b9 01 00 00 00    	mov    r9d,0x1
  204b48a:	4c 89 ef             	mov    rdi,r13
  204b48d:	4c 89 e6             	mov    rsi,r12
@@ -74,7 +74,7 @@
  204b498:	49 89 c7             	mov    r15,rax
  204b49b:	49 89 d5             	mov    r13,rdx
  204b49e:	48 8b bc 24 40 01 00 	mov    rdi,QWORD PTR [rsp+0x140]
- 204b4a5:	00 
+ 204b4a5:	00
  204b4a6:	be 00 20 00 00       	mov    esi,0x2000
  204b4ab:	e9 05 01 00 00       	jmp    204b5b5 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5c84b>
  204b4b0:	48 8d 83 e0 02 00 00 	lea    rax,[rbx+0x2e0]
@@ -86,7 +86,7 @@
  204b4d5:	48 01 c8             	add    rax,rcx
  204b4d8:	ff e0                	jmp    rax
  204b4da:	f2 0f 10 83 38 01 00 	movsd  xmm0,QWORD PTR [rbx+0x138]
- 204b4e1:	00 
+ 204b4e1:	00
  204b4e2:	48 8b 83 b8 00 00 00 	mov    rax,QWORD PTR [rbx+0xb8]
  204b4e9:	48 8b 8b c0 00 00 00 	mov    rcx,QWORD PTR [rbx+0xc0]
  204b4f0:	e9 3f 05 00 00       	jmp    204ba34 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5c3cc>
@@ -102,7 +102,7 @@
  204b520:	48 01 c8             	add    rax,rcx
  204b523:	ff e0                	jmp    rax
  204b525:	f2 0f 10 83 e0 01 00 	movsd  xmm0,QWORD PTR [rbx+0x1e0]
- 204b52c:	00 
+ 204b52c:	00
  204b52d:	48 8b 83 d0 01 00 00 	mov    rax,QWORD PTR [rbx+0x1d0]
  204b534:	48 8b 8b d8 01 00 00 	mov    rcx,QWORD PTR [rbx+0x1d8]
  204b53b:	0f b6 93 db 02 00 00 	movzx  edx,BYTE PTR [rbx+0x2db]
@@ -116,12 +116,12 @@
  204b567:	48 85 c0             	test   rax,rax
  204b56a:	0f 84 d1 03 00 00    	je     204b941 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5c4bf>
  204b570:	48 89 84 24 40 01 00 	mov    QWORD PTR [rsp+0x140],rax
- 204b577:	00 
+ 204b577:	00
  204b578:	66 0f 57 c0          	xorpd  xmm0,xmm0
  204b57c:	66 0f 11 04 24       	movupd XMMWORD PTR [rsp],xmm0
  204b581:	48 8d 4c 24 40       	lea    rcx,[rsp+0x40]
  204b586:	4c 8d 84 24 40 01 00 	lea    r8,[rsp+0x140]
- 204b58d:	00 
+ 204b58d:	00
  204b58e:	41 b9 01 00 00 00    	mov    r9d,0x1
  204b594:	4c 89 ef             	mov    rdi,r13
  204b597:	4c 89 e6             	mov    rsi,r12
@@ -130,7 +130,7 @@
  204b5a2:	49 89 c7             	mov    r15,rax
  204b5a5:	49 89 d5             	mov    r13,rdx
  204b5a8:	48 8b bc 24 40 01 00 	mov    rdi,QWORD PTR [rsp+0x140]
- 204b5af:	00 
+ 204b5af:	00
  204b5b0:	be 00 40 00 00       	mov    esi,0x4000
  204b5b5:	31 d2                	xor    edx,edx
  204b5b7:	ff 15 53 2a 72 03    	call   QWORD PTR [rip+0x3722a53]        # 576e010 <__register_atfork@plt+0x10cdd0>
@@ -163,34 +163,34 @@
  204b62b:	bf 01 00 00 00       	mov    edi,0x1
  204b630:	e8 cb 81 e9 02       	call   4ee3800 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc4600>
  204b635:	48 89 84 24 d0 00 00 	mov    QWORD PTR [rsp+0xd0],rax
- 204b63c:	00 
+ 204b63c:	00
  204b63d:	89 94 24 d8 00 00 00 	mov    DWORD PTR [rsp+0xd8],edx
  204b644:	4c 89 74 24 40       	mov    QWORD PTR [rsp+0x40],r14
  204b649:	8b 44 24 3c          	mov    eax,DWORD PTR [rsp+0x3c]
  204b64d:	89 44 24 48          	mov    DWORD PTR [rsp+0x48],eax
  204b651:	48 8d bc 24 40 01 00 	lea    rdi,[rsp+0x140]
- 204b658:	00 
+ 204b658:	00
  204b659:	48 8d b4 24 d0 00 00 	lea    rsi,[rsp+0xd0]
- 204b660:	00 
+ 204b660:	00
  204b661:	48 8d 54 24 40       	lea    rdx,[rsp+0x40]
  204b666:	e8 c5 80 e9 02       	call   4ee3730 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc46d0>
  204b66b:	80 bc 24 40 01 00 00 	cmp    BYTE PTR [rsp+0x140],0x0
- 204b672:	00 
+ 204b672:	00
  204b673:	66 0f 57 c0          	xorpd  xmm0,xmm0
  204b677:	75 3c                	jne    204b6b5 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5c74b>
  204b679:	f2 0f 10 8c 24 48 01 	movsd  xmm1,QWORD PTR [rsp+0x148]
- 204b680:	00 00 
+ 204b680:	00 00
  204b682:	0f 57 c0             	xorps  xmm0,xmm0
  204b685:	f2 0f 2a 84 24 50 01 	cvtsi2sd xmm0,DWORD PTR [rsp+0x150]
- 204b68c:	00 00 
+ 204b68c:	00 00
  204b68e:	0f 14 0d eb 87 1b fe 	unpcklps xmm1,XMMWORD PTR [rip+0xfffffffffe1b87eb]        # 203e80 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4da3f80>
  204b695:	66 0f 5c 0d 03 78 1b 	subpd  xmm1,XMMWORD PTR [rip+0xfffffffffe1b7803]        # 202ea0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4da4f60>
- 204b69c:	fe 
+ 204b69c:	fe
  204b69d:	66 0f 28 d1          	movapd xmm2,xmm1
  204b6a1:	66 0f 15 d1          	unpckhpd xmm2,xmm1
  204b6a5:	f2 0f 58 d1          	addsd  xmm2,xmm1
  204b6a9:	f2 0f 5e 05 6f eb 1b 	divsd  xmm0,QWORD PTR [rip+0xfffffffffe1beb6f]        # 20a220 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4d9dbe0>
- 204b6b0:	fe 
+ 204b6b0:	fe
  204b6b1:	f2 0f 58 c2          	addsd  xmm0,xmm2
  204b6b5:	49 83 c7 40          	add    r15,0x40
  204b6b9:	41 b6 01             	mov    r14b,0x1
@@ -228,11 +228,11 @@
  204b73b:	48 8d 7b 58          	lea    rdi,[rbx+0x58]
  204b73f:	41 0f cc             	bswap  r12d
  204b742:	48 c7 43 58 04 00 00 	mov    QWORD PTR [rbx+0x58],0x4
- 204b749:	00 
+ 204b749:	00
  204b74a:	48 89 43 60          	mov    QWORD PTR [rbx+0x60],rax
  204b74e:	44 89 20             	mov    DWORD PTR [rax],r12d
  204b751:	48 c7 43 68 04 00 00 	mov    QWORD PTR [rbx+0x68],0x4
- 204b758:	00 
+ 204b758:	00
  204b759:	48 83 7b 58 04       	cmp    QWORD PTR [rbx+0x58],0x4
  204b75e:	75 0c                	jne    204b76c <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5c694>
  204b760:	49 89 ff             	mov    r15,rdi
@@ -241,7 +241,7 @@
  204b76c:	48 8b 43 60          	mov    rax,QWORD PTR [rbx+0x60]
  204b770:	44 88 70 04          	mov    BYTE PTR [rax+0x4],r14b
  204b774:	48 c7 43 68 05 00 00 	mov    QWORD PTR [rbx+0x68],0x5
- 204b77b:	00 
+ 204b77b:	00
  204b77c:	4c 8b 7b 48          	mov    r15,QWORD PTR [rbx+0x48]
  204b780:	4c 8b 63 50          	mov    r12,QWORD PTR [rbx+0x50]
  204b784:	48 8b 43 58          	mov    rax,QWORD PTR [rbx+0x58]
@@ -261,7 +261,7 @@
  204b7bd:	48 89 43 70          	mov    QWORD PTR [rbx+0x70],rax
  204b7c1:	4c 89 6b 78          	mov    QWORD PTR [rbx+0x78],r13
  204b7c5:	48 c7 83 80 00 00 00 	mov    QWORD PTR [rbx+0x80],0x3d0900
- 204b7cc:	00 09 3d 00 
+ 204b7cc:	00 09 3d 00
 
 ## 0x204b340 unwrap panic [0x204b83f, 0x204b864)
  204b83f:	48 8d 3d d2 8a 37 fe 	lea    rdi,[rip+0xfffffffffe378ad2]        # 3c4318 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4be3ae8>
@@ -296,12 +296,12 @@
  204bf9c:	80 7b 30 00          	cmp    BYTE PTR [rbx+0x30],0x0
  204bfa0:	75 08                	jne    204bfaa <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5be56>
  204bfa2:	f2 0f 10 05 8e f0 1b 	movsd  xmm0,QWORD PTR [rip+0xfffffffffe1bf08e]        # 20b038 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4d9cdc8>
- 204bfa9:	fe 
+ 204bfa9:	fe
  204bfaa:	4c 8d a3 b8 00 00 00 	lea    r12,[rbx+0xb8]
  204bfb1:	48 8d 05 4d 8c 37 fe 	lea    rax,[rip+0xfffffffffe378c4d]        # 3c4c05 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4be31fb>
  204bfb8:	48 89 83 b8 00 00 00 	mov    QWORD PTR [rbx+0xb8],rax
  204bfbf:	48 c7 83 c0 00 00 00 	mov    QWORD PTR [rbx+0xc0],0x9
- 204bfc6:	09 00 00 00 
+ 204bfc6:	09 00 00 00
  204bfca:	4c 89 83 c8 00 00 00 	mov    QWORD PTR [rbx+0xc8],r8
  204bfd1:	48 89 93 d0 00 00 00 	mov    QWORD PTR [rbx+0xd0],rdx
  204bfd8:	48 89 8b d8 00 00 00 	mov    QWORD PTR [rbx+0xd8],rcx
@@ -309,7 +309,7 @@
  204bfe6:	48 89 bb e8 00 00 00 	mov    QWORD PTR [rbx+0xe8],rdi
  204bfed:	c6 83 30 01 00 00 00 	mov    BYTE PTR [rbx+0x130],0x0
  204bff4:	f2 0f 11 83 38 01 00 	movsd  QWORD PTR [rbx+0x138],xmm0
- 204bffb:	00 
+ 204bffb:	00
  204bffc:	48 8d 8b e0 02 00 00 	lea    rcx,[rbx+0x2e0]
  204c003:	48 89 4c 24 18       	mov    QWORD PTR [rsp+0x18],rcx
  204c008:	c6 83 e0 02 00 00 00 	mov    BYTE PTR [rbx+0x2e0],0x0
@@ -345,7 +345,7 @@
  43a185c:	0f 80 e6 04 00 00    	jo     43a1d48 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc060b8>
  43a1862:	48 c1 e8 02          	shr    rax,0x2
  43a1866:	48 b9 c3 f5 28 5c 8f 	movabs rcx,0x28f5c28f5c28f5c3
- 43a186d:	c2 f5 28 
+ 43a186d:	c2 f5 28
  43a1870:	48 f7 e1             	mul    rcx
  43a1873:	49 89 d7             	mov    r15,rdx
  43a1876:	49 c1 ef 02          	shr    r15,0x2
@@ -362,7 +362,7 @@
  43a18a7:	48 89 44 24 40       	mov    QWORD PTR [rsp+0x40],rax
  43a18ac:	4c 89 7c 24 48       	mov    QWORD PTR [rsp+0x48],r15
  43a18b1:	48 c7 44 24 50 00 00 	mov    QWORD PTR [rsp+0x50],0x0
- 43a18b8:	00 00 
+ 43a18b8:	00 00
  43a18ba:	49 81 fc ff ff 00 00 	cmp    r12,0xffff
  43a18c1:	0f 83 0a 01 00 00    	jae    43a19d1 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc0642f>
  43a18c7:	41 bf 00 20 00 00    	mov    r15d,0x2000
@@ -372,12 +372,12 @@
  43a18dd:	48 85 c0             	test   rax,rax
  43a18e0:	0f 84 d4 04 00 00    	je     43a1dba <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc06046>
  43a18e6:	48 89 84 24 40 01 00 	mov    QWORD PTR [rsp+0x140],rax
- 43a18ed:	00 
+ 43a18ed:	00
  43a18ee:	66 0f 57 c0          	xorpd  xmm0,xmm0
  43a18f2:	66 0f 11 04 24       	movupd XMMWORD PTR [rsp],xmm0
  43a18f7:	48 8d 4c 24 40       	lea    rcx,[rsp+0x40]
  43a18fc:	4c 8d 84 24 40 01 00 	lea    r8,[rsp+0x140]
- 43a1903:	00 
+ 43a1903:	00
  43a1904:	41 b9 01 00 00 00    	mov    r9d,0x1
  43a190a:	4c 89 ef             	mov    rdi,r13
  43a190d:	4c 89 e6             	mov    rsi,r12
@@ -386,7 +386,7 @@
  43a1918:	49 89 c7             	mov    r15,rax
  43a191b:	49 89 d5             	mov    r13,rdx
  43a191e:	48 8b bc 24 40 01 00 	mov    rdi,QWORD PTR [rsp+0x140]
- 43a1925:	00 
+ 43a1925:	00
  43a1926:	be 00 20 00 00       	mov    esi,0x2000
  43a192b:	e9 05 01 00 00       	jmp    43a1a35 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc063cb>
  43a1930:	48 8d 83 e0 02 00 00 	lea    rax,[rbx+0x2e0]
@@ -398,7 +398,7 @@
  43a1955:	48 01 c8             	add    rax,rcx
  43a1958:	ff e0                	jmp    rax
  43a195a:	f2 0f 10 83 38 01 00 	movsd  xmm0,QWORD PTR [rbx+0x138]
- 43a1961:	00 
+ 43a1961:	00
  43a1962:	48 8b 83 b8 00 00 00 	mov    rax,QWORD PTR [rbx+0xb8]
  43a1969:	48 8b 8b c0 00 00 00 	mov    rcx,QWORD PTR [rbx+0xc0]
  43a1970:	e9 3f 05 00 00       	jmp    43a1eb4 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc05f4c>
@@ -414,7 +414,7 @@
  43a19a0:	48 01 c8             	add    rax,rcx
  43a19a3:	ff e0                	jmp    rax
  43a19a5:	f2 0f 10 83 e0 01 00 	movsd  xmm0,QWORD PTR [rbx+0x1e0]
- 43a19ac:	00 
+ 43a19ac:	00
  43a19ad:	48 8b 83 d0 01 00 00 	mov    rax,QWORD PTR [rbx+0x1d0]
  43a19b4:	48 8b 8b d8 01 00 00 	mov    rcx,QWORD PTR [rbx+0x1d8]
  43a19bb:	0f b6 93 db 02 00 00 	movzx  edx,BYTE PTR [rbx+0x2db]
@@ -428,12 +428,12 @@
  43a19e7:	48 85 c0             	test   rax,rax
  43a19ea:	0f 84 d1 03 00 00    	je     43a1dc1 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc0603f>
  43a19f0:	48 89 84 24 40 01 00 	mov    QWORD PTR [rsp+0x140],rax
- 43a19f7:	00 
+ 43a19f7:	00
  43a19f8:	66 0f 57 c0          	xorpd  xmm0,xmm0
  43a19fc:	66 0f 11 04 24       	movupd XMMWORD PTR [rsp],xmm0
  43a1a01:	48 8d 4c 24 40       	lea    rcx,[rsp+0x40]
  43a1a06:	4c 8d 84 24 40 01 00 	lea    r8,[rsp+0x140]
- 43a1a0d:	00 
+ 43a1a0d:	00
  43a1a0e:	41 b9 01 00 00 00    	mov    r9d,0x1
  43a1a14:	4c 89 ef             	mov    rdi,r13
  43a1a17:	4c 89 e6             	mov    rsi,r12
@@ -442,7 +442,7 @@
  43a1a22:	49 89 c7             	mov    r15,rax
  43a1a25:	49 89 d5             	mov    r13,rdx
  43a1a28:	48 8b bc 24 40 01 00 	mov    rdi,QWORD PTR [rsp+0x140]
- 43a1a2f:	00 
+ 43a1a2f:	00
  43a1a30:	be 00 40 00 00       	mov    esi,0x4000
  43a1a35:	31 d2                	xor    edx,edx
  43a1a37:	ff 15 d3 c5 3c 01    	call   QWORD PTR [rip+0x13cc5d3]        # 576e010 <__register_atfork@plt+0x10cdd0>
@@ -475,34 +475,34 @@
  43a1aab:	bf 01 00 00 00       	mov    edi,0x1
  43a1ab0:	e8 4b 1d b4 00       	call   4ee3800 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc4600>
  43a1ab5:	48 89 84 24 d0 00 00 	mov    QWORD PTR [rsp+0xd0],rax
- 43a1abc:	00 
+ 43a1abc:	00
  43a1abd:	89 94 24 d8 00 00 00 	mov    DWORD PTR [rsp+0xd8],edx
  43a1ac4:	4c 89 74 24 40       	mov    QWORD PTR [rsp+0x40],r14
  43a1ac9:	8b 44 24 3c          	mov    eax,DWORD PTR [rsp+0x3c]
  43a1acd:	89 44 24 48          	mov    DWORD PTR [rsp+0x48],eax
  43a1ad1:	48 8d bc 24 40 01 00 	lea    rdi,[rsp+0x140]
- 43a1ad8:	00 
+ 43a1ad8:	00
  43a1ad9:	48 8d b4 24 d0 00 00 	lea    rsi,[rsp+0xd0]
- 43a1ae0:	00 
+ 43a1ae0:	00
  43a1ae1:	48 8d 54 24 40       	lea    rdx,[rsp+0x40]
  43a1ae6:	e8 45 1c b4 00       	call   4ee3730 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc46d0>
  43a1aeb:	80 bc 24 40 01 00 00 	cmp    BYTE PTR [rsp+0x140],0x0
- 43a1af2:	00 
+ 43a1af2:	00
  43a1af3:	66 0f 57 c0          	xorpd  xmm0,xmm0
  43a1af7:	75 3c                	jne    43a1b35 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc062cb>
  43a1af9:	f2 0f 10 8c 24 48 01 	movsd  xmm1,QWORD PTR [rsp+0x148]
- 43a1b00:	00 00 
+ 43a1b00:	00 00
  43a1b02:	0f 57 c0             	xorps  xmm0,xmm0
  43a1b05:	f2 0f 2a 84 24 50 01 	cvtsi2sd xmm0,DWORD PTR [rsp+0x150]
- 43a1b0c:	00 00 
+ 43a1b0c:	00 00
  43a1b0e:	0f 14 0d 6b 23 e6 fb 	unpcklps xmm1,XMMWORD PTR [rip+0xfffffffffbe6236b]        # 203e80 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4da3f80>
  43a1b15:	66 0f 5c 0d 83 13 e6 	subpd  xmm1,XMMWORD PTR [rip+0xfffffffffbe61383]        # 202ea0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4da4f60>
- 43a1b1c:	fb 
+ 43a1b1c:	fb
  43a1b1d:	66 0f 28 d1          	movapd xmm2,xmm1
  43a1b21:	66 0f 15 d1          	unpckhpd xmm2,xmm1
  43a1b25:	f2 0f 58 d1          	addsd  xmm2,xmm1
  43a1b29:	f2 0f 5e 05 ef 86 e6 	divsd  xmm0,QWORD PTR [rip+0xfffffffffbe686ef]        # 20a220 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4d9dbe0>
- 43a1b30:	fb 
+ 43a1b30:	fb
  43a1b31:	f2 0f 58 c2          	addsd  xmm0,xmm2
  43a1b35:	49 83 c7 40          	add    r15,0x40
  43a1b39:	41 b6 01             	mov    r14b,0x1
@@ -540,11 +540,11 @@
  43a1bbb:	48 8d 7b 58          	lea    rdi,[rbx+0x58]
  43a1bbf:	41 0f cc             	bswap  r12d
  43a1bc2:	48 c7 43 58 04 00 00 	mov    QWORD PTR [rbx+0x58],0x4
- 43a1bc9:	00 
+ 43a1bc9:	00
  43a1bca:	48 89 43 60          	mov    QWORD PTR [rbx+0x60],rax
  43a1bce:	44 89 20             	mov    DWORD PTR [rax],r12d
  43a1bd1:	48 c7 43 68 04 00 00 	mov    QWORD PTR [rbx+0x68],0x4
- 43a1bd8:	00 
+ 43a1bd8:	00
  43a1bd9:	48 83 7b 58 04       	cmp    QWORD PTR [rbx+0x58],0x4
  43a1bde:	75 0c                	jne    43a1bec <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc06214>
  43a1be0:	49 89 ff             	mov    r15,rdi
@@ -553,7 +553,7 @@
  43a1bec:	48 8b 43 60          	mov    rax,QWORD PTR [rbx+0x60]
  43a1bf0:	44 88 70 04          	mov    BYTE PTR [rax+0x4],r14b
  43a1bf4:	48 c7 43 68 05 00 00 	mov    QWORD PTR [rbx+0x68],0x5
- 43a1bfb:	00 
+ 43a1bfb:	00
  43a1bfc:	4c 8b 7b 48          	mov    r15,QWORD PTR [rbx+0x48]
  43a1c00:	4c 8b 63 50          	mov    r12,QWORD PTR [rbx+0x50]
  43a1c04:	48 8b 43 58          	mov    rax,QWORD PTR [rbx+0x58]
@@ -573,7 +573,7 @@
  43a1c3d:	48 89 43 70          	mov    QWORD PTR [rbx+0x70],rax
  43a1c41:	4c 89 6b 78          	mov    QWORD PTR [rbx+0x78],r13
  43a1c45:	48 c7 83 80 00 00 00 	mov    QWORD PTR [rbx+0x80],0x3d0900
- 43a1c4c:	00 09 3d 00 
+ 43a1c4c:	00 09 3d 00
 
 ## 0x43a17c0 chunk loop and timeout selection [0x43a23a8, 0x43a2494)
  43a23a8:	48 8b 83 98 00 00 00 	mov    rax,QWORD PTR [rbx+0x98]
@@ -600,12 +600,12 @@
  43a241c:	80 7b 30 00          	cmp    BYTE PTR [rbx+0x30],0x0
  43a2420:	75 08                	jne    43a242a <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc059d6>
  43a2422:	f2 0f 10 05 0e 8c e6 	movsd  xmm0,QWORD PTR [rip+0xfffffffffbe68c0e]        # 20b038 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4d9cdc8>
- 43a2429:	fb 
+ 43a2429:	fb
  43a242a:	4c 8d a3 b8 00 00 00 	lea    r12,[rbx+0xb8]
  43a2431:	48 8d 05 08 f2 34 fc 	lea    rax,[rip+0xfffffffffc34f208]        # 6f1640 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x48b67c0>
  43a2438:	48 89 83 b8 00 00 00 	mov    QWORD PTR [rbx+0xb8],rax
  43a243f:	48 c7 83 c0 00 00 00 	mov    QWORD PTR [rbx+0xc0],0x9
- 43a2446:	09 00 00 00 
+ 43a2446:	09 00 00 00
  43a244a:	4c 89 83 c8 00 00 00 	mov    QWORD PTR [rbx+0xc8],r8
  43a2451:	48 89 93 d0 00 00 00 	mov    QWORD PTR [rbx+0xd0],rdx
  43a2458:	48 89 8b d8 00 00 00 	mov    QWORD PTR [rbx+0xd8],rcx
@@ -613,7 +613,7 @@
  43a2466:	48 89 bb e8 00 00 00 	mov    QWORD PTR [rbx+0xe8],rdi
  43a246d:	c6 83 30 01 00 00 00 	mov    BYTE PTR [rbx+0x130],0x0
  43a2474:	f2 0f 11 83 38 01 00 	movsd  QWORD PTR [rbx+0x138],xmm0
- 43a247b:	00 
+ 43a247b:	00
  43a247c:	48 8d 8b e0 02 00 00 	lea    rcx,[rbx+0x2e0]
  43a2483:	48 89 4c 24 18       	mov    QWORD PTR [rsp+0x18],rcx
  43a2488:	c6 83 e0 02 00 00 00 	mov    BYTE PTR [rbx+0x2e0],0x0
@@ -627,16 +627,16 @@
  4b3759a:	31 c0                	xor    eax,eax
  4b3759c:	4c 89 ab 78 02 00 00 	mov    QWORD PTR [rbx+0x278],r13
  4b375a3:	f2 0f 10 83 58 02 00 	movsd  xmm0,QWORD PTR [rbx+0x258]
- 4b375aa:	00 
+ 4b375aa:	00
  4b375ab:	48 89 83 80 02 00 00 	mov    QWORD PTR [rbx+0x280],rax
  4b375b2:	f2 0f 11 83 88 02 00 	movsd  QWORD PTR [rbx+0x288],xmm0
- 4b375b9:	00 
+ 4b375b9:	00
 
 ## 0x4b363b0 compression decision through frame build and chunk size [0x4b375ba, 0x4b379c5)
  4b375ba:	49 81 fc 01 04 00 00 	cmp    r12,0x401
  4b375c1:	0f 82 1b 01 00 00    	jb     4b376e2 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x47071e>
  4b375c7:	41 0f b7 85 90 00 00 	movzx  eax,WORD PTR [r13+0x90]
- 4b375ce:	00 
+ 4b375ce:	00
  4b375cf:	83 e0 fe             	and    eax,0xfffffffe
  4b375d2:	0f b7 c0             	movzx  eax,ax
  4b375d5:	3d 9e 0f 00 00       	cmp    eax,0xf9e
@@ -645,14 +645,14 @@
  4b375e5:	e8 16 c2 3a 00       	call   4ee3800 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc4600>
  4b375ea:	89 94 24 4c 02 00 00 	mov    DWORD PTR [rsp+0x24c],edx
  4b375f1:	48 89 84 24 d8 03 00 	mov    QWORD PTR [rsp+0x3d8],rax
- 4b375f8:	00 
+ 4b375f8:	00
  4b375f9:	b9 6e 00 00 00       	mov    ecx,0x6e
  4b375fe:	4c 89 e0             	mov    rax,r12
  4b37601:	48 f7 e1             	mul    rcx
  4b37604:	0f 80 4c 06 00 00    	jo     4b37c56 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4701aa>
  4b3760a:	48 c1 e8 02          	shr    rax,0x2
  4b3760e:	48 b9 c3 f5 28 5c 8f 	movabs rcx,0x28f5c28f5c28f5c3
- 4b37615:	c2 f5 28 
+ 4b37615:	c2 f5 28
  4b37618:	48 f7 e1             	mul    rcx
  4b3761b:	49 89 d7             	mov    r15,rdx
  4b3761e:	49 c1 ef 02          	shr    r15,0x2
@@ -667,11 +667,11 @@
  4b37645:	49 83 c7 14          	add    r15,0x14
  4b37649:	48 83 c0 04          	add    rax,0x4
  4b3764d:	48 89 84 24 c0 02 00 	mov    QWORD PTR [rsp+0x2c0],rax
- 4b37654:	00 
+ 4b37654:	00
  4b37655:	4c 89 bc 24 c8 02 00 	mov    QWORD PTR [rsp+0x2c8],r15
- 4b3765c:	00 
+ 4b3765c:	00
  4b3765d:	48 c7 84 24 d0 02 00 	mov    QWORD PTR [rsp+0x2d0],0x0
- 4b37664:	00 00 00 00 00 
+ 4b37664:	00 00 00 00 00
  4b37669:	49 81 fc ff ff 00 00 	cmp    r12,0xffff
  4b37670:	0f 83 85 00 00 00    	jae    4b376fb <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x470705>
  4b37676:	41 bf 00 20 00 00    	mov    r15d,0x2000
@@ -681,13 +681,13 @@
  4b3768c:	48 85 c0             	test   rax,rax
  4b3768f:	0f 84 5d 06 00 00    	je     4b37cf2 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x47010e>
  4b37695:	48 89 84 24 c0 00 00 	mov    QWORD PTR [rsp+0xc0],rax
- 4b3769c:	00 
+ 4b3769c:	00
  4b3769d:	66 0f 57 c0          	xorpd  xmm0,xmm0
  4b376a1:	66 0f 11 04 24       	movupd XMMWORD PTR [rsp],xmm0
  4b376a6:	48 8d 8c 24 c0 02 00 	lea    rcx,[rsp+0x2c0]
- 4b376ad:	00 
+ 4b376ad:	00
  4b376ae:	4c 8d 84 24 c0 00 00 	lea    r8,[rsp+0xc0]
- 4b376b5:	00 
+ 4b376b5:	00
  4b376b6:	41 b9 01 00 00 00    	mov    r9d,0x1
  4b376bc:	4c 89 f7             	mov    rdi,r14
  4b376bf:	4c 89 e6             	mov    rsi,r12
@@ -696,7 +696,7 @@
  4b376ca:	49 89 c7             	mov    r15,rax
  4b376cd:	49 89 d6             	mov    r14,rdx
  4b376d0:	48 8b bc 24 c0 00 00 	mov    rdi,QWORD PTR [rsp+0xc0]
- 4b376d7:	00 
+ 4b376d7:	00
  4b376d8:	be 00 20 00 00       	mov    esi,0x2000
  4b376dd:	e9 80 00 00 00       	jmp    4b37762 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x47069e>
  4b376e2:	4d 85 e4             	test   r12,r12
@@ -712,13 +712,13 @@
  4b37711:	48 85 c0             	test   rax,rax
  4b37714:	0f 84 df 05 00 00    	je     4b37cf9 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x470107>
  4b3771a:	48 89 84 24 c0 00 00 	mov    QWORD PTR [rsp+0xc0],rax
- 4b37721:	00 
+ 4b37721:	00
  4b37722:	66 0f 57 c0          	xorpd  xmm0,xmm0
  4b37726:	66 0f 11 04 24       	movupd XMMWORD PTR [rsp],xmm0
  4b3772b:	48 8d 8c 24 c0 02 00 	lea    rcx,[rsp+0x2c0]
- 4b37732:	00 
+ 4b37732:	00
  4b37733:	4c 8d 84 24 c0 00 00 	lea    r8,[rsp+0xc0]
- 4b3773a:	00 
+ 4b3773a:	00
  4b3773b:	41 b9 01 00 00 00    	mov    r9d,0x1
  4b37741:	4c 89 f7             	mov    rdi,r14
  4b37744:	4c 89 e6             	mov    rsi,r12
@@ -727,7 +727,7 @@
  4b3774f:	49 89 c7             	mov    r15,rax
  4b37752:	49 89 d6             	mov    r14,rdx
  4b37755:	48 8b bc 24 c0 00 00 	mov    rdi,QWORD PTR [rsp+0xc0]
- 4b3775c:	00 
+ 4b3775c:	00
  4b3775d:	be 00 40 00 00       	mov    esi,0x4000
  4b37762:	31 d2                	xor    edx,edx
  4b37764:	ff 15 a6 68 c3 00    	call   QWORD PTR [rip+0xc368a6]        # 576e010 <__register_atfork@plt+0x10cdd0>
@@ -763,38 +763,38 @@
  4b377e5:	bf 01 00 00 00       	mov    edi,0x1
  4b377ea:	e8 11 c0 3a 00       	call   4ee3800 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc4600>
  4b377ef:	48 89 84 24 d0 01 00 	mov    QWORD PTR [rsp+0x1d0],rax
- 4b377f6:	00 
+ 4b377f6:	00
  4b377f7:	89 94 24 d8 01 00 00 	mov    DWORD PTR [rsp+0x1d8],edx
  4b377fe:	48 8b 84 24 d8 03 00 	mov    rax,QWORD PTR [rsp+0x3d8]
- 4b37805:	00 
+ 4b37805:	00
  4b37806:	48 89 84 24 c0 02 00 	mov    QWORD PTR [rsp+0x2c0],rax
- 4b3780d:	00 
+ 4b3780d:	00
  4b3780e:	8b 84 24 4c 02 00 00 	mov    eax,DWORD PTR [rsp+0x24c]
  4b37815:	89 84 24 c8 02 00 00 	mov    DWORD PTR [rsp+0x2c8],eax
  4b3781c:	48 8d bc 24 c0 00 00 	lea    rdi,[rsp+0xc0]
- 4b37823:	00 
+ 4b37823:	00
  4b37824:	48 8d b4 24 d0 01 00 	lea    rsi,[rsp+0x1d0]
- 4b3782b:	00 
+ 4b3782b:	00
  4b3782c:	48 8d 94 24 c0 02 00 	lea    rdx,[rsp+0x2c0]
- 4b37833:	00 
+ 4b37833:	00
  4b37834:	e8 f7 be 3a 00       	call   4ee3730 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc46d0>
  4b37839:	80 bc 24 c0 00 00 00 	cmp    BYTE PTR [rsp+0xc0],0x0
- 4b37840:	00 
+ 4b37840:	00
  4b37841:	66 0f 57 c0          	xorpd  xmm0,xmm0
  4b37845:	75 3c                	jne    4b37883 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x47057d>
  4b37847:	f2 0f 10 8c 24 c8 00 	movsd  xmm1,QWORD PTR [rsp+0xc8]
- 4b3784e:	00 00 
+ 4b3784e:	00 00
  4b37850:	0f 57 c0             	xorps  xmm0,xmm0
  4b37853:	f2 0f 2a 84 24 d0 00 	cvtsi2sd xmm0,DWORD PTR [rsp+0xd0]
- 4b3785a:	00 00 
+ 4b3785a:	00 00
  4b3785c:	0f 14 0d 1d c6 6c fb 	unpcklps xmm1,XMMWORD PTR [rip+0xfffffffffb6cc61d]        # 203e80 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4da3f80>
  4b37863:	66 0f 5c 0d 35 b6 6c 	subpd  xmm1,XMMWORD PTR [rip+0xfffffffffb6cb635]        # 202ea0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4da4f60>
- 4b3786a:	fb 
+ 4b3786a:	fb
  4b3786b:	66 0f 28 d1          	movapd xmm2,xmm1
  4b3786f:	66 0f 15 d1          	unpckhpd xmm2,xmm1
  4b37873:	f2 0f 58 d1          	addsd  xmm2,xmm1
  4b37877:	f2 0f 5e 05 a1 29 6d 	divsd  xmm0,QWORD PTR [rip+0xfffffffffb6d29a1]        # 20a220 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4d9dbe0>
- 4b3787e:	fb 
+ 4b3787e:	fb
  4b3787f:	f2 0f 58 c2          	addsd  xmm0,xmm2
  4b37883:	49 83 c7 40          	add    r15,0x40
  4b37887:	41 b5 01             	mov    r13b,0x1
@@ -829,20 +829,20 @@
  4b37903:	4c 8d b3 a8 02 00 00 	lea    r14,[rbx+0x2a8]
  4b3790a:	41 0f cc             	bswap  r12d
  4b3790d:	48 c7 83 a8 02 00 00 	mov    QWORD PTR [rbx+0x2a8],0x4
- 4b37914:	04 00 00 00 
+ 4b37914:	04 00 00 00
  4b37918:	48 89 83 b0 02 00 00 	mov    QWORD PTR [rbx+0x2b0],rax
  4b3791f:	44 89 20             	mov    DWORD PTR [rax],r12d
  4b37922:	48 c7 83 b8 02 00 00 	mov    QWORD PTR [rbx+0x2b8],0x4
- 4b37929:	04 00 00 00 
+ 4b37929:	04 00 00 00
  4b3792d:	48 83 bb a8 02 00 00 	cmp    QWORD PTR [rbx+0x2a8],0x4
- 4b37934:	04 
+ 4b37934:	04
  4b37935:	75 09                	jne    4b37940 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4704c0>
  4b37937:	4c 89 f7             	mov    rdi,r14
  4b3793a:	ff 15 88 67 c3 00    	call   QWORD PTR [rip+0xc36788]        # 576e0c8 <__register_atfork@plt+0x10ce88>
  4b37940:	48 8b 83 b0 02 00 00 	mov    rax,QWORD PTR [rbx+0x2b0]
  4b37947:	44 88 68 04          	mov    BYTE PTR [rax+0x4],r13b
  4b3794b:	48 c7 83 b8 02 00 00 	mov    QWORD PTR [rbx+0x2b8],0x5
- 4b37952:	05 00 00 00 
+ 4b37952:	05 00 00 00
  4b37956:	4c 8b ab 98 02 00 00 	mov    r13,QWORD PTR [rbx+0x298]
  4b3795d:	4c 8b bb a0 02 00 00 	mov    r15,QWORD PTR [rbx+0x2a0]
  4b37964:	48 8b 83 a8 02 00 00 	mov    rax,QWORD PTR [rbx+0x2a8]
@@ -862,9 +862,9 @@
  4b379ac:	48 89 83 c0 02 00 00 	mov    QWORD PTR [rbx+0x2c0],rax
  4b379b3:	4c 89 a3 c8 02 00 00 	mov    QWORD PTR [rbx+0x2c8],r12
  4b379ba:	48 c7 83 d0 02 00 00 	mov    QWORD PTR [rbx+0x2d0],0x3d0900
- 4b379c1:	00 09 3d 00 
+ 4b379c1:	00 09 3d 00
 
-## 0x4b363b0 chunk loop and timeout selection [0x4b38638, 0x4b38720)
+## 0x4b363b0 chunk loop and timeout selection [0x4b38638, 0x4b3871e)
  4b38638:	4d 85 ed             	test   r13,r13
  4b3863b:	0f 85 70 03 00 00    	jne    4b389b1 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x46f44f>
  4b38641:	48 8b 83 e8 02 00 00 	mov    rax,QWORD PTR [rbx+0x2e8]
@@ -888,16 +888,16 @@
  4b386a5:	4c 8b 83 78 02 00 00 	mov    r8,QWORD PTR [rbx+0x278]
  4b386ac:	48 8d bb d8 02 00 00 	lea    rdi,[rbx+0x2d8]
  4b386b3:	f2 0f 10 83 88 02 00 	movsd  xmm0,QWORD PTR [rbx+0x288]
- 4b386ba:	00 
+ 4b386ba:	00
  4b386bb:	80 bb 80 02 00 00 00 	cmp    BYTE PTR [rbx+0x280],0x0
  4b386c2:	75 08                	jne    4b386cc <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x46f734>
  4b386c4:	f2 0f 10 05 6c 29 6d 	movsd  xmm0,QWORD PTR [rip+0xfffffffffb6d296c]        # 20b038 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4d9cdc8>
- 4b386cb:	fb 
+ 4b386cb:	fb
  4b386cc:	4c 8d bb 08 03 00 00 	lea    r15,[rbx+0x308]
  4b386d3:	48 8d 05 6b ea bc fb 	lea    rax,[rip+0xfffffffffbbcea6b]        # 707145 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x48a0cbb>
  4b386da:	48 89 83 08 03 00 00 	mov    QWORD PTR [rbx+0x308],rax
  4b386e1:	48 c7 83 10 03 00 00 	mov    QWORD PTR [rbx+0x310],0x9
- 4b386e8:	09 00 00 00 
+ 4b386e8:	09 00 00 00
  4b386ec:	4c 89 83 18 03 00 00 	mov    QWORD PTR [rbx+0x318],r8
  4b386f3:	48 89 93 20 03 00 00 	mov    QWORD PTR [rbx+0x320],rdx
  4b386fa:	48 89 8b 28 03 00 00 	mov    QWORD PTR [rbx+0x328],rcx
@@ -905,18 +905,17 @@
  4b38708:	48 89 bb 38 03 00 00 	mov    QWORD PTR [rbx+0x338],rdi
  4b3870f:	c6 83 80 03 00 00 00 	mov    BYTE PTR [rbx+0x380],0x0
  4b38716:	f2 0f 11 83 88 03 00 	movsd  QWORD PTR [rbx+0x388],xmm0
- 4b3871d:	00 
- 4b3871e:	48                   	rex.W
- 4b3871f:	8d                   	.byte 0x8d
+ 4b3871d:	00
+
 ######## bincode wrappers
 
 ## 0x204b0a0 argument setup and call [0x204b0e8, 0x204b128)
  204b0e8:	e8 e3 4a 87 00       	call   28bfbd0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x26e8230>
  204b0ed:	0f 10 83 08 03 00 00 	movups xmm0,XMMWORD PTR [rbx+0x308]
  204b0f4:	48 c7 43 10 00 00 00 	mov    QWORD PTR [rbx+0x10],0x0
- 204b0fb:	00 
+ 204b0fb:	00
  204b0fc:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
- 204b103:	00 4e 40 
+ 204b103:	00 4e 40
  204b106:	48 89 43 18          	mov    QWORD PTR [rbx+0x18],rax
  204b10a:	4c 89 7b 20          	mov    QWORD PTR [rbx+0x20],r15
  204b10e:	0f 11 43 28          	movups XMMWORD PTR [rbx+0x28],xmm0
@@ -930,9 +929,9 @@
  204b238:	e8 53 44 87 00       	call   28bf690 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x26e8770>
  204b23d:	0f 10 83 08 03 00 00 	movups xmm0,XMMWORD PTR [rbx+0x308]
  204b244:	48 c7 43 10 00 00 00 	mov    QWORD PTR [rbx+0x10],0x0
- 204b24b:	00 
+ 204b24b:	00
  204b24c:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
- 204b253:	00 4e 40 
+ 204b253:	00 4e 40
  204b256:	48 89 43 18          	mov    QWORD PTR [rbx+0x18],rax
  204b25a:	4c 89 7b 20          	mov    QWORD PTR [rbx+0x20],r15
  204b25e:	0f 11 43 28          	movups XMMWORD PTR [rbx+0x28],xmm0
@@ -941,3 +940,142 @@
  204b26c:	4c 8d 63 10          	lea    r12,[rbx+0x10]
  204b270:	4c 89 e7             	mov    rdi,r12
  204b273:	e8 c8 00 00 00       	call   204b340 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5cac0>
+
+######## direct writer call sites (argument pair and call)
+
+## 0x1fd7930 in FDE 0x1fd7810 arg0=0 [0x1fd7900, 0x1fd7935)
+ 1fd7900:	48 c7 43 58 00 00 00 	mov    QWORD PTR [rbx+0x58],0x0
+ 1fd7907:	00
+ 1fd7908:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
+ 1fd790f:	00 4e 40
+ 1fd7912:	48 89 43 60          	mov    QWORD PTR [rbx+0x60],rax
+ 1fd7916:	4c 89 6b 68          	mov    QWORD PTR [rbx+0x68],r13
+ 1fd791a:	66 0f 11 43 70       	movupd XMMWORD PTR [rbx+0x70],xmm0
+ 1fd791f:	c6 83 40 03 00 00 00 	mov    BYTE PTR [rbx+0x340],0x0
+ 1fd7926:	4c 8d 6b 58          	lea    r13,[rbx+0x58]
+ 1fd792a:	4c 89 ef             	mov    rdi,r13
+ 1fd792d:	4c 89 e6             	mov    rsi,r12
+ 1fd7930:	e8 0b 3a 07 00       	call   204b340 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5cac0>
+
+## 0x2034387 in FDE 0x2033080 arg0=0 [0x203433f, 0x203438c)
+ 203433f:	48 c7 83 00 02 00 00 	mov    QWORD PTR [rbx+0x200],0x0
+ 2034346:	00 00 00 00
+ 203434a:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
+ 2034351:	00 4e 40
+ 2034354:	48 89 83 08 02 00 00 	mov    QWORD PTR [rbx+0x208],rax
+ 203435b:	48 8b 44 24 38       	mov    rax,QWORD PTR [rsp+0x38]
+ 2034360:	48 89 83 10 02 00 00 	mov    QWORD PTR [rbx+0x210],rax
+ 2034367:	0f 11 83 18 02 00 00 	movups XMMWORD PTR [rbx+0x218],xmm0
+ 203436e:	c6 83 e8 04 00 00 00 	mov    BYTE PTR [rbx+0x4e8],0x0
+ 2034375:	48 89 54 24 30       	mov    QWORD PTR [rsp+0x30],rdx
+ 203437a:	48 8d ab 00 02 00 00 	lea    rbp,[rbx+0x200]
+ 2034381:	48 89 ef             	mov    rdi,rbp
+ 2034384:	4c 89 e6             	mov    rsi,r12
+ 2034387:	e8 b4 6f 01 00       	call   204b340 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5cac0>
+
+## 0x203812e in FDE 0x2037ac0 arg0=0 [0x20380eb, 0x2038133)
+ 20380eb:	48 c7 83 18 02 00 00 	mov    QWORD PTR [rbx+0x218],0x0
+ 20380f2:	00 00 00 00
+ 20380f6:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
+ 20380fd:	00 4e 40
+ 2038100:	48 89 83 20 02 00 00 	mov    QWORD PTR [rbx+0x220],rax
+ 2038107:	48 89 ab 28 02 00 00 	mov    QWORD PTR [rbx+0x228],rbp
+ 203810e:	0f 11 83 30 02 00 00 	movups XMMWORD PTR [rbx+0x230],xmm0
+ 2038115:	c6 83 00 05 00 00 00 	mov    BYTE PTR [rbx+0x500],0x0
+ 203811c:	48 8b 6c 24 08       	mov    rbp,QWORD PTR [rsp+0x8]
+ 2038121:	4c 8d bb 18 02 00 00 	lea    r15,[rbx+0x218]
+ 2038128:	4c 89 ff             	mov    rdi,r15
+ 203812b:	48 89 ee             	mov    rsi,rbp
+ 203812e:	e8 0d 32 01 00       	call   204b340 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5cac0>
+
+## 0x20399f7 in FDE 0x2039060 arg0=0 [0x20399b5, 0x20399fc)
+ 20399b5:	48 c7 83 58 01 00 00 	mov    QWORD PTR [rbx+0x158],0x0
+ 20399bc:	00 00 00 00
+ 20399c0:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
+ 20399c7:	00 4e 40
+ 20399ca:	48 89 83 60 01 00 00 	mov    QWORD PTR [rbx+0x160],rax
+ 20399d1:	48 89 ab 68 01 00 00 	mov    QWORD PTR [rbx+0x168],rbp
+ 20399d8:	f3 0f 7f 83 70 01 00 	movdqu XMMWORD PTR [rbx+0x170],xmm0
+ 20399df:	00
+ 20399e0:	c6 83 40 04 00 00 00 	mov    BYTE PTR [rbx+0x440],0x0
+ 20399e7:	4d 89 fe             	mov    r14,r15
+ 20399ea:	48 8d ab 58 01 00 00 	lea    rbp,[rbx+0x158]
+ 20399f1:	48 89 ef             	mov    rdi,rbp
+ 20399f4:	4c 89 e6             	mov    rsi,r12
+ 20399f7:	e8 44 19 01 00       	call   204b340 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5cac0>
+
+## 0x203b588 in FDE 0x203a190 arg0=1 [0x203b540, 0x203b58d)
+ 203b540:	48 c7 83 00 02 00 00 	mov    QWORD PTR [rbx+0x200],0x1
+ 203b547:	01 00 00 00
+ 203b54b:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
+ 203b552:	00 4e 40
+ 203b555:	48 89 83 08 02 00 00 	mov    QWORD PTR [rbx+0x208],rax
+ 203b55c:	48 8b 44 24 20       	mov    rax,QWORD PTR [rsp+0x20]
+ 203b561:	48 89 83 10 02 00 00 	mov    QWORD PTR [rbx+0x210],rax
+ 203b568:	0f 11 83 18 02 00 00 	movups XMMWORD PTR [rbx+0x218],xmm0
+ 203b56f:	c6 83 e8 04 00 00 00 	mov    BYTE PTR [rbx+0x4e8],0x0
+ 203b576:	48 89 54 24 18       	mov    QWORD PTR [rsp+0x18],rdx
+ 203b57b:	48 8d ab 00 02 00 00 	lea    rbp,[rbx+0x200]
+ 203b582:	48 89 ef             	mov    rdi,rbp
+ 203b585:	4c 89 e6             	mov    rsi,r12
+ 203b588:	e8 b3 fd 00 00       	call   204b340 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f5cac0>
+
+## 0x438384e in FDE 0x43831e0 arg0=0 [0x438380b, 0x4383853)
+ 438380b:	48 c7 83 18 02 00 00 	mov    QWORD PTR [rbx+0x218],0x0
+ 4383812:	00 00 00 00
+ 4383816:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
+ 438381d:	00 4e 40
+ 4383820:	48 89 83 20 02 00 00 	mov    QWORD PTR [rbx+0x220],rax
+ 4383827:	48 89 ab 28 02 00 00 	mov    QWORD PTR [rbx+0x228],rbp
+ 438382e:	0f 11 83 30 02 00 00 	movups XMMWORD PTR [rbx+0x230],xmm0
+ 4383835:	c6 83 00 05 00 00 00 	mov    BYTE PTR [rbx+0x500],0x0
+ 438383c:	48 8b 6c 24 08       	mov    rbp,QWORD PTR [rsp+0x8]
+ 4383841:	4c 8d bb 18 02 00 00 	lea    r15,[rbx+0x218]
+ 4383848:	4c 89 ff             	mov    rdi,r15
+ 438384b:	48 89 ee             	mov    rsi,rbp
+ 438384e:	e8 6d df 01 00       	call   43a17c0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc06640>
+
+## 0x438726d in FDE 0x4386f70 arg0=0 [0x438722d, 0x4387272)
+ 438722d:	48 c7 83 50 02 00 00 	mov    QWORD PTR [rbx+0x250],0x0
+ 4387234:	00 00 00 00
+ 4387238:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
+ 438723f:	00 4e 40
+ 4387242:	48 89 83 58 02 00 00 	mov    QWORD PTR [rbx+0x258],rax
+ 4387249:	4c 89 ab 60 02 00 00 	mov    QWORD PTR [rbx+0x260],r13
+ 4387250:	0f 11 83 68 02 00 00 	movups XMMWORD PTR [rbx+0x268],xmm0
+ 4387257:	c6 83 38 05 00 00 00 	mov    BYTE PTR [rbx+0x538],0x0
+ 438725e:	48 8d ab 50 02 00 00 	lea    rbp,[rbx+0x250]
+ 4387265:	48 89 ef             	mov    rdi,rbp
+ 4387268:	48 8b 74 24 70       	mov    rsi,QWORD PTR [rsp+0x70]
+ 438726d:	e8 4e a5 01 00       	call   43a17c0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc06640>
+
+## 0x43888d7 in FDE 0x4387f40 arg0=0 [0x4388895, 0x43888dc)
+ 4388895:	48 c7 83 58 01 00 00 	mov    QWORD PTR [rbx+0x158],0x0
+ 438889c:	00 00 00 00
+ 43888a0:	48 b8 00 00 00 00 00 	movabs rax,0x404e000000000000
+ 43888a7:	00 4e 40
+ 43888aa:	48 89 83 60 01 00 00 	mov    QWORD PTR [rbx+0x160],rax
+ 43888b1:	48 89 ab 68 01 00 00 	mov    QWORD PTR [rbx+0x168],rbp
+ 43888b8:	f3 0f 7f 83 70 01 00 	movdqu XMMWORD PTR [rbx+0x170],xmm0
+ 43888bf:	00
+ 43888c0:	c6 83 40 04 00 00 00 	mov    BYTE PTR [rbx+0x440],0x0
+ 43888c7:	4d 89 fe             	mov    r14,r15
+ 43888ca:	48 8d ab 58 01 00 00 	lea    rbp,[rbx+0x158]
+ 43888d1:	48 89 ef             	mov    rdi,rbp
+ 43888d4:	4c 89 e6             	mov    rsi,r12
+ 43888d7:	e8 e4 8e 01 00       	call   43a17c0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc06640>
+
+## 0x439f983 in FDE 0x439f860 arg0=0 [0x439f950, 0x439f988)
+ 439f950:	48 c7 43 40 00 00 00 	mov    QWORD PTR [rbx+0x40],0x0
+ 439f957:	00
+ 439f958:	48 be 00 00 00 00 00 	movabs rsi,0x404e000000000000
+ 439f95f:	00 4e 40
+ 439f962:	48 89 73 48          	mov    QWORD PTR [rbx+0x48],rsi
+ 439f966:	48 89 43 50          	mov    QWORD PTR [rbx+0x50],rax
+ 439f96a:	48 89 4b 58          	mov    QWORD PTR [rbx+0x58],rcx
+ 439f96e:	48 89 53 60          	mov    QWORD PTR [rbx+0x60],rdx
+ 439f972:	c6 83 28 03 00 00 00 	mov    BYTE PTR [rbx+0x328],0x0
+ 439f979:	4c 8d 7b 40          	lea    r15,[rbx+0x40]
+ 439f97d:	4c 89 ff             	mov    rdi,r15
+ 439f980:	4c 89 f6             	mov    rsi,r14
+ 439f983:	e8 38 1e 00 00       	call   43a17c0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc06640>

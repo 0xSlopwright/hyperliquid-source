@@ -58,6 +58,16 @@ class Results(unittest.TestCase):
     def test_inline_writer_flag_constant_zero(self):
         self.assertEqual((self.result['inline_pair']['flag'], self.result['inline_pair']['chunk_timeout_selected']), (0, 20.0))
 
+    def test_direct_callers(self):
+        rows = self.result['callers']
+        self.assertEqual(len(rows) + len(self.result['wrappers']), 12)
+        decoded = [r for r in rows if 'arg0' in r]
+        self.assertEqual(len(decoded), 9)
+        self.assertTrue(all(r['arg8_seconds'] == 60.0 for r in decoded))
+        sixty = [(r['call'], r['owner_fde'], r['arg0']) for r in decoded if r['chunk_timeout_selected'] == 60.0]
+        self.assertEqual(sixty, [('0x203b588', '0x203a190', 1)])
+        self.assertEqual([r['call'] for r in rows if 'arg0' not in r], [hex(tw.INLINE_POLL_CALL)])
+
     def test_packet_matches_regeneration(self):
         expected = json.loads(PACKET.read_text())
         got = dict(self.result, target_sha256=load()['sha256'])
@@ -138,6 +148,23 @@ class CorruptionControls(unittest.TestCase):
 
     def test_inline_pair_flag(self):
         self.refuses(0x4b3759a, b'\xb0\x01', 'flag = 0')
+
+    def test_caller_seconds_load_removed(self):
+        self.refuses(0x203b54b, b'\x90' * 10, 'writer call 0x203b588: 0 movabs 60.0 loads')
+
+    def test_caller_base_moved(self):
+        self.refuses(0x203b57b + 3, b'\x10', 'writer call 0x203b588: no unique store')
+
+    def test_injected_direct_call(self):
+        va = 0x3723000
+        rel = struct.pack('<i', tw.WRITERS[0] - (va + 5))
+        self.refuses(va, b'\xe8' + rel, 'writer call 0x3723000')
+
+    def test_caller_flag_is_read_not_assumed(self):
+        """Sensitivity: flipping one zero flag to 1 must move that call to the 60 s selection."""
+        result = tw.analyse(self.mutated(0x203433f + 7, b'\x01'))
+        selected = [r['call'] for r in result['callers'] if r.get('chunk_timeout_selected') == 60.0]
+        self.assertEqual(selected, ['0x2034387', '0x203b588'])
 
     def test_truncated_elf(self):
         with self.assertRaises(ValueError):

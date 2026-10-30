@@ -17,11 +17,12 @@ implement, and where does the can1357 `write.rs` lead differ?
   unresolved where listed. Partial `transport` research; no gate change.
 - Scope: the three writers `0x204b340`, `0x43a17c0` (same layout, +0x2356480)
   and the inline owner future `0x4b363b0`, from the compression decision to the
-  per-chunk timeout selection, plus the argument setup of the two bincode
-  wrappers `0x204b0a0`/`0x204b1f0`. Excluded: the lz4_flex compressors
+  per-chunk timeout selection, plus the `(flag, seconds)` argument setup at
+  all 12 direct writer call sites (including the two bincode wrappers
+  `0x204b0a0`/`0x204b1f0`). Excluded: the lz4_flex compressors
   `0x4e4d600`/`0x4e4dd30`, the write-all/timeout poll `0x2036460`, the stats
-  recorder `0x3d2a730`, the raw-path copy, other callers' arguments, and the
-  error constructors.
+  recorder `0x3d2a730`, the raw-path copy, the callers' other arguments and
+  message contents, and the error constructors.
 - Companions (open separately, not imported): `transport-tcp-frame-read-94`
   (read header/admission/chunks) and `transport-lz4-frame-94` (read-side LZ4).
 
@@ -42,9 +43,10 @@ macOS arm64; about 1 s) and never executes the target. `records.json` is its
 complete output; the test suite regenerates and compares it.
 
 `excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47 (windows
-start at instruction boundaries of the FDE's linear decoding). All 68 `.text`
-VAs in the `writers`, `wrappers` and `inline_pair` records are instruction
-starts in GNU objdump's linear decoding of the owning FDEs.
+start at instruction boundaries of the FDE's linear decoding; 21 windows). All
+106 `.text` VAs in the `writers`, `wrappers`, `inline_pair` and `callers`
+records are instruction starts in GNU objdump's linear decoding of the owning
+FDEs.
 
 ## Evidence
 
@@ -106,11 +108,33 @@ Each writer has its own `tcp_chunk` literal (`0x3c4c05`, `0x6f1640`,
   `rdi = rbx+0x10` to `0x204b340`. By rule 7, their chunks use 20.0, not 60.0.
 - The inline writer `0x4b363b0` builds its own pair with `xor eax,eax;
   mov [rbx+0x280],rax`, so its flag is constant 0 and its chunks also use 20.0.
-- Not analysed: `.text` has 12 direct `call rel32` sites to the three writers.
-  Besides the two wrappers, these are `0x1fd7930`, `0x2034387`, `0x203812e`,
-  `0x20399f7`, `0x203b588` (→ `0x204b340`), `0x438384e`, `0x438726d`,
-  `0x43888d7`, `0x439f983` (→ `0x43a17c0`) and `0x4b5fbc6` (→ `0x4b363b0`).
-  Their argument words are not established.
+- `.text` has exactly 12 direct `call rel32` sites to the three writers. Besides the two wrappers, nine
+  build the pair at a call-specific base `D` with the same instruction shape:
+  `mov QWORD [rbx+D],imm32; movabs r,60.0; mov [rbx+D+8],r; …;
+  lea R,[rbx+D]; mov rdi,R; call`. The tool decodes the ModRM/REX fields and
+  requires the stores to precede the LEA. The twelfth (`0x4b5fbc6` →
+  `0x4b363b0`) is the inline future's poll, which builds its own pair (see
+  above).
+
+  | Call | Writer | Owner FDE | Pair base | `arg0` | Chunk timeout selected |
+  | --- | --- | --- | --- | ---: | ---: |
+  | `0x1fd7930` | `0x204b340` | `0x1fd7810` | `[rbx+0x58]` | 0 | 20.0 |
+  | `0x2034387` | `0x204b340` | `0x2033080` | `[rbx+0x200]` | 0 | 20.0 |
+  | `0x203812e` | `0x204b340` | `0x2037ac0` | `[rbx+0x218]` | 0 | 20.0 |
+  | `0x20399f7` | `0x204b340` | `0x2039060` | `[rbx+0x158]` | 0 | 20.0 |
+  | `0x203b588` | `0x204b340` | `0x203a190` | `[rbx+0x200]` | **1** | **60.0** |
+  | `0x438384e` | `0x43a17c0` | `0x43831e0` | `[rbx+0x218]` | 0 | 20.0 |
+  | `0x438726d` | `0x43a17c0` | `0x4386f70` | `[rbx+0x250]` | 0 | 20.0 |
+  | `0x43888d7` | `0x43a17c0` | `0x4387f40` | `[rbx+0x158]` | 0 | 20.0 |
+  | `0x439f983` | `0x43a17c0` | `0x439f860` | `[rbx+0x40]` | 0 | 20.0 |
+
+  So exactly one statically visible send path selects the 60.0 s per-chunk
+  timeout; every other path, including both wrappers and the inline writer,
+  gets 20.0 s. The 60 s owner `0x203a190` and its zero-flag twin `0x2033080`
+  both LEA the text blobs containing `sending abci_state` and `sending evm kvs`.
+  Only `0x203a190` also LEAs the blob starting
+  `ReplicaCmd::compute_abci_greeting`. Which message each call sends is not
+  established.
 
 ### lz4_flex correspondence (inference)
 
@@ -177,8 +201,14 @@ Corruption controls (all must refuse):
 - injected fourth port compare
 - compressor slot relocation addend
 - wrapper first word 0→1
+- removed caller 60.0 load
+- caller pair base moved
+- injected direct writer call
 - inline pair flag
 - truncated ELF
+
+Sensitivity control (must not refuse): setting `0x2034387`'s flag to 1 moves
+exactly that call into the 60.0 s selection.
 
 ## Results and limitations
 
@@ -187,13 +217,14 @@ Corruption controls (all must refuse):
 | Writers (port-compare and compressor-caller census) | 3 |
 | Signatures required exactly once per writer | 16 |
 | `lz4_stats` record callers (writers + readers) | 8 FDEs |
-| Tool-checked callers selecting the 20.0 default despite 60.0 | 2 wrappers + inline writer |
-| Writer/wrapper/inline-pair VAs that are GNU objdump instruction starts | 68 / 68 |
+| Direct writer calls (wrappers + decoded + inline poll) | 12 (2 + 9 + 1) |
+| Calls selecting the 60.0 s chunk timeout | 1 (`0x203b588`) |
+| Record VAs that are GNU objdump instruction starts | 106 / 106 |
 | Model lengths where capacity / prefix differ from the lead | 10 / 10, 2 / 10 |
 
 Validation on this branch (macOS arm64, Python 3.14.7, GNU binutils 2.47 for the
 full suite): `make verify`, `make test`, `make catalogue-check`; the new module
-(25 tests) also passes with only macOS LLVM tools on `PATH`.
+(30 tests) also passes with only macOS LLVM tools on `PATH`.
 
 Not established:
 
@@ -201,7 +232,7 @@ Not established:
   write-all/timeout poll `0x2036460` returns, is not analysed.
 - The meaning of the u16 at `stream+0x90` (the lead's "peer/listener port") is
   not traced. 3998/3999 come from the mask only.
-- The remaining ten direct callers' argument words are not analysed.
+- Which logical message each direct caller sends is not established.
 - The compressors are identified by slot, hash table size and lz4_flex source
   shape. Their bodies are not compared instruction by instruction.
 - The callee on the `2**32` path (`0x288d050`, or `0x457c3b0` in the other
@@ -209,6 +240,6 @@ Not established:
   copy are not analysed. The census does not cover other writers that never
   compress, or the #115 release.
 
-Gate: none requested; `transport` gates stay false. Next question: which of the
-ten other direct writer callers set the argument's first byte to non-zero, i.e.
-which sends actually use a caller-supplied chunk timeout?
+Gate: none requested; `transport` gates stay false. Next question: what does the
+`0x203a190` future send through its 60 s path, and what does its twin
+`0x2033080` send with the 20 s default?

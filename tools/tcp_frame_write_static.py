@@ -312,6 +312,75 @@ def check_inline_pair(img):
             'chunk_timeout_selected': DEFAULT_TIMEOUT}
 
 
+INLINE_POLL_CALL = 0x4b5fbc6
+ARG_STORE0 = re.compile(rb'\x48\xc7(?:\x43(.)|\x83(....))(....)', re.S)
+ARG_SECS = re.compile(rb'\x48([\xb8-\xbf])\x00{6}\x4e\x40', re.S)
+ARG_BASE = re.compile(rb'([\x48\x4c])\x8d(?:([\x43-\x7b])(.)|([\x83-\xbb])(....))([\x48\x4c])\x89([\xc0-\xff])', re.S)
+
+
+def disp(short, long_):
+    return struct.unpack('<b', short)[0] if short is not None else struct.unpack('<i', long_)[0]
+
+
+def caller_arg(img, call):
+    """Decode `mov QWORD [rbx+D],imm; movabs r,60.0; mov [rbx+D+8],r; ...; lea R,[rbx+D]; mov rdi,R` before a writer call."""
+    lo = call - 0x50
+    win = img.read(lo, call - lo)
+    tags = [(lo + m.start(), disp(m.group(1), m.group(2)), struct.unpack('<i', m.group(3))[0]) for m in ARG_STORE0.finditer(win)]
+    secs = [(lo + m.start(), m.group(1)[0] - 0xb8) for m in ARG_SECS.finditer(win)]
+    require(len(secs) == 1, f'writer call {call:#x}: {len(secs)} movabs 60.0 loads')
+    sva, sreg = secs[0]
+    rows = []
+    for m in ARG_BASE.finditer(win):
+        rex, m8, d8, m32, d32, rex2, mrm = m.groups()
+        modrm = (m8 or m32)[0]
+        reg = ((modrm >> 3) & 7) | (8 if rex == b'\x4c' else 0)
+        if modrm & 7 != 3 or rex2 != rex or (mrm[0] >> 3) & 7 != reg & 7 or mrm[0] & 7 != 7:
+            continue
+        rows.append((lo + m.start(), disp(d8, d32)))
+    require(len(rows) == 1, f'writer call {call:#x}: {len(rows)} lea R,[rbx+D]; mov rdi,R pairs')
+    bva, base = rows[0]
+    tag = [t for t in tags if t[1] == base]
+    require(len(tag) == 1, f'writer call {call:#x}: no unique store to [rbx+{base:#x}]')
+    store8 = (b'\x48\x89' + bytes([0x43 | (sreg << 3)]) + struct.pack('<b', base + 8)) if -128 <= base + 8 < 128 else \
+        (b'\x48\x89' + bytes([0x83 | (sreg << 3)]) + struct.pack('<i', base + 8))
+    s8 = win.find(store8, sva - lo)
+    require(s8 >= 0 and win.find(store8, s8 + 1) < 0, f'writer call {call:#x}: 60.0 not stored to [rbx+{base + 8:#x}]')
+    require(tag[0][0] < bva and sva < lo + s8 < bva, f'writer call {call:#x}: argument stores out of order')
+    flag = tag[0][2]
+    return {'call': hex(call), 'owner_fde': hex(img.fde_of(call)), 'arg_base': f'[rbx+{base:#x}]',
+            'arg0_store': hex(tag[0][0]), 'arg0': flag, 'arg8_seconds': 60.0, 'arg8_store': hex(lo + s8),
+            'chunk_timeout_selected': 60.0 if flag & 0xff else DEFAULT_TIMEOUT}
+
+
+def check_callers(img):
+    """Every direct call to a writer in .text: decoded argument pair, or the inline future's poll."""
+    base, text = img.text_bytes()
+    calls = []
+    for m in re.finditer(rb'\xe8', text):
+        va = base + m.start()
+        if m.start() + 5 <= len(text) and img.rel32(va, 5) in WRITERS:
+            calls.append(va)
+    wrapper_calls = {w['call'] for w in WRAPPERS}
+    require(wrapper_calls <= set(calls), 'wrapper calls missing from direct-call census')
+    rows = []
+    for call in calls:
+        if call in wrapper_calls:
+            continue
+        target = img.rel32(call, 5)
+        if call == INLINE_POLL_CALL:
+            require(target == WRITERS[2], 'inline poll call retargeted')
+            rows.append({'call': hex(call), 'owner_fde': hex(img.fde_of(call)), 'target': hex(target),
+                         'arg': 'future state passed through (pair built inside, see inline_pair)'})
+            continue
+        require(target != WRITERS[2], f'unexpected direct call {call:#x} to the inline writer')
+        row = caller_arg(img, call)
+        row['target'] = hex(target)
+        rows.append(row)
+    require(len(calls) == 12, f'direct writer call census {[hex(c) for c in calls]}')
+    return rows
+
+
 def census(img):
     base, text = img.text_bytes()
     port = [base + m.start() for m in re.finditer(rb'\x3d\x9e\x0f\x00\x00', text)]
@@ -334,7 +403,7 @@ def analyse(data):
     writers = [check_writer(img, w) for w in WRITERS]
     require(writers[2]['timeout']['select'] == '0x4b386bb', 'inline writer timeout selection moved')
     return {'census': c, 'writers': writers, 'wrappers': check_wrappers(img), 'inline_pair': check_inline_pair(img),
-            'model': model_summary()}
+            'callers': check_callers(img), 'model': model_summary()}
 
 
 # Transcribed model of the observed decisions; it does not compress.
@@ -407,6 +476,7 @@ def main(argv=None):
         args.out.mkdir(parents=True, exist_ok=True)
         (args.out / 'records.json').write_text(text)
     print(json.dumps({'writers': len(result['writers']), 'wrappers': len(result['wrappers']),
+                      'callers_60s': sum(r.get('chunk_timeout_selected') == 60.0 for r in result['callers']),
                       'capacity_differs': result['model']['capacity_differs'],
                       'prefix_differs': result['model']['prefix_differs']}, sort_keys=True))
     return 0
