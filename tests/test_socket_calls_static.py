@@ -57,6 +57,12 @@ class Results(unittest.TestCase):
         self.assertEqual((c['helper'], c['socket_type']), ('0x3cd6330', '0x80801'))
         self.assertEqual([r['node_port_fde'] for r in c['callers']], ['0x2037ac0', '0x43831e0'])
 
+    def test_node_port_listen_chain(self):
+        c = self.result['node_port_listen']
+        self.assertEqual([r['fde'] for r in c['node_port_calls']], ['0x22c54a0', '0x438ed70', '0x47b4950'])
+        self.assertEqual((c['wrapper'], c['node_port_backlog']), ('0x4f78960', 1024))
+        self.assertEqual(c['helpers']['0x4ee12c0']['caller_fde'], '0x29ae8f0')
+
     def test_packet_matches_regeneration(self):
         result = dict(load()['result'])
         result['target_sha256'] = load()['sha256']
@@ -111,6 +117,17 @@ class CorruptionControls(unittest.TestCase):
 
     def test_node_port_call_retarget(self):
         self.refuses(0x2037d9b + 1, b'\x51', 'NodePort site call 0x2037d9b retargeted')
+
+    def test_listen_wrapper_slot_retarget(self):
+        self.refuses(0x4f78970 + 2, struct.pack('<i', 0x57751c8 - (0x4f78970 + 6)), 'listen helper slot 0x5776490: 0 callers|backlog-1024 helper')
+
+    def test_injected_listen_wrapper_call(self):
+        va = 0x3723000
+        self.refuses(va, b'\xff\x15' + struct.pack('<i', sc.LISTEN_WRAPPER_SLOT - (va + 6)), 'listen wrapper callers')
+
+    def test_injected_direct_listen_helper_call(self):
+        va = 0x3723000
+        self.refuses(va, b'\xe8' + struct.pack('<i', 0x4ee12c0 - (va + 5)), 'has direct callers')
 
     def test_truncated_elf(self):
         with self.assertRaises(ValueError):

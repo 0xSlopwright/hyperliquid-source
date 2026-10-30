@@ -41,6 +41,11 @@
  2048b06:	48 8d 74 24 40       	lea    rsi,[rsp+0x40]
  2048b0b:	ff 15 e7 ac 72 03    	call   QWORD PTR [rip+0x372ace7]        # 57737f8 <__register_atfork@plt+0x1125b8>
 
+## NodePort listen FDE 0x22c54a0 call through listen wrapper slot [0x22c5c31, 0x22c5c41)
+ 22c5c31:	48 8d 7c 24 30       	lea    rdi,[rsp+0x30]
+ 22c5c36:	48 8d 74 24 10       	lea    rsi,[rsp+0x10]
+ 22c5c3b:	ff 15 c7 e0 4a 03    	call   QWORD PTR [rip+0x34ae0c7]        # 5773d08 <__register_atfork@plt+0x112ac8>
+
 ## setsockopt 0x242aa45 in FDE 0x2428800 [0x242aa0d, 0x242aa4b)
  242aa0d:	0f 84 20 02 00 00    	je     242ac33 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2b7d1cd>
  242aa13:	48 8b 83 18 01 00 00 	mov    rax,QWORD PTR [rbx+0x118]
@@ -54,6 +59,11 @@
  242aa3a:	ba 01 00 00 00       	mov    edx,0x1
  242aa3f:	41 b8 04 00 00 00    	mov    r8d,0x4
  242aa45:	ff 15 85 46 34 03    	call   QWORD PTR [rip+0x3344685]        # 576f0d0 <__register_atfork@plt+0x10de90>
+
+## only caller of the backlog-128 helper slot [0x29ae930, 0x29ae93e)
+ 29ae930:	48 89 e7             	mov    rdi,rsp
+ 29ae933:	48 8d 74 24 10       	lea    rsi,[rsp+0x10]
+ 29ae938:	ff 15 8a 68 dc 02    	call   QWORD PTR [rip+0x2dc688a]        # 57751c8 <__register_atfork@plt+0x113f88>
 
 ## setsockopt 0x29af121 in FDE 0x29aeb40 [0x29af0f1, 0x29af127)
  29af0f1:	83 fd ff             	cmp    ebp,0xffffffff
@@ -234,10 +244,20 @@
  43834b8:	48 89 ea             	mov    rdx,rbp
  43834bb:	e8 20 bb 01 00       	call   439efe0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc08e20>
 
+## NodePort listen FDE 0x438ed70 call through listen wrapper slot [0x439105a, 0x4391068)
+ 439105a:	48 8d b4 24 d8 00 00 	lea    rsi,[rsp+0xd8]
+ 4391061:	00
+ 4391062:	ff 15 a0 2c 3e 01    	call   QWORD PTR [rip+0x13e2ca0]        # 5773d08 <__register_atfork@plt+0x112ac8>
+
 ## 0x439efe0 call through connect helper slot [0x439f33a, 0x439f348)
  439f33a:	48 8d b4 24 c0 00 00 	lea    rsi,[rsp+0xc0]
  439f341:	00
  439f342:	ff 15 b0 44 3d 01    	call   QWORD PTR [rip+0x13d44b0]        # 57737f8 <__register_atfork@plt+0x1125b8>
+
+## NodePort listen FDE 0x47b4950 call through listen wrapper slot [0x47b68f2, 0x47b6900)
+ 47b68f2:	48 8d b4 24 b8 00 00 	lea    rsi,[rsp+0xb8]
+ 47b68f9:	00
+ 47b68fa:	ff 15 08 d4 fb 00    	call   QWORD PTR [rip+0xfbd408]        # 5773d08 <__register_atfork@plt+0x112ac8>
 
 ## setsockopt 0x4ecd9b3 in FDE 0x4ecd970 [0x4ecd983, 0x4ecd9b9)
  4ecd983:	74 39                	je     4ecd9be <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xda442>
@@ -392,3 +412,11 @@
  4ee13cb:	44 89 f7             	mov    edi,r14d
  4ee13ce:	be 80 00 00 00       	mov    esi,0x80
  4ee13d3:	ff 15 77 50 89 00    	call   QWORD PTR [rip+0x895077]        # 5776450 <__register_atfork@plt+0x115210>
+
+## listen wrapper 0x4f78960 call into the backlog-1024 helper [0x4f78961, 0x4f78976)
+ 4f78961:	41 56                	push   r14
+ 4f78963:	53                   	push   rbx
+ 4f78964:	48 83 ec 20          	sub    rsp,0x20
+ 4f78968:	48 89 fb             	mov    rbx,rdi
+ 4f7896b:	48 8d 7c 24 08       	lea    rdi,[rsp+0x8]
+ 4f78970:	ff 15 1a db 7f 00    	call   QWORD PTR [rip+0x7fdb1a]        # 5776490 <__register_atfork@plt+0x115250>

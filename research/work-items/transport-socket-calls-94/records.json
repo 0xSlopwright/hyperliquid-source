@@ -76,6 +76,40 @@
     "socket_call": "0x3cd6353",
     "socket_type": "0x80801"
   },
+  "node_port_listen": {
+    "helpers": {
+      "0x3cd6690": {
+        "backlog": 1024,
+        "caller": "0x4f78970",
+        "caller_fde": "0x4f78960",
+        "slot": "0x5776490"
+      },
+      "0x4ee12c0": {
+        "backlog": 128,
+        "caller": "0x29ae938",
+        "caller_fde": "0x29ae8f0",
+        "slot": "0x57751c8"
+      }
+    },
+    "node_port_backlog": 1024,
+    "node_port_calls": [
+      {
+        "call": "0x22c5c3b",
+        "fde": "0x22c54a0"
+      },
+      {
+        "call": "0x4391062",
+        "fde": "0x438ed70"
+      },
+      {
+        "call": "0x47b68fa",
+        "fde": "0x47b4950"
+      }
+    ],
+    "wrapper": "0x4f78960",
+    "wrapper_inner_call": "0x4f78970",
+    "wrapper_slot": "0x5773d08"
+  },
   "setsockopt": [
     {
       "args": "0x140ca8c",

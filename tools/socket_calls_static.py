@@ -93,6 +93,9 @@ class Image:
         t = self.text
         return t['address'], self.data[t['offset']:t['offset'] + t['size']]
 
+    def rel32_slot(self, call):
+        return call + 6 + struct.unpack('<i', self.read(call + 2, 4))[0]
+
     def slot_calls(self, slot):
         base, text = self.text_bytes()
         out = []
@@ -194,6 +197,44 @@ def check_connect_chain(img, socket_rows):
             'all_slot_callers': [hex(img.fde_of(c)[0]) for c in img.slot_calls(CONNECT_HELPER_SLOT)]}
 
 
+LISTEN_WRAPPER_SLOT, LISTEN_WRAPPER = 0x5773d08, 0x4f78960
+LISTEN_HELPER_SLOTS = {0x5776490: 0x3cd6690, 0x57751c8: 0x4ee12c0}
+NODE_PORT_LISTEN_FDES = (0x22c54a0, 0x438ed70, 0x47b4950)
+
+
+def check_listen_chain(img, listen_rows):
+    """NodePort listen FDEs -> [0x5773d08] -> 0x4f78960 -> [0x5776490] -> listen helper; and who reaches the other."""
+    require(img.relative.get(LISTEN_WRAPPER_SLOT) == LISTEN_WRAPPER, 'listen wrapper slot relocation changed')
+    for slot, target in LISTEN_HELPER_SLOTS.items():
+        require(img.relative.get(slot) == target, f'listen helper slot {slot:#x} relocation changed')
+    wrapper_calls = img.slot_calls(LISTEN_WRAPPER_SLOT)
+    owners = sorted(img.fde_of(c)[0] for c in wrapper_calls)
+    require(owners == sorted(NODE_PORT_LISTEN_FDES), f'listen wrapper callers {[hex(o) for o in owners]}')
+    lo, hi = img.fde_of(LISTEN_WRAPPER)
+    require(lo == LISTEN_WRAPPER, 'listen wrapper is not an FDE start')
+    backlog = {int(r['fde'], 16): r['value'] for r in listen_rows}
+    helpers = {}
+    for slot, target in LISTEN_HELPER_SLOTS.items():
+        calls = img.slot_calls(slot)
+        require(len(calls) == 1, f'listen helper slot {slot:#x}: {len(calls)} callers')
+        helpers[hex(target)] = {'slot': hex(slot), 'caller': hex(calls[0]), 'caller_fde': hex(img.fde_of(calls[0])[0]),
+                                'backlog': backlog[target]}
+    base, text = img.text_bytes()
+    for target in LISTEN_HELPER_SLOTS.values():
+        direct = [base + m.start() for m in re.finditer(rb'[\xe8\xe9]', text) if m.start() + 5 <= len(text) and
+                  base + m.start() + 5 + struct.unpack_from('<i', text, m.start() + 1)[0] == target]
+        require(not direct, f'listen helper {target:#x} has direct callers {[hex(d) for d in direct]}')
+    inner = [c for s in LISTEN_HELPER_SLOTS for c in img.slot_calls(s) if lo <= c < hi]
+    require(len(inner) == 1 and img.relative[img.rel32_slot(inner[0])] == 0x3cd6690,
+            'listen wrapper does not reach exactly the backlog-1024 helper')
+    other = helpers['0x4ee12c0']['caller_fde']
+    require(int(other, 16) not in NODE_PORT_LISTEN_FDES and int(other, 16) != LISTEN_WRAPPER,
+            'backlog-128 helper reached from the NodePort listen chain')
+    return {'node_port_calls': [{'call': hex(c), 'fde': hex(img.fde_of(c)[0])} for c in sorted(wrapper_calls)],
+            'wrapper': hex(LISTEN_WRAPPER), 'wrapper_slot': hex(LISTEN_WRAPPER_SLOT), 'wrapper_inner_call': hex(inner[0]),
+            'node_port_backlog': backlog[0x3cd6690], 'helpers': helpers}
+
+
 def analyse(data):
     img = Image(data)
     calls = {}
@@ -211,7 +252,8 @@ def analyse(data):
             'libc_slots': {k: hex(libc_slot(img, k)) for k in EXPECTED_CALLS},
             'bind_calls': [hex(c) for c in calls['bind']], 'connect_calls': [hex(c) for c in calls['connect']],
             'socket': sockets, 'setsockopt': opts, 'setsockopt_by_option': summary,
-            'listen': listens, 'accept4': accepts, 'node_port_connect': check_connect_chain(img, sockets)}
+            'listen': listens, 'accept4': accepts, 'node_port_connect': check_connect_chain(img, sockets),
+            'node_port_listen': check_listen_chain(img, listens)}
 
 
 def main(argv=None):
