@@ -36,8 +36,8 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 12
-windows. All 16 instruction VAs in `records.json` are instruction starts in
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 18
+windows. All 22 instruction VAs in `records.json` are instruction starts in
 those windows.
 
 ## Evidence
@@ -84,6 +84,33 @@ record is a sleep-retry policy: descriptor, try count 10, sleep 2.0 s. This
 reading fits the `AsyncSleepRetry::retry desc=[…] n_tries=… failed` template
 at `0x1f2257`, but this packet does not tie that template to this record.
 
+### Census: the (10, 2.0) record shape across `.text` (observation)
+
+The instruction pair `mov QWORD [rbx+d],10; movabs rax,2.0` occurs exactly 8
+times in `.text`. This is a byte scan pinned to that count; it would also catch
+a misaligned match. Four of the sites store a static descriptor directly before
+the count: `lea rax,[rip+desc]`, then a store to `[rbx+d-0x10]`, then an
+immediate length store to `[rbx+d-8]`.
+
+| FDE | Count store | Descriptor |
+| --- | --- | --- |
+| `0x2039060` | `0x20392ba` | formatted `rpc connect …` (above) |
+| `0x4387f40` | `0x438819a` | formatted `rpc connect …` (above) |
+| `0x22689f0` | `0x2268bb4` | static `gossip rpc height` (`0x3d7953`, 17) |
+| `0x22c54a0` | `0x22c55c2` | static `NodePort::listen` (`0x209360`, 16) |
+| `0x438ed70` | `0x438f2c1` | static `NodePort::listen` |
+| `0x47b4950` | `0x47b4b79` | static `NodePort::listen` |
+| `0x439fa90` | `0x439fb54` | not static |
+| `0x4b399a0` | `0x4b39c79` | not static |
+
+`0x22c54a0`, `0x438ed70` and `0x47b4950` are the three NodePort
+listen-port FDEs. Inference: a {descriptor, 10, 2.0} sleep-retry record is
+a shared default for NodePort listen, the gossip RPC connect, and the
+`gossip rpc height` step of the wrapper the lead seeds as `AsyncSleepRetry`
+(`0x22689f0`). `0x439fa90` and `0x4b399a0` follow a format call that uses the
+`tcp_stream_with_retry ` template (`0x1ffb5e`). That association is by
+proximity only and is not checked by the tool.
+
 ### The only 60.0 in the request futures is a writer argument (observation)
 
 A scan of every `movabs r64,imm64` and every RIP-relative `movsd` load from
@@ -112,13 +139,14 @@ so the 60.0 goes unused there.
 - `retry_tries: 10` on a policy labelled `gossip_rpc_request`: the binary's
   count 10 (with 2.0 s) sits in a record built from the formatted
   `rpc connect …` descriptor inside the request future. It is not stored next
-  to the `gossip_rpc_request` timeout descriptor. The lead's 2 s retry delay
-  for connect errors matches the 2.0 in this record. Its other delays
-  (`RETRY_DELAY_*`) are not tested here.
+  to the `gossip_rpc_request` timeout descriptor. The same (10, 2.0) pair also
+  appears with `NodePort::listen` and `gossip rpc height` (census above).
+  The lead's 2 s retry delay for connect errors matches the 2.0 in this
+  record. Its other delays (`RETRY_DELAY_*`) are not tested here.
 
 ## Controls
 
-`tests/test_gossip_rpc_timeouts_static.py` (13 tests) regenerates
+`tests/test_gossip_rpc_timeouts_static.py` (15 tests) regenerates
 `records.json`. It also refuses each of these corruptions:
 
 - Any timeout immediate replaced by 60.0.
@@ -128,6 +156,8 @@ so the 60.0 goes unused there.
 - The retry count changed to 11, or the 2.0 changed to 60.0, in either future.
 - The template text changed.
 - An extra 60.0 `movabs` planted in `0x2039060`.
+- An extra (10, 2.0) census site planted, or a static census descriptor made
+  non-printable.
 - The writer call opcode removed.
 - A window attributed to the wrong FDE.
 
@@ -139,8 +169,8 @@ producer does not use either.
 - What `0x565f410` does to the scaled value (for example, rounding), and which
   timer consumes the microseconds.
 - The meaning of the record's first word (`r14`), and the retry loop that reads
-  the record. The lead seeds that loop at `0x22689f0`, which contains a 2.0
-  immediate and `.rodata` loads of 540.0 and 840.0 that are not interpreted
-  here.
+  the record. The lead seeds that loop at `0x22689f0`. That FDE's own 2.0 is
+  the `gossip rpc height` census record; its `.rodata` loads of 540.0 and
+  840.0 are not interpreted here.
 - Whether any callee of `0x2039060` / `0x4387f40` applies its own connect
   timeout.

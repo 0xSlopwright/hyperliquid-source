@@ -41,6 +41,72 @@
       "writer_target": "0x43a17c0"
     }
   ],
+  "retry_census": [
+    {
+      "count_slot": "[rbx+0x160]",
+      "descriptor": "not static (no RIP LEA + immediate length store before the count)",
+      "end": "0x20392cf",
+      "fde": "0x2039060",
+      "va": "0x20392ba"
+    },
+    {
+      "count_slot": "[rbx+0x3bb0]",
+      "descriptor": "static",
+      "descriptor_text": "gossip rpc height",
+      "descriptor_va": "0x3d7953",
+      "end": "0x2268bc9",
+      "fde": "0x22689f0",
+      "va": "0x2268bb4"
+    },
+    {
+      "count_slot": "[rbx+0x188]",
+      "descriptor": "static",
+      "descriptor_text": "NodePort::listen",
+      "descriptor_va": "0x209360",
+      "end": "0x22c55d7",
+      "fde": "0x22c54a0",
+      "va": "0x22c55c2"
+    },
+    {
+      "count_slot": "[rbx+0x160]",
+      "descriptor": "not static (no RIP LEA + immediate length store before the count)",
+      "end": "0x43881af",
+      "fde": "0x4387f40",
+      "va": "0x438819a"
+    },
+    {
+      "count_slot": "[rbx+0x3c0]",
+      "descriptor": "static",
+      "descriptor_text": "NodePort::listen",
+      "descriptor_va": "0x209360",
+      "end": "0x438f2d6",
+      "fde": "0x438ed70",
+      "va": "0x438f2c1"
+    },
+    {
+      "count_slot": "[rbx+0x90]",
+      "descriptor": "not static (no RIP LEA + immediate length store before the count)",
+      "end": "0x439fb69",
+      "fde": "0x439fa90",
+      "va": "0x439fb54"
+    },
+    {
+      "count_slot": "[rbx+0x3e0]",
+      "descriptor": "static",
+      "descriptor_text": "NodePort::listen",
+      "descriptor_va": "0x209360",
+      "end": "0x47b4b8e",
+      "fde": "0x47b4950",
+      "va": "0x47b4b79"
+    },
+    {
+      "count_slot": "[rbx+0x250]",
+      "descriptor": "not static (no RIP LEA + immediate length store before the count)",
+      "end": "0x4b39c8e",
+      "fde": "0x4b399a0",
+      "va": "0x4b39c79"
+    }
+  ],
   "seconds_to_micros": 1000000.0,
   "target": "artifacts/node/94/hl-node",
   "target_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",

@@ -58,6 +58,15 @@ class Results(unittest.TestCase):
         self.assertEqual([(r['sixty_sites'], r['writer_target']) for r in self.result['retries']],
                          [(['0x20399c0'], '0x204b340'), (['0x43888a0'], '0x43a17c0')])
 
+    def test_retry_census(self):
+        rows = self.result['retry_census']
+        self.assertEqual([r['fde'] for r in rows], ['0x2039060', '0x22689f0', '0x22c54a0', '0x4387f40',
+                                                    '0x438ed70', '0x439fa90', '0x47b4950', '0x4b399a0'])
+        statics = [(r['fde'], r['descriptor_text']) for r in rows if r['descriptor'] == 'static']
+        self.assertEqual(statics, [('0x22689f0', 'gossip rpc height'), ('0x22c54a0', 'NodePort::listen'),
+                                   ('0x438ed70', 'NodePort::listen'), ('0x47b4950', 'NodePort::listen')])
+        self.assertEqual({r['va'] for r in rows} >= {r['tries_store'] for r in self.result['retries']}, True)
+
     def test_packet_matches_regeneration(self):
         expected = json.loads(PACKET.read_text())
         got = dict(self.result, target_sha256=load()['sha256'])
@@ -108,6 +117,13 @@ class Corruptions(unittest.TestCase):
     def test_extra_sixty_in_request_future(self):
         extra = b'\x48\xb8' + struct.pack('<d', 60.0)
         self.refuses(patched(0x2039400, extra), r"60.0 sites are \['0x2039400', '0x20399c0'\]")
+
+    def test_census_extra_site(self):
+        self.refuses(patched(0x2039400, b'\x48\xc7\x83\x00\x01\x00\x00\x0a\x00\x00\x00\x48\xb8' + struct.pack('<d', 2.0)),
+                     '9 retry-record sites, expected 8')
+
+    def test_census_descriptor_not_printable(self):
+        self.refuses(patched(0x209360, b'\x01'), 'static descriptor at 0x209360 is not printable')
 
     def test_writer_call_moved(self):
         self.refuses(patched(gt.RETRIES[1]['writer_call'], b'\x90'), 'writer call opcode')

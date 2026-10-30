@@ -61,6 +61,11 @@ RECORD = ('488b8424a8000000' '48898380010000' 'f30f6f842498000000' 'f30f7f837001
           '488b8378010000' '488b9380010000' '488d8b48010000' '4c89b348010000' '48898350010000'
           '48899358010000' '48c783600100000a000000' '48b80000000000000040' '48898368010000')
 RETRY_TEMPLATE_TEXT = b'rpc connect '
+# mov QWORD [rbx+disp],10; movabs rax,2.0
+CENSUS = re.compile(rb'\x48\xc7(?:\x43(.)|\x83(....))\x0a\x00\x00\x00\x48\xb8' + struct.pack('<d', 2.0), re.S)
+CENSUS_COUNT = 8
+# lea rax,[rip+desc]; mov [rbx+disp-0x10],rax; mov QWORD [rbx+disp-8],len
+STATIC_DESC = re.compile(rb'\x48\x8d\x05(....)\x48\x89\x83(....)\x48\xc7\x83(....)(....)', re.S)
 MOVABS_F64 = re.compile(rb'[\x48\x49]\xb8(?=(.{8}))', re.S)
 RIP_MOVSD = re.compile(rb'\xf2[\x40-\x4f]?\x0f\x10[\x05\x0d\x15\x1d\x25\x2d\x35\x3d](?=(....))', re.S)
 
@@ -191,11 +196,39 @@ def check_retry(img, r):
                 f64_immediates=sorted({v for _, v in imms if 1e-6 < abs(v) < 1e7}))
 
 
+def retry_census(img):
+    """Every `mov QWORD [rbx+d],10; movabs rax,2.0` in .text, with the descriptor stored before it."""
+    text = next(s for s in img.secs if s['name'] == '.text' and s['type'] != 8)
+    body = img.data[text['offset']:text['offset'] + text['size']]
+    rows = []
+    for m in CENSUS.finditer(body):
+        va = text['address'] + m.start()
+        disp = struct.unpack('<b', m.group(1))[0] if m.group(1) is not None else struct.unpack('<i', m.group(2))[0]
+        start = [f for f in img.fdes if f[0] <= va < f[1]]
+        require(len(start) == 1, f'census site {va:#x} is not in exactly one FDE')
+        row = dict(va=hex(va), fde=hex(start[0][0]), count_slot=f'[rbx+{disp:#x}]')
+        head = img.read(va - 25, 25)
+        s = STATIC_DESC.fullmatch(head)
+        if s and struct.unpack('<i', s.group(2))[0] == disp - 0x10 and struct.unpack('<i', s.group(3))[0] == disp - 8:
+            desc_va = va - 25 + 7 + struct.unpack('<i', s.group(1))[0]
+            length = struct.unpack('<I', s.group(4))[0]
+            text_ = img.read(desc_va, length)
+            require(all(0x20 <= c < 0x7f for c in text_), f'static descriptor at {desc_va:#x} is not printable')
+            row.update(descriptor='static', descriptor_va=hex(desc_va), descriptor_text=text_.decode())
+        else:
+            row.update(descriptor='not static (no RIP LEA + immediate length store before the count)')
+        row['end'] = hex(va + m.end() - m.start())
+        rows.append(row)
+    require(len(rows) == CENSUS_COUNT, f'{len(rows)} retry-record sites, expected {CENSUS_COUNT}')
+    return rows
+
+
 def analyse(data):
     img = Image(data)
     return dict(target=TARGET, seconds_to_micros=img.f64(SECONDS_TO_MICROS),
                 timeouts=[check_timeout(img, t) for t in TIMEOUTS],
-                retries=[check_retry(img, r) for r in RETRIES])
+                retries=[check_retry(img, r) for r in RETRIES],
+                retry_census=retry_census(img))
 
 
 def main(argv=None):
@@ -215,6 +248,8 @@ def main(argv=None):
     for r in result['retries']:
         print(f"{r['fde']} rpc connect retry: tries={r['tries']} sleep={r['sleep_seconds']} s; "
               f"only 60.0 at {r['sixty_sites']} feeds writer {r['writer_call']}")
+    statics = sorted({r['descriptor_text'] for r in result['retry_census'] if 'descriptor_text' in r})
+    print(f"{len(result['retry_census'])} (10, 2.0) retry records; static descriptors {statics}")
     return 0
 
 

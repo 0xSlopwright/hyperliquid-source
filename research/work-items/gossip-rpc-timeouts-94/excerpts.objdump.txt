@@ -323,3 +323,55 @@
  43888d1:	48 89 ef             	mov    rdi,rbp
  43888d4:	4c 89 e6             	mov    rsi,r12
  43888d7:	e8 e4 8e 01 00       	call   43a17c0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc06640>
+
+## census 0x22689f0 (10, 2.0) 'gossip rpc height' [0x2268b9b, 0x2268bc9)
+ 2268b9b:	48 8d 05 b1 ed 16 fe 	lea    rax,[rip+0xfffffffffe16edb1]        # 3d7953 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4bd04ad>
+ 2268ba2:	48 89 83 a0 3b 00 00 	mov    QWORD PTR [rbx+0x3ba0],rax
+ 2268ba9:	48 c7 83 a8 3b 00 00 	mov    QWORD PTR [rbx+0x3ba8],0x11
+ 2268bb0:	11 00 00 00
+ 2268bb4:	48 c7 83 b0 3b 00 00 	mov    QWORD PTR [rbx+0x3bb0],0xa
+ 2268bbb:	0a 00 00 00
+ 2268bbf:	48 b8 00 00 00 00 00 	movabs rax,0x4000000000000000
+ 2268bc6:	00 00 40
+
+## census 0x22c54a0 (10, 2.0) 'NodePort::listen' [0x22c55a9, 0x22c55d7)
+ 22c55a9:	48 8d 05 b0 3d f4 fd 	lea    rax,[rip+0xfffffffffdf43db0]        # 209360 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4d9eaa0>
+ 22c55b0:	48 89 83 78 01 00 00 	mov    QWORD PTR [rbx+0x178],rax
+ 22c55b7:	48 c7 83 80 01 00 00 	mov    QWORD PTR [rbx+0x180],0x10
+ 22c55be:	10 00 00 00
+ 22c55c2:	48 c7 83 88 01 00 00 	mov    QWORD PTR [rbx+0x188],0xa
+ 22c55c9:	0a 00 00 00
+ 22c55cd:	48 b8 00 00 00 00 00 	movabs rax,0x4000000000000000
+ 22c55d4:	00 00 40
+
+## census 0x438ed70 (10, 2.0) 'NodePort::listen' [0x438f2a8, 0x438f2d6)
+ 438f2a8:	48 8d 05 b1 a0 e7 fb 	lea    rax,[rip+0xfffffffffbe7a0b1]        # 209360 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4d9eaa0>
+ 438f2af:	48 89 83 b0 03 00 00 	mov    QWORD PTR [rbx+0x3b0],rax
+ 438f2b6:	48 c7 83 b8 03 00 00 	mov    QWORD PTR [rbx+0x3b8],0x10
+ 438f2bd:	10 00 00 00
+ 438f2c1:	48 c7 83 c0 03 00 00 	mov    QWORD PTR [rbx+0x3c0],0xa
+ 438f2c8:	0a 00 00 00
+ 438f2cc:	48 b8 00 00 00 00 00 	movabs rax,0x4000000000000000
+ 438f2d3:	00 00 40
+
+## census 0x439fa90 (10, 2.0) non-static descriptor [0x439fb54, 0x439fb69)
+ 439fb54:	48 c7 83 90 00 00 00 	mov    QWORD PTR [rbx+0x90],0xa
+ 439fb5b:	0a 00 00 00
+ 439fb5f:	48 b8 00 00 00 00 00 	movabs rax,0x4000000000000000
+ 439fb66:	00 00 40
+
+## census 0x47b4950 (10, 2.0) 'NodePort::listen' [0x47b4b60, 0x47b4b8e)
+ 47b4b60:	48 8d 05 f9 47 a5 fb 	lea    rax,[rip+0xfffffffffba547f9]        # 209360 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4d9eaa0>
+ 47b4b67:	48 89 83 d0 03 00 00 	mov    QWORD PTR [rbx+0x3d0],rax
+ 47b4b6e:	48 c7 83 d8 03 00 00 	mov    QWORD PTR [rbx+0x3d8],0x10
+ 47b4b75:	10 00 00 00
+ 47b4b79:	48 c7 83 e0 03 00 00 	mov    QWORD PTR [rbx+0x3e0],0xa
+ 47b4b80:	0a 00 00 00
+ 47b4b84:	48 b8 00 00 00 00 00 	movabs rax,0x4000000000000000
+ 47b4b8b:	00 00 40
+
+## census 0x4b399a0 (10, 2.0) non-static descriptor [0x4b39c79, 0x4b39c8e)
+ 4b39c79:	48 c7 83 50 02 00 00 	mov    QWORD PTR [rbx+0x250],0xa
+ 4b39c80:	0a 00 00 00
+ 4b39c84:	48 b8 00 00 00 00 00 	movabs rax,0x4000000000000000
+ 4b39c8b:	00 00 40
