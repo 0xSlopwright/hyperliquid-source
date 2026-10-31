@@ -59,6 +59,8 @@ class Elf:
         raw = [struct.unpack_from("<IIQQQQIIQQ", data, shoff + i * shentsize) for i in range(shnum)]
         if shstrndx >= shnum:
             raise EvidenceError("section name string table index out of range")
+        if raw[shstrndx][1] == 8:
+            raise EvidenceError("section name table is NOBITS")
         stro = raw[shstrndx][4]
         self.sections = {}
         for s in raw:
