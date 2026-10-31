@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
+ACCEPTANCE_GATES = frozenset({'mapped', 'built', 'behavior', 'identity'})
 
 
 def owner(path, components):
@@ -29,6 +30,8 @@ def validate_progress(components, progress, root):
         raise ValueError('Invalid progress record')
     if any('id' not in c for c in components):
         raise ValueError('Invalid component record')
+    if not isinstance(progress.get('gates'), dict) or set(progress['gates']) != ACCEPTANCE_GATES:
+        raise ValueError('Progress must declare exactly the four acceptance gates: mapped, built, behavior, identity')
     ids = {c['id'] for c in components}
     if 'components' not in progress:
         raise ValueError('Invalid progress record')
