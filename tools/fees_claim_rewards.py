@@ -2368,11 +2368,12 @@ def pinned(img):
 
 
 def powers_table(img):
-    """f64 divisors at 0x584b08 up to the first entry that is not 10^i."""
+    """Count leading divisors equal to the nearest f64 to the integer 10^i."""
     out = []
     for i in range(64):
         x = img.f64(POWERS + 8 * i)
-        if x != 10.0 ** i:
+        # Convert an exact integer once; floating pow varies with host libm.
+        if x != float(10 ** i):
             break
         out.append(i)
     return dict(start=hex(POWERS), exact_powers=len(out), next_word=hex(img.u64(POWERS + 8 * len(out))))

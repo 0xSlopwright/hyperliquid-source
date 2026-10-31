@@ -81,7 +81,7 @@ Any status other than `0x186` is returned with all `0x60` bytes copied from the 
 3. Value `v`, token 0: `amount / 100`. Other tokens: mark from `0x371cf40(exchange + 0x80, token, exchange + 0x3380)`; a mark of 0 gives `v = 0` and skips step 4. Otherwise `v = 0x32815f0(amount, token, mark, 0, metadata)`, which is `floor(amount * mark / (10^(w - s) * 100))` and counts as 0 at or above `0x28f5c28f5c28f5c`.
 4. Cap: `v = min(v, 1e16)`, except for token 1 and for a token whose name is exactly the 4 bytes `HYPE`. Token 0 is not capped.
 5. `0x1f849b0(exchange + 0x740, user)` returns an account; its i64 at `+0x10` takes `v / 10000`, saturating (recorder Location `l1/src/qtys/impl_ntl.rs:665`).
-6. One event through `0x3576710(exchange + 0x8f3, [user], time at +0x60, block, event)`: the block comes from `0x3987cb0` if the dword at exchange `+0` is 1, else zeros. The event is variant `0x8000000000000011`, a name string from `0x3c0d6e0`, and f64 `amount / 10^w` from the table at `0x584b08` (23 entries equal `10^i`, not bounds checked on `w`).
+6. One event through `0x3576710(exchange + 0x8f3, [user], time at +0x60, block, event)`: the block comes from `0x3987cb0` if the dword at exchange `+0` is 1, else zeros. The event is variant `0x8000000000000011`, a name string from `0x3c0d6e0`, and f64 `amount / table[w]` from `0x584b08` (the first 25 entries are the nearest doubles to `10^i`, not bounds checked on `w`). The event model covers decimals through 22 only.
 
 The sign test before the unwrap panic at `0x27113bf` cannot fail, since `0x32815f0` reports success only below `2^58`.
 
@@ -108,6 +108,8 @@ not yet implemented. The closed-form model in the tool is a test oracle and no R
 296 of 304 mutants of the two subjects killed, 8 equivalent with reasons in `evidence.json`.
 
 Limits: the balance update, mark lookup, account lookup and event push are stubs, so what they do with their arguments is not covered. The copies are matched by instruction compare, and not run. The hash is a stub, so `0xe0` hasher state is not tested. Vector sizes are synthetic: metadata values come from vectors, not from the chain.
+
+Review correction (2026-10-31): the original head `b619a039af231214173522680e7b2cd2b7288ed1` compared the table with host `10.0 ** i` and recorded 23 leading powers. Fresh regeneration on macOS with Python 3.14.6 recorded 25. `evidence.original.json` preserves the original export and `regeneration-original.diff` preserves that discrepancy. The checker now converts the exact integer `10 ** i` to its nearest double. Entries 23 and 24 match; entry 25 is `0x45208b2a2c280290`, one step below the nearest double. Tests pin all three and corrupt the boundary entries. This changes only the table metadata and its description: the event model's decimal limit, all vectors, mutation results and other exports stay unchanged.
 
 Unresolved: the name of event variant 0x11; what the tree at metadata `+0x1c0` holds and who writes it; which mark `0x371cf40` returns; who reads account `+0x10`; why the cap spares HYPE only.
 

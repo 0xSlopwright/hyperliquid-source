@@ -303,11 +303,28 @@ class Mutants(unittest.TestCase):
 
 
 class Packet(unittest.TestCase):
+    def test_power_table_rounding_boundary(self):
+        expected = {23: 0x44b52d02c7e14af6, 24: 0x44ea784379d99db4, 25: 0x45208b2a2c280290}
+        for exponent, bits in expected.items():
+            self.assertEqual(IMG.u64(t.POWERS + 8 * exponent), bits)
+        self.assertEqual(t.f2b(float(10 ** 23)), expected[23])
+        self.assertEqual(t.f2b(float(10 ** 24)), expected[24])
+        self.assertEqual(t.f2b(float(10 ** 25)), expected[25] + 1)
+        self.assertEqual(t.powers_table(IMG), dict(start=hex(t.POWERS), exact_powers=25, next_word=hex(expected[25])))
+
+    def test_power_table_corruption_changes_the_boundary(self):
+        at = t.POWERS + 8 * 24
+        changed = t.Image(DATA, {at: IMG.read(at, 1)[0] ^ 1})
+        self.assertEqual(t.powers_table(changed)['exact_powers'], 24)
+        at = t.POWERS + 8 * 25
+        changed = t.Image(DATA, {at: IMG.read(at, 1)[0] ^ 1})
+        self.assertEqual(t.powers_table(changed)['exact_powers'], 26)
+
     def test_folder_matches_a_fresh_run(self):
         with tempfile.TemporaryDirectory() as d:
             ev = t.generate(DATA, d, with_survey=False)
             old = json.loads((FOLDER / 'evidence.json').read_text())
-            for k in ('functions', 'vectors', 'groups', 'outcomes', 'writer_callers', 'handler_copies', 'status_arm', 'pinned'):
+            for k in ('functions', 'vectors', 'groups', 'outcomes', 'writer_callers', 'handler_copies', 'status_arm', 'pinned', 'powers'):
                 self.assertEqual(json.loads(json.dumps(ev[k])), old[k], k)
             for name in ('vectors.tsv', 'instructions.tsv', 'reference-diff.tsv'):
                 self.assertEqual((Path(d) / name).read_bytes(), (FOLDER / name).read_bytes(), name)
