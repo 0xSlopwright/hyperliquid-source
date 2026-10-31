@@ -1,5 +1,7 @@
 import bisect
+import contextlib
 import hashlib
+import io
 import importlib.util
 import json
 import os
@@ -314,6 +316,15 @@ class FdeIndexDuplicateOverlapTests(unittest.TestCase):
     def test_adjacent_fde_ranges_accepted(self):
         starts, ends = irp.fde_index(synthetic_elf([(0x401000, 0x100), (0x401100, 0x100)]))
         self.assertEqual((starts, ends), ([0x401000, 0x401100], [0x401100, 0x401200]))
+class MainErrorHandlingTests(unittest.TestCase):
+    def test_missing_binary_is_one_line_error(self):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            rc = irp.main(["--binary", "/nonexistent.bin"])
+        self.assertEqual(rc, 2)
+        self.assertTrue(err.getvalue().startswith("info_request_path: "))
+        self.assertEqual(len(err.getvalue().strip().splitlines()), 1)
+        self.assertNotIn("Traceback", err.getvalue())
 
 
 if __name__ == "__main__":
