@@ -23,7 +23,7 @@ class RequestSideEffectTypeTests(unittest.TestCase):
 
     def _fixtures(self):
         return {'fx1': {
-            'target_sha256': hp.KNOWN_TARGET_DIGESTS['94'],
+            'target_release': '94', 'target_sha256': hp.KNOWN_TARGET_DIGESTS['94'],
             'declared_side_effects': [],
         }}
 

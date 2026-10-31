@@ -33,7 +33,9 @@ def protocol():
 def fixtures_doc():
     return {
         'task_id': 'RE-003',
-        'fixtures': [{'fixture_id': 'synthetic-94', 'target_sha256': TARGET_SHA256}],
+        'fixtures': [{'fixture_id': 'synthetic-94', 'target_release': '94',
+                      'target_sha256': TARGET_SHA256,
+                      'payload_sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}],
     }
 
 

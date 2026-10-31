@@ -23,7 +23,7 @@ class FixtureSideEffectTypeTests(unittest.TestCase):
 
     def _fixtures(self, effects):
         return {'fx1': {
-            'target_sha256': hp.KNOWN_TARGET_DIGESTS['94'],
+            'target_release': '94', 'target_sha256': hp.KNOWN_TARGET_DIGESTS['94'],
             'declared_side_effects': effects,
         }}
 
@@ -45,7 +45,7 @@ class FixtureSideEffectTypeTests(unittest.TestCase):
         self.assertEqual(plan['declared_side_effects'], ['writes_fixture_output'])
 
     def test_missing_effects_key_still_planned(self):
-        fixtures = {'fx1': {'target_sha256': hp.KNOWN_TARGET_DIGESTS['94']}}
+        fixtures = {'fx1': {'target_release': '94', 'target_sha256': hp.KNOWN_TARGET_DIGESTS['94']}}
         plan = hp.validate_request(self._request([]), fixtures)
         self.assertEqual(plan['status'], 'planned')
 

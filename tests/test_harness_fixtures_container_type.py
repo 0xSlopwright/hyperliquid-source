@@ -16,7 +16,7 @@ class FixturesContainerTypeTests(unittest.TestCase):
     def test_dict_fixtures_rejected(self):
         with self.assertRaisesRegex(ValueError, 'fixtures must be a list'):
             hp.validate_fixtures(
-                self._doc({'a': {'fixture_id': 'a', 'target_sha256': '0' * 64}}),
+                self._doc({'a': {'fixture_id': 'a', 'target_sha256': '0' * 64, 'payload_sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}}),
                 self._protocol())
 
     def test_str_fixtures_rejected(self):
@@ -29,7 +29,7 @@ class FixturesContainerTypeTests(unittest.TestCase):
 
     def test_list_fixtures_still_validated(self):
         by_id = hp.validate_fixtures(
-            self._doc([{'fixture_id': 'a', 'target_sha256': '0' * 64}]),
+            self._doc([{'fixture_id': 'a', 'target_sha256': '0' * 64, 'payload_sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}]),
             self._protocol())
         self.assertIn('a', by_id)
 

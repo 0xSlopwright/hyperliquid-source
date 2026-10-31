@@ -51,7 +51,7 @@ class RequiredRowKeysTests(unittest.TestCase):
 
     def test_complete_row_still_validates(self):
         by_id = hp.validate_fixtures(
-            _doc([{'fixture_id': 'f1', 'target_sha256': DIGEST}]),
+            _doc([{'fixture_id': 'f1', 'target_sha256': DIGEST, 'payload_sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}]),
             _protocol(['fixture_id', 'target_sha256']),
         )
         self.assertEqual(list(by_id), ['f1'])

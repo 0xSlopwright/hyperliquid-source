@@ -35,7 +35,7 @@ class FixtureIdTypeTests(unittest.TestCase):
             hp.validate_request(_request(['nope']), {})
 
     def test_valid_string_fixture_id_passes_gate(self):
-        fixtures = {'f1': {'target_sha256': hp.KNOWN_TARGET_DIGESTS['94'],
+        fixtures = {'f1': {'target_release': '94', 'target_sha256': hp.KNOWN_TARGET_DIGESTS['94'],
                            'declared_side_effects': []}}
         plan = hp.validate_request(_request(['f1']), fixtures)
         self.assertEqual(plan['status'], 'planned')

@@ -36,7 +36,7 @@ class FixtureRowTypeTests(unittest.TestCase):
 
     def test_valid_dict_row_accepted(self):
         by_id = hp.validate_fixtures(
-            _doc([{'fixture_id': 'f1', 'target_sha256': DIGEST}]), PROTOCOL)
+            _doc([{'fixture_id': 'f1', 'target_sha256': DIGEST, 'payload_sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}]), PROTOCOL)
         self.assertIn('f1', by_id)
 
 
