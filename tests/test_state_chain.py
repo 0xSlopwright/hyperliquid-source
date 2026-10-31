@@ -13,7 +13,7 @@ PACKET = ROOT / 'research' / 'work-items' / 'RE-016-state-chain-94'
 sys.path.insert(0, str(ROOT / 'tools'))
 import state_chain as tool  # noqa: E402
 
-OUTPUT_SHA256 = 'f525820a128fa88738389d19b9ee70446a6fb436e5294be652e8d241ebcbaf0e'
+OUTPUT_SHA256 = '6e063821c3de3ad62dc45b0af1bc28ff7cdedaf048da0fbdd3cc5e51cabead75'
 
 
 def load(name, path):
@@ -129,6 +129,25 @@ class StateChainTests(unittest.TestCase):
         with Patched(o + 16, struct.pack('<q', 0x326e460)) as d:
             self.assertTrue(tool_rejects(d))
             self.assertTrue(iv.check_keys(bytes(d), check_sha=False))
+
+    def test_caller_scan_pins(self):
+        cs = tool.analyse(bytes(DATA))['caller_scan']
+        self.assertEqual(cs['rel32_call_sites'], {'0x326e460': [], '0x3270570': ['0x3752220'], '0x3751e80': []})
+        self.assertEqual(len(cs['ff15_slot_sites']['0x5773aa8']), 6)
+        self.assertEqual(cs['ff15_slot_sites']['0x5775580'], ['0x3270682'])
+
+    def test_caller_scan_tampers(self):
+        # remove a known ff15 site, and plant a new rel32 call to each reloc-only function
+        with flip(0x226685a + 2) as d:
+            self.assertTrue(tool_rejects(d))
+            self.assertTrue(iv.check_callers(bytes(d)))
+        site = 0x3751e80 - 0x10
+        for tgt in (0x3751e80, 0x326e460):
+            new = b'\xe8' + struct.pack('<i', tgt - (site + 5))
+            with self.subTest(tgt=hex(tgt)), Patched(off(site), new) as d:
+                self.assertTrue(tool_rejects(d))
+                self.assertTrue(iv.check_callers(bytes(d)))
+        self.assertEqual(iv.check_callers(bytes(DATA)), [])
 
     def test_sha_mismatch_rejected(self):
         with flip(0x3751e80):

@@ -10,7 +10,9 @@ bounded function extents with a small length decoder, recovering from bytes alon
     or register), with the rdi/rsi/edx set up for each call;
   * the edges: 0x3751e80 calls 0x3270570 by rel32, 0x3270570 calls through slot
     0x5775580, and the output-buffer copies that move each callee's result outward.
-It does not scan the text segment for callers. Output is sorted, deterministic JSON.
+It also runs one bounded caller pass over .text/.init/.fini/.plt: every byte offset is
+tried as e8 rel32 (target = site+5+disp) and ff15 RIP slot (target = site+6+disp); a
+byte-offset superset of aligned instructions, so zero counts are upper-bound proofs. Output is sorted, deterministic JSON.
 Every expected value is pinned exactly. Imports only the Python standard library.
 """
 import argparse
@@ -64,6 +66,13 @@ EXPECT = {
         '0x326e4e4': {'dst': 'entry_rdi', 'len': '0x1b20', 'src': 'rsp+0x60'},
         '0x327075e': {'dst': 'entry_rdi', 'len': '0x1b38', 'src': 'rsp+0xa70'},
         '0x3752872': {'dst': 'entry_rdi+0xbc0', 'len': '0x25e8', 'src': 'rsp+0x550'},
+    },
+    'caller_scan': {
+        'sections': ['.fini', '.init', '.plt', '.text'],
+        'ff15_slot_sites': {hex(SLOT_OUTER): ['0x226685a', '0x2268f61', '0x3273920', '0x4359d34',
+                                               '0x4746097', '0x4b2c8e2'],
+                            hex(SLOT_INNER): ['0x3270682']},
+        'rel32_call_sites': {hex(LEAF): [], hex(WRAPPER): ['0x3752220'], hex(MATERIALIZER): []},
     },
     'out_buffers': {'0x3752220': 'rsp+0x550', '0x3270682': 'rsp+0xa70', '0x326e4bb': 'rsp+0x60'},
 }
@@ -273,6 +282,27 @@ def scan(read, start, end):
     return {'instructions': insns, 'branches': branches, 'calls': calls, 'rip_lea_targets': rip_leas}
 
 
+SCAN_SECTIONS = ('.fini', '.init', '.plt', '.text')
+
+
+def caller_scan(data, sec):
+    """Every byte offset of the executable sections tried as e8 rel32 and ff15 rip slot."""
+    rel = {hex(t): [] for t in (MATERIALIZER, WRAPPER, LEAF)}
+    slot = {hex(t): [] for t in (SLOT_OUTER, SLOT_INNER)}
+    for name in SCAN_SECTIONS:
+        h = sec[name]
+        b, base = data[h['offset']:h['offset'] + h['size']], h['addr']
+        for pat, n, want in ((b'\xe8', 5, rel), (b'\xff\x15', 6, slot)):
+            i = b.find(pat)
+            while i != -1 and i + n <= len(b):
+                disp, = struct.unpack_from('<i', b, i + n - 4)
+                t = hex(base + i + n + disp)
+                if t in want:
+                    want[t].append(hex(base + i))
+                i = b.find(pat, i + 1)
+    return {'sections': sorted(SCAN_SECTIONS), 'rel32_call_sites': rel, 'ff15_slot_sites': slot}
+
+
 def analyse(data, check_sha=True):
     if check_sha and hashlib.sha256(data).hexdigest() != BINARY_SHA256:
         raise ValueError('binary sha256 mismatch')
@@ -322,12 +352,13 @@ def analyse(data, check_sha=True):
         'edges': edges,
         'output_copies': {k: v for k, v in copies.items() if k in keep},
         'out_buffers': out_buffers,
+        'caller_scan': caller_scan(data, sec),
     }
 
 
 def expectation_errors(r):
     e = []
-    for key in ('relocations', 'addend_entries', 'neighbour_slots', 'slots_in_got', 'edges', 'out_buffers'):
+    for key in ('relocations', 'addend_entries', 'neighbour_slots', 'slots_in_got', 'edges', 'out_buffers', 'caller_scan'):
         if r[key] != EXPECT[key]:
             e.append(f'{key}: {r[key]!r} != {EXPECT[key]!r}')
     if r['output_copies'] != EXPECT['copies']:

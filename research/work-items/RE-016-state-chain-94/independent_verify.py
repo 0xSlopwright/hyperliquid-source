@@ -3,7 +3,7 @@
 
 Checks every key VA of the chain byte by byte against the pinned node #94 binary,
 re-derives each rel32 / RIP-relative target from those bytes, re-parses .rela.dyn for
-the two GOT slots, and checks the packet JSON against MANIFEST.sha256.
+the two GOT slots, rescans .text/.init/.fini/.plt for every e8/ff15 site reaching the chain, and checks the packet JSON against MANIFEST.sha256.
 Prints PASS, FAIL or INCONCLUSIVE; exit 0, 1 or 2.
 """
 import hashlib
@@ -73,6 +73,13 @@ TARGETS = [
     (0x3752287, 7, 0x576dfe0), (0x32706a5, 7, 0x576dfe0),
 ]
 RELOCS = {0x5773aa8: 0x3751e80, 0x5775580: 0x326e460}
+# whole-section caller pass: every byte offset tried as e8 rel32 / ff15 rip slot
+CALLERS = {
+    ('e8', 0x3751e80): [], ('e8', 0x326e460): [], ('e8', 0x3270570): [0x3752220],
+    ('ff15', 0x5773aa8): [0x226685a, 0x2268f61, 0x3273920, 0x4359d34, 0x4746097, 0x4b2c8e2],
+    ('ff15', 0x5775580): [0x3270682],
+}
+SCAN = (b'.text\0', b'.init\0', b'.fini\0', b'.plt\0')
 
 
 def load_segments(data):
@@ -107,6 +114,40 @@ def rela(data):
     raise KeyError('.rela.dyn')
 
 
+def section_hdrs(data):
+    shoff, = struct.unpack_from('<Q', data, 0x28)
+    shentsize, shnum, shstrndx = struct.unpack_from('<HHH', data, 0x3a)
+    sh = [struct.unpack_from('<IIQQQQIIQQ', data, shoff + i * shentsize) for i in range(shnum)]
+    stroff = sh[shstrndx][4]
+    for h in sh:
+        for n in SCAN:
+            if bytes(data[stroff + h[0]: stroff + h[0] + len(n)]) == n:
+                yield h[3], h[4], h[5]
+
+
+def check_callers(data):
+    found = {k: [] for k in CALLERS}
+    want = {}
+    for (op, t) in CALLERS:
+        want.setdefault(op, set()).add(t)
+    n_sec = 0
+    for addr, offset, size in section_hdrs(data):
+        n_sec += 1
+        b = bytes(data[offset:offset + size])
+        for op, pat, n in (('e8', b'\xe8', 5), ('ff15', b'\xff\x15', 6)):
+            i = b.find(pat)
+            while i != -1 and i + n <= len(b):
+                t = addr + i + n + struct.unpack_from('<i', b, i + n - 4)[0]
+                if t in want[op]:
+                    found[(op, t)].append(addr + i)
+                i = b.find(pat, i + 1)
+    fails = [] if n_sec == len(SCAN) else [f'scanned {n_sec} sections != {len(SCAN)}']
+    for k, v in CALLERS.items():
+        if sorted(found[k]) != v:
+            fails.append(f'{k[0]} -> {k[1]:#x}: sites {[hex(x) for x in sorted(found[k])]} != {[hex(x) for x in v]}')
+    return fails
+
+
 def check_keys(data, check_sha=True):
     """Return a list of failure strings (empty means every key holds)."""
     fails = []
@@ -134,7 +175,7 @@ def check_keys(data, check_sha=True):
             fails.append(f'reloc {slot:#x}: {seen[slot]} != [(8, 0, {target:#x})]')
         if by_addend[target] != [slot]:
             fails.append(f'addend {target:#x} carried by {[hex(x) for x in by_addend[target]]}')
-    return fails
+    return fails + check_callers(data)
 
 
 def check_packet():
@@ -160,7 +201,7 @@ def main():
     for f in fails:
         print('FAIL', f)
     print(f'{"FAIL" if fails else "PASS"}: keys={len(KEYS)} targets={len(TARGETS)} relocs={len(RELOCS)} '
-          f'failures={len(fails)}')
+          f'callers={sum(len(v) for v in CALLERS.values())}/{len(CALLERS)} failures={len(fails)}')
     return 1 if fails else 0
 
 

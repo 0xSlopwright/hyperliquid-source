@@ -4,7 +4,7 @@
 - Target release and full SHA-256: artifacts/node/94/hl-node, 3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f
 - Source commit / reference commit: main 1f8c67c63ca4794c9689235471c60297f8a5c985 (no source; binary-only)
 - Claim status: observation for the relocations, call sites, call targets, branch counts and output-buffer copies listed below. The role of 0x3751e80 is not proven by any string or named caller; see limitations.
-- Scope included and excluded: included the two .rela.dyn entries for GOT slots 0x5773aa8 and 0x5775580 (plus their +-8 neighbours), and three whole function extents decoded linearly to their ret: 0x3751e80..0x37529b5 (448 instructions), 0x3270570..0x32707b3 (112) and 0x326e460..0x326e50d (44). Excluded: the internals of every callee (0x37d08a0, 0x332d440, 0x37d4e30, 0x3269ae0), the field meaning of any copied block, and the six indirect call sites that load slot 0x5773aa8. #316 (LtHash writer, which already reports 0x326e460 as reachable only through the relocation at 0x5775580), #262 (LtHash top function 0x3269ae0) and #271 (lists 0x3751e80 as a lead for exchange +0x3a00) are cited. This packet does not claim their ground and imports nothing from them or from other tools/.
+- Scope included and excluded: included the two .rela.dyn entries for GOT slots 0x5773aa8 and 0x5775580 (plus their +-8 neighbours), one whole-section caller pass over .text/.init/.fini/.plt, and three whole function extents decoded linearly to their ret: 0x3751e80..0x37529b5 (448 instructions), 0x3270570..0x32707b3 (112) and 0x326e460..0x326e50d (44). Excluded: the internals of every callee (0x37d08a0, 0x332d440, 0x37d4e30, 0x3269ae0), the field meaning of any copied block, and the behaviour of the six indirect call sites that load slot 0x5773aa8 (their locations are proven, their roles are not). #316 (LtHash writer, which already reports 0x326e460 as reachable only through the relocation at 0x5775580), #262 (LtHash top function 0x3269ae0) and #271 (lists 0x3751e80 as a lead for exchange +0x3a00) are cited. This packet does not claim their ground and imports nothing from them or from other tools/.
 
 ## Reproduce
 
@@ -19,7 +19,7 @@ python3 -B -m unittest tests.test_state_chain
 for s in 0 7 99; do PYTHONHASHSEED=$s python3 -B tools/state_chain.py | sha256sum; done
 ```
 
-Output: state-chain.json, sha256 f525820a128fa88738389d19b9ee70446a6fb436e5294be652e8d241ebcbaf0e. It is byte-identical for seeds 0, 7 and 99 and under -O. The tool reads only the binary and writes only --out (or stdout). It emits nothing unless every exact expectation in EXPECT holds. File hashes are in MANIFEST.sha256.
+Output: state-chain.json, sha256 6e063821c3de3ad62dc45b0af1bc28ff7cdedaf048da0fbdd3cc5e51cabead75. It is byte-identical for seeds 0, 7 and 99 and under -O. The tool reads only the binary and writes only --out (or stdout). It emits nothing unless every exact expectation in EXPECT holds. File hashes are in MANIFEST.sha256.
 
 ## Evidence
 
@@ -107,8 +107,8 @@ Not yet implemented. There is no Rust path and nothing is compared.
 ## Results and limitations
 
 - Proven, from bytes: 2 of 2 relocations (type 8, sym 0, unique addend in 80022 entries); 5 of 5 chain edges; 3 of 3 output-buffer copies (0x1b20, 0x1b38, 0x25e8); branch counts 0/0/1 over 448/112/44 instructions; 4 of 4 rel32 calls in 0x326e460.
-- Observed in an earlier text-segment scan, not re-run by this packet (pending the heavy slot): 0x3751e80 and 0x326e460 have no rel32 callers; 0x3270570's only rel32 caller is 0x3752220; and slot 0x5773aa8 is loaded by six `ff15` call sites (0x226685a, 0x2268f61, 0x3273920, 0x4359d34, 0x4746097, 0x4b2c8e2). The caller of 0x3751e80 is therefore not unique.
+- Proven by this packet's caller pass (`caller_scan` in state-chain.json, re-derived by independent_verify.py): every byte offset of .text, .init, .fini and .plt is tried as `e8` rel32 (target = site+5+disp32) and as `ff15` RIP slot (target = site+6+disp32). Because this is a superset of the aligned instructions, the zero counts are upper bounds. Exact pinned counts: rel32 sites targeting 0x3751e80 = 0, targeting 0x326e460 = 0, targeting 0x3270570 = 1 (0x3752220, inside 0x3751e80); `ff15` sites through slot 0x5773aa8 = 6 (0x226685a, 0x2268f61, 0x3273920, 0x4359d34, 0x4746097, 0x4b2c8e2); through slot 0x5775580 = 1 (0x3270682). All counts match the earlier scan; none differed. The caller of 0x3751e80 is therefore not unique. Not covered: `jmp`/`mov reg,[slot]` loads of either slot, and calls from code outside these four sections.
 - Inferred, not proven: that 0x3751e80 is a state materializer / exporter. No string literal and no named caller supports "snapshot" or "export".
-- Not claimed: what 0x37d08a0, 0x332d440, 0x37d4e30 or 0x3269ae0 compute; what any copied field means; the six indirect callers; other releases.
+- Not claimed: what 0x37d08a0, 0x332d440, 0x37d4e30 or 0x3269ae0 compute; what any copied field means; what the six indirect callers do; other releases.
 
 Next question: which of the six `ff15 [0x5773aa8]` sites runs on a snapshot or export path, and does any of them sit next to a string that names it?

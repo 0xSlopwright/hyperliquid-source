@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 import state_chain as tool  # noqa: E402
 
 PACKET_JSON = HERE / 'state-chain.json'
-JSON_SHA256 = 'f525820a128fa88738389d19b9ee70446a6fb436e5294be652e8d241ebcbaf0e'
+JSON_SHA256 = '6e063821c3de3ad62dc45b0af1bc28ff7cdedaf048da0fbdd3cc5e51cabead75'
 
 
 def main():
