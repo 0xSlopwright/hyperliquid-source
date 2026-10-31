@@ -1,27 +1,70 @@
 import bisect
-import contextlib
+
+
 import hashlib
-import io
+
+
 import importlib.util
+
+
 import json
+
+
 import os
+
+
 import re
+
+
 import shutil
+
+
 import struct
+
+
 import subprocess
+
+
 import sys
+
+
 import tempfile
+
+
 import unittest
+
+
 from pathlib import Path
 
+
 ROOT = Path(__file__).resolve().parents[1]
+
+
 spec = importlib.util.spec_from_file_location("consensus_wire", ROOT / "tools/consensus_wire.py")
+
+
 cw = importlib.util.module_from_spec(spec)
+
+
 spec.loader.exec_module(cw)
+
+
 BIN = ROOT / "artifacts/node/94/hl-node"
+
+
 PACKET = ROOT / "research/work-items/RE-008-consensus-wire-state"
+
+
 OUTPUT_SHA256 = "c3be6de771cf5856b5e36560f3ac93d13168f78e7991870b7b870fef4ad3dd3a"
+
+
 DATA = BIN.read_bytes() if BIN.exists() else None
+
+
+import contextlib
+
+
+import io
 
 
 def tool(name):
@@ -66,6 +109,28 @@ def synthetic_fde_elf(entries):
         struct.pack_into("<IIQQQQIIQQ", data, shoff + i * 64,
                          s[0], s[1], s[2], s[3], s[4], s[5], 0, 0, 1, 0)
     return bytes(data)
+
+
+def _elf_code_mid_file(code, va=0x400000):
+    """Minimal ELF64 with `code` as the only PT_LOAD, section headers after it."""
+    shstr = b'\x00.text\x00.shstrtab\x00'
+    ehsize, phentsize, shentsize = 64, 56, 64
+    phoff = ehsize
+    code_off = phoff + phentsize
+    shoff = code_off + len(code)
+    shstr_off = shoff + 3 * shentsize
+    ident = b'\x7fELF' + bytes([2, 1, 1]) + b'\x00' * 9
+    eh = ident + struct.pack('<HHIQQQIHHHHHH', 2, 0x3E, 1, va, phoff, shoff, 0,
+                             ehsize, phentsize, 1, shentsize, 3, 2)
+    ph = struct.pack('<IIQQQQQQ', 1, 5, code_off, va, va, len(code), len(code), 0x1000)
+
+    def sh(name, typ, flags, addr, off, size):
+        return struct.pack('<IIQQQQIIQQ', name, typ, flags, addr, off, size, 0, 0, 1, 0)
+
+    shs = b'\x00' * shentsize
+    shs += sh(1, 1, 6, va, code_off, len(code))
+    shs += sh(7, 3, 0, 0, shstr_off, len(shstr))
+    return eh + ph + code + shs + shstr
 
 
 @unittest.skipIf(DATA is None, "pinned binary not present")
@@ -328,6 +393,8 @@ class ConsensusWireFdeTableTests(unittest.TestCase):
         self.assertEqual(cw.containing(starts, ends, 0x50FF), (0x5000, 0x5100))
         self.assertEqual(cw.containing(starts, ends, 0x514F), (0x5100, 0x5150))
         self.assertIsNone(cw.containing(starts, ends, 0x5150))
+
+
 class MainErrorHandlingTests(unittest.TestCase):
     def test_missing_binary_is_one_line_error(self):
         err = io.StringIO()
@@ -337,6 +404,8 @@ class MainErrorHandlingTests(unittest.TestCase):
         self.assertTrue(err.getvalue().startswith("consensus_wire: "))
         self.assertEqual(len(err.getvalue().strip().splitlines()), 1)
         self.assertNotIn("Traceback", err.getvalue())
+
+
 class ElfSectionNameBoundsTests(unittest.TestCase):
     """Synthetic ELF64 whose .shstrtab is followed by other bytes.
 
@@ -391,31 +460,9 @@ class ElfSectionNameBoundsTests(unittest.TestCase):
                           [(0, 0, 0), (1, 0x200, 0x10), (7, 0x400, 17)])
         elf = cw.Elf(data)
         self.assertEqual(sorted(elf.sections), ['', '.shstrtab', '.text'])
-def _elf_code_mid_file(code, va=0x400000):
-    """Minimal ELF64 with `code` as the only PT_LOAD, section headers after it."""
-    shstr = b'\x00.text\x00.shstrtab\x00'
-    ehsize, phentsize, shentsize = 64, 56, 64
-    phoff = ehsize
-    code_off = phoff + phentsize
-    shoff = code_off + len(code)
-    shstr_off = shoff + 3 * shentsize
-    ident = b'\x7fELF' + bytes([2, 1, 1]) + b'\x00' * 9
-    eh = ident + struct.pack('<HHIQQQIHHHHHH', 2, 0x3E, 1, va, phoff, shoff, 0,
-                             ehsize, phentsize, 1, shentsize, 3, 2)
-    ph = struct.pack('<IIQQQQQQ', 1, 5, code_off, va, va, len(code), len(code), 0x1000)
-
-    def sh(name, typ, flags, addr, off, size):
-        return struct.pack('<IIQQQQIIQQ', name, typ, flags, addr, off, size, 0, 0, 1, 0)
-
-    shs = b'\x00' * shentsize
-    shs += sh(1, 1, 6, va, code_off, len(code))
-    shs += sh(7, 3, 0, 0, shstr_off, len(shstr))
-    return eh + ph + code + shs + shstr
 
 
 class SegmentReadBoundsTests(unittest.TestCase):
-    # A 3-byte segment tail: bytes past the segment exist in the file
-    # (section headers) but are mapped at no VA.
     TRUNC = b'\x48\x81\xc0'
 
     def test_read_within_segment_unchanged(self):
@@ -434,6 +481,8 @@ class SegmentReadBoundsTests(unittest.TestCase):
         elf = cw.Elf(_elf_code_mid_file(self.TRUNC))
         with self.assertRaises(cw.EvidenceError):
             elf.read(0x500000, 1)
+
+
 class ElfShstrtabTypeTests(unittest.TestCase):
     """A NOBITS section name table occupies no file bytes, so names read
     from its offset are phantom names, not a string table."""

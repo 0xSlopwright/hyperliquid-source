@@ -57,45 +57,43 @@ class EvidenceError(ValueError):
 
 class Elf:
     def __init__(self, data: bytes):
+        if len(data) < 64:
+            raise EvidenceError("truncated ELF header")
         if data[:4] != b"\x7fELF" or data[4] != 2 or data[5] != 1:
             raise EvidenceError("not an ELF64 little-endian file")
         self.data = data
-        if len(data) < 64:
-            raise EvidenceError("truncated ELF header")
-        phoff, = struct.unpack_from("<Q", data, 0x20)
-        shoff, = struct.unpack_from("<Q", data, 0x28)
+        phoff, shoff = struct.unpack_from("<QQ", data, 0x20)
         phentsize, phnum, shentsize, shnum, shstrndx = struct.unpack_from("<HHHHH", data, 0x36)
         if phnum and phoff + (phnum - 1) * phentsize + 56 > len(data):
             raise EvidenceError("program header table extends past end of file")
         if shnum and shoff + (shnum - 1) * shentsize + 64 > len(data):
             raise EvidenceError("section header table extends past end of file")
+        if shstrndx >= shnum:
+            raise EvidenceError("section name string table index out of range")
         self.loads = []
         for i in range(phnum):
-            p_type, _f, p_off, p_va, _pa, p_filesz, _m, _a = struct.unpack_from(
-                "<IIQQQQQQ", data, phoff + i * phentsize)
+            p_type, _f, p_off, p_va, _pa, p_filesz, _m, _a = struct.unpack_from("<IIQQQQQQ", data, phoff + i * phentsize)
             if p_type == 1:
                 self.loads.append((p_va, p_off, p_filesz))
         secs = [struct.unpack_from("<IIQQQQIIQQ", data, shoff + i * shentsize) for i in range(shnum)]
+        if secs[shstrndx][1] == 8:
+            raise EvidenceError("section name table is NOBITS")
         stro, strsize = secs[shstrndx][4], secs[shstrndx][5]
         if stro > len(data) or strsize > len(data) - stro:
             raise EvidenceError("section name table extends past end of file")
         table = data[stro:stro + strsize]
-        if secs[shstrndx][1] == 8:
-            raise EvidenceError("section name table is NOBITS")
-        stro = secs[shstrndx][4]
         self.sections = {}
-        for s in secs:
-            try:
-                name = data[stro + s[0]:data.index(b"\0", stro + s[0])].decode()
-            except UnicodeDecodeError:
-                raise EvidenceError('section name is not valid UTF-8')
-            if s[0] >= len(table):
+        for sec in secs:
+            if sec[0] >= len(table):
                 raise EvidenceError("section name offset outside .shstrtab")
-            end = table.find(b"\0", s[0])
+            end = table.find(b"\0", sec[0])
             if end < 0:
                 raise EvidenceError("unterminated section name")
-            name = table[s[0]:end].decode()
-            self.sections[name] = (s[3], s[4], s[5])
+            try:
+                name = table[sec[0]:end].decode()
+            except UnicodeDecodeError as exc:
+                raise EvidenceError("section name is not valid UTF-8") from exc
+            self.sections[name] = (sec[3], sec[4], sec[5])
 
     def section(self, name):
         try:
@@ -122,31 +120,32 @@ class Elf:
 
 
 def fde_index(elf: Elf):
+    """Return ordered, non-overlapping FDE starts and ends from the header table."""
     addr, off, size = elf.section(".eh_frame_hdr")
     d = elf.data
-    if size < 12:
+    if size < 12 or off + 12 > len(d):
         raise EvidenceError("truncated .eh_frame_hdr header")
     ver, ep_enc, cnt_enc, tab_enc = d[off:off + 4]
     if (ver, ep_enc, cnt_enc, tab_enc) != (1, 0x1B, 0x03, 0x3B):
         raise EvidenceError("unexpected .eh_frame_hdr encodings")
     count = struct.unpack_from("<I", d, off + 8)[0]
-    if off + 12 + 8 * count > off + size or off + 12 + 8 * count > len(d):
+    if 12 + 8 * count > size or off + 12 + 8 * count > len(d):
         raise EvidenceError(".eh_frame_hdr table truncated")
     starts, ends = [], []
     for i in range(count):
-        pos = off + 12 + 8 * i
-        pc = addr + struct.unpack_from("<i", d, pos)[0]
-        fde_va = addr + struct.unpack_from("<i", d, pos + 4)[0]
+        pc_rel, fde_rel = struct.unpack_from("<ii", d, off + 12 + 8 * i)
+        pc, fde_va = addr + pc_rel, addr + fde_rel
         fo = elf.off(fde_va)
         if fo is None:
-            raise EvidenceError(f"FDE at {fde_va:#x} not file-backed")
-        if fo is not None and fo + 16 > len(d):
-            raise EvidenceError(f"FDE at {fde_va:#x} truncated")
+            raise EvidenceError(f"FDE {fde_va:#x} not file-backed")
+        if fo + 16 > len(d):
+            raise EvidenceError(f"truncated FDE body at {fde_va:#x}")
         pc_begin = fde_va + 8 + struct.unpack_from("<i", d, fo + 8)[0]
+        pc_range = struct.unpack_from("<I", d, fo + 12)[0]
         if pc_begin != pc:
-            raise EvidenceError(f"FDE pc_begin mismatch at {fde_va:#x}")
+            raise EvidenceError(f"FDE pc_begin mismatch at {pc:#x}")
         starts.append(pc)
-        ends.append(pc + struct.unpack_from("<I", d, fo + 12)[0])
+        ends.append(pc + pc_range)
     if starts != sorted(starts):
         raise EvidenceError(".eh_frame_hdr table not sorted")
     for i in range(len(starts) - 1):
@@ -190,27 +189,22 @@ def first_party_locations(elf, relocs):
     for slot, a in relocs.items():
         if not (drr_va <= slot < drr_va + drr_size and ro_va <= a < ro_va + ro_size):
             continue
-        buf = elf.read(slot + 8, 16)
-        if len(buf) < 16:
-            raise EvidenceError("location record truncated")
-        ln, line, col = struct.unpack_from("<QII", buf)
-        # elf.read() only checks the first byte is file-backed, so a record
-        # straddling the section end would silently borrow the next
-        # section's bytes; the 16-byte record must lie inside .data.rel.ro.
         if slot + 24 > drr_va + drr_size:
             raise EvidenceError("location record leaves .data.rel.ro")
-        ln, line, col = struct.unpack_from("<QII", elf.read(slot + 8, 16))
+        record = elf.read(slot + 8, 16)
+        if len(record) < 16:
+            raise EvidenceError("truncated location record")
+        ln, line, col = struct.unpack_from("<QII", record)
         if not 0 < ln < 256 or line == 0 or col == 0:
             continue
-        # Likewise the path itself must lie inside .rodata.
         if a + ln > ro_va + ro_size:
             raise EvidenceError("location path leaves .rodata")
-        s = elf.read(a, ln)
-        if s.startswith(FIRST_PARTY) and s.endswith(b".rs") and b"\0" not in s:
+        path = elf.read(a, ln)
+        if path.startswith(FIRST_PARTY) and path.endswith(b".rs") and b"\0" not in path:
             try:
-                name = s[len(FIRST_PARTY):].decode()
-            except UnicodeDecodeError:
-                raise EvidenceError("first-party location name not UTF-8")
+                name = path[len(FIRST_PARTY):].decode()
+            except UnicodeDecodeError as exc:
+                raise EvidenceError("location name is not valid UTF-8") from exc
             out[slot] = (name, line, col)
     return out
 

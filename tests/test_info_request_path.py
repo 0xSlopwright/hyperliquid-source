@@ -1,31 +1,76 @@
 import bisect
-import contextlib
+
+
 import hashlib
-import io
+
+
 import importlib.util
+
+
 import json
+
+
 import os
+
+
 import re
+
+
 import shutil
+
+
 import struct
+
+
 import subprocess
+
+
 import sys
+
+
 import unittest
+
+
 from pathlib import Path
 
+
 ROOT = Path(__file__).resolve().parents[1]
+
+
 spec = importlib.util.spec_from_file_location(
     "info_request_path", ROOT / "tools/info_request_path.py")
+
+
 irp = importlib.util.module_from_spec(spec)
+
+
 spec.loader.exec_module(irp)
+
+
 BIN = ROOT / "artifacts/node/94/hl-node"
+
+
 PACKET = ROOT / "research/work-items/RE-012-info-request-path"
+
+
 OUTPUT_SHA256 = "4edf26203f2a9f2ddd307b728d54aba77ac493a158462e40e331e4a494893baa"
+
+
 DATA = BIN.read_bytes() if BIN.exists() else None
+
+
 HUB = 0x24AF210
+
+
 DESER = 0x28C7C80
+
+
 SNAPSHOT_GATE = 0x27E91D0
+
+
 HUB_TO_DESER_SITE = 0x24AFF82
+
+
 SCOPED_COUNTS = {
     "info_server/src/abci_state_info_handler.rs": 17,
     "info_server/src/f_types/position.rs": 1,
@@ -37,8 +82,72 @@ SCOPED_COUNTS = {
 }
 
 
+import contextlib
+
+
+import io
+
+
 def tool(name):
     return shutil.which(name)
+
+
+def synthetic_elf(entries):
+    """Minimal ELF64 whose .eh_frame_hdr table carries the given (pc, range)
+    FDE specs; needs no materialized binary, unlike the pinned-evidence tests."""
+    va = 0x400000
+    hdr_off = 0x200
+    table = bytearray(bytes([1, 0x1B, 0x03, 0x3B, 0, 0, 0, 0]))
+    table += struct.pack('<I', len(entries))
+    fde_blobs = {}
+    for j, (pc, rng) in enumerate(entries):
+        fde_va = va + 0x2000 + j * 0x1000
+        disp = pc - fde_va - 8
+        fde_blobs[fde_va - va] = struct.pack('<8x') + struct.pack('<i', disp) + struct.pack('<I', rng)
+        table += struct.pack('<ii', pc - (va + hdr_off), fde_va - (va + hdr_off))
+    shstr = b'\x00.eh_frame_hdr\x00.shstrtab\x00'
+    shoff = 0x1000
+    total = max(shoff + 3 * 64, max(fde_blobs) + 16 if fde_blobs else 0x1000)
+    data = bytearray(total)
+    data[0:6] = b'\x7fELF\x02\x01'
+    struct.pack_into('<HHIQQQIHHHHHH', data, 16, 2, 0x3E, 1, 0, 64, shoff, 0,
+                     64, 56, 1, 64, 3, 2)
+    struct.pack_into('<IIQQQQQQ', data, 64, 1, 5, 0, va, va, len(data), len(data), 0x1000)
+    data[hdr_off:hdr_off + len(table)] = table
+    for off, blob in fde_blobs.items():
+        data[off:off + len(blob)] = blob
+    shstr_off = shoff + 3 * 64
+    data[shstr_off:shstr_off + len(shstr)] = shstr
+
+    def sh(name_off, typ, flags, addr, off, size):
+        return struct.pack('<IIQQQQIIQQ', name_off, typ, flags, addr, off, size, 0, 0, 1, 0)
+    secs = b'\x00' * 64
+    secs += sh(1, 1, 0, va + hdr_off, hdr_off, len(table))
+    secs += sh(15, 3, 0, 0, shstr_off, len(shstr))
+    data[shoff:shoff + len(secs)] = secs
+    return irp.Elf(bytes(data))
+
+
+def _elf_code_mid_file(code, va=0x400000):
+    """Minimal ELF64 with `code` as the only PT_LOAD, section headers after it."""
+    shstr = b'\x00.text\x00.shstrtab\x00'
+    ehsize, phentsize, shentsize = 64, 56, 64
+    phoff = ehsize
+    code_off = phoff + phentsize
+    shoff = code_off + len(code)
+    shstr_off = shoff + 3 * shentsize
+    ident = b'\x7fELF' + bytes([2, 1, 1]) + b'\x00' * 9
+    eh = ident + struct.pack('<HHIQQQIHHHHHH', 2, 0x3E, 1, va, phoff, shoff, 0,
+                             ehsize, phentsize, 1, shentsize, 3, 2)
+    ph = struct.pack('<IIQQQQQQ', 1, 5, code_off, va, va, len(code), len(code), 0x1000)
+
+    def sh(name, typ, flags, addr, off, size):
+        return struct.pack('<IIQQQQIIQQ', name, typ, flags, addr, off, size, 0, 0, 1, 0)
+
+    shs = b'\x00' * shentsize
+    shs += sh(1, 1, 6, va, code_off, len(code))
+    shs += sh(7, 3, 0, 0, shstr_off, len(shstr))
+    return eh + ph + code + shs + shstr
 
 
 @unittest.skipIf(DATA is None, "pinned binary not present")
@@ -262,43 +371,6 @@ class InfoRequestPathTests(unittest.TestCase):
                 rf"{site:x}:\s+lea\s+-?0x[0-9a-f]+\(%rip\),%r\w+\s+# {anchor:x}")
 
 
-
-def synthetic_elf(entries):
-    """Minimal ELF64 whose .eh_frame_hdr table carries the given (pc, range)
-    FDE specs; needs no materialized binary, unlike the pinned-evidence tests."""
-    va = 0x400000
-    hdr_off = 0x200
-    table = bytearray(bytes([1, 0x1B, 0x03, 0x3B, 0, 0, 0, 0]))
-    table += struct.pack('<I', len(entries))
-    fde_blobs = {}
-    for j, (pc, rng) in enumerate(entries):
-        fde_va = va + 0x2000 + j * 0x1000
-        disp = pc - fde_va - 8
-        fde_blobs[fde_va - va] = struct.pack('<8x') + struct.pack('<i', disp) + struct.pack('<I', rng)
-        table += struct.pack('<ii', pc - (va + hdr_off), fde_va - (va + hdr_off))
-    shstr = b'\x00.eh_frame_hdr\x00.shstrtab\x00'
-    shoff = 0x1000
-    total = max(shoff + 3 * 64, max(fde_blobs) + 16 if fde_blobs else 0x1000)
-    data = bytearray(total)
-    data[0:6] = b'\x7fELF\x02\x01'
-    struct.pack_into('<HHIQQQIHHHHHH', data, 16, 2, 0x3E, 1, 0, 64, shoff, 0,
-                     64, 56, 1, 64, 3, 2)
-    struct.pack_into('<IIQQQQQQ', data, 64, 1, 5, 0, va, va, len(data), len(data), 0x1000)
-    data[hdr_off:hdr_off + len(table)] = table
-    for off, blob in fde_blobs.items():
-        data[off:off + len(blob)] = blob
-    shstr_off = shoff + 3 * 64
-    data[shstr_off:shstr_off + len(shstr)] = shstr
-
-    def sh(name_off, typ, flags, addr, off, size):
-        return struct.pack('<IIQQQQIIQQ', name_off, typ, flags, addr, off, size, 0, 0, 1, 0)
-    secs = b'\x00' * 64
-    secs += sh(1, 1, 0, va + hdr_off, hdr_off, len(table))
-    secs += sh(15, 3, 0, 0, shstr_off, len(shstr))
-    data[shoff:shoff + len(secs)] = secs
-    return irp.Elf(bytes(data))
-
-
 class FdeIndexDuplicateOverlapTests(unittest.TestCase):
     """fde_index() checked only that starts are sorted, so a duplicate
     start or an FDE ending past the next start passed silently and left
@@ -316,6 +388,8 @@ class FdeIndexDuplicateOverlapTests(unittest.TestCase):
     def test_adjacent_fde_ranges_accepted(self):
         starts, ends = irp.fde_index(synthetic_elf([(0x401000, 0x100), (0x401100, 0x100)]))
         self.assertEqual((starts, ends), ([0x401000, 0x401100], [0x401100, 0x401200]))
+
+
 class MainErrorHandlingTests(unittest.TestCase):
     def test_missing_binary_is_one_line_error(self):
         err = io.StringIO()
@@ -325,6 +399,8 @@ class MainErrorHandlingTests(unittest.TestCase):
         self.assertTrue(err.getvalue().startswith("info_request_path: "))
         self.assertEqual(len(err.getvalue().strip().splitlines()), 1)
         self.assertNotIn("Traceback", err.getvalue())
+
+
 class ElfSectionNameBoundsTests(unittest.TestCase):
     """Synthetic ELF64 whose .shstrtab is followed by other bytes.
 
@@ -374,31 +450,9 @@ class ElfSectionNameBoundsTests(unittest.TestCase):
                           [(0, 0, 0), (1, 0x200, 0x10), (7, 0x400, 17)])
         elf = irp.Elf(data)
         self.assertEqual(sorted(elf.sections), ['', '.shstrtab', '.text'])
-def _elf_code_mid_file(code, va=0x400000):
-    """Minimal ELF64 with `code` as the only PT_LOAD, section headers after it."""
-    shstr = b'\x00.text\x00.shstrtab\x00'
-    ehsize, phentsize, shentsize = 64, 56, 64
-    phoff = ehsize
-    code_off = phoff + phentsize
-    shoff = code_off + len(code)
-    shstr_off = shoff + 3 * shentsize
-    ident = b'\x7fELF' + bytes([2, 1, 1]) + b'\x00' * 9
-    eh = ident + struct.pack('<HHIQQQIHHHHHH', 2, 0x3E, 1, va, phoff, shoff, 0,
-                             ehsize, phentsize, 1, shentsize, 3, 2)
-    ph = struct.pack('<IIQQQQQQ', 1, 5, code_off, va, va, len(code), len(code), 0x1000)
-
-    def sh(name, typ, flags, addr, off, size):
-        return struct.pack('<IIQQQQIIQQ', name, typ, flags, addr, off, size, 0, 0, 1, 0)
-
-    shs = b'\x00' * shentsize
-    shs += sh(1, 1, 6, va, code_off, len(code))
-    shs += sh(7, 3, 0, 0, shstr_off, len(shstr))
-    return eh + ph + code + shs + shstr
 
 
 class SegmentReadBoundsTests(unittest.TestCase):
-    # A 3-byte segment tail: bytes past the segment exist in the file
-    # (section headers) but are mapped at no VA.
     TRUNC = b'\x48\x81\xc0'
 
     def test_read_within_segment_unchanged(self):
@@ -417,6 +471,8 @@ class SegmentReadBoundsTests(unittest.TestCase):
         elf = irp.Elf(_elf_code_mid_file(self.TRUNC))
         with self.assertRaises(irp.EvidenceError):
             elf.read(0x500000, 1)
+
+
 class ElfShstrtabTypeTests(unittest.TestCase):
     """A NOBITS section name table occupies no file bytes, so names read
     from its offset are phantom names, not a string table."""

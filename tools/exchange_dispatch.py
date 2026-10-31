@@ -40,36 +40,43 @@ HANDLER_RE = re.compile(
 
 class Elf:
     def __init__(self, data: bytes):
+        if len(data) < 64:
+            raise EvidenceError("truncated ELF header")
         if data[:4] != b"\x7fELF" or data[4] != 2 or data[5] != 1:
             raise EvidenceError("not an ELF64 little-endian file")
         self.data = data
-        if len(data) < 64:
-            raise EvidenceError("truncated ELF header")
         phoff, shoff = struct.unpack_from("<QQ", data, 0x20)
         phentsize, phnum, shentsize, shnum, shstrndx = struct.unpack_from("<HHHHH", data, 0x36)
         if phnum and phoff + (phnum - 1) * phentsize + 40 > len(data):
             raise EvidenceError("program header table extends past end of file")
         if shnum and shoff + (shnum - 1) * shentsize + 64 > len(data):
             raise EvidenceError("section header table extends past end of file")
+        if shstrndx >= shnum:
+            raise EvidenceError("section name string table index out of range")
         self.loads = []
         for i in range(phnum):
             p_type, _f, p_off, p_va, _pa, p_filesz = struct.unpack_from("<IIQQQQ", data, phoff + i * phentsize)
             if p_type == 1:
                 self.loads.append((p_va, p_off, p_filesz))
-        raw = [struct.unpack_from("<IIQQQQIIQQ", data, shoff + i * shentsize) for i in range(shnum)]
-        if shstrndx >= shnum:
-            raise EvidenceError("section name string table index out of range")
-        if raw[shstrndx][1] == 8:
+        secs = [struct.unpack_from("<IIQQQQIIQQ", data, shoff + i * shentsize) for i in range(shnum)]
+        if secs[shstrndx][1] == 8:
             raise EvidenceError("section name table is NOBITS")
-        stro = raw[shstrndx][4]
+        stro, strsize = secs[shstrndx][4], secs[shstrndx][5]
+        if stro > len(data) or strsize > len(data) - stro:
+            raise EvidenceError("section name table extends past end of file")
+        table = data[stro:stro + strsize]
         self.sections = {}
-        for s in raw:
-            end = data.index(b"\0", stro + s[0])
+        for sec in secs:
+            if sec[0] >= len(table):
+                raise EvidenceError("section name offset outside .shstrtab")
+            end = table.find(b"\0", sec[0])
+            if end < 0:
+                raise EvidenceError("unterminated section name")
             try:
-                name = data[stro + s[0]:end].decode()
-            except UnicodeDecodeError:
-                raise EvidenceError("section name is not valid UTF-8")
-            self.sections[name] = (s[3], s[4], s[5])
+                name = table[sec[0]:end].decode()
+            except UnicodeDecodeError as exc:
+                raise EvidenceError("section name is not valid UTF-8") from exc
+            self.sections[name] = (sec[3], sec[4], sec[5])
 
     def section(self, name):
         try:
@@ -108,33 +115,37 @@ class Elf:
 
 
 def fde_index(elf: Elf):
-    va, off, size = elf.section(".eh_frame_hdr")
+    """Return ordered, non-overlapping FDE starts and ends from the header table."""
+    addr, off, size = elf.section(".eh_frame_hdr")
     d = elf.data
-    if size < 12:
+    if size < 12 or off + 12 > len(d):
         raise EvidenceError("truncated .eh_frame_hdr header")
-    if d[off] != 1 or tuple(d[off + 1:off + 4]) != (0x1B, 0x03, 0x3B):
+    ver, ep_enc, cnt_enc, tab_enc = d[off:off + 4]
+    if (ver, ep_enc, cnt_enc, tab_enc) != (1, 0x1B, 0x03, 0x3B):
         raise EvidenceError("unexpected .eh_frame_hdr encodings")
     count = struct.unpack_from("<I", d, off + 8)[0]
-    if off + 12 + 8 * count > off + size or off + 12 + 8 * count > len(d):
+    if 12 + 8 * count > size or off + 12 + 8 * count > len(d):
         raise EvidenceError(".eh_frame_hdr table truncated")
     starts, ends = [], []
-    prev = None
     for i in range(count):
         pc_rel, fde_rel = struct.unpack_from("<ii", d, off + 12 + 8 * i)
-        start, fde_va = va + pc_rel, va + fde_rel
+        pc, fde_va = addr + pc_rel, addr + fde_rel
         fo = elf.off(fde_va)
+        if fo is None:
+            raise EvidenceError(f"FDE {fde_va:#x} not file-backed")
         if fo + 16 > len(d):
-            raise EvidenceError(f"FDE at {fde_va:#x} truncated")
+            raise EvidenceError(f"truncated FDE body at {fde_va:#x}")
         pc_begin = fde_va + 8 + struct.unpack_from("<i", d, fo + 8)[0]
         pc_range = struct.unpack_from("<I", d, fo + 12)[0]
-        if pc_begin != start:
-            raise EvidenceError(f"FDE pc_begin mismatch at {start:#x}")
-        if prev is not None and start <= prev:
-            raise EvidenceError(".eh_frame_hdr table not strictly sorted")
-        prev = start
-        starts.append(start)
-        ends.append(start + pc_range)
+        if pc_begin != pc:
+            raise EvidenceError(f"FDE pc_begin mismatch at {pc:#x}")
+        starts.append(pc)
+        ends.append(pc + pc_range)
+    if any(a >= b for a, b in zip(starts, starts[1:])):
+        raise EvidenceError(".eh_frame_hdr table not strictly sorted")
     for i in range(len(starts) - 1):
+        if starts[i] == starts[i + 1]:
+            raise EvidenceError(f"duplicate FDE start {starts[i]:#x}")
         if ends[i] > starts[i + 1]:
             raise EvidenceError(
                 f"FDE at {starts[i]:#x} ends at {ends[i]:#x}, "
