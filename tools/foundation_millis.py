@@ -108,6 +108,7 @@ def analyze(data, records, objdump=None, binary=TARGET):
         if objdump:
             output = subprocess.check_output([objdump,'-d',f'--start-address={start:#x}',
                                               f'--stop-address={end:#x}',str(binary)],cwd=ROOT,text=True)
+                                              f'--stop-address={end:#x}','artifacts/node/94/hl-node'],cwd=ROOT,text=True, encoding='utf-8')
         else:
             output = (PACKET / (row['name']+'.objdump.txt')).read_text(encoding='utf-8')
         exports[row['name']] = output

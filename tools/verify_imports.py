@@ -16,6 +16,7 @@ def git(root, path, *args, env=None):
     env = dict(os.environ if env is None else env, GIT_OPTIONAL_LOCKS='0')
     try:
         return subprocess.check_output(['git', '-C', str(root / path), *args], text=True, stderr=subprocess.DEVNULL, env=env).strip()
+        return subprocess.check_output(['git', '-C', str(root / path), *args], text=True, stderr=subprocess.DEVNULL, encoding='utf-8').strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         raise ValueError(f'Unreadable pinned source: {path}; {SETUP}') from None
 

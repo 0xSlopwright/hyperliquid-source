@@ -317,7 +317,7 @@ def disassemble(binary, start, end):
         raise EvidenceError(f'{why}; the listing parser reads GNU objdump Intel syntax only')
     cmd = [objdump, '-d', '-M', 'intel', '--no-show-raw-insn',
            f'--start-address={start:#x}', f'--stop-address={end:#x}', str(binary)]
-    return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
+    return subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8').stdout
 
 
 LINE_RE = re.compile(r'^\s*([0-9a-f]+):\t(.*)$')
