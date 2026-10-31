@@ -10,8 +10,8 @@
     "problems": []
   },
   "outputs": {
-    "node-94-115-drift.json": "3e5cc0de28677b03cd3cd890fa694c1acb89f324e5a88f79885a114895b059a8",
-    "node-94-115-drift.tsv": "2d6a10f473954ee0ca576b224bd9680847bd3bc116efcd6ef63bfb947dd782d8",
+    "node-94-115-drift.json": "cd5b97a7d0eecfb5435bcbd326c4c34897386665df435ccae6bfe3bc334af551",
+    "node-94-115-drift.tsv": "d6ad8ecd6c7db5046f99ca496bd131c0695920b940434a3a698da9dc51a773e6",
     "node-94-115-paths.json": "2510fca9ee11e3174fec9407377de8f1ad8e3a7254b96623d3e43a49e6441f9b"
   },
   "pinned": {
@@ -50,20 +50,26 @@
       "unmatched_115": 67719,
       "unmatched_94": 56625
     },
-    "drift_tsv_sha256": "2d6a10f473954ee0ca576b224bd9680847bd3bc116efcd6ef63bfb947dd782d8",
+    "drift_tsv_sha256": "d6ad8ecd6c7db5046f99ca496bd131c0695920b940434a3a698da9dc51a773e6",
     "instructions": {
       "115": 18827581,
       "94": 15730149
     },
     "masked_operands": {
       "115": {
+        "annot_comment": 955207,
+        "annot_symbol": 3065294,
         "branch_fde": 558403,
+        "branch_intra": 2386084,
         "branch_plt": 113386,
         "branch_unknown": 7421,
         "rip": 955207
       },
       "94": {
+        "annot_comment": 884000,
+        "annot_symbol": 2611495,
         "branch_fde": 496825,
+        "branch_intra": 1999858,
         "branch_plt": 107390,
         "branch_unknown": 7422,
         "rip": 884000

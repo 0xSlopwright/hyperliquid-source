@@ -27,8 +27,10 @@ objdump alike.
 is the evidence input). `gnu_objdump()` inspects `objdump --version` for `GNU`
 and returns `(None, reason)` otherwise. `verify.py` and `crosscheck.py` then
 **SKIP with an explicit reason** (exit 2 / SystemExit) — they do **not** PASS
-when the GNU verifier is unavailable. Retained JSON evidence in this packet is
-unchanged from the closed PR #9 drift run under GNU objdump 2.44.
+when the GNU verifier is unavailable. The retained JSON evidence was regenerated
+with the fingerprint contract below under the pinned tool version,
+`GNU objdump (GNU Binutils for Debian) 2.44`; `validation.json` pins that exact
+string and `verify.py` refuses any other.
 Drift-verify is only authoritative in the CI container (pinned GNU objdump 2.44); elsewhere it reports SKIPPED.
 
 ## Reproduce
@@ -64,15 +66,62 @@ matches the pinned one, because disassembly text is the fingerprint input.
 Each extent gets two hashes:
 
 - **raw**: SHA-256 of its file bytes.
-- **masked**: SHA-256 of its instruction text with only address-like operands
-  masked. Every mask is counted (`masked_operands` in the summary):
+- **masked**: SHA-256 over one line per instruction, `<length>\t<text>`, where
+  the length is the distance to the next decoded instruction (capped at the
+  extent end) and the text has only address-like operands masked. Every rewrite
+  of objdump's text is counted (`masked_operands` in the summary):
 
-| Masked operand | Replaced by | #94 | #115 |
+| Rewrite | Replaced by | #94 | #115 |
 | --- | --- | ---: | ---: |
 | Direct branch/call to an FDE start | `@fde` | 496,825 | 558,403 |
 | Direct branch/call into `.plt` | `@plt` | 107,390 | 113,386 |
 | Direct branch/call elsewhere outside the extent | `@unknown` | 7,422 | 7,421 |
 | RIP-relative displacement | `RIP` | 884,000 | 955,207 |
+| Direct branch inside the extent (`branch_intra`) | `+<offset from extent start>` | 1,999,858 | 2,386,084 |
+| objdump `<symbol>` annotation removed (`annot_symbol`) | nothing | 2,611,495 | 3,065,294 |
+| objdump `# ...` comment removed (`annot_comment`) | nothing | 884,000 | 955,207 |
+
+Only the first four replace an address. `verdict()` calls a pair `moved_only`
+only when raw bytes differ, masked digests are equal **and** at least one of
+those four was applied on either side; otherwise the pair is `changed`. The
+annotations are objdump's rendering of an address that is already in the
+operand (the `# ...` comment on these images is always the computed RIP target:
+the comment count equals the RIP count). Whitespace runs are collapsed, which is
+lossless for AT&T text; nothing else is rewritten.
+
+#### Prefixes are kept (fix for closed PR #37)
+
+PR #37 stripped a leading `notrack ` or `bnd ` and counted nothing, so
+`ff e0` (`jmp *%rax`), `3e ff e0` (`notrack jmp *%rax`) and `f2 ff e0`
+(`bnd jmp *%rax`) had the same masked digest with an empty mask counter and
+`verdict()` called them `moved_only`. No prefix is stripped now. Audit of every
+prefix class, against GNU objdump 2.44 `--no-show-raw-insn` text:
+
+| Prefix bytes | How 2.44 prints it | #37 | Now |
+| --- | --- | --- | --- |
+| `3e` before indirect jmp/call | `notrack` | **stripped, uncounted** | kept |
+| `f2` before jmp/call/ret/jcc | `bnd` | **stripped, uncounted** | kept |
+| `f2` / `f3` (rep/repne) | `rep`, `repz`, `repnz`, or part of the mnemonic (`pause`, `movsd`, `popcnt`, `endbr64`) | kept | kept |
+| `f0` lock | `lock` | kept | kept |
+| `2e 36 3e 26 64 65` segment | `cs ss ds es fs gs`, or `%fs:` in the operand | kept | kept |
+| `3e` / `2e` before jcc | `,pt` / `,pn` hint suffix | kept, but the branch target **was not masked** (regex missed it) | kept, target masked and counted |
+| `66` data16 | `data16`, `w` suffix or 16-bit registers | kept | kept |
+| `67` address-size | `addr32` or 32-bit address registers | kept | kept |
+| REX `40`–`4f` | `rex`, `rex.WRXB` when redundant; otherwise in register names / `q` suffix | kept | kept |
+| any prefix GNU does not print, or a different encoding length (`eb 00` vs `e9 00000000`, both `jmp`) | not visible in text | **invisible** | instruction length hashed |
+
+Direct branches still match after any prefix mnemonic (`bnd call`, `ds call`,
+`notrack bnd jmp`) and keep the prefix in the masked text (`bnd call @fde`).
+One residual, stated rather than hidden: same-length alternate encodings that
+objdump prints identically (`01 c3` and `03 d8` are both `add %eax,%ebx`) give
+equal masked lines; in a function with no address mask that pair is `changed`,
+and with an address mask elsewhere it can still be `moved_only`.
+
+In these two binaries the fix changes no classification: regenerating with the
+#37 code reproduces #37's committed hashes exactly (`3e5cc0de…` / `2d6a10f4…`),
+and the new TSV differs from it only in the `masked-<digest>` evidence column of
+210,036 unpaired rows; class, both starts and both sizes agree on all 233,324
+rows. `.text` holds 176 `notrack` and no `bnd` instructions in each release.
 
 Branches inside the extent keep their extent-relative offset. Immediates,
 stack offsets and register choices are compared verbatim. In a PIE without
@@ -111,13 +160,13 @@ is an inference.
 
 ## Evidence
 
-Generated outputs (byte-identical across two runs with `PYTHONHASHSEED=1`
-under `-I` and `PYTHONHASHSEED=987` without; SHA-256):
+Generated outputs (byte-identical across two runs, `PYTHONHASHSEED=0` under
+`-I -B` and `PYTHONHASHSEED=99` under `-O -B`; GNU objdump 2.44; SHA-256):
 
 | File | Rows | SHA-256 |
 | --- | ---: | --- |
-| node-94-115-drift.tsv | 233,324 | `2d6a10f473954ee0ca576b224bd9680847bd3bc116efcd6ef63bfb947dd782d8` |
-| node-94-115-drift.json | — | `3e5cc0de28677b03cd3cd890fa694c1acb89f324e5a88f79885a114895b059a8` |
+| node-94-115-drift.tsv | 233,324 | `d6ad8ecd6c7db5046f99ca496bd131c0695920b940434a3a698da9dc51a773e6` |
+| node-94-115-drift.json | — | `cd5b97a7d0eecfb5435bcbd326c4c34897386665df435ccae6bfe3bc334af551` |
 | node-94-115-paths.json | 63 | `2510fca9ee11e3174fec9407377de8f1ad8e3a7254b96623d3e43a49e6441f9b` |
 
 The 14 MB TSV stays in ignored `work/`. The summary and path results are
@@ -170,7 +219,9 @@ the repo) takes ranges from `readelf -wf`, digests from
 `objdump --insn-width=16`, and pairs raw groups, then norm groups (zipped by
 address order), then shape groups (size and mnemonic sequence → `changed`),
 then positional pairs between anchors (→ `changed_positional`).
-`reconcile.py` joins it to our TSV on the #94 start: all 121,299 #94 rows
+`reconcile.py` reads only the class, `start_94` and `start_115` columns of
+our TSV, and those are identical row for row between the #37 TSV and the
+regenerated one, so `reconciliation.json` is unchanged. It joins on the #94 start: all 121,299 #94 rows
 join, with none missing on either side. Every cell is retained in
 `reconciliation.json`. "Their norm equal" counts our pairs that the other
 classifier's own digest also calls equal.
@@ -237,8 +288,16 @@ No Rust implementation; deterministic offline tooling and static observation.
   gives `moved_only` for A; changing an instruction, a constant (including
   one inside the code's address range on both sides), or a call
   target (to non-FDE code or to the PLT) gives `changed`; an added function
-  gives `unmatched_115`; no mutation gives all `identical`.
-- `tests/test_release_drift.py` adds negative controls: immediates and stack
+  gives `unmatched_115`; no mutation gives all `identical`. Nine prefix
+  cases end B with `ff e0`, `3e ff e0` or `f2 ff e0` on each side: the six
+  cross pairs must be `changed` and the three same-bytes pairs `identical`.
+  Under the #37 normalize the six cross pairs come out `moved_only`.
+- `tests/test_release_drift.py` checks that the three `jmp *%rax` encodings
+  give three masked digests and `changed`; that the same bytes give
+  `identical`; that every prefix mnemonic class stays in the text; that
+  prefixed direct branches and `,pt`/`,pn` hints are masked with the prefix
+  kept; that `eb 00` and `e9 00000000` differ; and that a text-equal pair with
+  no address mask is `changed`. It also adds negative controls: immediates and stack
   offsets are never masked, even inside the image range; duplicate masked
   hashes never get a hash-match class, and duplicates split across anchor gaps
   or with unequal counts stay unpaired; call position never claims a body with
