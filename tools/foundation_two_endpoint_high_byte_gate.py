@@ -66,13 +66,13 @@ def gate(rdi, rsi, base, rcx, mem):
         return 0
     if rdi > rcx:
         return 0
-    if rdi < rcx and signed(mem[base + rdi]) <= -65:
+    if rdi < rcx and signed(mem[(base + rdi) & ((1 << 64) - 1)]) <= -65:
         return 0
     if rsi > rcx:
         return 0
-    if rsi < rcx and signed(mem[base + rsi]) <= -65:
+    if rsi < rcx and signed(mem[(base + rsi) & ((1 << 64) - 1)]) <= -65:
         return 0
-    return base + rdi
+    return (base + rdi) & ((1 << 64) - 1)
 
 
 def analyze(data):

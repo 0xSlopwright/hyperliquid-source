@@ -61,7 +61,7 @@ All addresses below are **ELF VAs**, without a guessed loader or Ghidra rebase. 
 
 ### Body behavior: bit-writer drain, no calls, two branches
 
-The window reads a counter dword at `[rdi+0x1734]`, an accumulator word at `[rdi+0x1730]`, an output buffer pointer at `[rdi+0x10]`, and a write position qword at `[rdi+0x28]`. It writes only through the buffer pointer and those three fields, and returns nothing.
+The window reads a counter dword at `[rdi+0x1734]`, an accumulator word at `[rdi+0x1730]`, an output buffer pointer at `[rdi+0x10]`, and a write position qword at `[rdi+0x28]`. It writes through the buffer pointer and those three fields. No source-level return contract is established. On the no-emit path RAX retains the zero-extended counter bits; on the one-byte path it retains the old write position; on the flush path EAX is zeroed before RET.
 
 - Counter == 16 (the `cmp $0x10,%eax; je 0x5494090` path): emit the low byte of the accumulator word at buffer + position, position += 1; reload the position and emit the high byte (the byte at `[rdi+0x1731]`) at buffer + position, position += 1; accumulator word = 0; counter = 0; ret. Total: two bytes emitted, position += 2, state reset.
 - Counter <= 7, signed (the `cmp $0x7,%eax; jle 0x549408d` path): ret with no emit and no state change.
@@ -97,3 +97,7 @@ No relocation record of any type in any `.rela.*` section names this window as a
 - The byte-pattern scan is not a complete xref census, and the absence of a naming relocation does not identify the window's provenance.
 - No progress gate is requested or claimed. Foundation's gates and generated progress files are unchanged.
 - The reference tree was a search lead only; no inferred implementation was copied, and every claim is grounded in target bytes for node #94 (SHA-256 `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`).
+
+## Review precision note
+
+Position arithmetic wraps at 64 bits. The scalar helper takes the counter as signed32 and assumes buffer writes do not alias state fields. The retained ordered loads/stores are required to analyze aliasing cases; in particular the flush path reloads position, output pointer and high accumulator byte after the first byte store.

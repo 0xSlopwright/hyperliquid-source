@@ -105,3 +105,7 @@ No meaning is claimed for the table they belong to, and the slot list does not i
 - The byte-pattern scan is not a complete xref census, and the relocation slot list does not identify the window's provenance.
 - No progress gate is requested or claimed. Foundation's gates and generated progress files are unchanged.
 - The reference tree was a search lead only; no inferred implementation was copied, and every claim is grounded in target bytes for node #94 (SHA-256 `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`).
+
+## Review precision note
+
+The memory-form XCHG uses the processor's locking protocol even without an explicit LOCK prefix; the byte exchange must not be reconstructed as separate ordinary load/store operations. See [Intel SDM volume 2D, XCHG](https://cdrdv2-public.intel.com/671143/334569-sdm-vol-2d.pdf). The helper records stored/returned byte values only, not a concurrency test.

@@ -51,7 +51,8 @@ def mix(buf, base, n, seed_b, seed_a, key):
     A Python restatement of the retained instruction sequence, not a run or
     emulation of the captured binary. buf covers [base, base + L_eff) where
     L_eff = n & 0x7fffffffffffffff; reads outside that range raise, which
-    the loop conditions provably never do for a well-formed call.
+    the loop conditions avoid for a nonwrapping mapped input interval. The
+    helper does not establish arbitrary wrapped-address caller behavior.
     """
     def memq(addr):
         off = addr - base

@@ -122,3 +122,7 @@ Objdump annotates the address with a nearest preceding `ctype` `do_widen` symbol
 - The byte-pattern scan is not a complete xref census, and the naming slots do not identify the window's provenance.
 - No progress gate is requested or claimed. Foundation's gates and generated progress files are unchanged.
 - The reference tree was a search lead only; no inferred implementation was copied, and every claim is grounded in target bytes for node #94 (SHA-256 `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`).
+
+## Review precision note
+
+The counter store precedes the length-word load. The scalar helper's length_word is the value observed at that later load; it does not assume that aliased entry memory remains unchanged. Cursor addition is modulo 2^64; cursor_delta is a signed displacement, not a final unbounded pointer.

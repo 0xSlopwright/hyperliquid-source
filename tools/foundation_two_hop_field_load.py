@@ -60,12 +60,12 @@ def load(mem, rdi):
     emulation of the captured binary. mem maps addresses to qwords; rdi is
     the struct pointer. Returns the value in rax at ret.
     """
-    p = mem[rdi + 8] & MASK
+    p = mem[(rdi + 8) & MASK] & MASK
     if p == (mem[p] & MASK):
         return MASK
-    q = mem[p + 8] & MASK
-    r = mem[q + 0x10] & MASK
-    return mem[r + 0xcb8] & MASK
+    q = mem[(p + 8) & MASK] & MASK
+    r = mem[(q + 0x10) & MASK] & MASK
+    return mem[(r + 0xcb8) & MASK] & MASK
 
 
 def analyze(data):

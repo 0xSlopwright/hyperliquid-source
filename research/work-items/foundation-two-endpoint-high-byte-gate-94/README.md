@@ -126,3 +126,7 @@ Cursor walk loop `0x3c1d690` (packet #46), `0xb4dd0` away; nothing in `0x3cd24xx
 - The byte-pattern scan is not a complete xref census, and the absence of a naming relocation does not identify the window's provenance.
 - No progress gate is requested or claimed. Foundation's gates and generated progress files are unchanged.
 - The reference tree was a search lead only; no inferred implementation was copied, and every claim is grounded in target bytes for node #94 (SHA-256 `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`).
+
+## Review precision note
+
+All input registers are unsigned 64-bit values. Effective addresses and the passing RAX sum wrap modulo 2^64. The helper now retains that wrap; register-arithmetic controls do not assert that boundary addresses are mapped for a caller.

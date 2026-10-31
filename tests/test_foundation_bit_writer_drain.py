@@ -71,6 +71,12 @@ class TestBitWriterDrain(unittest.TestCase):
         off = text['offset'] + START - text['address']
         self.assertEqual(bytes(data[off:off + len(BODY)]), BODY)
 
+    def test_target_position_increment_wraps(self):
+        self.assertIn(bytes.fromhex('488d7001'), BODY)
+        pos = (1 << 64) - 1
+        self.assertEqual(drain(8, 0x1234, pos), (b'\x34', 0, 0x12, 0))
+        self.assertEqual(drain(16, 0x1234, pos), (b'\x34\x12', 0, 0, 1))
+
     def test_rule_edges(self):
         self.assertEqual(drain(16, 0xabcd, 5), (bytes([0xcd, 0xab]), 0, 0, 7))
         self.assertEqual(drain(16, 0x0000, 0), (bytes([0, 0]), 0, 0, 2))

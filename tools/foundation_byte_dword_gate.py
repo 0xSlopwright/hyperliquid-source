@@ -61,7 +61,7 @@ def to_signed32(value):
     return value - (1 << 32) if value >= (1 << 31) else value
 
 
-def gate(byte, count, d4, d10):
+def gate(byte, count, d4):
     """Decoded gate rule, for edge checks only.
 
     A Python restatement of the retained instruction sequence, not a run or
@@ -71,10 +71,9 @@ def gate(byte, count, d4, d10):
     byte &= 0xFF
     count = to_signed32(count)
     d4 = to_signed32(d4)
-    d10 = to_signed32(d10)
     if byte != 0 and count > 0:
         return byte
-    return 1 if d4 <= d10 else 0
+    return 1 if d4 <= count else 0
 
 
 def analyze(data):
@@ -174,15 +173,15 @@ def analyze(data):
             require(site + 5 + struct.unpack_from('<i', read(site, 5), 1)[0] == START,
                     'Caller call target changed')
     # Decoded-rule edges (restatement of the retained bytes, not execution).
-    require(gate(5, 3, 0, 0) == 5, 'Short-circuit edge changed')
-    require(gate(5, 0, 1, 3) == 1, 'Zero-count fallback edge changed')
-    require(gate(5, -1, 1, 3) == 1, 'Negative-count fallback edge changed')
-    require(gate(0, 3, 1, 3) == 1, 'Zero-byte less edge changed')
-    require(gate(0, 3, 5, 3) == 0, 'Zero-byte greater edge changed')
-    require(gate(0, 3, 3, 3) == 1, 'Zero-byte equal edge changed')
-    require(gate(0xFF, 1, 9, 9) == 255, 'Full-byte edge changed')
-    require(gate(0, 1, -1, 0) == 1, 'Signed dword edge changed')
-    require(gate(0, 1, 0, -1) == 0, 'Signed dword reverse edge changed')
+    require(gate(5, 3, 0) == 5, 'Short-circuit edge changed')
+    require(gate(5, 0, 1) == 0, 'Zero-count fallback edge changed')
+    require(gate(5, -1, 1) == 0, 'Negative-count fallback edge changed')
+    require(gate(0, 3, 1) == 1, 'Zero-byte less edge changed')
+    require(gate(0, 3, 5) == 0, 'Zero-byte greater edge changed')
+    require(gate(0, 3, 3) == 1, 'Zero-byte equal edge changed')
+    require(gate(0xFF, 1, 9) == 255, 'Full-byte edge changed')
+    require(gate(0, 0, -1) == 1, 'Signed dword edge changed')
+    require(gate(0, -1, 0) == 0, 'Signed dword reverse edge changed')
     return {
         'window': (START, END),
         'body_sha256': hashlib.sha256(body).hexdigest(),

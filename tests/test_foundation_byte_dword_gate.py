@@ -58,16 +58,24 @@ class TestByteDwordGate(unittest.TestCase):
         off = text['offset'] + START - text['address']
         self.assertEqual(bytes(data[off:off + len(BODY)]), BODY)
 
+    def test_target_uses_one_count_field_on_both_paths(self):
+        self.assertEqual(BODY[8:11], bytes.fromhex('8b5710'))
+        self.assertEqual(BODY[19:22], bytes.fromhex('395704'))
+        # EDX from the one load is both the sign-test and fallback operand.
+        self.assertEqual(gate(5, 0, 1), 0)
+        self.assertEqual(gate(5, -1, 1), 0)
+        self.assertEqual(gate(0, 3, 1), 1)
+
     def test_rule_edges(self):
-        self.assertEqual(gate(5, 3, 0, 0), 5)
-        self.assertEqual(gate(5, 0, 1, 3), 1)
-        self.assertEqual(gate(5, -1, 1, 3), 1)
-        self.assertEqual(gate(0, 3, 1, 3), 1)
-        self.assertEqual(gate(0, 3, 5, 3), 0)
-        self.assertEqual(gate(0, 3, 3, 3), 1)
-        self.assertEqual(gate(0xFF, 1, 9, 9), 255)
-        self.assertEqual(gate(0, 1, -1, 0), 1)
-        self.assertEqual(gate(0, 1, 0, -1), 0)
+        self.assertEqual(gate(5, 3, 0), 5)
+        self.assertEqual(gate(5, 0, 1), 0)
+        self.assertEqual(gate(5, -1, 1), 0)
+        self.assertEqual(gate(0, 3, 1), 1)
+        self.assertEqual(gate(0, 3, 5), 0)
+        self.assertEqual(gate(0, 3, 3), 1)
+        self.assertEqual(gate(0xFF, 1, 9), 255)
+        self.assertEqual(gate(0, 0, -1), 1)
+        self.assertEqual(gate(0, -1, 0), 0)
 
     def corrupted(self, mutator):
         data = load()

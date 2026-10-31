@@ -103,7 +103,7 @@ Rule, with `L = rsi & 0x7fffffffffffffff` (the mask clears bit 63; the low nibbl
   - until `r11 == 0`.
 - Return `A ^ B`.
 
-Step count: `ceil(L/32)` steps for `L >= 16`, else 0. The forward stream advances `+16` per step while the backward stream retreats `−16`, so the two streams meet in the middle; near the meeting point they may overlap — for example, at `L = 48` the second step reads the middle chunk from both streams (see the worked edges). The loop conditions prove every read stays inside `[rdi, rdi+L)`; the emulator sweep below additionally asserted no out-of-buffer read on every run.
+For a nonwrapping mapped input interval `[base, base+L)`, step count is `ceil(L/32)` for `L >= 16`, else 0. The forward stream advances `+16` per step while the backward stream retreats `−16`, so the two streams meet in the middle; near the meeting point they may overlap — for example, at `L = 48` the second step reads the middle chunk from both streams (see the worked edges). The loop conditions prove every read stays inside `[rdi, rdi+L)`; the emulator sweep below additionally asserted no out-of-buffer read on every run.
 
 Worked edges (hand-computed from the trace above, key `0` unless noted):
 
@@ -118,7 +118,7 @@ Worked edges (hand-computed from the trace above, key `0` unless noted):
 Because a loop with two 128-bit multiplies is heavier than the usual single-gate bar, the decoded rule was re-verified against an independent byte-level emulator before this packet was written: the window bytes were decoded with Capstone and executed by a small interpreter (mov/movabs/and/lea/cmp/xor/mul/add/branches/ret, with ZF/CF tracking and a bounds-checked buffer) against the closed-form rule in the checker. The interpreter derives every operand from the Capstone decode, so it is independent of the rule's transcription — a misread register, displacement, or multiply order would surface as a mismatch.
 
 - **5,062 cases, 0 mismatches.** Domain: effective lengths `0..1024` exhaustive × 2 seed sets (2,050 runs); 3,000 random runs with effective length ≤ 2048 and edge seeds (`0`, `1`, `2^64−1`, `2^63`, `0x8000000000000000`, `0x7fffffffffffffff`); 12 raw-length variants with bit 63 set (same effective length, exercising the mask). Every run asserted all reads inside the effective-length buffer.
-- The emulator script itself is NOT committed: it needs Capstone, which is not in the standard library, and the packet checker is stdlib-only by design. Instead, 8 fixed emulator-generated vectors (lengths 0, 16, 17, 32, 33, 48, 64, 100, with fixed seeds and buffers) are recorded in `evidence.json` and replayed by the checker's `--check` path, so the emulator's results remain replayable from the packet alone.
+- The emulator script itself is NOT committed: it needs Capstone, which is not in the standard library, and the packet checker is stdlib-only by design. Instead, 8 fixed emulator-generated vectors (lengths 0, 16, 17, 32, 33, 48, 64, 100, with fixed seeds and buffers) are recorded in `evidence.json` and replayed by the checker's `--check` path, these retain selected reported outcomes. They replay against the mathematical helper but do not reproduce the missing interpreter or independently establish its reported 5,062-run sweep.
 
 ### Incoming calls: zero direct sites, not a census
 
@@ -147,3 +147,7 @@ One relocation record names this window as addend: `R_X86_64_RELATIVE` at slot `
 - The emulator sweep covers effective lengths up to 2048 plus bit-63 raw-length variants; it does not cover astronomically large effective lengths, which the closed-form rule handles by masking but which no buffer can materialize.
 - No progress gate is requested or claimed. Foundation's gates and generated progress files are unchanged.
 - The reference tree was a search lead only; no inferred implementation was copied, and every claim is grounded in target bytes for node #94.
+
+## Review precision note
+
+The uncommitted interpreter and its 5,062-case count are the original author's historical report, not an independently reproducible validation result of this review. Acceptance here uses fresh disassembly, the complete register/flag flow, fixed vectors and focused controls. The helper and read-bound/step-count proof assume a nonwrapping mapped input interval; no arbitrary wrapped-address reachability or whole-function equivalence is established.

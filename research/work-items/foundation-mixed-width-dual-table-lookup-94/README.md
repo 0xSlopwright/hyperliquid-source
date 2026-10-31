@@ -101,3 +101,7 @@ Observed table heads (first eight entries each, meaning not claimed): u64 table 
 - The checker locks only the first eight entries of each table; the rest of both tables is unexamined.
 - No progress gate is requested or claimed. Foundation's gates and generated progress files are unchanged.
 - The reference tree was a search lead only; no inferred implementation was copied, and every claim is grounded in target bytes for node #94 (SHA-256 `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`).
+
+## Review precision note
+
+The signed i32 entry is added to the table base using 64-bit ADD, so the resolved register value is modulo 2^64. The helper now preserves this wrap; its table samples still make no claim about arbitrary input pointers or table bounds.

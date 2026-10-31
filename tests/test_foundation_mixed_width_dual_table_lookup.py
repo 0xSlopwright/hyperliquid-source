@@ -92,6 +92,12 @@ class MixedWidthDualTableLookupEvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             mixed_width.analyze(bad)
 
+    def test_target_signed_entry_add_wraps_at_64_bits(self):
+        off = self.offset(0x29d7fd6)
+        self.assertEqual(self.data[off:off + 7], bytes.fromhex('4863048e4801f0'))
+        self.assertEqual(mixed_width.lookup([6], [-(1 << 31)], 0),
+                         (((1 << 64) + mixed_width.I32_BASE - (1 << 31)), 6))
+
     def test_lookup_rule_edges(self):
         u64 = [6, 14, 15, 15, 13, 32, 28, 28]
         i32 = [-3447, -3441, -3427, -3412, -3397, -2058120, -3384, -3356]

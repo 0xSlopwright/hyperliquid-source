@@ -62,7 +62,7 @@ def lookup(u64_table, i32_table, index):
             'Index must be a single byte')
     require(0 <= index < len(u64_table), 'Index outside u64 table sample')
     require(0 <= index < len(i32_table), 'Index outside i32 table sample')
-    return I32_BASE + i32_table[index], u64_table[index]
+    return (I32_BASE + i32_table[index]) & ((1 << 64) - 1), u64_table[index]
 
 
 def analyze(data):

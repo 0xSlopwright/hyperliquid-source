@@ -141,3 +141,7 @@ No meaning is claimed for the table they belong to, and the slot list does not i
 - The byte-pattern scan is not a complete xref census, and the relocation slot list does not identify the window's provenance.
 - No progress gate is requested or claimed. Foundation's gates and generated progress files are unchanged.
 - The reference tree was a search lead only; no inferred implementation was copied, and every claim is grounded in target bytes for node #94 (SHA-256 `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`).
+
+## Review precision note
+
+The independent slot-content result assumes the final output tag store does not overlap the slot or link. The machine always performs that tag store last; if the pointers alias, it can change an already-restored slot byte. No caller nonaliasing invariant is established. RAX retains the output pointer, with unknown source-level return contract.

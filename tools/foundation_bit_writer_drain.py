@@ -91,14 +91,15 @@ def drain(counter, acc, pos):
     emulation of the captured binary. Returns (emitted bytes, new counter,
     new accumulator word, new position). The branch structure is restated
     exactly: ==16 flushes, signed <=7 emits nothing, everything else takes
-    the one-byte path.
+    the one-byte path. Counter is a signed32 value, position is unsigned64.
+    The helper assumes output-buffer writes do not alias the state fields.
     """
     acc &= 0xffff
     if counter == 16:
-        return (bytes([acc & 0xff, (acc >> 8) & 0xff]), 0, 0, pos + 2)
+        return (bytes([acc & 0xff, (acc >> 8) & 0xff]), 0, 0, (pos + 2) & ((1 << 64) - 1))
     if counter <= 7:
         return (b'', counter, acc, pos)
-    return (bytes([acc & 0xff]), counter - 8, (acc >> 8) & 0xffff, pos + 1)
+    return (bytes([acc & 0xff]), counter - 8, (acc >> 8) & 0xffff, (pos + 1) & ((1 << 64) - 1))
 
 
 def analyze(data):

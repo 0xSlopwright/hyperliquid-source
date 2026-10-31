@@ -88,7 +88,7 @@ Rule, stated exactly:
 - t == 0 → u = byte [rdi+0x55]; u == 4 → rdi += 0xb8, tail-jump to 0x44c6e70; u == 3 and byte [rdi+0xdb0] == 3 and byte [rdi+0xda8] == 3 → rdi += 0xc8, tail-jump to 0x43439c0; otherwise → return, with no store and no pointer change.
 - Otherwise (any other t) → return, with no store and no pointer change.
 
-The tail targets are named, not decoded: all three are FDE starts (`[0x4341ef0, 0x4341fd3)`, `[0x43439c0, 0x4343a5c)`, `[0x44c6e70, 0x44c6f5c)`), and no claim is made about what they do with the adjusted argument. The window contains no calls, no stores, and no return value on the jump paths — it either returns (fall-through paths) or transfers control.
+The tail targets are named, not decoded: all three are FDE starts (`[0x4341ef0, 0x4341fd3)`, `[0x43439c0, 0x4343a5c)`, `[0x44c6e70, 0x44c6f5c)`), and no claim is made about what they do with the adjusted argument. The window contains no calls or stores. Local RET paths retain the last zero-extended tag in RAX; jump paths transfer control to unanalyzed destinations whose eventual return behavior is unknown.
 
 ### Incoming calls: exactly one direct site
 

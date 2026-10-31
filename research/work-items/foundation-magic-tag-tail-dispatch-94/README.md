@@ -15,7 +15,7 @@ The component map asks to map time/quantity helpers and distinguish library code
 
 This window was checked for overlap before building: no work-item, tool, or test in the tree mentions `0x4340e00`, no open pull request title mentions it or magic-tag-tail-dispatch, and its bytes overlap nothing in the hour, millis, duration-guards, days-to-date, secs-f64, twin-widen, reserve-grow, twin-once-flag, set-once, days-seconds, unwrap-guard, twin-take, dealloc-size, dealloc-size-generic, drop-thunk, or later foundation packets.
 
-Weakness, stated head-on: this window is dispatch-only — it stores nothing, returns no value (both paths tail-jump), and its rule is a single two-way branch. It is bound because the rule is exact and fully locked (every instruction byte, both tail targets' FDE records, the caller, and the relocation scan), not because the rule is rich. The round-10 scout flagged it as weak backup material for exactly this reason, and the packet does not overstate it.
+Weakness, stated head-on: this window is dispatch-only — it stores nothing, has no local RET (both paths tail-jump; destination return contracts are unknown), and its rule is a single two-way branch. It is bound because the rule is exact and fully locked (every instruction byte, both tail targets' FDE records, the caller, and the relocation scan), not because the rule is rich. The round-10 scout flagged it as weak backup material for exactly this reason, and the packet does not overstate it.
 
 Family caution, addressed head-on: this window is in the same broad tag-dispatched-tail-gate class as packet #62's two-path tail gate (0x1fc7780), packet #66's quirky tag gate (0x223e3a0), and packet #67's multi-path tail dispatcher (0x4341b60). It is bound on its own merits, not as a family member or sibling of any of them: its dispatch key is a 64-bit magic constant rather than a tag byte, it has exactly two tail targets (not one or three), and neither path returns. No census of the class is claimed, and no shared-primitive decode is attempted.
 
@@ -55,7 +55,7 @@ All addresses below are **ELF VAs**, without a guessed loader or Ghidra rebase. 
 - The padding is exactly 7 bytes of `int3` (`0xcc`), from `0x4340e29` to `0x4340e30`: the next FDE starts at `0x4340e30` (`[0x4340e30, 0x4340f58)`, 0x128 bytes); the checker locks the padding bytes and the next FDE's PC/range separately. The 48-byte stride (41 + 7) is not the FDE extent, and any description of this window with a 48-byte body would overstate the frame.
 - The window opens directly with the pointer computation — no `endbr64` (an observation, not a scout deviation).
 
-### Body behavior: magic-tag tail dispatch, two targets, no return
+### Body behavior: magic-tag tail dispatch, two targets, no local RET
 
 Decoded from the FDE start, the window takes a struct pointer in `rdi`:
 

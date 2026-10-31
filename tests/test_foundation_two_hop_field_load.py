@@ -65,6 +65,10 @@ class TestTwoHopFieldLoad(unittest.TestCase):
         off = text['offset'] + START - text['address']
         self.assertEqual(bytes(data[off:off + len(BODY)]), BODY)
 
+    def test_target_pointer_displacement_wraps(self):
+        self.assertEqual(BODY[4:8], bytes.fromhex('488b4708'))
+        self.assertEqual(load({0: 0x1000, 0x1000: 0x1000}, MASK - 7), MASK)
+
     def test_rule_edges(self):
         self.assertEqual(load({0x1008: 0x1000, 0x1000: 0x1000}, 0x1000), MASK)
         mem = {0x2008: 0x3000, 0x3000: 0x9999, 0x3008: 0x4000, 0x4010: 0x5000,

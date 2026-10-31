@@ -113,3 +113,7 @@ No relocation record of any type in any `.rela.*` section names this window as a
 - The byte-pattern scan is not a complete xref census, and the absence of a naming relocation does not identify the window's provenance.
 - No progress gate is requested or claimed. Foundation's gates and generated progress files are unchanged.
 - The reference tree was a search lead only; no inferred implementation was copied, and every claim is grounded in target bytes for node #94.
+
+## Review precision note
+
+Each effective-address addition is modulo 2^64; the abstract memory-map helper now preserves that wrap. Its controls make no mapped-memory or caller-invariant claim.

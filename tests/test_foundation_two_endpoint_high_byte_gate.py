@@ -60,6 +60,13 @@ class TwoEndpointGateTests(unittest.TestCase):
         self.assertEqual(retained['function']['padding_bytes'], 0)
         self.assertEqual(retained['behavior']['rejected_set'], 'unsigned byte 0x80..0xbf (signed byte -128..-65); stated literally and not assigned to a category')
 
+    def test_target_64_bit_address_wrap(self):
+        self.assertEqual(BODY[44:47], bytes.fromhex('4801f8'))
+        # Both indices at limit skip dereferences; the ADD still wraps.
+        self.assertEqual(gate(1, 1, (1 << 64) - 1, 1, {}), 0)
+        # Abstract memory-map address wrap, not captured execution.
+        self.assertEqual(gate(1, 2, (1 << 64) - 1, 3, {0: 0x41, 1: 0x41}), 0)
+
     def test_rule_edges(self):
         base, rcx = 0x1000, 0x10
         mem = {base + i: 0x41 for i in range(0x20)}

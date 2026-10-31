@@ -77,7 +77,7 @@ Inputs: `rdi` = struct pointer. Fields read: flag byte at `[rdi+0x15]`, count dw
 
 Rule: if the flag byte is nonzero AND the count dword is positive (signed), return the flag byte. Otherwise return 1 iff dword `[rdi+0x4] <= dword [rdi+0x10]` (signed), else 0. Both comparisons are signed 32-bit: the count gate uses `test` + `jg`, and the fallback uses `cmp` + `setle`. The `movzbl` zero-extends, so the returned byte is 0..255 and the `setle` low byte is the whole return value — no stale-high-byte caveat on either path, because the fallback path overwrites `al` and the short-circuit path returns with `eax` still holding the zero-extended byte.
 
-Worked edges: byte 5, count 3 → 5 (the dword comparison is never reached); byte 5, count 0 → dword comparison decides; byte 5, count −1 → dword comparison decides (the count gate is signed); byte 0, count 3, `[rdi+0x4]` 1 vs count 3 → 1; byte 0, count 3, 5 vs 3 → 0; byte 0, count 3, 3 vs 3 → 1 (equality included); byte 0xff, count 1 → 255; byte 0, count 1, `[rdi+0x4]` −1 vs count 0 → 1 (signed, not unsigned).
+Worked edges: byte 5, count 3 → 5 (the dword comparison is never reached); byte 5, count 0 → dword comparison decides; byte 5, count −1 → dword comparison decides (the count gate is signed); byte 0, count 3, `[rdi+0x4]` 1 vs count 3 → 1; byte 0, count 3, 5 vs 3 → 0; byte 0, count 3, 3 vs 3 → 1 (equality included); byte 0xff, count 1 → 255; byte 0, count 0, `[rdi+0x4]` −1 vs count 0 → 1 (signed, not unsigned).
 
 ### Incoming calls: three direct sites, not a census
 
@@ -122,3 +122,7 @@ The nearest claimed window is the tiny two-byte gate `0x51647b0` (packet #72), `
 - The byte-pattern scan is not a complete xref census, and the absence of a naming relocation does not identify the window's provenance.
 - No progress gate is requested or claimed. Foundation's gates and generated progress files are unchanged.
 - The reference tree was a search lead only; no inferred implementation was copied, and every claim is grounded in target bytes for node #94 (SHA-256 `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`).
+
+## Review precision note
+
+The decoded formula uses three fields, not four independent inputs: the count at +0x10 is also the right operand of the fallback comparison. The original helper accepted duplicate count/d10 parameters and some fixtures assigned incompatible values to that one field. The helper and controls now use one count. The stated machine rule above is unchanged.

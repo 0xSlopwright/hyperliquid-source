@@ -129,3 +129,7 @@ The nearest claimed window is the tiny two-byte gate `0x51647b0` (packet #72), `
 - The byte-pattern scan is not a complete xref census, and the absence of a naming relocation does not identify the window's provenance.
 - No progress gate is requested or claimed. Foundation's gates and generated progress files are unchanged.
 - The reference tree was a search lead only; no inferred implementation was copied, and every claim is grounded in target bytes for node #94 (SHA-256 `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`).
+
+## Review precision note
+
+On the pop path, the top slot is updated before the popped value is loaded. The helper's val denotes the value observed at that load; it does not model aliased entry memory. Its untouched-field tuple includes +0x10, +0x18 and +0x20 on the non-pop path.
