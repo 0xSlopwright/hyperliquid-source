@@ -17,6 +17,7 @@ def owner(path, components):
     if any(type(c) is not dict for c in components):
     if any('id' not in c for c in components):
     if any('patterns' in c and type(c['patterns']) is not list for c in components):
+    if any('patterns' in c and any(type(p) is not str for p in c['patterns']) for c in components):
         raise ValueError('Invalid component record')
     for c in components:
         if any(fnmatch.fnmatchcase(path, p) for p in c['patterns']):
