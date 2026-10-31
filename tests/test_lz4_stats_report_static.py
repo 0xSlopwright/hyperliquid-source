@@ -54,6 +54,21 @@ def rela_edit(slot, new):
 
 
 class Drain(unittest.TestCase):
+    def test_ratio_rounds_each_u64_before_division(self):
+        # The pinned PUNPCKLDQ/SUBPD/ADDSD sequences convert both u64
+        # operands separately before DIVSD. Integer true division rounds once
+        # instead and differs for this authenticated-operation boundary case.
+        img = load()['img']
+        self.assertEqual(img.read(0x203e80, 8).hex(), '0000304300003045')
+        self.assertEqual(img.read(0x202ea0, 16).hex(), '00000000000030430000000000003045')
+        self.assertEqual(img.read(0x3d23225, 4).hex(), 'f20f5ed9')
+        input_bytes, output_bytes = 8243894343294126988, 4294512027793781927
+        rows, _ = lz.drain([(0, input_bytes, output_bytes, 1)])
+        expected = '0x1.0ab7a84440829p-1'
+        self.assertEqual(rows[0]['ratio'].hex(), expected)
+        self.assertEqual(lz.tick([(0, input_bytes, output_bytes, 1)])[-1][1]['ratio'].hex(), expected)
+        self.assertEqual((output_bytes / input_bytes).hex(), '0x1.0ab7a8444082ap-1')
+
     def test_totals_cover_both_directions(self):
         rows, totals = lz.drain([(0, 100, 40, 2), (1, 300, 90, 3)])
         self.assertEqual(totals, [400, 130, 5])

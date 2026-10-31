@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from artifacts import ROOT, check  # noqa: E402
+from artifacts import ROOT, check, manifest_item  # noqa: E402
 from elf_index import sections  # noqa: E402
 from fde_extents import eh_frame_records  # noqa: E402
 
@@ -965,7 +965,8 @@ def drain(entries):
             if totals[i] >= 2 ** 64:
                 raise OverflowError(location_tail(DRAIN_ADDS[i][2]))
         if counters[0] and tag != 2:
-            rows.append(dict(tag=tag, input=counters[0], samples=counters[2], ratio=counters[1] / counters[0]))
+            rows.append(dict(tag=tag, input=counters[0], samples=counters[2],
+                             ratio=float(counters[1]) / float(counters[0])))
     return rows, totals
 
 
@@ -976,7 +977,7 @@ def tick(entries):
     if rows:
         calls.append(('rows', rows))
     if t0:
-        calls.append(('total', dict(input=t0, samples=t2, ratio=t1 / t0)))
+        calls.append(('total', dict(input=t0, samples=t2, ratio=float(t1) / float(t0))))
     return calls
 
 
@@ -1022,8 +1023,7 @@ def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument('--json', action='store_true')
     a = p.parse_args(argv)
-    identity = next(i for i in json.loads((ROOT / 'provenance/artifacts.json').read_text())['files']
-                    if i['path'] == TARGET)
+    identity = manifest_item(ROOT, TARGET)
     path = ROOT / TARGET
     check(path, identity)
     result = dict(analyse(path.read_bytes()), target_sha256=identity['sha256'])

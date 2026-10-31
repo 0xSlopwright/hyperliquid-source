@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from artifacts import ROOT, check  # noqa: E402
+from artifacts import ROOT, check, manifest_item  # noqa: E402
 from elf_index import sections  # noqa: E402
 from fde_extents import eh_frame_records  # noqa: E402
 
@@ -485,7 +485,7 @@ def main(argv=None):
     ap.add_argument('--binary', type=Path, default=ROOT / TARGET)
     ap.add_argument('--out', type=Path)
     args = ap.parse_args(argv)
-    identity = next(i for i in json.loads((ROOT / 'provenance/artifacts.json').read_text())['files'] if i['path'] == TARGET)
+    identity = manifest_item(ROOT, TARGET)
     try:
         check(args.binary, identity)
         result = analyse(args.binary.read_bytes())

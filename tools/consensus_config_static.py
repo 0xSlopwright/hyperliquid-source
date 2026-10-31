@@ -49,7 +49,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from artifacts import ROOT, check  # noqa: E402
+from artifacts import ROOT, check, manifest_item  # noqa: E402
 from elf_index import sections  # noqa: E402
 from fde_extents import eh_frame_records  # noqa: E402
 
@@ -700,7 +700,12 @@ def parse_ipv4(text):
 
 
 def build(items, wallet, second_set, validate, public_ip, node_ips):
-    """The binary's 0x284a5a0 checks.  items: [(address, tag, u32)]; node_ips: {address: (tag, u32)}."""
+    """The binary's 0x284a5a0 checks in a typed Python input model.
+
+    items is [(address, tag, value)]; node_ips maps address to (tag, value).
+    Ip values use IPv4Address objects, and LocalNode values use integers.
+    This model does not parse the target's packed five-byte representation.
+    """
     found = None
     for address, tag, value in items:
         if address == wallet:
@@ -764,8 +769,7 @@ def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument('--json', action='store_true')
     a = p.parse_args(argv)
-    identity = next(i for i in json.loads((ROOT / 'provenance/artifacts.json').read_text())['files']
-                    if i['path'] == TARGET)
+    identity = manifest_item(ROOT, TARGET)
     path = ROOT / TARGET
     check(path, identity)
     rec = dict(analyse(path.read_bytes()), target_sha256=identity['sha256'])
