@@ -24,6 +24,8 @@ def relocations(data):
     result={}
     for section in sections(data):
         if section['type']!=4:continue
+        if section['size'] % 24:
+            raise ValueError('Truncated relocation section')
         for offset in range(section['offset'],section['offset']+section['size'],24):
             slot,info,addend=struct.unpack_from('<QQq',data,offset)
             if slot in RELATIVE:
@@ -34,6 +36,8 @@ def relocations(data):
 
 def generate(binary,output):
     identity=manifest_item(ROOT,'artifacts/node/94/hl-node')
+    missing=[field for field in ('size','sha256') if field not in identity]
+    if missing: raise ValueError(f"provenance/artifacts.json entry for artifacts/node/94/hl-node is missing {'/'.join(missing)}")
     check(binary,identity)
     data=binary.read_bytes();controls(data);rela=relocations(data)
     frames=subprocess.check_output(['readelf','-wf',str(binary)],text=True)
