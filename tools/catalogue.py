@@ -43,6 +43,8 @@ def validate_progress(components, progress, root):
         total = row['total_function_windows']
         if total is not None and (type(total) is not int or total < 0 or row['raw_equal_bodies'] + row['normalized_only_bodies'] > total):
             raise ValueError('Invalid match denominator')
+        if type(row['evidence']) is not list:
+            raise ValueError('Invalid progress record')
         if any(row['gates'].values()) and not row['evidence']:
             raise ValueError('Completed gates require reviewed evidence records')
         for evidence in row['evidence']:

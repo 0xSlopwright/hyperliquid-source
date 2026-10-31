@@ -313,6 +313,12 @@ class CatalogueTests(unittest.TestCase):
         # AttributeError from the .values() call in the gate check.
         d = copy.deepcopy(self.progress)
         d['components']['orderbook']['gates'] = list(d['components']['orderbook']['gates'])
+    def test_non_list_evidence_record_rejected(self):
+        # A non-list evidence value must fail closed as a ValueError, like
+        # every other malformed progress record — on base it escaped as
+        # TypeError from iterating the evidence value.
+        d = copy.deepcopy(self.progress)
+        d['components']['orderbook']['evidence'] = None
         with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
 
 
