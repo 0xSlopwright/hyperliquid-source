@@ -52,7 +52,10 @@ LIMITATIONS = (
     'Structural drift only, not behavioural equivalence. A function here is one FDE extent: split hot/cold parts '
     'are separate rows and code without unwind data is absent. objdump is a linear sweep, so data inside .text '
     'can mis-decode. moved_only means equal after masking only address-like operands (branch targets outside the '
-    'extent and RIP-relative displacements; immediates are compared verbatim because both targets are PIE without '
+    'extent and RIP-relative displacements), with at least one such mask applied; prefix mnemonics (notrack, '
+    'bnd, segment, rep, lock, data16, addr32, rex) are kept and each instruction length is hashed with its text; '
+    'same-length alternate encodings that objdump prints identically (01 c3 vs 03 d8) are not distinguished; '
+    'immediates are compared verbatim because both targets are PIE without '
     'text relocations); data those addresses point to is '
     'not compared, so a changed .rodata constant reached through RIP can still be moved_only. changed pairs are '
     'inferred from call-graph position plus a size bound, not proven to be the same source function. '
@@ -64,8 +67,16 @@ LIMITATIONS = (
 
 INSN_RE = re.compile(r'^\s*([0-9a-f]+):\t(.*)$')
 SYMBOL_RE = re.compile(r'\s*<[^>]*>')
-BRANCH_RE = re.compile(r'^(call|jmp|j[a-z]{1,3}|loop[a-z]*|jrcxz|jecxz)\s+(?:0x)?([0-9a-f]+)$')
+# Prefix mnemonics GNU objdump 2.44 prints in front of an instruction. They are KEPT in the masked text
+# (never stripped): 3e ff e0 is `notrack jmp *%rax`, f2 ff e0 is `bnd jmp *%rax`, ff e0 is `jmp *%rax`.
+PREFIX_TOKENS = ('notrack', 'bnd', 'cs', 'ss', 'ds', 'es', 'fs', 'gs', 'rep', 'repz', 'repe', 'repnz', 'repne',
+                 'lock', 'data16', 'data32', 'addr16', 'addr32', 'xacquire', 'xrelease', 'rex', r'rex\.[WRXB]+')
+BRANCH_RE = re.compile(r'^((?:(?:' + '|'.join(PREFIX_TOKENS) + r') )*)'
+                       r'(call|jmp|j[a-z]{1,3}|loop[a-z]*|jrcxz|jecxz)(,p[tn])?\s+(?:0x)?([0-9a-f]+)$')
 RIP_RE = re.compile(r'-?0x[0-9a-f]+\(%rip\)')
+# Labels that replace an address with something release-independent. Only these can explain a raw-byte
+# difference between two functions whose masked text is equal (see verdict()).
+ADDRESS_MASKS = ('branch_fde', 'branch_plt', 'branch_unknown', 'rip')
 
 
 def target_kind(target, starts, plt):
@@ -77,45 +88,70 @@ def target_kind(target, starts, plt):
 
 
 def normalize(text, start, end, starts, plt):
-    """Mask address-like operands in one objdump instruction.
+    """Mask address-like operands in one objdump instruction; every rewrite is labelled.
 
-    Returns (masked text, mask labels, direct call target or None). Intra-extent branches keep their
-    extent-relative offset; other direct targets keep only their kind (FDE start, PLT or unknown).
+    Returns (masked text, labels, direct call target or None). No prefix is dropped: objdump's prefix
+    mnemonics (notrack, bnd, cs/ss/ds/es/fs/gs, rep*, lock, data16, addr32, rex*) stay in the text verbatim.
+    Labels: `annot_comment` / `annot_symbol` when objdump's `# ...` or `<sym>` annotation (derived from an
+    address) is removed; `branch_intra` when an in-extent target becomes an extent-relative offset;
+    `branch_fde`, `branch_plt`, `branch_unknown` and `rip` when an address is replaced. Whitespace runs are
+    collapsed; that is lossless for AT&T text (no operand contains a space) and is not labelled.
     """
-    text = ' '.join(SYMBOL_RE.sub('', text.split('#', 1)[0]).split())
-    for prefix in ('notrack ', 'bnd '):
-        if text.startswith(prefix):
-            text = text[len(prefix):]
+    labels = []
+    body, hash_, _comment = text.partition('#')
+    if hash_:
+        labels.append('annot_comment')
+    stripped = SYMBOL_RE.sub('', body)
+    if stripped != body:
+        labels.append('annot_symbol')
+    text = ' '.join(stripped.split())
     branch = BRANCH_RE.match(text)
     if branch:
-        op, target = branch.group(1), int(branch.group(2), 16)
+        prefix, op, hint, target = branch.group(1), branch.group(2), branch.group(3) or '', int(branch.group(4), 16)
         if start <= target < end:
-            return f'{op} +{target - start:#x}', (), None
+            return f'{prefix}{op}{hint} +{target - start:#x}', tuple(labels + ['branch_intra']), None
         kind = target_kind(target, starts, plt)
-        return f'{op} @{kind}', (f'branch_{kind}',), target if op == 'call' and kind == 'fde' else None
-    masks = []
+        return (f'{prefix}{op}{hint} @{kind}', tuple(labels + [f'branch_{kind}']),
+                target if op == 'call' and kind == 'fde' else None)
     if RIP_RE.search(text):
-        masks.append('rip')
+        labels.append('rip')
         text = RIP_RE.sub('RIP', text)
-    return text, tuple(masks), None
+    return text, tuple(labels), None
+
+
+def _emit(row, va, length, text, starts, plt):
+    masked, labels, callee = normalize(text, row['start'], row['end'], starts, plt)
+    # The instruction length is hashed with the text, so a prefix byte or an encoding size objdump does not
+    # print (eb 00 vs e9 00 00 00 00, both `jmp`) still changes the masked digest.
+    row['norm'].update(f'{length}\t{masked}\n'.encode())
+    row['insns'] += 1
+    row['masks'].update(labels)
+    if callee is not None and callee not in row['callees']:
+        row['callees'].append(callee)
 
 
 def fingerprint(extents, read, lines, plt):
     """Per-extent raw and masked SHA-256, mask counts and ordered unique direct FDE callees.
 
     `extents` are (start, end) pairs sorted by start; `read(start, end)` returns the extent bytes;
-    `lines` is objdump output covering them.
+    `lines` is objdump output covering them. Each masked line is `<length>\t<masked text>`; the length is
+    the distance to the next decoded instruction, capped at the extent end.
     """
     rows = [{'start': s, 'end': e, 'size': e - s, 'raw': hashlib.sha256(read(s, e)).hexdigest(),
              'norm': hashlib.sha256(), 'insns': 0, 'masks': collections.Counter(), 'callees': []}
             for s, e in extents]
     starts = {r['start'] for r in rows}
     i = 0
+    pending = None
     for line in lines:
         m = INSN_RE.match(line)
         if not m:
             continue
         va = int(m.group(1), 16)
+        if pending is not None:
+            prow, pva, ptext = pending
+            _emit(prow, pva, min(va, prow['end']) - pva, ptext, starts, plt)
+            pending = None
         while i < len(rows) and va >= rows[i]['end']:
             i += 1
         if i == len(rows):
@@ -123,12 +159,10 @@ def fingerprint(extents, read, lines, plt):
         row = rows[i]
         if va < row['start']:
             continue
-        masked, labels, callee = normalize(m.group(2), row['start'], row['end'], starts, plt)
-        row['norm'].update(masked.encode() + b'\n')
-        row['insns'] += 1
-        row['masks'].update(labels)
-        if callee is not None and callee not in row['callees']:
-            row['callees'].append(callee)
+        pending = (row, va, m.group(2))
+    if pending is not None:
+        prow, pva, ptext = pending
+        _emit(prow, pva, prow['end'] - pva, ptext, starts, plt)
     for row in rows:
         if row['insns'] == 0:
             raise ValueError(f"No instructions decoded inside extent {row['start']:#x}")
@@ -142,7 +176,14 @@ def unique_by(rows, key):
 
 
 def verdict(x, y):
-    return 'identical' if x['raw'] == y['raw'] else 'moved_only' if x['norm'] == y['norm'] else 'changed'
+    """identical: raw equal. moved_only: masked equal AND an address mask was applied on at least one side,
+    so the byte difference has a counted explanation. Equal masked text with no address mask is changed:
+    an encoding difference objdump text does not show is never reported as a move."""
+    if x['raw'] == y['raw']:
+        return 'identical'
+    if x['norm'] == y['norm'] and any(x['masks'].get(k) or y['masks'].get(k) for k in ADDRESS_MASKS):
+        return 'moved_only'
+    return 'changed'
 
 
 def match(old, new):
