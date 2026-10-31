@@ -37,6 +37,8 @@ def verify(root):
     if len(set(paths)) != len(paths):
         raise ValueError('Duplicate path in imports manifest')
     for item in manifest['files']:
+        if not isinstance(item, dict) or 'path' not in item:
+            raise ValueError('Invalid import manifest record')
         check(root / item['path'], item)
     for repo in _load(root, 'sources.json')['repositories']:
         if not (root / repo['path'] / '.git').exists():
