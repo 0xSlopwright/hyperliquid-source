@@ -307,6 +307,14 @@ class CatalogueTests(unittest.TestCase):
         out = generate(root)
         self.assertIn('docs/PROGRESS.md', out)
 
+    def test_non_dict_gate_record_rejected(self):
+        # A gates record that is not a dict must fail closed as a ValueError,
+        # like every other malformed progress record — on base it escaped as
+        # AttributeError from the .values() call in the gate check.
+        d = copy.deepcopy(self.progress)
+        d['components']['orderbook']['gates'] = list(d['components']['orderbook']['gates'])
+        with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
+
 
 class VisorIndexTests(unittest.TestCase):
     def test_target_for_maps_nodes_and_visor(self):

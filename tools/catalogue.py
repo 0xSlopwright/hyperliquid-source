@@ -32,6 +32,8 @@ def validate_progress(components, progress, root):
         if not {'gates', 'raw_equal_bodies', 'normalized_only_bodies',
                 'total_function_windows', 'evidence'} <= set(row):
             raise ValueError('Invalid progress record')
+        if type(row['gates']) is not dict:
+            raise ValueError('Invalid acceptance gate record')
         if set(row['gates']) != set(progress['gates']) or any(type(v) is not bool for v in row['gates'].values()):
             raise ValueError('Invalid acceptance gate record')
         if any(type(row[k]) is not int for k in ('raw_equal_bodies', 'normalized_only_bodies')):
