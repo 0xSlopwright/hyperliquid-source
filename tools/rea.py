@@ -91,7 +91,12 @@ def main(argv=None):
             raise ValueError('Usage: rea.py target [94|115|visor]; unexpected extra arguments')
         if 'targets' not in CONFIG:
             raise ValueError('config/rea.json missing targets')
-        name = args[1] if len(args) == 2 else CONFIG['default_target']
+        if len(args) == 2:
+            name = args[1]
+        elif 'default_target' not in CONFIG:
+            raise ValueError('config/rea.json missing default_target')
+        else:
+            name = CONFIG['default_target']
         if name not in CONFIG['targets']:
             raise ValueError('Unknown target; use 94, 115 or visor')
         print(json.dumps(target(name), indent=2))
