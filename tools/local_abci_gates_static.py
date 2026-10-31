@@ -62,6 +62,39 @@ WINDOWS = {
                       '488d0565134400' '4889842448010000' '488d442408' '4889842450010000'
                       '488d05d91c4400' '4889842458010000' '488d4c2420' '48898c2460010000' '4889842468010000'
                       '488d3dfdc0f8fd' '488db42420010000' 'ff152f565003'),
+    'stale_gate': (STARTUP_FDE, 0x2269171,
+                   '8b4808898c2428010000488b0048898424200100004c8dbc24103c0000488db424200100004c89ffff15195e5003'
+                   '448ba424103c0000448bb424143c00008bac24183c0000488dbc2420010000ff15dc565003443ba424200100000f9dc0'
+                   '0f85dc010000443bb424240100000f93c00f85cb0100003bac242801000049bc00000000000000800f82c6010000'),
+    'fresh_head': (STARTUP_FDE, 0x22691fd,
+                   '488d7c2450ff15985650038b4424508984245c3c0000c78424503c000001000000488b44245448898424543c00004c89a4'
+                   '24103c0000488d05c8e116fe48898424303c000048c78424383c00001600000048c78424403c00000800000048c78424'
+                   '483c0000000000008b05fc18510385c04c8b7424180f8505050000660f1005d7185103660f11842400770000'),
+    'fresh_exit': (STARTUP_FDE, 0x2269339,
+                   '488bb424103c00004c39e674154885f67410488bbc24183c000031d2ff15b54c5003c683f049000000488dbc2420010000'
+                   'bae83a00004c89f6ff15684c5003bfe83a0000ff15554c50034885c00f84470400004989c6488db42420010000bae83a00'
+                   '004889c7ff153b4c5003c683f049000000e9d3190000'),
+    'gate_branch': (STARTUP_FDE, 0x22693b1, '84c049bc00000000000000800f853afeffff4c8db3703b0000'),
+    'stale_exit': (STARTUP_FDE, 0x22696e2, '488b84241077000049894610660f1084240077000066410f1106' '4c89b3883b0000488d83e84900004889842490000000c683e849000000e961f4ffff'),
+    'once_init': (STARTUP_FDE, 0x226977e,
+                  '488d05cb1351034889442420488d4424204889842420010000488d3dca135103488d0dc30740034c8d05a4074003488d94'
+                  '2420010000be01000000ff15f950500349bc00000000000000804c8b742418e9a6faffff'),
+    'peer_record': (STARTUP_FDE, 0x2268b7f,
+                    '488d83903b00004c89b3903b0000488d8b983b0000488983983b0000488d05b1ed16fe488983a03b000048c783a83b0000'
+                    '1100000048c783b03b00000a00000048b80000000000000040488983b83b000048898bc03b0000488d83e0490000488984'
+                    '2488000000c683e049000000eb2d'),
+    'peer_record_init': (STARTUP_FDE, 0x2268c1c,
+                         '48c783283c0000ffffffff48898b603c0000488d836a3c000048898424a0000000c6836a3c000000488d83c83b0000'
+                         '488984249800000048c7c0ffffffff66c783683c0000000148898b303c0000488983383c0000'),
+    'add_secs_f64': (0x1459ca0, 0x1459ca0,
+                     '534883ec304889fb8b460889442408488b0648890424f20f59056205dbfe66480f7ec148b8ffffffffffffff7f4821c1'
+                     '660f57c948baffffffffffffef7f4839d17f2ef20f1015cd0fdbfe660f2ed07710660f2e05f70adbfe7706660f28c8eb10'
+                     'f20f5fd0f20f100de30adbfef20f5dcaf2480f2cc9660f2e0daa05dbfe480f47c831f6660f2ec9480f4bf148b9b394d626'
+                     'e80b2e114889f048f7e94889d048c1e83f48c1fa1a4801c24869c200ca9a3b4829c64889f148c1f93f4801ca81e100ca9a'
+                     '3b01f1488d742404488d7c2410ff15324b3104488b44241848b9000000004057ffff4801c148ba81aefeff7faefeff4839'
+                     'd17247f20f10442410660f294424208b3c2448b9572951cea0c8451848f7e94889d648c1ee3f48c1ea0d01d6ff15ea4a31'
+                     '0485c0741489030f284424200f1343044889d84883c4305bc3488d3d3a02dcfe488d152c112104be26000000ff15714631'
+                     '04'),
     'freshness': (FRESH_FDE, 0x2271d52,
                   '4c8bbb40070000' '48b80000000000c08240' '4889842438010000' '498b4760' '4889842440010000'
                   '418b4768' '89842448010000' '418b4768' '898424c8000000' '498b4760' '48898424c0000000'
@@ -131,6 +164,23 @@ STATUS_ARGS = {
 }
 SLOT_REFS = {0xc8: ['0x226a976', '0x226aa2d', '0x226ab6c'], 0xd0: ['0x226a97e', '0x226aa3a', '0x226ab38', '0x226ab62'],
              0xd8: ['0x226a98d', '0x226aa20', '0x226ab0c']}
+ADD_SECS_FDE = 0x1459ca0
+ADD_SECS_OVERFLOW = b'`NaiveDateTime + TimeDelta` overflowed'
+STATE_BYTES = 0x3ae8
+# (branch VA, instruction length, expected target)
+STALE_FLOW = {
+    'first_field_differs': (0x22691cf, 6, 0x22693b1), 'second_field_differs': (0x22691e0, 6, 0x22693b1),
+    'third_field_below_now': (0x22691f7, 6, 0x22693c3), 'not_below_to_fresh': (0x22693bd, 6, 0x22691fd),
+    'once_detour': (0x2269273, 6, 0x226977e), 'once_return': (0x22697ce, 5, 0x2269279),
+    'alloc_failed': (0x2269386, 6, 0x22697d3), 'fresh_return': (0x22693ac, 5, 0x226ad84),
+    'stale_to_retry': (0x2269719, 5, 0x2268b7f), 'record_to_init': (0x2268bed, 2, 0x2268c1c),
+}
+# ModRM VAs of every [rbx+disp32] operand in the startup FDE, per displacement
+RECORD_REFS = {0x3b88: ['0x2268b7a', '0x22696fe'], 0x3b90: ['0x2268b81', '0x2268b88'],
+               0x3b98: ['0x2268b8f', '0x2268b96'], 0x3bc0: ['0x2268bd2', '0x2268c17'],
+               0x3c30: ['0x2268c65', '0x2269c65', '0x226a79d', '0x226a897'],
+               0x49c8: ['0x2269574', '0x2269c6f', '0x226a559']}
+RECORD_DESC = b'gossip rpc height'
 RSP_E0 = re.compile(rb'[\x84\x8c\x94\x9c\xa4\xac\xb4\xbc]\x24\xe0\x00\x00\x00')
 
 
@@ -428,6 +478,77 @@ def check_freshness(img):
                 compare='panic iff (date, secs, frac) of state_time + 600 s < now (lexicographic)')
 
 
+def check_stale_gate(img, fresh_slots):
+    require(WINDOWS['select_840'][1] + len(bytes.fromhex(WINDOWS['select_840'][2])) == WINDOWS['stale_gate'][1],
+            'stale_gate does not continue the tolerance join')
+    for name, (va, n, want) in STALE_FLOW.items():
+        got = flow_target(img, va, n)
+        require(got == want, f'{name} at {va:#x} goes to {got:#x}, not {want:#x}')
+    add_slot, now_slot = img.rip(0x2269199, 6), img.rip(0x22691be, 6)
+    require(img.relative.get(add_slot) == ADD_SECS_FDE, f'tolerance add slot {add_slot:#x} does not reach {ADD_SECS_FDE:#x}')
+    require(hex(now_slot) == fresh_slots['now'][0], f'clock slot {now_slot:#x} differs from the freshness clock')
+    img.fde(ADD_SECS_FDE)
+    scale = img.f64(img.rip(0x1459cb6, 8))
+    require(scale == 1e9, f'tolerance scale is {scale}')
+    clamp = (img.f64(img.rip(0x1459ce3, 8)), img.f64(img.rip(0x1459cf1, 8)), img.f64(img.rip(0x1459d05, 8)))
+    require(clamp == (-2.0 ** 63, 2.0 ** 63, 2.0 ** 63), f'nanosecond clamp is {clamp}')
+    top = img.f64(img.rip(0x1459d16, 8))
+    require(top == 9.223372036854775e18, f'i64::MAX cut-over is {top}')
+    require(struct.unpack('<q', img.read(0x1459d2e, 8))[0] == 0x112e0be826d694b3, 'nanosecond divisor changed')
+    require(struct.unpack('<I', img.read(0x1459d4d, 4))[0] == 1_000_000_000, 'nanosecond multiplier changed')
+    require(struct.unpack('<q', img.read(0x1459da8, 8))[0] == 0x1845c8a0ce512957, 'day divisor changed')
+    helper = {'add_time': hex(img.rip(0x1459d70, 6)), 'add_days': hex(img.rip(0x1459dc0, 6))}
+    require(helper == {k: fresh_slots[k][0] for k in helper}, f'helper slots {helper} differ from the freshness add')
+    msg, mlen = img.rip(0x1459dde, 7), img.read(0x1459ded, 1)[0]
+    require(img.read(msg, mlen) == ADD_SECS_OVERFLOW, f'helper panic text at {msg:#x} changed')
+    copies = [m.start() for m in re.finditer(re.escape(struct.pack('<I', STATE_BYTES)),
+                                              bytes.fromhex(WINDOWS['fresh_exit'][2]))]
+    require(len(copies) == 3, f'fresh_exit has {len(copies)} {STATE_BYTES:#x} immediates')
+    desc = img.rip(0x2268b9b, 7)
+    require(img.read(desc, len(RECORD_DESC)) == RECORD_DESC, f'record descriptor at {desc:#x} changed')
+    start, end = img.fde(STARTUP_FDE)
+    body = img.read(start, end - start)
+    refs = {}
+    for disp in RECORD_REFS:
+        pat, hits, i = struct.pack('<I', disp), [], 0
+        while (i := body.find(pat, i + 1)) != -1:
+            if body[i - 1] & 0xc7 == 0x83:
+                hits.append(hex(start + i - 1))
+        require(hits == RECORD_REFS[disp], f'[rbx+{disp:#x}] operands are {hits}')
+        refs[hex(disp)] = hits
+    return dict(fde=hex(STARTUP_FDE), state_time='[rbx+0x60] (12 bytes)', tolerance_reg='xmm0',
+                add_slot=hex(add_slot), add_helper=hex(ADD_SECS_FDE), scale=scale, clamp=list(clamp),
+                helper_slots=helper, helper_panic=ADD_SECS_OVERFLOW.decode(), clock_slot=hex(now_slot),
+                flow={k: hex(v[2]) for k, v in STALE_FLOW.items()}, fresh_state_bytes=hex(STATE_BYTES),
+                stale_peer_vec='[rbx+0x3b70] -> [rbx+0x3b88]', record_desc=hex(desc), record_refs=refs,
+                peer_chain='[rbx+0x3c30] = &[rbx+0x3b98]; [rbx+0x3b98] = &[rbx+0x3b90]; [rbx+0x3b90] = &[rbx+0x3b70]',
+                compare='local iff (date, secs, frac) of state_time + tolerance s >= now (lexicographic); else query peers')
+
+
+def tolerance_nanos(x):
+    """0x1459cb6..0x1459d28: f64 seconds * 1e9, clamped to +-2**63, truncated to i64 (NaN -> 0)."""
+    v = x * 1e9
+    if v != v:
+        return 0
+    if v > 9.223372036854775e18:
+        return 2 ** 63 - 1
+    return int(max(v, -2.0 ** 63))
+
+
+def nanos_split(n):
+    """The 0x1459d2c..0x1459d64 sequence on signed 64-bit n: imul by M, sar 26 + sign, then floor fix-up."""
+    rdx = (n * 0x112e0be826d694b3) >> 64
+    q = (rdx >> 26) + ((rdx >> 63) & 1)
+    r = n - q * 1_000_000_000
+    if r < 0:
+        q, r = q - 1, r + 1_000_000_000
+    return q, r
+
+
+def uses_local_state(deadline, now):
+    return not deadline < now
+
+
 def check_callers(img):
     entry = WINDOWS['poll_entry'][1]
     require(img.rip(entry + 0x11, 7) == POLL_TABLE, 'poll dispatch table moved')
@@ -488,9 +609,11 @@ def freshness_panics(deadline, now):
 
 def analyse(data):
     img = Image(data)
-    return dict(target=TARGET, windows={k: hex(v) for k, v in windows(img).items()},
-                peer_queries=check_queries(img), height_selection=check_selection(img), status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=check_freshness(img),
-                callers=check_callers(img))
+    wins = windows(img)
+    fresh = check_freshness(img)
+    return dict(target=TARGET, windows={k: hex(v) for k, v in wins.items()},
+                peer_queries=check_queries(img), height_selection=check_selection(img), status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=fresh,
+                stale_gate=check_stale_gate(img, fresh['slots']), callers=check_callers(img))
 
 
 def main(argv=None):
@@ -510,6 +633,7 @@ def main(argv=None):
     print(f"height gate: too far behind iff local_height.saturating_add({g['tolerance']}) <= latest_height; "
           f"else stale hardfork iff local_height < initial_height")
     print(f"logged tolerance: {t['default']} (default) / {t['hardfork']} (after hardfork branch)")
+    print("stale gate: use local abci_state iff state_time + tolerance s >= now; else query peer heights")
     print(f"freshness: panic at {f['location_file']}:{f['location_line']}:{f['location_column']} "
           f"iff state_time + {f['added_seconds']} s < now")
     return 0

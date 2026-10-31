@@ -61,6 +61,25 @@ class Models(unittest.TestCase):
         self.assertFalse(la.freshness_panics((1, 2, 3), (1, 2, 3)))
         self.assertFalse(la.freshness_panics((2, 0, 0), (1, 86399, 999)))
 
+    def test_nanos_split_is_floor_divmod(self):
+        rng = random.Random(94)
+        values = [0, 1, -1, 999_999_999, -999_999_999, 10 ** 9, -(10 ** 9), 2 ** 63 - 1, -(2 ** 63)]
+        values += [rng.randrange(-(2 ** 63), 2 ** 63) for _ in range(2000)]
+        for n in values:
+            self.assertEqual(la.nanos_split(n), divmod(n, 10 ** 9), n)
+
+    def test_tolerance_nanos(self):
+        self.assertEqual([la.nanos_split(la.tolerance_nanos(x)) for x in (540.0, 840.0, 0.5)],
+                         [(540, 0), (840, 0), (0, 500_000_000)])
+        self.assertEqual(la.tolerance_nanos(float('nan')), 0)
+        self.assertEqual(la.tolerance_nanos(1e300), 2 ** 63 - 1)
+        self.assertEqual(la.tolerance_nanos(-1e300), -(2 ** 63))
+
+    def test_uses_local_state(self):
+        self.assertTrue(la.uses_local_state((1, 540, 0), (1, 540, 0)))
+        self.assertFalse(la.uses_local_state((1, 540, 0), (1, 540, 1)))
+        self.assertTrue(la.uses_local_state((2, 0, 0), (1, 86399, 999)))
+
     def test_collect_heights(self):
         replies = [('a', (2, (1, 5))), ('b', None), ('c', (3, (9, 9))), ('d', (2, None)), ('a', (2, (1, 7)))]
         self.assertEqual(la.collect_heights(replies), {'a': (1, 7)})
@@ -105,6 +124,18 @@ class Results(unittest.TestCase):
         self.assertEqual((f['location_file'], f['location_line'], f['location_column']),
                          ('/home/ubuntu/hl/code_Mainnet/node/src/hl_node.rs', 346, 9))
         self.assertEqual(f['slots']['panic'], ['0x576e098', '0x157b810'])
+
+    def test_stale_gate(self):
+        s = self.result['stale_gate']
+        self.assertEqual((s['add_slot'], s['add_helper'], s['scale'], s['clock_slot']),
+                         ('0x576efb8', '0x1459ca0', 1e9, '0x576e8a0'))
+        self.assertEqual(s['helper_slots'], {'add_time': '0x576e8a8', 'add_days': '0x576e8b0'})
+        self.assertEqual(s['helper_panic'], '`NaiveDateTime + TimeDelta` overflowed')
+        self.assertEqual((s['flow']['third_field_below_now'], s['flow']['not_below_to_fresh'],
+                          s['flow']['fresh_return'], s['flow']['stale_to_retry']),
+                         ('0x22693c3', '0x22691fd', '0x226ad84', '0x2268b7f'))
+        self.assertEqual(s['record_refs']['0x3c30'], ['0x2268c65', '0x2269c65', '0x226a79d', '0x226a897'])
+        self.assertEqual(s['record_refs']['0x3b90'], ['0x2268b81', '0x2268b88'])
 
     def test_status_log_fields(self):
         st = self.result['status_log']
@@ -236,6 +267,29 @@ class Corruptions(unittest.TestCase):
 
     def test_local_height_read_in_loop(self):
         self.refuses(patched((0x2269df8, bytes.fromhex('488b83b0000000'))), r'\[rbx\+0xb0\] operands in the query loop')
+
+    def test_stale_gate_branch_flipped(self):
+        self.refuses(patched((0x22691f7 + 1, b'\x83')), 'stale_gate at 0x2269171: bytes changed')
+
+    def test_tolerance_scale(self):
+        self.refuses(patched((0x20a220, struct.pack('<d', 1e6))), 'tolerance scale is 1000000.0')
+
+    def test_helper_overflow_text(self):
+        self.refuses(patched((0x21a01f + 5, b'X')), 'helper panic text at 0x21a01f changed')
+
+    def test_extra_record_pointer_store(self):
+        self.refuses(patched((la.STARTUP_FDE + 0x100, bytes.fromhex('4c89b3903b0000'))), r'\[rbx\+0x3b90\] operands')
+
+    def test_add_slot_relocation(self):
+        c = load()
+        img = c['img']
+        rela = next(s for s in img.secs if s['name'] == '.rela.dyn')
+        data = bytearray(c['data'])
+        for pos in range(rela['offset'], rela['offset'] + rela['size'], 24):
+            where, info, _ = struct.unpack_from('<QQq', data, pos)
+            if where == 0x576efb8 and info & 0xffffffff == 8:
+                struct.pack_into('<q', data, pos + 16, 0x1459cb0)
+        self.refuses(bytes(data), 'tolerance add slot 0x576efb8 does not reach 0x1459ca0')
 
     def test_request_tag(self):
         self.refuses(patched((0x2269e57 + 7, b'\x03')), 'query_call at 0x2269e1a: bytes changed')

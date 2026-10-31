@@ -1,8 +1,8 @@
-# node-runtime: node #94 local abci_state startup gates (height tolerance, logged tolerance, 600 s freshness panic)
+# node-runtime: node #94 local abci_state startup gates (540/840 s local-state age gate, height tolerance, 600 s freshness panic)
 
 Question: when node #94 starts from a local abci_state, which constants decide
 that the local height is "too far behind" or "from stale hardfork", which
-`tolerance` value is logged, and what does the
+`tolerance` value is logged and what it decides, and what does the
 `use an abci state within … seconds` check compare? Where does the can1357
 lead (`node/local_abci_state.rs`, `node/startup.rs`) differ?
 
@@ -16,12 +16,12 @@ lead (`node/local_abci_state.rs`, `node/startup.rs`) differ?
   copied.
 - Claim status: observation for byte-level facts, inference where marked,
   unresolved where listed. Partial `node-runtime` research; no gate change.
-- Scope: twenty-three fixed windows in `0x22689f0` (the lead's
-  `local_abci_state.rs` seed), `0x2271d00`, its caller `0x22ae8a0` and the
-  panic shim `0x157b810`.
-  Excluded: what `0x226bb20` sends and decodes, how the timestamp is produced, what the
-  logged tolerance is used for, the rest of the `0x22ae8a0` state machine, and
-  release #115.
+- Scope: thirty-two fixed windows in `0x22689f0` (the lead's
+  `local_abci_state.rs` seed), its date-time helper `0x1459ca0`, `0x2271d00`,
+  its caller `0x22ae8a0` and the panic shim `0x157b810`.
+  Excluded: what `0x226bb20` sends and decodes, how the timestamp is produced,
+  how root versus validator node IPs are chosen, the rest of the `0x22ae8a0`
+  state machine, and release #115.
 
 ## Reproduce
 
@@ -37,10 +37,10 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 23
-windows (950 instructions), one per checked byte window. All 47 `records.json`
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 32
+windows (1192 instructions), one per checked byte window. All 54 `records.json`
 VAs that fall inside a window are instruction starts there, except `slot_refs`
-entries, which are ModRM-byte addresses inside instructions. The other code VAs
+and `record_refs` entries, which are ModRM-byte addresses inside instructions. The other code VAs
 are FDE starts, call targets and branch targets outside the windows.
 
 Format templates are decoded as rustc 1.94 packs them: a byte below 0x80 is a
@@ -192,8 +192,71 @@ hardfork iff `local_height < initial_height`.
 
 Inference: the logged tolerance is 840 on the frozen-state hardfork path and
 540 otherwise. Indirect branches are not resolved, so a jump-table entry into
-`0x2269164` is not excluded. What the tolerance controls, and its unit, are
-unresolved.
+`0x2269164` is not excluded.
+
+### What the tolerance decides: local state or peer heights (observation)
+
+The join continues into window `0x2269171..0x22691fd` with `rax = &[rbx+0x60]`:
+
+1. **Tolerance stays in `xmm0`:** the 540 path goes from its load straight to
+   the join through a `cmp` and a `jne`. From the join to the call at
+   `0x2269199`, the only `xmm0` instruction is the store `movsd [rsp+0xe0],xmm0`.
+   The other instructions are integer moves and LEAs.
+2. **Add:** the 12 bytes at `[rbx+0x60]` are copied to `[rsp+0x120]`. Slot
+   `0x576efb8` (RELATIVE to `0x1459ca0`) is called with
+   `rdi = &[rsp+0x3c10]` and `rsi = &[rsp+0x120]`.
+3. **`0x1459ca0` (whole FDE `0x1459ca0..0x1459df7`):** it multiplies `xmm0`
+   by 1e9 (`.rodata` `0x20a220`). It then clamps the product to
+   `[-2^63, 2^63]` and truncates it to i64, so NaN becomes 0 and values above
+   9.223372036854775e18 become `i64::MAX`. The i64 is floor-divided into
+   seconds and nanoseconds: `imul` by `0x112e0be826d694b3`, `sar 26`, then a
+   sign fix-up. It then calls the same two slots as the 600 s freshness add,
+   `0x576e8a8` with `rsi` pointing at bytes 4..12 of the copy, and `0x576e8b0`.
+   On overflow it panics with the 38-byte ``NaiveDateTime + TimeDelta` overflowed``.
+4. **Compare with now:** slot `0x576e8a0`, the same clock slot as the
+   freshness check, fills `[rsp+0x120..0x12c]`. The sum `(r12d, r14d, ebp)`
+   is compared with it lexicographically: `setge` on the first field,
+   `setae` on the second, `jb` on the third. If the sum is not less than now,
+   control goes to `0x22691fd` (`0x22691cf`/`0x22691e0` → `0x22693b1`, then
+   `jne` → `0x22691fd`). If it is less, control goes to `0x22693c3`
+   (`0x22691f7`, or the fall-through at `0x22693bd`).
+5. **Not older than the tolerance:** from `0x22691fd` the path reaches the
+   `initializing with local abci_state @@ [tolerance: {}]` log at `0x2269333`.
+   It may detour once through `0x226977e`, a call through slot `0x576e8b8`
+   with `esi = 1` that jumps back to `0x2269279`. After the log it copies
+   0x3ae8 bytes from `[rsp+0x18]` to the stack, allocates 0x3ae8 bytes
+   (`je 0x22697d3` on failure), copies them into the allocation, clears
+   `[rbx+0x49f0]` and jumps to `0x226ad84` (`0x22693ac`).
+6. **Older:** `0x22693c3` sets `r14 = &[rbx+0x3b70]` and chooses root or
+   validator node IPs (not checked here). It copies the chosen 24-byte Vec
+   from `[rsp+0x7700..0x7718]` to `[r14]` (`0x22696e2..0x22696f7`). It then
+   stores `[rbx+0x3b88] = r14` (`0x22696fc`), clears `[rbx+0x49e8]` and jumps
+   to `0x2268b7f` (`0x2269719`).
+7. **Peer list is that Vec:** with `r14` unchanged, `0x2268b7f` stores
+   `[rbx+0x3b90] = r14` and `[rbx+0x3b98] = &[rbx+0x3b90]`. Those are the
+   first word of the AsyncSleepRetry record, and the record's descriptor is
+   `gossip rpc height` (`0x3d7953`, 17 bytes). `rcx = &[rbx+0x3b98]` reaches
+   `0x2268c63` through `jmp 0x2268c1c` (`0x2268bed`) and is stored to
+   `[rbx+0x3c30]`. The peer loop reads `[[rbx+0x3c30]]` into `[rbx+0x49c8]`
+   (`0x2269c63`). So `[[rbx+0x49c8]]` is `&[rbx+0x3b70]`, and the loop's
+   `[+0x8]`/`[+0x10]` are the chosen Vec's data pointer and length. A census
+   of every `[rbx+disp32]` ModRM in the FDE finds these displacements only at
+   the sites listed in `records.json` (`stale_gate.record_refs`), so no
+   other `rbx`-relative instruction stores them. Writes through other base
+   registers are not excluded.
+
+Model: `tolerance_nanos` and `nanos_split` give `(540, 0)` and `(840, 0)`.
+`nanos_split` equals Python `divmod(n, 10**9)` on 2009 values, including
+both i64 extremes. `uses_local_state` is the negation of the strict
+lexicographic `<`.
+
+Inference: the tolerance is in seconds. The local abci_state is used as is
+(boxed and returned) iff `state_time + tolerance >= now`. Otherwise the node
+asks the root or validator node IPs for heights and applies the height gate. Equivalently, the local
+state is used directly iff it is at most 540 s old, or 840 s on the
+frozen-state hardfork path. `[rbx+0x60]` matches the date-time offset `+0x60`
+used by the 600 s check, but which struct the future holds there is not
+checked.
 
 ### Freshness check in `0x2271d00`: panic at `hl_node.rs:346:9` (observation)
 
@@ -285,16 +348,21 @@ states, 0xa and 0xb, and treats a set `al` as pending.
   equality: for example, local 0 and latest 20000 is "too far behind".
   The binary logs the compared value as `latest_height`; the lead calls it
   `target_height`.
+- **Local-state age:** the lead has no 540/840 s gate. Its only age check is
+  `StateFileTooOld` at 0x4e20 s, which returns a stale reason. In the binary,
+  the logged tolerance decides whether the local state is used without
+  querying peers at all: 540 s, or 840 s after the hardfork branch.
 - **Stale hardfork:** the lead's stale-hardfork reason compares the local
   height with a peer initial height. That matches the operand order here
   (`local_height < initial_height`, tested only when not too far behind).
 
 ## Controls
 
-`tests/test_local_abci_gates_static.py` (37 tests) regenerates
-`records.json` and checks five models: the peer-reply collection, the height selection, the height gate
+`tests/test_local_abci_gates_static.py` (46 tests) regenerates
+`records.json` and checks eight models: the peer-reply collection, the height selection, the height gate
 including saturation, the day division against exact truncating division,
-and the lexicographic compare. It refuses each of these corruptions:
+the lexicographic compare, the tolerance-to-nanoseconds conversion, the
+nanosecond floor split against `divmod`, and the local-state gate. It refuses each of these corruptions:
 
 - The gate constant changed to 200.
 - Either message's first byte changed.
@@ -318,6 +386,11 @@ and the lexicographic compare. It refuses each of these corruptions:
 - The `no heights from node` template changed.
 - A `[rbx+0xb0]` operand planted in the peer loop.
 - The request tag changed to 3.
+- The stale gate's `jb` changed to `jae`.
+- The 1e9 scale changed to 1e6.
+- A byte of the `NaiveDateTime + TimeDelta` overflow text changed.
+- The `0x576efb8` RELATIVE addend redirected.
+- An extra `[rbx+0x3b90]` store planted.
 
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
 producer does not use either.
@@ -325,11 +398,11 @@ producer does not use either.
 ## Unresolved
 
 - What `0x226bb20` sends for request tag 2 and how it decodes the reply,
-  where `[rbx+0x3c30]`'s peer list comes from, and whether the selected
-  message is later extended with values.
+  and whether the selected message is later extended with values.
 - The exact path from `0x2269034` to `0x226915c`, and any jump-table edge into
   the join.
-- What the logged 540/840 tolerance controls.
+- Which struct holds the date-time at `[rbx+0x60]`, what `0x226ad84` returns,
+  and how `0x22693c3` chooses root or validator node IPs.
 - What `[rbx+0x740]+0x60` holds, and which orchestrator paths reach states
   0xa and 0xb.
 - The identities of `0x15206e0`, `0x151f870`, `0x151cba0` and `0x4ecdcf0`

@@ -150,6 +150,71 @@
       "text": "incorrect rpc response variant"
     }
   },
+  "stale_gate": {
+    "add_helper": "0x1459ca0",
+    "add_slot": "0x576efb8",
+    "clamp": [
+      -9.223372036854776e+18,
+      9.223372036854776e+18,
+      9.223372036854776e+18
+    ],
+    "clock_slot": "0x576e8a0",
+    "compare": "local iff (date, secs, frac) of state_time + tolerance s >= now (lexicographic); else query peers",
+    "fde": "0x22689f0",
+    "flow": {
+      "alloc_failed": "0x22697d3",
+      "first_field_differs": "0x22693b1",
+      "fresh_return": "0x226ad84",
+      "not_below_to_fresh": "0x22691fd",
+      "once_detour": "0x226977e",
+      "once_return": "0x2269279",
+      "record_to_init": "0x2268c1c",
+      "second_field_differs": "0x22693b1",
+      "stale_to_retry": "0x2268b7f",
+      "third_field_below_now": "0x22693c3"
+    },
+    "fresh_state_bytes": "0x3ae8",
+    "helper_panic": "`NaiveDateTime + TimeDelta` overflowed",
+    "helper_slots": {
+      "add_days": "0x576e8b0",
+      "add_time": "0x576e8a8"
+    },
+    "peer_chain": "[rbx+0x3c30] = &[rbx+0x3b98]; [rbx+0x3b98] = &[rbx+0x3b90]; [rbx+0x3b90] = &[rbx+0x3b70]",
+    "record_desc": "0x3d7953",
+    "record_refs": {
+      "0x3b88": [
+        "0x2268b7a",
+        "0x22696fe"
+      ],
+      "0x3b90": [
+        "0x2268b81",
+        "0x2268b88"
+      ],
+      "0x3b98": [
+        "0x2268b8f",
+        "0x2268b96"
+      ],
+      "0x3bc0": [
+        "0x2268bd2",
+        "0x2268c17"
+      ],
+      "0x3c30": [
+        "0x2268c65",
+        "0x2269c65",
+        "0x226a79d",
+        "0x226a897"
+      ],
+      "0x49c8": [
+        "0x2269574",
+        "0x2269c6f",
+        "0x226a559"
+      ]
+    },
+    "scale": 1000000000.0,
+    "stale_peer_vec": "[rbx+0x3b70] -> [rbx+0x3b88]",
+    "state_time": "[rbx+0x60] (12 bytes)",
+    "tolerance_reg": "xmm0"
+  },
   "status_log": {
     "fields": {
       "[rsp+0xc8]": "initial_height",
@@ -205,16 +270,23 @@
     "tolerance_arg_index": 2
   },
   "windows": {
+    "add_secs_f64": "0x1459ca0",
     "after_panic": "0x227283d",
     "call_a": "0x22aef54",
     "call_b": "0x22affbf",
+    "fresh_exit": "0x2269339",
+    "fresh_head": "0x22691fd",
     "freshness": "0x2271d52",
     "gate": "0x226ab0a",
+    "gate_branch": "0x22693b1",
     "got_heights_log": "0x226a4a2",
     "hardfork_log": "0x226911b",
     "no_heights_log": "0x226a04b",
+    "once_init": "0x226977e",
     "panic_shim": "0x157b810",
     "peer_loop_head": "0x2269c63",
+    "peer_record": "0x2268b7f",
+    "peer_record_init": "0x2268c1c",
     "poll_entry": "0x2271d17",
     "query_call": "0x2269e1a",
     "query_error": "0x226a1ac",
@@ -226,6 +298,8 @@
     "select_guard_loop": "0x226a53f",
     "select_ok": "0x226a912",
     "select_retry": "0x226a753",
+    "stale_exit": "0x22696e2",
+    "stale_gate": "0x2269171",
     "status_log": "0x226a974",
     "tolerance_log": "0x226928a"
   }
