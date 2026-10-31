@@ -132,6 +132,15 @@ class CatalogueTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 generate(root)
 
+    def test_generate_rejects_missing_manifest_entry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, manifest = self._catalogue_root(tmp, self._elf())
+            manifest['files'] = [i for i in manifest['files']
+                                 if i['path'] != 'artifacts/node/94/hl-node']
+            (root / 'provenance/artifacts.json').write_text(json.dumps(manifest))
+            with self.assertRaises(ValueError):
+                generate(root)
+
     def test_generate_stamps_pinned_binary(self):
         elf = self._elf()
         with tempfile.TemporaryDirectory() as tmp:

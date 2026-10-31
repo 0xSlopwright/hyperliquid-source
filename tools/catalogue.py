@@ -51,8 +51,10 @@ def node94_binary(root):
     pinned artifact, not whatever currently sits at the path.
     """
     from artifacts import check
-    identity = next(i for i in json.loads((root / 'provenance/artifacts.json').read_text())['files']
-                    if i['path'] == 'artifacts/node/94/hl-node')
+    identity = next((i for i in json.loads((root / 'provenance/artifacts.json').read_text())['files']
+                     if i['path'] == 'artifacts/node/94/hl-node'), None)
+    if identity is None:
+        raise ValueError('Missing artifact manifest entry: artifacts/node/94/hl-node')
     path = root / 'artifacts/node/94/hl-node'
     check(path, identity)
     return path.read_bytes()
