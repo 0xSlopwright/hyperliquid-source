@@ -149,6 +149,10 @@ def main():
     if args.command == 'fetch':
         fetch_all(ROOT, manifest)
     for item in manifest['files']:
+        if type(item) is not dict or 'path' not in item:
+            raise ValueError('Invalid artifact record')
+        if args.command == 'fetch':
+            fetch_one(ROOT, item)
         check(ROOT / item['path'], item)
         print(f"SHA-256 OK: {item['path']}")
     verify_signatures(ROOT, manifest['signing_fingerprint'])
