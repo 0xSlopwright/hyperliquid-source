@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static conditional call/state contract of one node94 diagnostic helper.
+"""Static conditional call/state contracts of the node94 field/adapter pair.
 
 This extracts byte operands and CFG paths. It does not execute or emulate
 target instructions, callbacks or a renderer. See ASSUMPTIONS in the packet.
@@ -15,6 +15,7 @@ import sys
 import tempfile
 
 import bincode_varint as bv
+import bincode_diagnostic_adapter_static as adapter
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT / 'artifacts/node/94/hl-node'
@@ -24,8 +25,13 @@ MODE = 0x1571F9B
 COMMON = 0x1571F6D
 CAPTURE = 0x15720CE
 CALL_ROLES = {0x1571FC5: 'prefix', 0x1571FD9: 'name', 0x1571FF3: 'colon', 0x1572009: 'value'}
+PRETTY_CALL_ROLES = {0x1572031: 'opening', 0x1572074: 'adapter-name',
+                     0x1572092: 'adapter-colon', 0x15720AC: 'value-local-formatter',
+                     0x15720CB: 'adapter-suffix'}
 GUARDS = {0x1571F6B: 'entry_error', MODE: 'mode_bit', 0x1571FCA: 'prefix_AL',
-          0x1571FDE: 'name_AL', 0x1571FF8: 'colon_AL'}
+          0x1571FDE: 'name_AL', 0x1571FF8: 'colon_AL', 0x1572013: 'pretty_H',
+          0x157203F: 'pretty_opening_AL', 0x157207C: 'pretty_name_AL',
+          0x157209A: 'pretty_colon_AL', 0x15720B1: 'pretty_value_AL'}
 PRETTY = {0x1572011, 0x1572015, 0x1572045, 0x1572082, 0x15720A0, 0x15720B7}
 WITNESS_PCS = {0x1571F61, 0x1571F64, 0x1571F67, COMMON, 0x1571F71, 0x1571F75,
                0x1571F87, 0x1571F8B, 0x1571F8F, 0x1571F92, 0x1571F97,
@@ -103,7 +109,7 @@ def cfg(rows):
             if va + len(b) < END:
                 leaders.add(va + len(b))
         if b[0] == 0xFF and ((b[1] >> 3) & 7) == 2:
-            calls[va] = {'role': CALL_ROLES.get(va, 'opaque-pretty-route'), 'bytes': b.hex()}
+            calls[va] = {'role': {**CALL_ROLES, **PRETTY_CALL_ROLES}.get(va, 'unclosed-call'), 'bytes': b.hex()}
         if b == b'\xc3':
             returns.add(va)
             if va + 1 < END:
@@ -191,13 +197,13 @@ def operand_facts(body, read_literal):
             'capture_source_register_index': (capture >> 3) & 7}
 
 
-def flat_paths(graph, facts):
+def flat_paths(graph, facts, mode='flat', pretty=None):
     """Enumerate acyclic CFG edges with predicates, never concrete machine state."""
     output = []
 
     def walk(pc, blocks, guards, calls):
         require(pc not in blocks, 'Counterfactual flat CFG contains a cycle')
-        if pc in PRETTY:
+        if pc in PRETTY and mode == 'flat':
             output.append({'blocks': blocks + [pc], 'guards': guards, 'calls': calls, 'scope_exit': 'pretty-route'})
             return
         block = graph['blocks'][pc]
@@ -216,6 +222,13 @@ def flat_paths(graph, facts):
                     result = 'opaque callback result at RET'
                 if va == 0x1571F64:
                     origin = {'kind': 'constant', 'value': facts['initial_status']}
+                    witnesses.append(va)
+                elif va == 0x157202B:
+                    origin = {'kind': 'incoming_name_pointer_low_byte'}
+                    witnesses.append(va)
+                elif va == 0x157203A:
+                    require(pretty is not None, 'Pretty reset requires its actual operand fact')
+                    origin = {'kind': 'constant', 'value': pretty['status_reset']}
                     witnesses.append(va)
                 elif va == CAPTURE:
                     origin = ({'kind': 'last_callback_AL', 'call_site': preceding_calls[-1] if preceding_calls else None}
@@ -241,13 +254,27 @@ def flat_paths(graph, facts):
             if branch and branch['opcode'] != 'jmp':
                 require(last in GUARDS, 'Flat path reaches an uncharacterized conditional branch')
                 zero = edge['taken'] == (branch['opcode'] == 'je')
-                if last == MODE and not zero:
-                    continue  # Stated domain: entry formatter mode bit is clear.
+                if last == MODE and zero != (mode == 'flat'):
+                    continue
+                if mode == 'pretty' and last == 0x1571F6B and not zero:
+                    continue  # Shared prior-error route is already in flat_paths.
                 extra = guards + [{'site': last, 'value': GUARDS[last], 'zero': zero}]
             walk(edge['to'], blocks, extra, calls)
 
     walk(BASE, [], [], [])
     return output
+
+
+def output_witnesses(path):
+    pcs = path['path_rows']
+    required = [0x1571F61, 0x1571F64, COMMON, 0x1571F71, 0x1571F75, 0x1571F86]
+    require(all(va in pcs for va in required) and
+            [pcs.index(va) for va in required] == sorted(pcs.index(va) for va in required),
+            'Flat/pretty path output witnesses or incoming-state preservation are absent/out of order')
+    require(path['ordered_state_stores'] == [{'offset': 8, 'source': path['error_origin']},
+                                             {'offset': 9, 'constant': 1}] and
+            path['return'] == 'original state pointer',
+            'Flat/pretty path output witnesses do not establish the state/return contract')
 
 
 def check_contract(facts, paths):
@@ -264,14 +291,7 @@ def check_contract(facts, paths):
     ordered = list(CALL_ROLES)
     for path in paths:
         require('scope_exit' not in path, 'Bit-clear flat domain unexpectedly enters pretty route')
-        pcs = path['path_rows']
-        required = [0x1571F61, 0x1571F64, COMMON, 0x1571F71, 0x1571F75, 0x1571F86]
-        require(all(va in pcs for va in required) and
-                [pcs.index(va) for va in required] == sorted(pcs.index(va) for va in required),
-                'Flat path output witnesses or incoming-state preservation are absent/out of order')
-        require(path['ordered_state_stores'] == [{'offset': 8, 'source': path['error_origin']},
-                                                 {'offset': 9, 'constant': 1}] and
-                path['return'] == 'original state pointer', 'Flat path output witnesses do not establish the state/return contract')
+        output_witnesses(path)
         guards = {g['value']: g['zero'] for g in path['guards']}
         if not guards['entry_error']:
             require(path['calls'] == [] and 0x1571F87 not in path['blocks'], 'Prior error no-callback/no-formatter-read obligation changed')
@@ -294,6 +314,104 @@ def check_contract(facts, paths):
             'A required normal-return/error trace is absent')
 
 
+def pretty_operand_facts(body, rows, read_literal):
+    starts = {r['va'] for r in rows}
+
+    def at(va, n):
+        return body[va - BASE:va - BASE + n]
+
+    def fixed(va, value, role):
+        raw = bytes.fromhex(value)
+        require(va in starts and at(va, len(raw)) == raw, role + ' operand relation changed')
+
+    def imm(va, prefix, width=1, signed=False):
+        fixed(va, prefix, hex(va))
+        return int.from_bytes(at(va + len(bytes.fromhex(prefix)), width), 'little', signed=signed)
+
+    def rip(va, prefix, size):
+        target = va + size + imm(va, prefix, 4, True)
+        return target
+
+    fixed(BASE, '554889e54157415641554154534883ec48', 'Parent frame and actual direct-call stack cutpoint')
+    fixed(0x1572011, '84c0', 'Pretty H branch tests the sampled H byte')
+    fixed(0x1572015, '498b3f498b4f08', 'Opening destination/vtable sampled from F')
+    fixed(0x1572023, '4989d6', 'Opening preserves incoming name length')
+    fixed(0x157202B, '4989f44889c6', 'Opening preserves incoming name pointer and selects its literal')
+    fixed(0x1572034, '4c89e64c89f2', 'Opening restores incoming name slice')
+    fixed(0x157203D, '84c0', 'Opening return AL test')
+    fixed(0x1572049, '410f10070f294590488d45d7488945a0',
+          'Post-opening F destination/vtable sample and local flag pointer')
+    fixed(0x157205D, '488945b8488d7d9048897da8', 'Copied F flags and local A/L destination')
+    fixed(0x1572070, '488945b0', 'Local formatter descriptor store')
+    fixed(0x157207A, '84c0', 'Name adapter return AL test')
+    fixed(0x1572089, '488d7d90', 'Colon receives local adapter A')
+    fixed(0x1572098, '84c0', 'Colon adapter return AL test')
+    fixed(0x15720A0, '488d75a8488b7dc0488b45c8', 'Value receives local L and saved input data/descriptor')
+    fixed(0x15720AF, '84c0', 'Pretty value return AL test')
+    fixed(0x15720B7, '488b7da8488b45b0', 'Suffix freshly reloads local L destination/vtable')
+    opening = rip(0x157201C, '488d05', 7)
+    colon = rip(0x1572082, '488d35', 7)
+    suffix = rip(0x15720BF, '488d35', 7)
+    lengths = [imm(0x1572026, 'ba', 4), imm(0x157208D, 'ba', 4), imm(0x15720C6, 'ba', 4)]
+    require(all(0 <= n <= 8 for n in lengths), 'Pretty literal exceeds the inspected slice domain')
+    return {
+        'opening': {'pointer': opening, 'length': lengths[0], 'bytes_hex': read_literal(opening, lengths[0]).hex()},
+        'colon': {'pointer': colon, 'length': lengths[1], 'bytes_hex': read_literal(colon, lengths[1]).hex()},
+        'suffix': {'pointer': suffix, 'length': lengths[2], 'bytes_hex': read_literal(suffix, lengths[2]).hex()},
+        'status_reset': imm(0x157203A, '41b4'), 'flag_initial_value': imm(0x1572045, 'c645d7'),
+        'copied_F_qword_offset': imm(0x1572059, '498b47'),
+        'descriptor_va': rip(0x1572069, '488d05', 7),
+        'adapter_slots': {hex(pc): rip(pc, 'ff15', 6) for pc in [0x1572074, 0x1572092]},
+        'method_offsets': {'opening': imm(0x1572031, 'ff51'), 'value': imm(0x15720AC, 'ff50'),
+                           'suffix': imm(0x15720CB, 'ff50')},
+    }
+
+
+def check_pretty(facts, paths):
+    for key, value in [
+        ('opening', {'pointer': 0x252C00, 'length': 3, 'bytes_hex': '207b0a'}),
+        ('colon', {'pointer': 0x252BFE, 'length': 2, 'bytes_hex': '3a20'}),
+        ('suffix', {'pointer': 0x252BF2, 'length': 2, 'bytes_hex': '2c0a'}),
+        ('status_reset', 1), ('flag_initial_value', 1), ('copied_F_qword_offset', 16),
+        ('descriptor_va', 0x5674210)]:
+        require(facts[key] == value, 'Pretty ' + key + ' relation changed')
+    require(set(facts['adapter_slots'].values()) == {0x576E330}, 'Pretty actual adapter slot changed')
+    require(set(facts['method_offsets'].values()) == {24}, 'Pretty method entry changed')
+    seen = set()
+    for path in paths:
+        output_witnesses(path)
+        guards = {g['value']: g['zero'] for g in path['guards']}
+        require(guards['entry_error'] and not guards['mode_bit'], 'Pretty domain guard changed')
+        h0 = guards['pretty_H']
+        prefix = [0x1572031] if h0 else []
+        if h0:
+            require(0x157203A in path['path_rows'], 'Opening status reset is not on the actual path')
+            if not guards['pretty_opening_AL']:
+                require(path['calls'] == prefix and
+                        path['error_origin'] == {'kind': 'constant', 'value': 1},
+                        'Pretty opening error does not stop with canonical status')
+                seen.add('H0-opening-error')
+                continue
+        ordered = [0x1572074, 0x1572092, 0x15720AC, 0x15720CB]
+        failure = next((i for i, name in enumerate(['pretty_name_AL', 'pretty_colon_AL', 'pretty_value_AL'])
+                        if guards.get(name) is False), None)
+        if failure is not None:
+            require(path['calls'] == prefix + ordered[:failure + 1] and
+                    path['error_origin'] == {'kind': 'constant', 'value': 1},
+                    'Pretty first-error call ordering/status changed')
+            seen.add(('H0-' if h0 else 'H1-') + ['name-error', 'colon-error', 'value-error'][failure])
+        else:
+            require(all(guards.get(name) is True for name in ['pretty_name_AL', 'pretty_colon_AL', 'pretty_value_AL']),
+                    'Pretty success check is bypassed')
+            require(path['calls'] == prefix + ordered and
+                    path['error_origin'] == {'kind': 'last_callback_AL', 'call_site': 0x15720CB},
+                    'Pretty suffix result propagation or call ordering changed')
+            seen.add(('H0-' if h0 else 'H1-') + 'suffix-return')
+    expected = {'H0-opening-error'} | {h + result for h in ['H0-', 'H1-']
+                                     for result in ['name-error', 'colon-error', 'value-error', 'suffix-return']}
+    require(seen == expected, 'A required pretty route is absent')
+
+
 def extract_span(body, read_literal):
     """Extract static relations, including counterfactual ones; no admission claim."""
     rows, listing, version, argv = native_rows(body)
@@ -312,7 +430,32 @@ def prove_span(body, read_literal):
     return proof, listing
 
 
-def analyze(data):
+def pretty_from_graph(body, read_literal, graph, flat_facts):
+    rows = [{'va': pc} for block in graph['blocks'].values() for pc in block['rows']]
+    facts = pretty_operand_facts(body, rows, read_literal)
+    paths = flat_paths(graph, flat_facts, mode='pretty', pretty=facts)
+    check_pretty(facts, paths)
+    return {'operand_facts': facts, 'normal_return_paths': paths,
+            'local_objects_are_observed_frame_offsets_not_Rust_types': True,
+            'sample_timing': 'F destination/vtable/flags are copied after the optional opening callback.',
+            'adapter_local': {'address': 'rbp-0x70', 'fields': ['sampled destination', 'sampled vtable', '&N at rbp-0x29']},
+            'formatter_local': {'address': 'rbp-0x58', 'fields': ['&A', 'descriptor VA0x5674210', 'sampled F+16 qword']},
+            'direct_adapter_stack_separation': {
+                'parent_RSP_relative_to_parent_RBP': -112,
+                'adapter_RBP_relative_to_parent_RBP': -128,
+                'parent_N_relative_to_adapter_RBP': 87,
+                'adapter_own_frame_and_saved_RBP_interval': [-112, 8],
+                'return_slot_interval': [8, 16],
+                'condition': 'Observed direct CALL/push prologues and normally restored stack; nested value callbacks retain the explicit frame/alias conditions.'},
+            'known_suffix_adapter_requires_local_metadata_preservation': True}
+
+
+def prove_pretty_span(body, read_literal):
+    raw, listing = extract_span(body, read_literal)
+    return pretty_from_graph(body, read_literal, raw['cfg'], raw['operand_facts']), listing
+
+
+def _analyze(data):
     require(len(data) == 91774280 and sha(data) == SHA256, 'Input is not authenticated node94')
     secs = bv.sections(data)
 
@@ -321,13 +464,16 @@ def analyze(data):
         require(len(entries) == 1, 'Selected VA range is not uniquely file-bound')
         return entries[0]['offset'] + va - entries[0]['addr']
 
-    require(bv.fde_extents(data, secs).get(BASE) == END, 'Helper FDE extent changed')
+    extents = bv.fde_extents(data, secs)
+    require(extents.get(BASE) == END, 'Helper FDE extent changed')
+    require(extents.get(adapter.BASE) == adapter.END, 'Used adapter FDE extent changed')
     hdr = secs['.eh_frame_hdr']
     count = struct.unpack_from('<I', data, hdr['offset'] + 8)[0]
-    metadata = []
+    metadata = {}
     for i in range(count):
         start, record = struct.unpack_from('<ii', data, hdr['offset'] + 12 + i * 8)
-        if hdr['addr'] + start != BASE:
+        function = hdr['addr'] + start
+        if function not in [BASE, adapter.BASE]:
             continue
         fde_va = hdr['addr'] + record
         fp = off(fde_va, 16)
@@ -335,10 +481,11 @@ def analyze(data):
         cie_va = fde_va + 4 - cie_pointer
         cp = off(cie_va, 8)
         cie_size = struct.unpack_from('<I', data, cp)[0] + 4
-        metadata.append({'fde_va': hex(fde_va), 'fde_file_offset': hex(fp),
+        require(function not in metadata, 'Duplicate selected FDE header binding')
+        metadata[function] = {'fde_va': hex(fde_va), 'fde_file_offset': hex(fp),
                          'fde_bytes': data[fp:fp + length + 4].hex(),
-                         'cie_va': hex(cie_va), 'cie_bytes': data[cp:cp + cie_size].hex()})
-    require(len(metadata) == 1, 'Helper FDE header binding is not unique')
+                         'cie_va': hex(cie_va), 'cie_bytes': data[cp:cp + cie_size].hex()}
+    require(len(metadata) == 2, 'Selected helper/adapter FDE header binding is incomplete')
     relocation_section = secs['.rela.dyn']
     selected_slots = {0x576E2C8: [], 0x576E330: [], 0x5674228: []}
     for rp in range(relocation_section['offset'], relocation_section['offset'] + relocation_section['size'], 24):
@@ -351,10 +498,18 @@ def analyze(data):
                 f'Selected RELATIVE binding {slot:#x} changed')
     pos = off(BASE, END - BASE)
     body = data[pos:pos + END - BASE]
-    proof, listing = prove_span(body, lambda va, n: data[off(va, n):off(va, n) + n])
-    proof.update({'schema': 're005-diagnostic-field-static/1',
+    read = lambda va, n: data[off(va, n):off(va, n) + n]
+    proof, listing = prove_span(body, read)
+    pretty = pretty_from_graph(body, read, proof['cfg'], proof['operand_facts'])
+    adapter_pos = off(adapter.BASE, adapter.END - adapter.BASE)
+    adapter_proof, adapter_listing = adapter.prove_span(
+        data[adapter_pos:adapter_pos + adapter.END - adapter.BASE], read)
+    adapter_proof['unwind_metadata'] = metadata[adapter.BASE]
+    adapter_proof['file_offset'] = hex(adapter_pos)
+    proof.update({'schema': 're005-diagnostic-field-static/2',
                   'target_sha256': SHA256, 'range': [hex(BASE), hex(END)], 'file_offset': hex(pos),
-                  'unwind_metadata': metadata[0],
+                  'unwind_metadata': metadata[BASE],
+                  'pretty_contract': pretty, 'used_adapter_contract': adapter_proof,
                   'used_and_opaque_pretty_bindings': {hex(slot): rows[0] for slot, rows in selected_slots.items()},
                   'call_arguments': {
                       'prefix': {'site': '0x1571fc5', 'destination': 'fresh load64(F+0)',
@@ -368,27 +523,40 @@ def analyze(data):
                                 'formatter': 'original F pointer in r15',
                                 'target': 'load64(saved incoming r8 via rbp-0x38 +0x18)'}},
                   'domain': {'entry_error': 'zero/nonzero raw byte, not a recovered bool type',
-                             'field_present': [0, 1], 'formatter_mode_bit': 'byte(F+0x12)&0x80 clear'},
-                  'state_window_is_not_nominal_layout': True, 'pretty_route_unqualified': True,
+                             'field_present': [0, 1],
+                             'flat': 'sampled byte(F+0x12)&0x80 clear',
+                             'pretty': 'sampled byte(F+0x12)&0x80 set',
+                             'adapter': 'valid finite immutable input and stated frame/flag/alias conditions'},
+                  'state_window_is_not_nominal_layout': True,
+                  'pretty_callback_state_contract_qualified_conditionally': True,
+                  'pretty_rendering_unqualified': True,
                   'callback_alias_frame_preservation_conditions_required': True,
                   'conditions': ['Normal callback returns only; unwinding, faults, nonreturn and concurrent mutation excluded.',
                                  'Observed memory must remain valid; state writes must not corrupt helper frame/control slots.',
                                  'Callbacks preserve rbp/rbx/r12/r13/r14/r15, stack and saved value-argument slots.',
                                  'Primitive destination facts use fresh loads; a same-writer specialization additionally requires formatter/method-slot and value-descriptor preservation.',
                                  'Field-present byte0/1 is an explicit local domain, not an original Rust bool/layout claim.',
-                                 'Pretty route, arbitrary callback aliases/clobbers and physical output remain unqualified.'],
+                                 'Pretty value callbacks must preserve local A/L metadata for the known suffix adapter specialization; the shared N byte may be updated through the adapter protocol.',
+                                 'The shared N byte must be separated from adapter frame/prologue writes; physical preservation needs callback/alias conditions.',
+                                 'Arbitrary callback aliases/clobbers, physical output and nominal Rust types remain unqualified.'],
                   'runtime_rendering_or_gate_claimed': False})
-    return proof, listing
+    return proof, {'helper.objdump.txt': listing, 'adapter.objdump.txt': adapter_listing}
+
+
+def analyze(data):
+    proof, native = _analyze(data)
+    return proof, native['helper.objdump.txt']
 
 
 def generate(binary, output):
     require(not output.exists(), 'Existing evidence output is preserved')
-    proof, listing = analyze(binary.read_bytes())
+    proof, native = _analyze(binary.read_bytes())
     output.mkdir(parents=True, exist_ok=False)
     with (output / 'records.json').open('x') as stream:
         stream.write(json.dumps(proof, indent=2, sort_keys=True) + '\n')
-    with (output / 'helper.objdump.txt').open('x') as stream:
-        stream.write(listing)
+    for name, listing in native.items():
+        with (output / name).open('x') as stream:
+            stream.write(listing)
     return proof
 
 
@@ -399,10 +567,11 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         proof = generate(args.input, args.output)
-    except (ContractError, bv.EvidenceError, OSError, struct.error, subprocess.SubprocessError) as error:
+    except (ContractError, adapter.ContractError, bv.EvidenceError, OSError, struct.error, subprocess.SubprocessError) as error:
         print(f'bincode_diagnostic_field_static: {error}', file=sys.stderr)
         return 1
     print(json.dumps({'target_sha256': SHA256, 'flat_normal_return_paths': len(proof['flat_paths']),
+                      'pretty_normal_return_paths': len(proof['pretty_contract']['normal_return_paths']),
                       'concrete_instruction_execution': False, 'gate_claimed': False}))
     return 0
 

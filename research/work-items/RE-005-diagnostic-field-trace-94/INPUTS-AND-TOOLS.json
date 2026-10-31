@@ -1,8 +1,11 @@
 {
+  "amendment_parent": "61e91dbc1bd7bfbb4dbfb09e5b655f028a9b57f9",
   "captured_target_executed": false,
-  "collector_sha256": "27290a67912b27b6b17e2d35fb68cbbc70f178e7b6f3b2e606943b0bd9f52dbe",
   "concrete_instruction_interpreter_or_emulator": false,
-  "controls_sha256": "c4a4d5743cc2d0c204dee8d9c69fd443c7acc86995d493751001b4b96102fbe6",
+  "control_sources": {
+    "controls.py": "c4a4d5743cc2d0c204dee8d9c69fd443c7acc86995d493751001b4b96102fbe6",
+    "pretty_controls.py": "e7740002b453e66059c7ea32cdbd92bfe82acbe09cd4ff66482cf3b4eeffda9c"
+  },
   "corrected_checker_regression": {
     "actual_mutation": {
       "after": "75ba",
@@ -18,14 +21,43 @@
     "first_frozen_collector_sha256": "484d49044ff509c62be93f8e1f2c08c23518f1270c8b8c1ccb16d2e28b1901e7",
     "scope": "Checker wrongly synthesized skipped stores/return; pinned target behavior unchanged."
   },
-  "file_offset": "0x1570f50",
+  "counterfactual_ledgers": {
+    "counterfactuals.json": "1c6c40284b46203480b5af04efe97c7bf39bdcacadd9ea08563e4fd237b8d8fa",
+    "pretty-counterfactuals.json": "b8c86ed31a28ba04faa2a71ff4978c77b27d46efa37c1678e71d3d0c148e9e60"
+  },
   "focused_validation": {
-    "actual_raw_span_counterfactuals": 18,
-    "command": "PYTHONDONTWRITEBYTECODE=1 TMPDIR=<owned-RAM-temp> python3 -B -m unittest tests.test_bincode_diagnostic_field_static -v",
+    "command": "PYTHONDONTWRITEBYTECODE=1 TMPDIR=<owned-RAM-temp> python3 -B -m unittest tests.test_bincode_diagnostic_field_static tests.test_bincode_diagnostic_pretty_static -v",
+    "copied_raw_controls": {
+      "original_flat": 18,
+      "pretty_and_adapter": 40,
+      "total": 58
+    },
     "exit_code": 0,
-    "same_instruction_call_branch_return_counts": true,
-    "stderr_sha256": "44e680104ced518e441e2d52d40a1068d4253d8ebebfea322a0a399a4ec43cf2",
-    "tests": 13
+    "same_native_instruction_call_branch_jump_return_counts": true,
+    "stderr_sha256": "1abf19e2c543f5b4dafb8d44393022f0e1729e4df436cb44b14c262797b76497",
+    "tests": 29
+  },
+  "function_spans": {
+    "adapter": {
+      "bytes": 622,
+      "file_offset": "0x157c000",
+      "native_rows": 176,
+      "range": [
+        "0x157d000",
+        "0x157d26e"
+      ],
+      "sha256": "d62080d0724a750e0162d6a0563c7a056ae76e2212fd48310f89bcf8809dfde4"
+    },
+    "field": {
+      "bytes": 390,
+      "file_offset": "0x1570f50",
+      "native_rows": 109,
+      "range": [
+        "0x1571f50",
+        "0x15720d6"
+      ],
+      "sha256": "e6aec76f57413451c7a873712558e50e18c6f30b2001b6777c3fd29fda32388d"
+    }
   },
   "gates_requested": false,
   "machine": "x86_64",
@@ -33,49 +65,71 @@
     "path": "tools/bincode_varint.py",
     "sha256": "b544180f59686833da2b961b1259b006262b0619a230ab91896bcace3a8c24d0"
   },
+  "mathematical_scope": {
+    "alignment_residues": 8,
+    "borrow_cases": 15,
+    "finite_examples_do_not_replace_general_proof": true,
+    "general_proof": "SCAN-AND-PRETTY-PROOF.md",
+    "instruction_interpreter": false
+  },
   "native": {
-    "calls": 9,
-    "cfg_blocks": 14,
-    "command": [
-      "objdump",
-      "-D",
-      "-b",
-      "binary",
-      "-m",
-      "i386:x86-64",
-      "-M",
-      "intel",
-      "--insn-width=16",
-      "--adjust-vma=0x1571f50",
-      "<owned-390-byte-helper>"
+    "adapter_instruction_role_rows": 176,
+    "commands": [
+      [
+        "objdump",
+        "-D",
+        "-b",
+        "binary",
+        "-m",
+        "i386:x86-64",
+        "-M",
+        "intel",
+        "--insn-width=16",
+        "--adjust-vma=0x1571f50",
+        "<owned-390-byte-helper>"
+      ],
+      [
+        "objdump",
+        "-D",
+        "-b",
+        "binary",
+        "-m",
+        "i386:x86-64",
+        "-M",
+        "intel",
+        "--insn-width=16",
+        "--adjust-vma=0x157d000",
+        "<owned-622-byte-adapter>"
+      ]
     ],
-    "conditional_branches": 10,
-    "mode": "owned 390-byte non-executable raw span only",
-    "native_instruction_rows": 109,
-    "returns": 1,
+    "mode": "owned 390/622-byte non-executable raw spans only",
     "tool": "GNU objdump (GNU Binutils for Debian) 2.44",
-    "unconditional_jumps": 2,
     "whole_elf_path_reopened": false
   },
-  "native_path_normalization": "Only the ephemeral raw-input filename is replaced with <node94-390-byte-helper>. Instruction bytes, VAs and assembly remain unchanged.",
+  "native_path_normalization": "Only ephemeral raw input filenames become <node94-390-byte-helper>/<node94-622-byte-adapter>; raw VAs/bytes/assembly remain unchanged.",
   "new_Rust_component": false,
+  "previous_tested_publication": {
+    "head": "61e91dbc1bd7bfbb4dbfb09e5b655f028a9b57f9",
+    "required_checks_passed": true,
+    "same_PR": 1030,
+    "tests": 444,
+    "tree": "416b5178bf9c717def7ba2f67381bf6563271130"
+  },
   "python": "3.12.14",
   "repeated_exports_sha256": {
-    "counterfactuals.json": "f2af0075f6719dad3fc9bcc1b8365703ea7ead3d38504800d766aeb07ba69558",
+    "adapter.objdump.txt": "45b5ae1053226ae76462db162e797a35d088a96858f47c404d5bf9f3f2917ae3",
     "helper.objdump.txt": "b04468e9727cdbc53e3adf3e7142b6d3b88d38205d7c3bd8d47777d68d746a44",
-    "records.json": "fb62ad345adab8a75b7dac21cecd66833dbe5ac2e11a6b73ce3ef0956f38e292",
-    "skipped-outputs-after-fix.txt": "1c64c338b4574775d7553e9340a5556d442cbea53140d8982f36258a513a41be",
-    "skipped-outputs-before-fix.txt": "89f7d4e3cd294899108d506fc285ee2ead29246b0455fba5bfe1db760015ce81"
+    "records.json": "9feaf870ab27a96fd357937f8441026787e5630e008b5a493966ac5561040120"
   },
-  "required_frozen_checks": "make doctor verify test catalogue-check reproduce; not yet run by this packet preparation",
+  "required_frozen_checks": "make doctor verify test catalogue-check reproduce; pending on this amended frozen head",
   "source_base": "1f8c67c63ca4794c9689235471c60297f8a5c985",
-  "span_sha256": "e6aec76f57413451c7a873712558e50e18c6f30b2001b6777c3fd29fda32388d",
+  "source_files": {
+    "tests/test_bincode_diagnostic_field_static.py": "7bdef966bd4a99a5ca190301102dedd8cb8f9f7e39407f7f358e425633673281",
+    "tests/test_bincode_diagnostic_pretty_static.py": "af569dc21862efd85f0e3b06b11daee9dfa91257b1c5239950a673f42d182833",
+    "tools/bincode_diagnostic_adapter_static.py": "838a6bf2ad516daab651c44a718f781a6c6f37a9a835e5958ff40c800ac545ce",
+    "tools/bincode_diagnostic_field_static.py": "d890c8e85c7c776250df2de88124ec38319ebf3a75dc144c0de9bd017e44d475"
+  },
   "system": "Linux",
   "target_bytes": 91774280,
-  "target_range": [
-    "0x1571f50",
-    "0x15720d6"
-  ],
-  "target_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",
-  "tests_sha256": "449caf1ba5b720e388aecc9d71b6645e0dd5340e5d3aee750ce84e6a547fe740"
+  "target_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
 }

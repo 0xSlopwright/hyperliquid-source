@@ -82,11 +82,12 @@ class FieldContract(unittest.TestCase):
         self.assertEqual(facts['prefix_cmov'], 'ne')
         self.assertEqual(facts['prefix_xor'], 3)
 
-    def test_whole_cfg_inventory_does_not_promote_pretty_semantics(self):
+    def test_whole_cfg_inventory_does_not_promote_rendering_or_types(self):
         p = proof()
         self.assertEqual((p['native_instruction_rows'], len(p['cfg']['blocks']), len(p['cfg']['calls'])), (109, 14, 9))
         self.assertTrue(all(not set(path['blocks']) & field.PRETTY for path in p['flat_paths']))
-        self.assertTrue(p['pretty_route_unqualified'])
+        self.assertTrue(p['pretty_callback_state_contract_qualified_conditionally'])
+        self.assertTrue(p['pretty_rendering_unqualified'])
         self.assertTrue(p['callback_alias_frame_preservation_conditions_required'])
         self.assertTrue(p['state_window_is_not_nominal_layout'])
         self.assertFalse(p['concrete_instruction_execution'])

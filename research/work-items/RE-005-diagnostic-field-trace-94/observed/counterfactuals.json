@@ -829,7 +829,7 @@
       ],
       "name": "prefix-error-skips-common-outputs",
       "native_sha256": "489861222c2127d1b879d2c47c3e8862dc2d9855e6fe79fec841e4a6274bafc5",
-      "rejected_by_relation": "Flat path output witnesses or incoming-state preservation are absent/out of order",
+      "rejected_by_relation": "Flat/pretty path output witnesses or incoming-state preservation are absent/out of order",
       "shape": {
         "calls": 9,
         "conditional_branches": 10,
