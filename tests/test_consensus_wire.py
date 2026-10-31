@@ -1,26 +1,142 @@
 import bisect
+
+
 import hashlib
+
+
 import importlib.util
+
+
 import json
+
+
 import os
+
+
 import re
+
+
+
+
+import shutil
+
+
 import struct
+
+
 import subprocess
+
+
 import sys
+
+
 import tempfile
+
+
 import unittest
+
+
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from gnu_binutils import requires_gnu  # noqa: E402
 
+
 ROOT = Path(__file__).resolve().parents[1]
+
+
 spec = importlib.util.spec_from_file_location("consensus_wire", ROOT / "tools/consensus_wire.py")
+
+
 cw = importlib.util.module_from_spec(spec)
+
+
 spec.loader.exec_module(cw)
+
+
 BIN = ROOT / "artifacts/node/94/hl-node"
+
+
 PACKET = ROOT / "research/work-items/RE-008-consensus-wire-state"
+
+
 OUTPUT_SHA256 = "c3be6de771cf5856b5e36560f3ac93d13168f78e7991870b7b870fef4ad3dd3a"
+
+
 DATA = BIN.read_bytes() if BIN.exists() else None
+
+
+
+
+import contextlib
+
+
+import io
+
+
+def tool(name):
+    return shutil.which(name)
+
+
+def synthetic_fde_elf(entries):
+    """Minimal ELF whose .eh_frame_hdr search table lists (pc, range_len)
+    FDE records, with file offsets == VAs (one identity LOAD)."""
+    hdr_va, ehf_va = 0x1000, 0x2000
+    ehf = bytearray()
+    fde_vas = []
+    for i, (pc, length) in enumerate(entries):
+        va = ehf_va + 16 * i
+        body = bytearray(16)
+        struct.pack_into("<i", body, 8, pc - (va + 8))  # initial_location (sdata4 pcrel)
+        struct.pack_into("<I", body, 12, length)        # address range
+        ehf += body
+        fde_vas.append(va)
+    hdr = bytearray()
+    hdr += bytes([1, 0x1B, 0x03, 0x3B])
+    hdr += struct.pack("<i", ehf_va - (hdr_va + 4))
+    hdr += struct.pack("<I", len(entries))
+    for (pc, _length), fva in zip(entries, fde_vas):
+        hdr += struct.pack("<ii", pc - hdr_va, fva - hdr_va)
+    shstr = b"\0.eh_frame_hdr\0.eh_frame\0.shstrtab\0"
+    off_shstr, phoff, shoff = 0x2800, 0x40, 0x2900
+    data = bytearray(shoff + 4 * 64)
+    data[0:6] = b"\x7fELF\x02\x01"
+    struct.pack_into("<Q", data, 0x20, phoff)
+    struct.pack_into("<Q", data, 0x28, shoff)
+    struct.pack_into("<HHHHH", data, 0x36, 56, 1, 64, 4, 3)
+    struct.pack_into("<IIQQQQQQ", data, phoff, 1, 5, 0, 0, 0, len(data), len(data), 0x1000)
+    data[hdr_va:hdr_va + len(hdr)] = hdr
+    data[ehf_va:ehf_va + len(ehf)] = ehf
+    data[off_shstr:off_shstr + len(shstr)] = shstr
+    secs = [(0, 0, 0, 0, 0, 0),
+            (1, 1, 0, hdr_va, hdr_va, len(hdr)),
+            (15, 1, 0, ehf_va, ehf_va, len(ehf)),
+            (25, 3, 0, 0, off_shstr, len(shstr))]
+    for i, s in enumerate(secs):
+        struct.pack_into("<IIQQQQIIQQ", data, shoff + i * 64,
+                         s[0], s[1], s[2], s[3], s[4], s[5], 0, 0, 1, 0)
+    return bytes(data)
+
+
+def _elf_code_mid_file(code, va=0x400000):
+    """Minimal ELF64 with `code` as the only PT_LOAD, section headers after it."""
+    shstr = b'\x00.text\x00.shstrtab\x00'
+    ehsize, phentsize, shentsize = 64, 56, 64
+    phoff = ehsize
+    code_off = phoff + phentsize
+    shoff = code_off + len(code)
+    shstr_off = shoff + 3 * shentsize
+    ident = b'\x7fELF' + bytes([2, 1, 1]) + b'\x00' * 9
+    eh = ident + struct.pack('<HHIQQQIHHHHHH', 2, 0x3E, 1, va, phoff, shoff, 0,
+                             ehsize, phentsize, 1, shentsize, 3, 2)
+    ph = struct.pack('<IIQQQQQQ', 1, 5, code_off, va, va, len(code), len(code), 0x1000)
+
+    def sh(name, typ, flags, addr, off, size):
+        return struct.pack('<IIQQQQIIQQ', name, typ, flags, addr, off, size, 0, 0, 1, 0)
+
+    shs = b'\x00' * shentsize
+    shs += sh(1, 1, 6, va, code_off, len(code))
+    shs += sh(7, 3, 0, 0, shstr_off, len(shstr))
+    return eh + ph + code + shs + shstr
 
 
 @unittest.skipIf(DATA is None, "pinned binary not present")
@@ -257,6 +373,152 @@ class ConsensusWireTests(unittest.TestCase):
         self.assertIn("48 f7 e2", out)        # mul %rdx
         self.assertIn("48 01 c9", out)        # add %rcx,%rcx
         self.assertIn("0f 92 c0", out)        # setb %al
+
+
+class ConsensusWireFdeTableTests(unittest.TestCase):
+    """fde_index must reject tables that containing() cannot resolve
+    soundly: duplicate starts make the answer depend on table order, and
+    an overlapping earlier range hides addresses from the single-candidate
+    lookup. Synthetic ELFs only; the pinned binary is not needed."""
+
+    def test_duplicate_fde_start_rejected(self):
+        for entries in ([(0x5000, 0x10), (0x5000, 0x40)],
+                        [(0x5000, 0x40), (0x5000, 0x10)]):
+            with self.assertRaises(cw.EvidenceError):
+                cw.fde_index(cw.Elf(synthetic_fde_elf(entries)))
+
+    def test_overlapping_fde_ranges_rejected(self):
+        elf = cw.Elf(synthetic_fde_elf([(0x5000, 0x200), (0x5100, 0x50)]))
+        with self.assertRaises(cw.EvidenceError):
+            cw.fde_index(elf)
+
+    def test_adjacent_fde_ranges_accepted(self):
+        elf = cw.Elf(synthetic_fde_elf([(0x5000, 0x100), (0x5100, 0x50)]))
+        starts, ends = cw.fde_index(elf)
+        self.assertEqual((starts, ends), ([0x5000, 0x5100], [0x5100, 0x5150]))
+        self.assertEqual(cw.containing(starts, ends, 0x50FF), (0x5000, 0x5100))
+        self.assertEqual(cw.containing(starts, ends, 0x514F), (0x5100, 0x5150))
+        self.assertIsNone(cw.containing(starts, ends, 0x5150))
+
+
+class MainErrorHandlingTests(unittest.TestCase):
+    def test_missing_binary_is_one_line_error(self):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            rc = cw.main(["--binary", "/nonexistent.bin"])
+        self.assertEqual(rc, 2)
+        self.assertTrue(err.getvalue().startswith("consensus_wire: "))
+        self.assertEqual(len(err.getvalue().strip().splitlines()), 1)
+        self.assertNotIn("Traceback", err.getvalue())
+
+
+class ElfSectionNameBoundsTests(unittest.TestCase):
+    """Synthetic ELF64 whose .shstrtab is followed by other bytes.
+
+    On base, Elf.__init__ located each section name with an unbounded
+    data.index(b'\\0', ...), so a name unterminated inside .shstrtab was
+    silently read with bytes borrowed from past the table, and a name
+    offset outside the table was read from following bytes instead of
+    failing closed. This composes with the open unterminated-name and
+    non-UTF-8 PRs, which keep the unbounded index.
+    """
+
+    def build(self, table, trailing, entries):
+        # entries: (name_offset, offset, size); last entry is .shstrtab.
+        data = bytearray(0x500)
+        data[:6] = b'\x7fELF\x02\x01'
+        struct.pack_into('<Q', data, 0x20, 0)
+        struct.pack_into('<Q', data, 0x28, 64)
+        struct.pack_into('<HHHHH', data, 0x36, 56, 0, 64,
+                         len(entries), len(entries) - 1)
+        for i, (name_off, off, size) in enumerate(entries):
+            struct.pack_into('<IIQQQQIIQQ', data, 64 + i * 64,
+                             name_off, 3, 0, 0, off, size, 0, 0, 1, 0)
+        data[0x400:0x400 + len(table)] = table
+        data[0x400 + len(table):0x400 + len(table) + len(trailing)] = trailing
+        return bytes(data)
+
+    def test_borrowed_terminator_rejected(self):
+        # '.extra' unterminated inside the 7-byte table; base reads it
+        # as '.extra_name' using the trailing bytes' terminator.
+        data = self.build(b'\x00.extra', b'_name\x00',
+                          [(0, 0, 0), (1, 0x200, 0x10), (0, 0x400, 7)])
+        with self.assertRaises(cw.EvidenceError):
+            cw.Elf(data)
+
+    def test_offset_outside_table_rejected(self):
+        # Name offset 9 lies past the 7-byte table; base reads 'ame'
+        # from the trailing bytes.
+        data = self.build(b'\x00.extra', b'_name\x00',
+                          [(0, 0, 0), (9, 0x200, 0x10), (0, 0x400, 7)])
+        with self.assertRaises(cw.EvidenceError):
+            cw.Elf(data)
+
+    def test_offset_at_table_end_rejected(self):
+        # Name offset exactly at the table end; base reads '_name'.
+        data = self.build(b'\x00.extra', b'_name\x00',
+                          [(0, 0, 0), (7, 0x200, 0x10), (0, 0x400, 7)])
+        with self.assertRaises(cw.EvidenceError):
+            cw.Elf(data)
+
+    def test_terminated_names_still_parse(self):
+        data = self.build(b'\x00.text\x00.shstrtab\x00', b'',
+                          [(0, 0, 0), (1, 0x200, 0x10), (7, 0x400, 17)])
+        elf = cw.Elf(data)
+        self.assertEqual(sorted(elf.sections), ['', '.shstrtab', '.text'])
+
+
+class SegmentReadBoundsTests(unittest.TestCase):
+    TRUNC = b'\x48\x81\xc0'
+
+    def test_read_within_segment_unchanged(self):
+        elf = cw.Elf(_elf_code_mid_file(self.TRUNC))
+        self.assertEqual(elf.read(0x400000, 3), self.TRUNC)
+        self.assertEqual(elf.read(0x400002, 1), b'\xc0')
+
+    def test_read_past_segment_end_raises(self):
+        elf = cw.Elf(_elf_code_mid_file(self.TRUNC))
+        with self.assertRaises(cw.EvidenceError):
+            elf.read(0x400000, 16)
+        with self.assertRaises(cw.EvidenceError):
+            elf.read(0x400001, 3)
+
+    def test_read_unmapped_va_still_rejected(self):
+        elf = cw.Elf(_elf_code_mid_file(self.TRUNC))
+        with self.assertRaises(cw.EvidenceError):
+            elf.read(0x500000, 1)
+
+
+class ElfShstrtabTypeTests(unittest.TestCase):
+    """A NOBITS section name table occupies no file bytes, so names read
+    from its offset are phantom names, not a string table."""
+
+    NAMES = b'\0.text\0.shstrtab\0'
+
+    def build(self, shstrtab_type):
+        data = bytearray(0x2000)
+        data[0:6] = b'\x7fELF\x02\x01'
+        struct.pack_into('<Q', data, 0x20, 0)    # phoff
+        struct.pack_into('<Q', data, 0x28, 64)   # shoff
+        struct.pack_into('<HHHHH', data, 0x36, 0, 0, 64, 3, 2)
+
+        def section(index, name, typ, flags, addr, off, size):
+            struct.pack_into('<IIQQQQIIQQ', data, 64 + index * 64,
+                             name, typ, flags, addr, off, size, 0, 0, 1, 0)
+
+        section(0, 0, 0, 0, 0, 0, 0)
+        section(1, 1, 1, 0x6, 0x400000, 0x1000, 0x10)  # .text
+        section(2, 7, shstrtab_type, 0, 0, 0x1000, len(self.NAMES))
+        data[0x1000:0x1000 + len(self.NAMES)] = self.NAMES
+        return bytes(data)
+
+    def test_nobits_shstrtab_rejected(self):
+        with self.assertRaises(cw.EvidenceError):
+            cw.Elf(self.build(8))
+
+    def test_strtab_shstrtab_accepted(self):
+        self.assertEqual(sorted(cw.Elf(self.build(3)).sections),
+                         ['', '.shstrtab', '.text'])
 
 
 if __name__ == "__main__":
