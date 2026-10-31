@@ -235,6 +235,97 @@
   "equals_sha256_initial_words": true,
   "va": "0x20c020"
  },
+ "post_digest": {
+  "A": {
+   "caller": "0x326aec0",
+   "claim": "dead: frame freed unread",
+   "digest_content_reads": 0,
+   "frame_free": {
+    "size": "0x18c8",
+    "va": "0x326b006"
+   },
+   "header_free_load": null,
+   "instructions": 50,
+   "overwrite_stores": [],
+   "struct_accesses": [],
+   "struct_rsp_range": [
+    "0x8",
+    "0x98"
+   ],
+   "window": [
+    "0x326af5a",
+    "0x326b018"
+   ],
+   "write_struct_offsets": []
+  },
+  "B": {
+   "caller": "0x32fc190",
+   "claim": "dead: first 32 bytes overwritten then header freed; digest unread",
+   "digest_content_reads": 0,
+   "frame_free": {
+    "size": "0x1948",
+    "va": "0x32fc43c"
+   },
+   "header_free_load": "0x32fc429",
+   "instructions": 125,
+   "overwrite_stores": [
+    "0x32fc33a",
+    "0x32fc345",
+    "0x32fc34a"
+   ],
+   "struct_accesses": [
+    {
+     "kind": "write",
+     "rsp_disp": "0x38",
+     "struct_offset": "0x18",
+     "va": "0x32fc33a"
+    },
+    {
+     "kind": "write",
+     "rsp_disp": "0x28",
+     "struct_offset": "0x8",
+     "va": "0x32fc345"
+    },
+    {
+     "kind": "write",
+     "rsp_disp": "0x20",
+     "struct_offset": "0x0",
+     "va": "0x32fc34a"
+    },
+    {
+     "kind": "pointer",
+     "rsp_disp": "0x20",
+     "struct_offset": "0x0",
+     "va": "0x32fc3f1"
+    },
+    {
+     "kind": "pointer",
+     "rsp_disp": "0x20",
+     "struct_offset": "0x0",
+     "va": "0x32fc414"
+    },
+    {
+     "kind": "read",
+     "rsp_disp": "0x28",
+     "struct_offset": "0x8",
+     "va": "0x32fc429"
+    }
+   ],
+   "struct_rsp_range": [
+    "0x20",
+    "0xb0"
+   ],
+   "window": [
+    "0x32fc229",
+    "0x32fc44e"
+   ],
+   "write_struct_offsets": [
+    "0x18",
+    "0x8",
+    "0x0"
+   ]
+  }
+ },
  "schema": "re009d-lattice-digest/1",
  "writer": {
   "argument_moves": [

@@ -12,7 +12,7 @@ PACKET = ROOT / 'research' / 'work-items' / 'RE-009-D-lattice-digest-94'
 sys.path.insert(0, str(ROOT / 'tools'))
 import lattice_digest as tool  # noqa: E402
 
-OUTPUT_SHA256 = '0002eb0b646cec85223eb616730ba09343202880fe3dacecdb82aa7b03db81d4'
+OUTPUT_SHA256 = 'eb596303760c90b8c027d5a14819d7eb09e07d55acdd9365e1cf1936ec52fc77'
 
 
 def load(name, path):
@@ -80,7 +80,7 @@ class Packet(unittest.TestCase):
 
     def test_independent_all_pass(self):
         rows = iv.check_keys(bytes(DATA))
-        self.assertEqual(len(rows), 95)
+        self.assertEqual(len(rows), 101)
         self.assertEqual({r[0] for r in rows}, {'PASS'})
         self.assertEqual(iv.check_packet(json.loads((PACKET / 'lattice-digest.json').read_text())), [])
 
@@ -112,6 +112,8 @@ class Tamper(unittest.TestCase):
             (0x14f941c, 0x08, 'chunk size 0x400 -> 0x800'),
             (0x3269a2a, 0x00, 'writer copy length'),
             (0x201e66, ord('L'), 'writer path literal'),
+            (0x326b009, 0x00, 'post A frame free size 0x18c8 -> 0x0000'),
+            (0x32fc34d, 0x40, 'post B overwrite [rsp+0x20] disp 0x20 -> 0x40'),
         ]
         for va, val, why in cases:
             with self.subTest(why=why), Patched(va, val) as d:
@@ -127,6 +129,12 @@ class Tamper(unittest.TestCase):
         p = json.loads((PACKET / 'lattice-digest.json').read_text())
         p['callers'][1]['digest_before_writer'] = False
         self.assertIn('caller ordering / dataflow', iv.check_packet(p))
+        p = json.loads((PACKET / 'lattice-digest.json').read_text())
+        p['post_digest']['A']['digest_content_reads'] = 1
+        self.assertTrue(any('post_digest A' in e for e in iv.check_packet(p)))
+        p = json.loads((PACKET / 'lattice-digest.json').read_text())
+        p['post_digest']['B']['claim'] = 'consumed by writer'
+        self.assertTrue(any('post_digest B claim' in e for e in iv.check_packet(p)))
 
 
 if __name__ == '__main__':

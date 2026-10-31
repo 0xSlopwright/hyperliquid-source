@@ -410,6 +410,156 @@ def writer(read):
     }
 
 
+
+# Post-digest windows: from the insn after each digest call to the caller's ret.
+# A length decoder walks every instruction and records each [rsp+disp] operand.
+POST_WINDOWS = {
+    'A': {'caller': 0x326aec0, 'start': 0x326af5a, 'end': 0x326b018,
+          'struct': (0x8, 0x98), 'frame_free': 0x326b006, 'frame_size': 0x18c8},
+    'B': {'caller': 0x32fc190, 'start': 0x32fc229, 'end': 0x32fc44e,
+          'struct': (0x20, 0xb0), 'frame_free': 0x32fc43c, 'frame_size': 0x1948,
+          'overwrite': (0x32fc33a, 0x32fc345, 0x32fc34a),
+          'header_free_load': 0x32fc429},
+}
+
+
+_MODRM1 = (set(range(0x00, 0x04)) | set(range(0x08, 0x0c)) | set(range(0x10, 0x14))
+           | set(range(0x18, 0x1c)) | set(range(0x20, 0x24)) | set(range(0x28, 0x2c))
+           | set(range(0x30, 0x34)) | set(range(0x38, 0x3c))
+           | {0x63, 0x69, 0x6b, 0x80, 0x81, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89,
+              0x8a, 0x8b, 0x8d, 0xc0, 0xc1, 0xc6, 0xc7, 0xd0, 0xd1, 0xd2, 0xd3, 0xf6, 0xf7,
+              0xfe, 0xff})
+_IMM1 = {0x69: 4, 0x6b: 1, 0x80: 1, 0x81: 4, 0x83: 1, 0xc0: 1, 0xc1: 1, 0xc6: 1, 0xc7: 4}
+_MODRM0F = ({0x10, 0x11, 0x1f, 0x28, 0x29, 0x6f, 0x7f, 0xaf, 0xb6, 0xb7, 0xbe, 0xbf, 0xd6,
+             0xd7, 0xef} | set(range(0x40, 0x50)) | set(range(0x90, 0xa0)))
+
+
+def length_scan(read, va):
+    """(length, opcode-class, rsp-disp-or-None) for one instruction."""
+    b = read(va, 16)
+    i, rex, opsz = 0, 0, False
+    while b[i] in (0x66, 0xf2, 0xf3, 0x2e, 0x3e):
+        opsz |= b[i] == 0x66
+        i += 1
+    if 0x40 <= b[i] <= 0x4f:
+        rex = b[i]
+        i += 1
+    op = b[i]
+    i += 1
+    if op == 0x0f:
+        op2 = b[i]
+        i += 1
+        if 0x80 <= op2 <= 0x8f:
+            return i + 4, 'jcc', None
+        if op2 == 0x0b:
+            return i, 'ud2', None
+        if op2 not in _MODRM0F:
+            raise ValueError(f'{va:#x}: 0f {op2:02x} not supported')
+        n, disp = _modrm_len(b, i, rex)
+        return n, f'0f{op2:02x}', disp
+    if op in _MODRM1:
+        n, disp = _modrm_len(b, i, rex)
+        imm = _IMM1.get(op, 0)
+        if op in (0xf6, 0xf7) and (b[i] >> 3) & 7 in (0, 1):
+            imm = 1 if op == 0xf6 else (2 if opsz else 4)
+        if imm == 4 and opsz:
+            imm = 2
+        return n + imm, f'{op:02x}', disp
+    if 0x50 <= op <= 0x5f or op in (0x90, 0x98, 0x99, 0xc3, 0xcc):
+        return i, f'{op:02x}', None
+    if 0x70 <= op <= 0x7f or op == 0xeb:
+        return i + 1, 'jcc8', None
+    if op in (0xe8, 0xe9):
+        return i + 4, f'{op:02x}', None
+    if 0xb8 <= op <= 0xbf:
+        return i + (8 if rex & 8 else 4), 'movimm', None
+    if 0xb0 <= op <= 0xb7 or op in (0x04, 0x0c, 0x24, 0x2c, 0x34, 0x3c, 0xa8, 0x6a):
+        return i + 1, f'{op:02x}', None
+    if op in (0x05, 0x0d, 0x25, 0x2d, 0x35, 0x3d, 0xa9, 0x68):
+        return i + 4, f'{op:02x}', None
+    raise ValueError(f'{va:#x}: opcode {op:02x} not supported')
+
+
+def _modrm_len(b, i, rex):
+    m = b[i]
+    mod, rm = m >> 6, m & 7
+    i += 1
+    base_rsp = False
+    if mod != 3 and rm == 4:
+        sib = b[i]
+        i += 1
+        # rsp-only SIB: base=rsp, index=none (scale/index=0b100), REX.B unset
+        base_rsp = (sib & 7) == 4 and not (rex & 1) and ((sib >> 3) & 7) == 4
+        if mod == 0 and (sib & 7) == 5:
+            i += 4
+    disp = 0
+    if mod == 1:
+        disp = struct.unpack_from('<b', b, i)[0]
+        i += 1
+    elif mod == 2:
+        disp = struct.unpack_from('<i', b, i)[0]
+        i += 4
+    elif mod == 0 and rm == 5:
+        i += 4
+    return i, (disp if base_rsp else None)
+
+
+def post_digest(read):
+    """Classify the 0x90 digest as dead: computed then discarded in both callers."""
+    res = {}
+    for name, w in sorted(POST_WINDOWS.items()):
+        lo, hi = w['struct']
+        va, n, accesses, frees = w['start'], 0, [], []
+        while va < w['end']:
+            ln, cls, disp = length_scan(read, va)
+            raw = read(va, ln)
+            if disp is not None and lo <= disp < hi:
+                kind = ('pointer' if cls == '8d'
+                        else 'write' if cls in ('89', '0f11', '0f29', 'c7')
+                        else 'read')
+                accesses.append({'va': f'{va:#x}', 'kind': kind,
+                                 'rsp_disp': f'{disp:#x}',
+                                 'struct_offset': f'{disp - lo:#x}'})
+            if raw[:3] == b'\x48\x81\xc4':
+                frees.append({'va': f'{va:#x}',
+                              'size': f"{struct.unpack_from('<i', raw, 3)[0]:#x}"})
+            va += ln
+            n += 1
+        if va != w['end']:
+            raise ValueError(f'window {name} overran to {va:#x}')
+        overwrites = [a['va'] for a in accesses if a['kind'] == 'write']
+        # Optional static pin: if POST_WINDOWS names overwrite VAs, they must match discovery.
+        named = [f'{x:#x}' for x in w.get('overwrite', ())]
+        if named and named != overwrites:
+            raise ValueError(f'{name} overwrite mismatch: {overwrites} != {named}')
+        frame = frees[0] if frees else None
+        expected_free = w.get('frame_free')
+        if expected_free is not None and (frame is None or int(frame['va'], 16) != expected_free):
+            raise ValueError(f'{name} frame_free mismatch: {frame}')
+        write_offs = [a['struct_offset'] for a in accesses if a['kind'] == 'write']
+        header_loads = [a['va'] for a in accesses if a['kind'] == 'read']
+        # digest_content_reads = reads that are NOT the single header-free load (offset 0x8).
+        digest_reads = [a for a in accesses if a['kind'] == 'read'
+                        and a['struct_offset'] != '0x8']
+        res[name] = {
+            'caller': f"{w['caller']:#x}",
+            'window': [f"{w['start']:#x}", f"{w['end']:#x}"],
+            'instructions': n,
+            'struct_rsp_range': [f'{lo:#x}', f'{hi:#x}'],
+            'struct_accesses': accesses,
+            'digest_content_reads': len(digest_reads),
+            'overwrite_stores': overwrites,
+            'write_struct_offsets': write_offs,
+            'header_free_load': header_loads[0] if header_loads else None,
+            'frame_free': frame,
+            'claim': ('dead: frame freed unread'
+                      if name == 'A'
+                      else 'dead: first 32 bytes overwritten then header freed; digest unread'),
+        }
+    return res
+
+
+
 def analyse(data, check_sha=True):
     if check_sha and hashlib.sha256(data).hexdigest() != BINARY_SHA256:
         raise ValueError('binary sha256 mismatch')
@@ -448,6 +598,7 @@ def analyse(data, check_sha=True):
         'blake3_anchors': anchors,
         'callers': callers(read),
         'writer': writer(read),
+        'post_digest': post_digest(read),
     }
 
 
@@ -475,6 +626,18 @@ EXPECT = {
                'copy_len': ['0x810'], 'save_helper': '0x3c16810', 'save_record': '0x56dfb28',
                'format_call_slot': '0x576e040',
                'argument_moves': ['rdi->rbx', 'rsi->[rsp+0x20]', 'rdx->[rsp+0x28]']},
+    # Negative: the digest is computed and discarded in both callers (no downstream consumer observed).
+    'post_digest': {
+        'A': {'digest_content_reads': 0,
+              'frame_free': {'va': '0x326b006', 'size': '0x18c8'},
+              'overwrite_stores': [], 'write_struct_offsets': [],
+              'header_free_load': None},
+        'B': {'digest_content_reads': 0,
+              'frame_free': {'va': '0x32fc43c', 'size': '0x1948'},
+              'overwrite_stores': ['0x32fc33a', '0x32fc345', '0x32fc34a'],
+              'write_struct_offsets': ['0x18', '0x8', '0x0'],
+              'header_free_load': '0x32fc429'},
+    },
 }
 
 
@@ -513,6 +676,16 @@ def expectation_errors(r):
                 and c['writer_target'] == '0x32699c0' and c['once_flag'] == '0x577ab98'
                 and [x['len'] for x in c['lattice_copies']] == ['0x810'] * 3):
             errs.append(f"caller {c['function']} dataflow")
+    for name, want in e['post_digest'].items():
+        got = r['post_digest'][name]
+        have = {k: got[k] for k in ('digest_content_reads', 'frame_free', 'overwrite_stores',
+                                     'write_struct_offsets', 'header_free_load')}
+        if have != want:
+            errs.append(f'post_digest {name}: {have} != {want}')
+    # Caveat gate: B must not read digest bytes at struct_offset >= 0x20 (past the 32-byte overwrite).
+    b = r['post_digest']['B']['struct_accesses']
+    if [a for a in b if a['kind'] == 'read' and int(a['struct_offset'], 16) >= 0x20]:
+        errs.append('post_digest B reads digest bytes beyond the overwritten record')
     for k, v in e['writer'].items():
         if r['writer'][k] != v:
             errs.append(f'writer {k}: {r["writer"][k]} != {v}')

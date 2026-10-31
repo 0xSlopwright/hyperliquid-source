@@ -19,7 +19,7 @@ ROOT = HERE.parents[2]
 BINARY = ROOT / 'artifacts' / 'node' / '94' / 'hl-node'
 PACKET = HERE / 'lattice-digest.json'
 BINARY_SHA256 = '3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f'
-JSON_SHA256 = '0002eb0b646cec85223eb616730ba09343202880fe3dacecdb82aa7b03db81d4'
+JSON_SHA256 = 'eb596303760c90b8c027d5a14819d7eb09e07d55acdd9365e1cf1936ec52fc77'
 SHA256_IV = '67e6096a85ae67bb72f36e3c3af54fa57f520e518c68059babd9831f19cde05b'
 
 KEYS = [
@@ -112,6 +112,12 @@ KEYS = [
     (0x37e293c, '0f118380000000', 'digest: out+0x80 = lane2 trailer'),
     (0x37e2943, '4889d8', 'digest: return rbx'),
     (0x37e2957, 'c3', 'digest: ret'),
+    (0x326b006, '4881c4c8180000', 'post A: frame free add rsp,0x18c8'),
+    (0x32fc33a, '4889442438', 'post B: overwrite store [rsp+0x38]'),
+    (0x32fc345, '0f11442428', 'post B: overwrite store [rsp+0x28]'),
+    (0x32fc34a, '4c89642420', 'post B: overwrite store [rsp+0x20]'),
+    (0x32fc429, '488b7c2428', 'post B: header-free load [rsp+0x28]'),
+    (0x32fc43c, '4881c448190000', 'post B: frame free add rsp,0x1948'),
     (0x14f940d, '483d01040000', 'blake3 update target: cmp rax,0x401'),
     (0x14f9419, '41be00040000', 'blake3 update target: mov r14d,0x400 (chunk size)'),
     (0x14fa020, 'e85bebffff', 'blake3 finalize target: call 0x14f8b80'),
@@ -131,6 +137,13 @@ EXPECT_PACKET = {
     'callers': [('0x326aec0', '0x326af55', '0x326aff3'), ('0x32fc190', '0x32fc224', '0x32fc267')],
     'writer_args': ['rdi', 'rsi', 'rdx'],
     'writer_offsets': ['0xf8', '0xa00', '0x1308'],
+    'post_digest': {
+        'A': {'digest_content_reads': 0, 'frame_free': {'va': '0x326b006', 'size': '0x18c8'},
+              'overwrite_stores': [], 'write_struct_offsets': [], 'header_free_load': None},
+        'B': {'digest_content_reads': 0, 'frame_free': {'va': '0x32fc43c', 'size': '0x1948'},
+              'overwrite_stores': ['0x32fc33a', '0x32fc345', '0x32fc34a'],
+              'write_struct_offsets': ['0x18', '0x8', '0x0'], 'header_free_load': '0x32fc429'},
+    },
 }
 
 
@@ -188,6 +201,18 @@ def check_packet(packet):
         errs.append('writer arguments / offsets')
     if packet['iv']['bytes'] != SHA256_IV or packet['iv']['equals_sha256_initial_words'] is not True:
         errs.append('iv')
+    pd = packet.get('post_digest')
+    if not pd:
+        errs.append('post_digest missing')
+    else:
+        for name, want in EXPECT_PACKET['post_digest'].items():
+            got = pd.get(name, {})
+            have = {k: got.get(k) for k in ('digest_content_reads', 'frame_free', 'overwrite_stores',
+                                               'write_struct_offsets', 'header_free_load')}
+            if have != want:
+                errs.append(f'post_digest {name} no-consumer pins')
+            if got.get('claim', '').startswith('dead') is False:
+                errs.append(f'post_digest {name} claim not dead')
     return errs
 
 
