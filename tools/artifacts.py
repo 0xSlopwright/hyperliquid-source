@@ -165,6 +165,15 @@ def verify_signatures(root, manifest):
             if not any(row[2] == fingerprint or row[-1] == fingerprint for row in valid):
                 raise ValueError(f'Expected signing fingerprint not found: {relative}')
             print(f'Valid signature: {relative}')
+                raise ValueError(f'Expected signing fingerprint not found: {rel}')
+            # VALIDSIG is emitted for a revoked or expired key too. The artifact must be
+            # authenticated by a key that is valid now, not only cryptographically signed.
+            for line in result.stdout.splitlines():
+                fields = line.split()
+                if len(fields) > 1 and fields[0] == '[GNUPG:]' and fields[1] in {
+                        'REVKEYSIG', 'EXPKEYSIG', 'KEYEXPIRED', 'SIGEXPIRED'}:
+                    raise ValueError(f'Signature is not currently valid: {rel}: {line}')
+            print(f'Valid signature: {rel}')
 
 
 PAIRS = [
