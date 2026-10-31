@@ -175,6 +175,10 @@ def generate(root=ROOT):
     if any(not isinstance(item, dict) for item in literal_items):
     if not isinstance(literal_items, list):
         raise ValueError('Invalid literal-classes record')
+    literal_record = json.loads((root / 'research/imported/can1357-literal-classes.json').read_text())
+    if not isinstance(literal_record, dict):
+        raise ValueError('Invalid literal-classes record')
+    literal_items = literal_record['items']
     rows = []
     for c in components:
         source = sorted(p for p in source_paths if owner(p, components) == c['id'])
