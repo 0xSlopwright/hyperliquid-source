@@ -14,6 +14,8 @@ import struct
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from artifacts import load_manifest
+from artifacts import check
 from elf_index import sections
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -229,7 +231,7 @@ def interpret(items):
 
 
 def record(release):
-    manifest = json.loads((ROOT / 'provenance/artifacts.json').read_text())
+    manifest = load_manifest(ROOT)
     rel = TARGETS[release]
     item = next(x for x in manifest['files'] if x['path'] == rel)
     # Authenticate the same immutable byte string passed to derive(). A path
