@@ -17,7 +17,7 @@ import tempfile
 from artifacts import ROOT, check
 from short_string_alias import TARGET, alias_transfers, decode, feed_transfers, fixtures
 
-CRATE = ROOT / 'components/node94-alias'
+CRATE = ROOT / 'src/node94-alias'
 VECTORS = CRATE / 'evidence/contract-vectors.txt'
 PACKET = ROOT / 'research/work-items/RE-001-short-string-alias-94'
 
@@ -92,7 +92,7 @@ def run(output, controls=False):
             text = text.replace(str(crate.parent), '<control>')
         text = text.replace(str(output), '<output>')
         (output/f'{label}.log').write_text(text)
-        manifest = ('components/node94-alias/Cargo.toml' if crate == CRATE
+        manifest = ('src/node94-alias/Cargo.toml' if crate == CRATE
                     else '<mutated-copy>/Cargo.toml')
         row = {'check': label, 'command': ['cargo', *args, '--manifest-path', manifest],
                'exit_code': process.returncode}

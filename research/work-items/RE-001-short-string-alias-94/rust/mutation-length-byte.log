@@ -1,5 +1,5 @@
    Compiling node94-alias v0.1.0 (<crate>)
-    Finished `release` profile [optimized] target(s) in 0.23s
+    Finished `release` profile [optimized] target(s) in 0.20s
      Running unittests src/lib.rs (<control>/target/release/deps/node94_alias-08c2467db2a07f28)
 
 running 2 tests

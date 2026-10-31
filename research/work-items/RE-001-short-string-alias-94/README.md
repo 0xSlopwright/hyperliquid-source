@@ -197,7 +197,12 @@ No generated catalogue, progress record, imported evidence or submodule changed.
 
 ## Bounded Rust implementation and build comparison
 
-The same PR adds [`components/node94-alias`](../../../components/node94-alias/README.md).
+The library lives under `src/` as required by `src/README.md`. The relocation
+preserves the Cargo manifest, lockfile, Rust library/tests and contract-vector
+bytes. Retained Rust results were regenerated from the new path; the prior
+packet remains in Git at `995414a1a99498918d89d9cebe1cd045ad4c6a93`.
+
+The same PR adds [`src/node94-alias`](../../../src/node94-alias/README.md).
 This is a real standalone library with its own `Cargo.toml` and `Cargo.lock`, no
 registry dependencies or build script. It does not create a root workspace or
 pretend that the inferred source tree builds. `AliasFeed::write` preserves the

@@ -5,13 +5,13 @@
   "cargo": "cargo 1.88.0 (Homebrew)",
   "host_platform": "darwin",
   "source_sha256": {
-    "components/node94-alias/Cargo.toml": "743098b4a93ebb5df41bedcb09c01ec8069d25211649789614f581e41e95c960",
-    "components/node94-alias/Cargo.lock": "23e5baec5d97db92097d32a3ed4b272b501e360c4a13a0355f803e598ea89672",
-    "components/node94-alias/src/lib.rs": "53a51e25a05d68a90bcb62400fba32888a374cbfbf98b134582e9d17ce604f9e",
-    "components/node94-alias/src/tests.rs": "0591ec43343aaa92b4eeb05210f68a5b42aca24c524b99ca1feb2aabecb312e1",
-    "components/node94-alias/evidence/contract-vectors.txt": "c251fda827b608e7930625149643e79c2562dd67605300f48e17c1ba1a9bdf6c"
+    "src/node94-alias/Cargo.toml": "743098b4a93ebb5df41bedcb09c01ec8069d25211649789614f581e41e95c960",
+    "src/node94-alias/Cargo.lock": "23e5baec5d97db92097d32a3ed4b272b501e360c4a13a0355f803e598ea89672",
+    "src/node94-alias/src/lib.rs": "53a51e25a05d68a90bcb62400fba32888a374cbfbf98b134582e9d17ce604f9e",
+    "src/node94-alias/src/tests.rs": "0591ec43343aaa92b4eeb05210f68a5b42aca24c524b99ca1feb2aabecb312e1",
+    "src/node94-alias/evidence/contract-vectors.txt": "c251fda827b608e7930625149643e79c2562dd67605300f48e17c1ba1a9bdf6c"
   },
-  "comparison_script_sha256": "409933ba174114d6f0b6d0f6ecc99777b3f80dcf23d8df87ef93169db173d151",
+  "comparison_script_sha256": "f153598faa086b32bb831f027b00ea286c0c6915f1c432d64e93ad6407898c4c",
   "static_evaluator_sha256": "9f8af3f0cec24570454bf477a704042af770f70e99f5be0de63fbae7742a2530",
   "fresh_vectors_sha256": "c251fda827b608e7930625149643e79c2562dd67605300f48e17c1ba1a9bdf6c",
   "alias_comparisons_per_profile": 78,
@@ -65,8 +65,8 @@
       "after": "*letter = 66 +"
     }
   ],
-  "release_build_a_sha256": "e9ef8ae68d876a2751fa0f93490b8cddd7f36432586e71e2dae8cec3db18a9fb",
-  "release_build_b_sha256": "e9ef8ae68d876a2751fa0f93490b8cddd7f36432586e71e2dae8cec3db18a9fb",
+  "release_build_a_sha256": "1a11d596f617c68937730b64d3d663fc591c4202cdb2fd8a934166f0e647986e",
+  "release_build_b_sha256": "1a11d596f617c68937730b64d3d663fc591c4202cdb2fd8a934166f0e647986e",
   "release_builds_raw_equal": true,
   "release_build_normalization": null,
   "commands": [
@@ -78,7 +78,7 @@
         "--locked",
         "--offline",
         "--manifest-path",
-        "components/node94-alias/Cargo.toml"
+        "src/node94-alias/Cargo.toml"
       ],
       "exit_code": 0
     },
@@ -91,7 +91,7 @@
         "--locked",
         "--offline",
         "--manifest-path",
-        "components/node94-alias/Cargo.toml"
+        "src/node94-alias/Cargo.toml"
       ],
       "exit_code": 0
     },
@@ -104,7 +104,7 @@
         "--locked",
         "--offline",
         "--manifest-path",
-        "components/node94-alias/Cargo.toml"
+        "src/node94-alias/Cargo.toml"
       ],
       "exit_code": 0
     },
@@ -117,7 +117,7 @@
         "--locked",
         "--offline",
         "--manifest-path",
-        "components/node94-alias/Cargo.toml"
+        "src/node94-alias/Cargo.toml"
       ],
       "exit_code": 0
     },

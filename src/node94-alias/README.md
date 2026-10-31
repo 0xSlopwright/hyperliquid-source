@@ -20,8 +20,8 @@ From the repository root, with the existing Rust/Cargo toolchain and authenticat
 LFS inputs, GNU binutils and LLVM disassembler available:
 
 ```sh
-cargo test --locked --offline --manifest-path components/node94-alias/Cargo.toml
-cargo test --release --locked --offline --manifest-path components/node94-alias/Cargo.toml
+cargo test --locked --offline --manifest-path src/node94-alias/Cargo.toml
+cargo test --release --locked --offline --manifest-path src/node94-alias/Cargo.toml
 make alias-rust
 ```
 
