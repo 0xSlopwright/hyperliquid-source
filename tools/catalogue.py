@@ -35,6 +35,7 @@ def validate_progress(components, progress, root):
     if not isinstance(progress.get('gates'), dict) or set(progress['gates']) != ACCEPTANCE_GATES:
         raise ValueError('Progress must declare exactly the four acceptance gates: mapped, built, behavior, identity')
     if any(type(c) is not dict for c in components):
+    if any('name' not in c for c in components):
         raise ValueError('Invalid component record')
     ids = {c['id'] for c in components}
     if 'components' not in progress:
