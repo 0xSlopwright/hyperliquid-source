@@ -28,6 +28,7 @@ def load_config(path):
 
 
 CONFIG = load_config(ROOT / 'config/rea.json')
+CONFIG = json.loads((ROOT / 'config/rea.json').read_text(encoding='utf-8'))
 
 
 def supported_node(version):
@@ -119,6 +120,7 @@ def target(name):
     missing = [field for field in ('size', 'sha256') if field not in item]
     if missing:
         raise ValueError(f'config/rea.json target {name!r} manifest entry for {relative!r} is missing {", ".join(missing)}')
+    item = next(i for i in json.loads((ROOT / 'provenance/artifacts.json').read_text(encoding='utf-8'))['files'] if i['path'] == relative)
     check(ROOT / relative, item)
     return {'path': str(ROOT / relative), 'sha256': item['sha256'], 'provider_id': CONFIG['provider']}
 
@@ -164,6 +166,7 @@ def main(argv=None):
         metadata = json.loads((package / 'package.json').read_text())
         if 'version' not in CONFIG:
             raise ValueError('config/rea.json missing version')
+        metadata = json.loads((package / 'package.json').read_text(encoding='utf-8'))
         if metadata.get('version') != CONFIG['version']:
             raise ValueError('REA package version differs from config/rea.json; run make rea-install')
         command = [str(node), str(package / 'scripts/rea.mjs'), *(args or ['--help'])]

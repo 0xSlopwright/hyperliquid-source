@@ -135,7 +135,7 @@ def analyze(data,records,objdump=None,binary=TARGET):
         output = subprocess.check_output([objdump,'-d',f'--start-address={start:#x}',
                                           f'--stop-address={end:#x}',str(binary)],cwd=ROOT,text=True)
     else:
-        output = (PACKET/'function.objdump.txt').read_text()
+        output = (PACKET/'function.objdump.txt').read_text(encoding='utf-8')
     instructions = decode_export(output,start,end,body)
 
     def exact(va,raw):
@@ -231,6 +231,7 @@ def inspect(path,objdump=None):
     require(len(data)==91774280 and hashlib.sha256(data).hexdigest()==SHA256,'Expected exact node #94 size/SHA-256')
     return analyze(data,load_records(PACKET/'records.json'),objdump)
     return analyze(data,json.loads((PACKET/'records.json').read_text()),objdump,binary=path)
+    return analyze(data,json.loads((PACKET/'records.json').read_text(encoding='utf-8')),objdump)
 
 
 def main():
@@ -249,6 +250,12 @@ def main():
     except (ValueError, OSError, struct.error, subprocess.CalledProcessError) as error:
         print(f'foundation_duration_guards: {error}', file=sys.stderr)
         raise SystemExit(1)
+    args = parser.parse_args(); result = inspect(args.binary,args.objdump)
+    if args.check:
+        require(result==json.loads(args.check.read_text(encoding='utf-8')),'Retained evidence differs')
+        print('Duration floating guard evidence reproduces exactly.')
+    else:
+        print(json.dumps(result,indent=2))
 
 
 if __name__=='__main__':main()

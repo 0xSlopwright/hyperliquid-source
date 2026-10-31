@@ -25,6 +25,7 @@ for entry in manifest['files']:
 item = next((i for i in manifest['files'] if i['path'] == relative), None)
 if item is None:
     raise SystemExit(f'No provenance/artifacts.json entry for {relative}')
+item = next(i for i in json.loads((ROOT / 'provenance/artifacts.json').read_text(encoding='utf-8'))['files'] if i['path'] == relative)
 check(ROOT / relative, item)
 project_dir = ROOT / 'work/ghidra'
 name = f"hl-node-{args.release}-{item['sha256'][:12]}"

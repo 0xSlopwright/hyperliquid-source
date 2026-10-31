@@ -186,6 +186,7 @@ def main():
     manifest = load_manifest(ROOT)
     if args.command == 'fetch':
         fetch_all(ROOT, manifest)
+    manifest = json.loads((ROOT / 'provenance/artifacts.json').read_text(encoding='utf-8'))
     for item in manifest['files']:
         check(ROOT / item['path'], item)
         print(f"SHA-256 OK: {item['path']}")

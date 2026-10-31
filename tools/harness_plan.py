@@ -44,6 +44,7 @@ def _unique_object(pairs):
 
 def load_json(path: Path):
     return json.loads(path.read_text(), object_pairs_hook=_unique_object)
+    return json.loads(path.read_text(encoding='utf-8'))
 
 
 def validate_protocol(protocol: dict) -> None:
@@ -140,6 +141,8 @@ def approval_covers(request_id: str) -> bool:
     authorized_word = re.compile(r'(?<![A-Za-z])authorized(?![A-Za-z])', re.IGNORECASE)
     return any(request_token.search(line) and authorized_word.search(line)
                for line in text.splitlines())
+    text = APPROVAL_PATH.read_text(encoding='utf-8')
+    return request_id in text and 'authorized' in text.lower()
 
 
 def validate_request(request: dict, fixtures_by_id: dict) -> dict:
