@@ -1,8 +1,0 @@
-3b0d4a788cb70f3175c29422715db66a68d92afc41056516c60694cd9d816f49  tools/rate_delegated_nosplit_static.py
-091f3263a19b9b85d5b7707483a9bb1ed4553b845f31c20f6fa8a80f2b8460b7  tests/test_rate_delegated_nosplit_static.py
-86b1b29989b75f6d8d8342f6f8f57e4b07c9e25d4d94f39f2db5de7fcc36f5c7  research/work-items/RE-001-rate-delegated-nosplit-94/README.md
-e8afc2224955a5bf96f5545adb61b64f54339339c09b8780094d5bac30a2aedd  research/work-items/RE-001-rate-delegated-nosplit-94/focused-tests.txt
-72a0cab34b2dbbee42e062054ebeb14237d5fe78ec2d37e6fe6f79d01a6ad436  research/work-items/RE-001-rate-delegated-nosplit-94/observed/helper.objdump.txt
-54aa6e57ffc8e25082bafbe0b2f4398b9c5cc82490a930ccf09f113213ce6d74  research/work-items/RE-001-rate-delegated-nosplit-94/observed/instructions.json
-d46da0ef85100e95c80f3e0b99dcf249c945b32ea8da1b8477dd8d55b441f567  research/work-items/RE-001-rate-delegated-nosplit-94/observed/records.json
-0cabdd10bde7f71b993e4b35f2c62fc81097adb315ae5c8fb7639236eba10397  research/work-items/RE-001-rate-delegated-nosplit-94/validation.txt

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RE-001: one conditional used-output contract of Node94's 0x4258c00."""
+"""RE-001: conditional used-output equations of Node94's 0x4258c00."""
 import argparse
 from contextlib import contextmanager
 import hashlib
@@ -24,6 +24,12 @@ BODY_SHA256 = '4262a27f04f513c5d0bafd1bd95c9ddbb81b803ca6ceeda71beaab9f99df8284'
 FDE, CIE, LSDA = 0x12295cc, 0xfbdc2c, 0xb24d60
 FAST_CALLS = (0x4258c42, 0x4258cc8, 0x4258d2a, 0x4258d58, 0x4258d80, 0x4258da0)
 STORES = (0x4258dd9, 0x4258ddc, 0x4258de0)
+SPLIT_CONTROLS = {
+    0x4258cd3: '4c8b6c24300f840b0100004883fb060f850801000041bc0500000040b50131dbe905010000',
+    0x4258de9: '31ed4989dceb0d4883c3f941bc0600000040b501',
+    0x4259001: '41ffc44869fb600200004c01f7488db424a0000000ba600200004c8b3dbe4f510141ffd7664589a6321b0000488b4424404889442450488dbc24500a0000488db42438030000ba5802000041ffd7488d84248800000031c9488b5424684c89f64c8b6c24304889084c8b7c24504983ff020f845cfdffff4889b42490000000488954246848895c2428',
+    0x4259a0b: '488b442478488b8c2490000000488908488b4c246848894808488b4c242848894810',
+}
 # Actual encoded pointer carriers, branch operands and ordinary-return routes.
 CONTROLS = {
     0x4258c00: '55415741564155415453',
@@ -125,9 +131,9 @@ def exception_rows(image):
 def inspect_bytes(data):
     """Below-digest seam for corruption controls on the actual admitted target."""
     image = Image(data)
-    for va, expected in CONTROLS.items():
+    for va, expected in {**CONTROLS, **SPLIT_CONTROLS}.items():
         require(image.read(va, len(expected) // 2)[1].hex() == expected,
-                f'Selected no-split operand/route changed at {va:#x}')
+                f'Selected delegated operand/route changed at {va:#x}')
     cies, frames = eh_frame_records(data, image.sections)
     matches = [f for f in frames if f['start'] == START]
     require(len(matches) == 1 and matches[0] == {'fde': FDE, 'cie': CIE, 'start': START,
@@ -155,14 +161,14 @@ def inspect_bytes(data):
         require(len(owners) <= 1, 'Overlapping selected call-site ownership')
         calls.append({'va': hex(va), 'slot': hex(slot), 'return_pc': hex(va + 6),
                       'unwind_lookup_pc': hex(lookup), 'lsda_row_index': owners[0] if owners else None})
-    return {'schema': 're001-rate-delegated-nosplit-94/1', 'source_base': '1f8c67c63ca4794c9689235471c60297f8a5c985',
+    return {'schema': 're001-rate-delegated-output-94/2', 'source_base': '1f8c67c63ca4794c9689235471c60297f8a5c985',
             'reference_revision': '999556f6e0a474b8312db96ec3149e1c44e97c23',
             'target': {'release': 94, 'bytes': SIZE, 'sha256': SHA256},
             'body': {'start': hex(START), 'end': hex(END), 'bytes': len(body), 'file_offset': hex(offset),
                      'sha256': hashlib.sha256(body).hexdigest()},
             'fde': raw_fde, 'cie': {**cie, 'raw_record': raw_cie},
             'lsda': lsda, 'ordinary_route_calls': calls, 'imports': imports,
-            'encoded_contract': {
+            'no_split_contract': {
                 'count_load': {'va': '0x4258c4b', 'width_bits': 16, 'base_register': 'R14', 'offset': 0x1b32},
                 'count_bound': {'va': '0x4258c53', 'unsigned_upper_exclusive': image.read(0x4258c56, 1)[1][0],
                                 'taken_jb': '0x4258c57 ->0x4258c84'},
@@ -197,14 +203,14 @@ def inspect_bytes(data):
             'revisited_callers': [{'va': hex(va), 'bytes': len(CONTROLS[va]) // 2,
                                   'file_offset': hex(image.read(va, len(CONTROLS[va]) // 2)[0]),
                                   'raw': CONTROLS[va]} for va in (0x4959067, 0x4956e63)],
-            'limits': ['count>=11 split/loop route is not semantically recovered', 'No valid object, pointer range, lifetime, Rust/private type or actual copy effect',
+            'limits': ['Split/loop ordinary used-output equation is conditional, not full split semantics or termination', 'No valid object, pointer range, lifetime, Rust/private type or actual copy effect',
                        'No blanket alias, exception, full-helper closure, target execution, reconstruction denominator or completed gate']}
 
 
 @contextmanager
 def private_slice(body):
     expected = hashlib.sha256(body).hexdigest()
-    with tempfile.TemporaryDirectory(prefix='rate-nosplit-') as directory:
+    with tempfile.TemporaryDirectory(prefix='rate-output-') as directory:
         parent = Path(directory)
         require(stat.S_IMODE(parent.stat().st_mode) == 0o700, 'Native directory is not private')
         path = parent / 'slice.bin'
@@ -218,6 +224,91 @@ def private_slice(body):
         yield path
         require(identity(before) == identity(path.lstat()) and digest(path) == expected,
                 'Owned native slice changed')
+
+
+def split_output_proof(rows, body, edges):
+    """All finite ordinary-return cutsets, plus width-aware explicit-store provenance."""
+    for va, expected in SPLIT_CONTROLS.items():
+        require(body[va - START:va - START + len(expected) // 2].hex() == expected,
+                'Split output operand/definition changed')
+    def reach(origin, blocked=frozenset()):
+        visited, pending = set(), [origin]
+        while pending:
+            va = pending.pop()
+            if va in visited or va in blocked:
+                continue
+            visited.add(va)
+            pending.extend(edges[va])
+        return visited
+    origin, ret = 0x4258c59, 0x4259a3e
+    selected = reach(origin)
+    require(ret in selected, 'Split ordinary return is not reachable in local graph')
+    cutsets = {'first_split_insertion_copy': [0x4259022],
+               'output0_stores': [0x4258dd9, 0x4259a18],
+               'output8_stores': [0x4258ddc, 0x4259a20],
+               'output16_stores': [0x4258de0, 0x4259a29]}
+    require(all(ret not in reach(origin, set(sites)) for sites in cutsets.values()),
+            'A split normal return bypasses the copy/output cutset')
+    saves = (0x4259078, 0x4259080, 0x4259085)
+    require(all(0x4259a0b not in reach(origin, {site}) for site in saves),
+            'Alternate return can bypass a saved result definition')
+    require(0x4258dd4 not in reach(saves[0]) and 0x4259a0b not in reach(0x4258dd4),
+            'Split direct and saved return paths unexpectedly rejoin')
+    widths = {'BYTE': 1, 'WORD': 2, 'DWORD': 4, 'QWORD': 8, 'XMMWORD': 16}
+    writes = []
+    for row in rows:
+        assembly = row['assembly'].split('#', 1)[0].strip()
+        match = re.match(r'(\S+)\s+(BYTE|WORD|DWORD|QWORD|XMMWORD) PTR \[([^]]+)\](?:,|$)', assembly)
+        if not match:
+            continue
+        mnemonic, width, address = match[1], widths[match[2]], match[3]
+        if mnemonic in ('cmp', 'test', 'nop', 'call', 'jmp'):
+            continue
+        require(mnemonic in ('mov', 'movups', 'movaps', 'inc'), 'Unclassified first-memory-operand effect')
+        own = re.fullmatch(r'rsp(?:\+0x([0-9a-f]+))?', address)
+        offset = (int(own[1], 16) if own[1] else 0) if own else None
+        writes.append({'va': hex(row['va']), 'raw': row['raw'], 'assembly': row['assembly'],
+                       'width': width, 'address': address, 'sp_offset': offset,
+                       'split_normal_graph': row['va'] in selected})
+    protected = ((0x28, 0x30), (0x68, 0x70), (0x78, 0x80), (0x90, 0x98))
+    overlap = [w for w in writes if w['split_normal_graph'] and int(w['va'], 16) >= saves[0]
+               and w['sp_offset'] is not None and any(w['sp_offset'] < hi and lo < w['sp_offset'] + w['width']
+                                                    for lo, hi in protected)]
+    require([int(w['va'], 16) for w in overlap] == list(saves),
+            'An explicit own-frame write overlaps the saved result/output slots')
+    return {'count_branch': 'loaded u16 count>=11 successor0x4258c59; first import precedes count load',
+            'initial_index_load': 'independent qword at0x4258c63; not bounded by count',
+            'initial_partition_before_allocation': [
+                {'index': 'unsigned<5', 'pivot_register': 4, 'low_byte_flag': 0, 'adjusted_index': 'index'},
+                {'index': '==5', 'pivot_register': 5, 'low_byte_flag': 0, 'adjusted_index': '5'},
+                {'index': '==6', 'pivot_register': 5, 'low_byte_flag': 1, 'adjusted_index': '0'},
+                {'index': 'unsigned>=7', 'pivot_register': 6, 'low_byte_flag': 1, 'adjusted_index': 'index-7 modulo2**64'}],
+            'later_count': 'Reload0x4258e31 follows opaque allocation and pointer stores; not equated to initialcount',
+            'first_insertion_copy': {'va': '0x4259022', 'target_register': 'R15', 'loaded_slot_va': '0x425901b',
+                                     'slot': '0x576dfe0', 'base': 'actual R14 at call', 'index': 'actual RBX at call',
+                                     'scale': 608, 'length': 608, 'destination': 'R14+608*RBX modulo2**64'},
+            'all_return_cutsets': {name: [hex(v) for v in sites] for name, sites in cutsets.items()},
+            'raw_tag': 'qword loaded0x4259069, comparedwith2; no private type or feasible-tag claim',
+            'direct_tail': {'branch': 'rawtag==2 at0x4259072 ->0x4258dd4',
+                            'values': ['RSI=copy-baseR14', 'RDX loaded0x4259059', 'RBX=copy-index']},
+            'saved_tail': {'branch': 'rawtag!=2', 'words': [
+                {'save': '0x4259078', 'offset': 144, 'width': 8, 'value': 'copy-baseR14 throughRSI', 'reload': '0x4259a10', 'output_store': '0x4259a18', 'output_offset': 0},
+                {'save': '0x4259080', 'offset': 104, 'width': 8, 'value': 'middleRDX', 'reload': '0x4259a1b', 'output_store': '0x4259a20', 'output_offset': 8},
+                {'save': '0x4259085', 'offset': 40, 'width': 8, 'value': 'copy-indexRBX', 'reload': '0x4259a24', 'output_store': '0x4259a29', 'output_offset': 16}]},
+            'equation': '(output0+608*output16) modulo2**64 equals first split insertion copy0x4259022 destination argument',
+            'proof_domain': ['Finite ordinary-return path entered through count>=11 successor; no termination or EH-entry assertion',
+                             'R14/RBX preserved by imports between0x4259022 and directwriteback/result saves',
+                             'ALL memory effects including explicit indirect stores, imported effects AND final output stores preserve saved entry-outputSP78 and saved-register/RET area until use, except intendeddefinitions',
+                             'After their definitions, ALL effects preserve live SP90/SP68/SP28 resultwords through respective reloads; intended other buffers remain writable',
+                             'These are unverified runtime premises; known incomingR9/outputalias remains explicit; no blanket argument disjointness'],
+            'scope': {'ordinary_reachable_instructions': len(selected), 'normal_return': hex(ret),
+                      'explicit_memory_writes_full_context': len(writes),
+                      'explicit_memory_writes_on_split_normal_graph': sum(w['split_normal_graph'] for w in writes)},
+            'explicit_memory_writes': writes,
+            'implicit_stack_effects': 'Six prologue pushes and call return-address writes; ABI/callee memory effects remain conditional',
+            'limits': ['Actual copy-base/index at0x4259022 are not equated to entry values without further effect/spill premises',
+                       'No index/capacity/type, successful copy, live object, lifetime, all-helper effects or exception closure',
+                       'Caller linkage reuses prior conditional output-word consumption; no new whole-caller qualification']}
 
 
 def native_rows(text, body):
@@ -293,13 +384,15 @@ def native_rows(text, body):
     acyclic(0x4258c84)
     require([r['va'] for r in rows if r['va'] in selected and r['assembly'].startswith('call ')]
             == list(FAST_CALLS[1:]), 'Selected insertion call set changed')
+    split = split_output_proof(rows, body, edges)
     return rows, {'branches': branches, 'selected_route_entry': '0x4258c84',
                   'partition_routes': ['0x4258ca0', '0x4258cf8'],
                   'both_routes_pass_common_sites_before_return': [hex(v) for v in required],
                   'constant2_branch_fallthrough': '0x4258dce ->0x4258dd4',
                   'selected_instruction_count': len(selected), 'selected_only_terminal': '0x4259a3e',
                   'fallthrough_outside_full_extent': boundary,
-                  'limits': 'Calls have ordinary-return edges. Selected local constant-tag reasoning is conditional on relevant frame preservation; no exceptional or full split-path proof.'}
+                  'split_output': split,
+                  'limits': 'Calls have ordinary-return edges. Local no-split constant-tag and split saved-result proofs require explicit all-write frame conditions; no termination, exceptional or full object/helper proof.'}
 
 
 def collect(binary, output):
@@ -336,5 +429,6 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     record = collect(args.binary, args.output)
-    print(json.dumps({'body_bytes': record['body']['bytes'], 'selected_instruction_count': record['native']['selected_instruction_count'],
+    print(json.dumps({'body_bytes': record['body']['bytes'], 'no_split_selected_instructions': record['native']['selected_instruction_count'],
+                      'split_reachable_instructions': record['native']['split_output']['scope']['ordinary_reachable_instructions'],
                       'target_executed': False, 'component_gate_change': False}))

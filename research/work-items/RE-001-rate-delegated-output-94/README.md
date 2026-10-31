@@ -1,4 +1,4 @@
-# RE-001: the delegated no-split used-output contract, node #94
+# RE-001: delegated output addresses across insertion and split propagation, node #94
 
 - Component: `transport` through its already observed rate-maintenance callers.
   The helper's original source ownership, Rust name and private type are unknown.
@@ -7,21 +7,27 @@
 - Source base: `1f8c67c63ca4794c9689235471c60297f8a5c985`; reference revision
   `999556f6e0a474b8312db96ec3149e1c44e97c23`. No imported source was changed;
   no unlicensed inferred implementation was consulted or copied.
-- Status: exact instructions/metadata observed; one conditional def-use contract
-  inferred. The larger split/loop path, alias effects and runtime remain open.
+- Status: exact instructions/metadata observed; conditional no-split and
+  split-propagation output equations inferred. Object effects, aliases,
+  termination, types and runtime remain unqualified.
 
 [PR #1020](https://github.com/lalalune/hyperliquid-source/pull/1020) leaves
 `0x4258c00` opaque. This packet follows one actual route of that callee, so the
 used address observation can extend through a previously unresolved delegation.
 It is independently based on main and requires no code from that unmerged PR.
+The split extension stays within this same packet and PR; it adds a used-output
+proof to the already retained helper context rather than claiming another
+function or re-counting its bytes.
 
 When the **loaded u16 count is below 11**, both local insertion subroutes
 converge at a call bound to `memcpy`. Under the stated ordinary-return and
 frame/ABI conditions, its destination is the same bit pattern reconstructed by
 `output[0] + 608*output[16]` modulo 2^64. Output+8 receives the separately loaded
 qword at the retained input pointer+8. The independent qword index is **not**
-proven below 11. This is an address-operand relation, not a valid-object or
-successful-copy claim.
+proven below 11. On the **loaded-count>=11 route**, every finite ordinary
+normal-return path preserves the destination of its first insertion copy, at
+`0x4259022`, across either a direct writeback or saved-result parent-loop path.
+Both are address-operand relations, not valid-object or successful-copy claims.
 
 ## Reproduce
 
@@ -29,10 +35,10 @@ Linux x86-64, Python 3.12.14, GNU objdump 2.44, genuine pinned artifacts and sev
 unchanged reference submodules. From repository root, use a new output path:
 
 ```sh
-PYTHONDONTWRITEBYTECODE=1 python3 -B tools/rate_delegated_nosplit_static.py --output work/rate-delegated-nosplit-94
-diff -ru research/work-items/RE-001-rate-delegated-nosplit-94/observed work/rate-delegated-nosplit-94
-PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tests -p test_rate_delegated_nosplit_static.py -v
-sha256sum -c research/work-items/RE-001-rate-delegated-nosplit-94/MANIFEST.sha256
+PYTHONDONTWRITEBYTECODE=1 python3 -B tools/rate_delegated_output_static.py --output work/rate-delegated-output-94
+diff -ru research/work-items/RE-001-rate-delegated-output-94/observed work/rate-delegated-output-94
+PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tests -p test_rate_delegated_output_static.py -v
+sha256sum -c research/work-items/RE-001-rate-delegated-output-94/MANIFEST.sha256
 make doctor verify test catalogue-check reproduce
 ```
 
@@ -78,11 +84,14 @@ The helper maps at file offset `0x4257c00` and has SHA-256
 `4262a27f04f513c5d0bafd1bd95c9ddbb81b803ca6ceeda71beaab9f99df8284`.
 Actual FDE `0x12295cc`, CIE `0xfbdc2c` (`zPLR`) and LSDA `0xb24d60`
 are retained byte-exactly. Native context has 866 linear instruction rows.
-The selected ordinary-return graph contains 73 of those instructions, across
-two conditional insertion routes; this is static local graph membership.
+The no-split ordinary-return graph contains 73 of those instructions, across
+two conditional insertion routes. The count>=11 ordinary graph has 683 reachable
+instructions, including loops and error routes. These sets overlap at the return
+tail and must not be summed; they are static graph membership, not recovered
+functions or feasible-path counts.
 FDE membership alone does not establish an original source function boundary.
 
-## Two insertion routes and the consumed words
+## Count below 11: two insertion routes and the consumed words
 
 The prologue retains incoming RSI in R15 and saves incoming output RDI at its
 own frame+0x78. A call bound to `memcpy` at `0x4258c42` **precedes** these loads:
@@ -140,7 +149,7 @@ the caller supplies R9=input+0x38, equal to its outer output pointer. There is
 no explicit save/read of incoming R9 before the first opaque import; that fact
 does not exclude import-mediated use or memory-alias effects.
 
-## Required proof domain: direct writes as well as imports
+## No-split proof domain: direct writes as well as imports
 
 Here SP denotes the helper's own frame after `SUB RSP,0xca8`. The used-output
 inference requires **all memory effects**, including explicit pointer stores
@@ -174,6 +183,82 @@ They identify a missing proof premise, **not a target bug or security claim**.
 Without the all-write condition, the entry-output/caller connection and
 original-index forwarding remain unqualified.
 
+## Split propagation: preserve the first insertion destination
+
+For the count>=11 successor at `0x4258c59`, the index is a separate qword load
+at `0x4258c63`. The encoded initial branches select these numeric register
+values before an opaque allocation call:
+
+| Unsigned loaded index | Pivot register | Flag low byte | Adjusted index register |
+| --- | ---: | ---: | --- |
+| <5 | 4 | 0 | index |
+| ==5 | 5 | 0 | 5 |
+| ==6 | 5 | 1 | 0 |
+| >=7 | 6 | 1 | index-7 modulo 2^64 |
+
+These are actual branch/operand observations, not a B-tree or private-type
+identification. The later count reload at `0x4258e31` follows the opaque call
+and pointer-relative stores. It cannot be equated to the first count: neither
+object non-aliasing nor allocator/library effects have been established. The
+following equation deliberately starts from the **actual R14/RBX at the copy**,
+without equating them to entry-time values or inventing a capacity invariant.
+
+At `0x4259022`, R15 was loaded from the actual `memcpy` slot and the call receives
+RDI=`R14+608*RBX` modulo 2^64, RSI=own SP+0xa0, EDX=608. A following opaque copy
+at `0x425904c` must preserve those callee-saved registers for this inference.
+Then `0x425905e` copies R14 to RSI and `0x4259059` loads the middle word into RDX.
+A raw qword at SP+0x50 is compared with 2 at `0x425906e`; its type, provenance
+through copied contents and feasible domain remain unqualified.
+
+If that raw word equals 2, `0x4259072` reaches the direct output tail already
+listed above: the same base/middle/index registers are stored at output+0/8/16.
+Otherwise, the helper saves them before its parent-propagation loop:
+
+| Save instruction | Own-frame word / width | Value | Final reload | Output store |
+| --- | --- | --- | --- | --- |
+| `0x4259078` | SP+0x90 / 8 | RSI = copy-base R14 | `0x4259a10` | `0x4259a18`, output+0 |
+| `0x4259080` | SP+0x68 / 8 | middle RDX | `0x4259a1b` | `0x4259a20`, output+8 |
+| `0x4259085` | SP+0x28 / 8 | copy-index RBX | `0x4259a24` | `0x4259a29`, output+16 |
+
+The graph proves that the first copy site `0x4259022` dominates every local
+normal return from the count>=11 successor. Each pair of direct/alternate
+output+0, +8 and +16 stores is an all-return cutset. All three save instructions
+dominate the alternate tail `0x4259a0b`; after those saves the direct tail cannot
+be reached, and the direct tail cannot reach the alternate tail. This covers
+all **finite ordinary-return paths**, including any number of loop iterations;
+it does not prove that a loop terminates or that an error/exception path returns.
+
+A width-aware census retains all 139 explicit memory-write instructions in the
+full FDE, 128 on the count>=11 ordinary graph. It records raw bytes, address
+operands and widths, separately from implicit push/call stack effects. After
+the saves, direct SP-relative writes overlapping the result/output words are
+only the three intended definitions. In particular `INC [SP+0x60]` writes eight
+bytes ending at SP+0x68, the exclusive lower boundary of the middle word.
+Scalar and SIMD widths matter; a mutation replacing an 8-byte SP+0x20 store
+with a valid 16-byte MOVUPS reaches the protected index word and is rejected.
+This census does **not** resolve indirect addresses or opaque call effects.
+
+The split equation requires imports to preserve R14/RBX through the copy-to-
+writeback/save sequence. It also requires **ALL memory effects**, including
+explicit indirect stores, imported copies/moves and final output stores, to
+preserve SP+0x78 (entry output pointer), the saved-register/return area and the
+live result words SP+0x90/0x68/0x28 from definition through their respective
+reloads, except the shown intended definitions. Other intended buffers remain
+writable; known incoming R9/output aliasing remains explicit. This is an
+unverified runtime proof domain, not blanket argument disjointness or observed
+object safety. For example, entry output P=SP+0x20 makes the alternate output+8
+store target SP+0x28 **before** the index reload. Even frame-preserving imports
+do not exclude that explicit-store alias; the all-write domain is necessary.
+The test checks this address identity symbolically from actual displacements,
+without target/CPU execution.
+
+Under these conditions, both output tails reconstruct the destination of the
+**first split insertion copy** at `0x4259022`; later parent insertion copies do
+not replace the saved address operands. Their copied values, object effects,
+validity, lifetime and algorithmic meaning remain unproved. The revisited
+caller still consumes the same output offsets with the 608 multiplier under
+its existing conditions; no whole-caller qualification is added.
+
 ## Bound, imports and exception limits
 
 The selected bound constrains the **loaded count** to 0..10. The index is a
@@ -195,12 +280,12 @@ copy-effect proof. All six relevant calls, including the initial copy, have
 return-PC-minus-one ownership in LSDA row 0. Raw call-site records are retained;
 actions, types, personality behavior and exceptional feasibility remain open.
 The final call in the **full** FDE at `0x4259cfc` falls through outside its end
-if it returns. The larger count>=11 split/loop route is retained as context but
-is not recovered semantically or claimed closed.
+if it returns. The split output equation does not recover the remaining split/loop memory
+effects, raw tag/type, allocation/lifetime, exception behavior or termination.
 
 ## Validation and remaining work
 
-Ten actual-target focused methods pass with no skips. Controls mutate the
+Thirteen actual-target focused methods pass with no skips. Controls mutate the
 actual count width/bound/branch, independent index source, saved index reload,
 608-byte multiplier and length, base carrier, output source, local constant
 and revisited alias. Actual import retargets, FDE/CFI and LSDA corruptions are
@@ -210,11 +295,13 @@ Private slice mutation/cleanup, actual symlink replacement, exact repeat,
 wrong full identity and real CLI preservation of empty/populated output are
 also checked. Source bytes/reference pins remain unchanged. See retained
 `focused-tests.txt` and `validation.txt` for actual run boundaries.
-The additional symbolic-address control demonstrates the direct-store frame
-alias counterexamples and requires the explicit all-write proof-domain record.
+Symbolic-address controls demonstrate direct-store frame aliases and require
+the explicit all-write proof domains. Actual private-slice GNU controls also
+retarget a valid branch to bypass the copy/output cutset, move INC onto a
+protected word, and widen a scalar store so its overlap reaches that word.
 
 No Rust component/build, runtime differential, normalization mask, target
 execution or completed component gate is requested. All four gates remain
-false. Next questions are the split route's output-domain contract and the
-opaque import/alias/frame obligations needed to turn this conditional local
-observation into a full helper postcondition.
+false. Next questions are actual import/alias/frame contracts and split memory
+effects needed to qualify the equations, plus raw tag/type, object validity and
+lifetime, and exceptional or terminating behavior.

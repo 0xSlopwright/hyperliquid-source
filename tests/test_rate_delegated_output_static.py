@@ -14,10 +14,10 @@ import unittest
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
-import rate_delegated_nosplit_static as target
+import rate_delegated_output_static as target
 
 
-class DelegatedNoSplitTests(unittest.TestCase):
+class DelegatedOutputTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.binary = target.ROOT / target.TARGET
@@ -53,7 +53,7 @@ class DelegatedNoSplitTests(unittest.TestCase):
                                     'file_offset': '0x4257c00', 'sha256': target.BODY_SHA256})
         self.assertEqual(r['fde']['va'], '0x12295cc')
         self.assertEqual(struct.unpack_from('<i', bytes.fromhex(r['fde']['raw']), 12)[0], 4354)
-        c = r['encoded_contract']
+        c = r['no_split_contract']
         self.assertEqual(c['count_load']['width_bits'], 16)
         self.assertEqual(c['count_bound']['unsigned_upper_exclusive'], 11)
         self.assertEqual(c['index_load']['width_bits'], 64)
@@ -73,8 +73,8 @@ class DelegatedNoSplitTests(unittest.TestCase):
         self.assertLess(count, 11)
         self.assertGreater(independent_index, 10)
         self.assertLessEqual((independent_index + 1) % (1 << 64), count)
-        self.assertIn('Independent qword', self.record['encoded_contract']['index_domain'])
-        self.assertIn('after the initial opaque import', self.record['encoded_contract']['conditions'][0])
+        self.assertIn('Independent qword', self.record['no_split_contract']['index_domain'])
+        self.assertIn('after the initial opaque import', self.record['no_split_contract']['conditions'][0])
 
     def test_direct_pointer_stores_need_the_explicit_all_write_frame_domain(self):
         # Symbolic address algebra on actual LEA/ADD operands; no target/CPU execution.
@@ -93,10 +93,10 @@ class DelegatedNoSplitTests(unittest.TestCase):
         # The direct stores can overwrite protected words even if imports preserve them.
         self.assertEqual(self.image.read(0x4258cb1, 5)[1], bytes.fromhex('410f110424'))
         self.assertEqual(self.image.read(0x4258d38, 5)[1], bytes.fromhex('410f110424'))
-        domain = self.record['encoded_contract']['frame_proof_domain']
+        domain = self.record['no_split_contract']['frame_proof_domain']
         self.assertEqual([r['offset'] for r in domain['protected_live_words']], [8, 16, 40, 120])
         self.assertEqual(domain['allocation_bytes'], 0xca8)
-        self.assertIn('ALL memory effects', self.record['encoded_contract']['conditions'][2])
+        self.assertIn('ALL memory effects', self.record['no_split_contract']['conditions'][2])
         self.assertIn('Unverified proof-domain assumption', domain['qualification'])
 
     def test_real_instruction_corruptions_break_pointer_bound_and_forwarding(self):
@@ -116,7 +116,7 @@ class DelegatedNoSplitTests(unittest.TestCase):
         }
         for va, replacement in mutations.items():
             with self.subTest(va=hex(va)):
-                with self.assertRaisesRegex(ValueError, 'Selected no-split'):
+                with self.assertRaisesRegex(ValueError, 'Selected delegated'):
                     target.inspect_bytes(self.va_mutation(va, replacement))
 
     def test_actual_import_cfi_and_lsda_corruptions_are_rejected(self):
@@ -198,7 +198,7 @@ class DelegatedNoSplitTests(unittest.TestCase):
         target.collect(self.binary, again)
         for name in ('helper.objdump.txt', 'instructions.json', 'records.json'):
             self.assertEqual((again / name).read_bytes(), (self.directory / 'normal' / name).read_bytes())
-        packet = target.ROOT / 'research/work-items/RE-001-rate-delegated-nosplit-94/observed'
+        packet = target.ROOT / 'research/work-items/RE-001-rate-delegated-output-94/observed'
         if packet.exists():
             self.assertEqual((packet / 'helper.objdump.txt').read_bytes(), (again / 'helper.objdump.txt').read_bytes())
             self.assertEqual((packet / 'instructions.json').read_bytes(), (again / 'instructions.json').read_bytes())
@@ -213,7 +213,7 @@ class DelegatedNoSplitTests(unittest.TestCase):
                 if populated:
                     (output / 'sentinel').write_bytes(b'preserve this exact content')
                 before = {p.name: p.read_bytes() for p in output.iterdir()}
-                run = subprocess.run([sys.executable, '-B', str(target.ROOT / 'tools/rate_delegated_nosplit_static.py'),
+                run = subprocess.run([sys.executable, '-B', str(target.ROOT / 'tools/rate_delegated_output_static.py'),
                                       '--output', str(output)], capture_output=True, text=True,
                                      env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'})
                 self.assertNotEqual(run.returncode, 0)
@@ -229,6 +229,61 @@ class DelegatedNoSplitTests(unittest.TestCase):
                     target.collect(binary, output)
                 native.assert_not_called()
             self.assertFalse(output.exists())
+
+    def test_split_copy_equation_both_return_tails_and_saved_triple(self):
+        s = self.record['native']['split_output']
+        self.assertEqual(s['first_insertion_copy']['va'], '0x4259022')
+        self.assertEqual((s['first_insertion_copy']['scale'], s['first_insertion_copy']['length']), (608, 608))
+        self.assertEqual(s['all_return_cutsets'], {
+            'first_split_insertion_copy': ['0x4259022'],
+            'output0_stores': ['0x4258dd9', '0x4259a18'],
+            'output8_stores': ['0x4258ddc', '0x4259a20'],
+            'output16_stores': ['0x4258de0', '0x4259a29']})
+        self.assertEqual([(w['offset'], w['width'], w['reload']) for w in s['saved_tail']['words']],
+                         [(144, 8, '0x4259a10'), (104, 8, '0x4259a1b'), (40, 8, '0x4259a24')])
+        self.assertEqual(s['scope'], {'ordinary_reachable_instructions': 683, 'normal_return': '0x4259a3e',
+                                     'explicit_memory_writes_full_context': 139,
+                                     'explicit_memory_writes_on_split_normal_graph': 128})
+        self.assertIn('not equated to initialcount', s['later_count'])
+        self.assertEqual([p['pivot_register'] for p in s['initial_partition_before_allocation']], [4, 5, 5, 6])
+        self.assertIn('not equated to entry values', s['limits'][0])
+        # Symbolic address identity from actual tail-store/reload displacements, no CPU execution.
+        store_offset = self.image.read(0x4259a23, 1)[1][0]
+        reload_offset = self.image.read(0x4259a28, 1)[1][0]
+        self.assertEqual((store_offset, reload_offset), (8, 0x28))
+        sp = 1 << 48
+        output_pointer = sp + reload_offset - store_offset
+        self.assertEqual(output_pointer + store_offset, sp + reload_offset)
+        self.assertIn('AND final output stores', s['proof_domain'][2])
+
+    def decode_actual_private_mutation(self, va, raw):
+        body = bytearray(self.body)
+        body[va - target.START:va - target.START + len(raw)] = raw
+        with target.private_slice(body) as path:
+            text = subprocess.check_output(self.record['native']['argv'], cwd=path.parent,
+                                           encoding='utf-8', env={**os.environ, 'LC_ALL': 'C'})
+        return target.native_rows(text, body)
+
+    def test_real_native_split_bypass_and_width_overlap_controls(self):
+        # Actual5B jump altered to a valid output-tail entry bypasses first split copy/saves.
+        va, destination = 0x4258c7f, 0x4259a0b
+        raw = b'\xe9' + struct.pack('<i', destination - va - 5)
+        with self.assertRaisesRegex(ValueError, 'copy/output cutset'):
+            self.decode_actual_private_mutation(va, raw)
+        # Actual INC SP60..68 changed to SP68..70 overlaps the protected middle word.
+        with self.assertRaisesRegex(ValueError, 'overlaps the saved result'):
+            self.decode_actual_private_mutation(0x4259531, bytes.fromhex('48ff442468'))
+        # Equal-length actual scalar store atSP20 replaced by valid16B MOVUPS reaches liveSP28.
+        with self.assertRaisesRegex(ValueError, 'overlaps the saved result'):
+            self.decode_actual_private_mutation(0x4259858, bytes.fromhex('0f11442420'))
+
+    def test_actual_split_copy_and_saved_output_operand_mutations(self):
+        for va, replacement in {0x4259007: b'\x61', 0x425901e: b'\xbf',
+                                0x425905d: b'\x60', 0x425907b: b'\x88',
+                                0x4259089: b'\x20', 0x4259a17: b'\x88',
+                                0x4259a28: b'\x20'}.items():
+            with self.subTest(va=hex(va)), self.assertRaisesRegex(ValueError, 'Selected delegated'):
+                target.inspect_bytes(self.va_mutation(va, replacement))
 
 
 if __name__ == '__main__':
