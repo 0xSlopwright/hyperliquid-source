@@ -139,6 +139,8 @@ def fde_index(elf: Elf):
         fo = elf.off(fde_va)
         if fo is None:
             raise EvidenceError(f"FDE at {fde_va:#x} not file-backed")
+        if fo is not None and fo + 16 > len(d):
+            raise EvidenceError(f"FDE at {fde_va:#x} truncated")
         # length(4) CIE_pointer(4) pc_begin(4, pcrel sdata4) pc_range(4, udata4)
         pc_begin = fde_va + 8 + struct.unpack_from("<i", d, fo + 8)[0]
         if pc_begin != pc:
