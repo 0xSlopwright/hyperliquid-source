@@ -38,6 +38,7 @@ def validate_progress(components, progress, root):
     if any('name' not in c for c in components):
     if any('scope' not in c for c in components):
     if any('artifact' not in c for c in components):
+    if any('first_task' not in c for c in components):
         raise ValueError('Invalid component record')
     ids = {c['id'] for c in components}
     if 'components' not in progress:
