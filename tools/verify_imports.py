@@ -47,6 +47,10 @@ def verify(root):
     for repo in json.loads((root / 'provenance/sources.json').read_text())['repositories']:
         if not isinstance(repo, dict) or 'path' not in repo or 'commit' not in repo:
             raise ValueError('Invalid source repository record')
+    sources = json.loads((root / 'provenance/sources.json').read_text())
+    if not isinstance(sources, dict) or 'repositories' not in sources:
+        raise ValueError('Invalid sources manifest')
+    for repo in sources['repositories']:
         if not (root / repo['path'] / '.git').exists():
             raise ValueError(f'Missing pinned source: {repo["path"]}; {SETUP}')
         if git(root, repo['path'], 'rev-parse', 'HEAD') != repo['commit']:
