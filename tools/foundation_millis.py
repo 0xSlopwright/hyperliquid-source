@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import struct
 import subprocess
+import sys
 from elf_index import sections
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,6 +61,16 @@ def decode_export(output, start, end, body):
 def analyze(data, records, objdump=None):
     secs = sections(data)
     named = {s['name']:s for s in secs}
+    # The dict above keeps only the last section of a given name, so a
+    # duplicate would silently decide which bytes the pinned checks below
+    # run against. Refuse the ambiguity for every name this tool reads,
+    # mirroring read()'s exactly-one-match rule for VA mappings.
+    for name in ('.eh_frame', '.rela.dyn'):
+        require(sum(s['name'] == name for s in secs) <= 1, 'Duplicate section: ' + name)
+
+    def section(name):
+        require(name in named, f'Missing section {name}')
+        return named[name]
 
     def read(va, size):
         matches = [s for s in secs if s['type'] != 8 and s['address'] <= va
@@ -69,10 +80,11 @@ def analyze(data, records, objdump=None):
         return data[offset:offset+size]
 
     require(records['target_sha256'] == SHA256, 'Record target identity changed')
+    require('.eh_frame' in named, 'Missing section .eh_frame')
+    eh = named['.eh_frame']['address']
     windows = []
     instruction_starts = set()
     exports = {}
-    eh = named['.eh_frame']['address']
     for row in records['windows']:
         start,end = int(row['start_va'],16),int(row['end_va_exclusive'],16)
         body = read(start,end-start)
@@ -101,9 +113,12 @@ def analyze(data, records, objdump=None):
     require(0x14509ba+7+struct.unpack('<i',read(0x14509bd,4))[0] == 0x1e1152, 'Format reference changed')
     message = b'from_unix_millis: out-of-range input '
     require(read(0x1e1153,len(message)) == message, 'Error message changed')
-    rel = named['.rela.dyn']; raw = read(rel['address'],rel['size'])
+    rel = section('.rela.dyn'); raw = read(rel['address'],rel['size'])
     require(len(raw)%24 == 0, 'Truncated relocations')
-    rels = {address:(info,addend) for address,info,addend in struct.iter_unpack('<QQq',raw)}
+    rels = {}
+    for address,info,addend in struct.iter_unpack('<QQq',raw):
+        require(address not in rels, 'Duplicate relocation address')
+        rels[address] = (info,addend)
     for address,target in records['relative_slots'].items():
         require(rels.get(int(address,16)) == (8,int(target,16)), 'Relative call slot changed')
     # Attribute call sites through relocated Location-shaped records. This
@@ -175,10 +190,36 @@ def analyze(data, records, objdump=None):
                 captured_binary_executed=False,complete_cfg=False,progress_gate_requested=False)
 
 
+def _unique_object(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError(f'Duplicate key in retained check input: {key}')
+        out[key] = value
+    return out
+
+
+def load_check(path):
+    return json.loads(Path(path).read_text(), object_pairs_hook=_unique_object)
+
+
+def _unique_record_object(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError(f'Duplicate key in retained records input: {key}')
+        out[key] = value
+    return out
+
+
+def load_records(path):
+    return json.loads(Path(path).read_text(), object_pairs_hook=_unique_record_object)
+
+
 def inspect(path, objdump=None):
     data = Path(path).read_bytes()
     require(len(data) == 91774280 and hashlib.sha256(data).hexdigest() == SHA256, 'Expected exact node #94 size/SHA-256')
-    return analyze(data,json.loads((PACKET/'records.json').read_text()),objdump)
+    return analyze(data,load_records(PACKET/'records.json'),objdump)
 
 
 def main():
@@ -186,12 +227,17 @@ def main():
     parser.add_argument('--binary',type=Path,default=TARGET)
     parser.add_argument('--objdump',help='Rerun LLVM instead of using retained raw exports')
     parser.add_argument('--check',type=Path)
-    args = parser.parse_args(); result = inspect(args.binary,args.objdump)
-    if args.check:
-        require(result == json.loads(args.check.read_text()), 'Retained evidence changed')
-        print('Foundation millis evidence reproduces exactly.')
-    else:
-        print(json.dumps(result,indent=2))
+    args = parser.parse_args()
+    try:
+        result = inspect(args.binary,args.objdump)
+        if args.check:
+            require(result == load_check(args.check), 'Retained evidence changed')
+            print('Foundation millis evidence reproduces exactly.')
+        else:
+            print(json.dumps(result,indent=2))
+    except (ValueError, OSError, struct.error, subprocess.CalledProcessError) as error:
+        print(f'foundation_millis: {error}', file=sys.stderr)
+        raise SystemExit(1)
 
 
 if __name__ == '__main__':

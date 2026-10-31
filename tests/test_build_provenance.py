@@ -1,12 +1,35 @@
 import json
+import hashlib
+
+
 from pathlib import Path
+
+
 import struct
+
+
 import sys
+
+
 import unittest
 
+
 ROOT = Path(__file__).resolve().parents[1]
+
+
 sys.path.insert(0, str(ROOT / 'tools'))
+
+
 from build_provenance import OUT, TARGETS, derive, diff, interpret, record
+
+
+import tempfile
+
+
+import build_provenance
+
+
+import build_provenance as bp
 
 
 def elf(comment, rodata):
@@ -30,9 +53,8 @@ def elf(comment, rodata):
     return bytes(body), offsets
 
 
-def dynamic_elf(tags):
+def dynamic_elf(tags, dynstr=b'\0libfixture.so\0'):
     names = b'\0.shstrtab\0.dynstr\0.dynamic\0'
-    dynstr = b'\0libfixture.so\0'
     blob = b''.join(struct.pack('<qQ', *tag) for tag in tags)
     body = bytearray(64)
     body[:6] = b'\x7fELF\x02\x01'
@@ -57,6 +79,63 @@ def dynamic_facts(tags):
 
 def by_key(items, key):
     return [i for i in items if i['key'] == key]
+
+
+def captured(release):
+    path = ROOT / TARGETS[release]
+    return path.is_file() and path.stat().st_size > 1_000_000
+
+
+def stripping_elf(*, symbols, debug):
+    """Section-table fixture with a valid minimal DWARF 4 compile unit."""
+    entries = [(b'.shstrtab', 3, b'', 0, 0, 0)]
+    if symbols:
+        entries += [(b'.strtab', 3, b'\0', 0, 0, 0),
+                    (b'.symtab', 2, bytes(24), 2, 1, 24)]
+    if debug:
+        # Unit length 8: version 4, abbrev offset 0, pointer size 8, root DIE 1.
+        entries += [(b'.debug_info', 1, struct.pack('<IHI', 8, 4, 0) + b'\x08\x01', 0, 0, 0),
+                    (b'.debug_abbrev', 1, b'\x01\x11\x00\x00\x00\x00', 0, 0, 0)]
+    names = b'\0' + b''.join(name + b'\0' for name, *_ in entries)
+    entries[0] = (b'.shstrtab', 3, names, 0, 0, 0)
+    body = bytearray(64)
+    body[:6] = b'\x7fELF\x02\x01'
+    struct.pack_into('<HH', body, 16, 3, 0x3E)
+    rows = [bytes(64)]
+    for name, kind, data, link, info, entsize in entries:
+        rows.append(struct.pack('<IIQQQQIIQQ', names.index(name + b'\0'), kind,
+                                0, 0, len(body), len(data), link, info, 1, entsize))
+        body += data
+    struct.pack_into('<Q', body, 40, len(body))
+    struct.pack_into('<HHH', body, 58, 64, len(rows), 1)
+    body += b''.join(rows)
+    return bytes(body)
+
+
+def sectioned_elf(pairs):
+    distinct = [b'.shstrtab']
+    for name, _ in pairs:
+        if name not in distinct:
+            distinct.append(name)
+    names = b'\x00' + b''.join(n + b'\x00' for n in distinct)
+    body = bytearray(64)
+    body[:6] = b'\x7fELF\x02\x01'
+    struct.pack_into('<HH', body, 16, 3, 0x3E)
+    blobs = [names] + [blob for _, blob in pairs]
+    offsets = []
+    for blob in blobs:
+        offsets.append(len(body))
+        body += blob
+    shoff = len(body)
+    struct.pack_into('<Q', body, 40, shoff)
+    struct.pack_into('<HHH', body, 58, 64, 2 + len(pairs), 1)
+    rows = [(0, 0, 0, 0, 0, 0)]
+    rows.append((names.index(b'.shstrtab\x00'), 3, 0, 0, offsets[0], len(names)))
+    for (name, blob), off in zip(pairs, offsets[1:]):
+        rows.append((names.index(name + b'\x00'), 1, 0, 0, off, len(blob)))
+    for row in rows:
+        body += struct.pack('<IIQQQQIIQQ', *row, 0, 0, 1, 0)
+    return bytes(body)
 
 
 class DeriveTests(unittest.TestCase):
@@ -110,10 +189,40 @@ class DeriveTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             derive(b'not an elf' * 10)
 
+    def test_dynamic_string_must_stay_inside_dynstr(self):
+        with self.assertRaisesRegex(ValueError, r'DT_NEEDED string offset is outside \.dynstr'):
+            dynamic_facts([(1, 100), (0, 0)])
+        with self.assertRaisesRegex(ValueError, r'DT_RPATH string is not terminated inside \.dynstr'):
+            derive(dynamic_elf([(15, 1), (0, 0)], dynstr=b'\0lib'))
+        with self.assertRaisesRegex(ValueError, r'DT_NEEDED string is not UTF-8'):
+            derive(dynamic_elf([(1, 1), (0, 0)], dynstr=b'\0\xff\0'))
 
-def captured(release):
-    path = ROOT / TARGETS[release]
-    return path.is_file() and path.stat().st_size > 1_000_000
+    def test_stripping_inference_preserves_retained_debug_sections(self):
+        for symbols, debug, expected in (
+                (False, True, 'static symbols absent; debug sections retained'),
+                (False, False, 'symbols and debuginfo removed'),
+                (True, True, 'not stripped'), (True, False, 'not stripped')):
+            with self.subTest(symbols=symbols, debug=debug):
+                exact = derive(stripping_elf(symbols=symbols, debug=debug))
+                self.assertIs(by_key(exact, 'elf.has_symtab')[0]['value'], symbols)
+                self.assertEqual(bool(by_key(exact, 'elf.debug_sections')[0]['value']), debug)
+                self.assertEqual(by_key(interpret(exact), 'stripped')[0]['value'], expected)
+
+    def test_unstripped_reasoning_matches_the_present_symbol_table(self):
+        exact = derive(stripping_elf(symbols=True, debug=True))
+        reasoning = by_key(interpret(exact), 'stripped')[0]['evidence']['reasoning']
+        self.assertIn('.symtab is present', reasoning)
+        self.assertNotIn('no .symtab', reasoning)
+
+    def test_duplicate_comment_section_rejected(self):
+        data = sectioned_elf([(b'.comment', b'FIRST\x00'), (b'.comment', b'SECOND\x00')])
+        with self.assertRaisesRegex(ValueError, r'Duplicate section: \.comment'):
+            derive(data)
+
+    def test_duplicate_interp_section_rejected(self):
+        data = sectioned_elf([(b'.interp', b'/lib/first\x00'), (b'.interp', b'/lib/second\x00')])
+        with self.assertRaisesRegex(ValueError, r'Duplicate section: \.interp'):
+            derive(data)
 
 
 @unittest.skipUnless(all(captured(r) for r in TARGETS), 'captured binaries not materialized (git lfs pull)')
@@ -128,6 +237,98 @@ class CapturedTargetTests(unittest.TestCase):
             return {i['value'] for i in record(release)['facts'] if i['key'] == 'rustc.commit_path'}
         self.assertEqual(commits('94'), {'e408947bfd200af42db322daf0fadfe7e26d3bd1'})
         self.assertEqual(commits('115'), {'59807616e1fa2540724bfbac14d7976d7e4a3860'})
+
+
+class CheckModeTests(unittest.TestCase):
+    """--check must compare bytes, not newline-translated text."""
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        self.saved = (build_provenance.ROOT, build_provenance.OUT,
+                      build_provenance.record, sys.argv)
+        build_provenance.ROOT = self.root
+        build_provenance.OUT = self.root / 'out'
+        build_provenance.record = lambda release: {'target': 'x', 'facts': []}
+        self.text = json.dumps({'target': 'x', 'facts': []},
+                               indent=1, sort_keys=True) + '\n'
+        self.path = build_provenance.OUT / 'provenance-94.json'
+        self.path.parent.mkdir(parents=True)
+
+    def tearDown(self):
+        (build_provenance.ROOT, build_provenance.OUT,
+         build_provenance.record, sys.argv) = self.saved
+
+    def run_main(self, *argv):
+        sys.argv = ['build_provenance.py', *argv]
+        build_provenance.main()
+
+    def test_lf_record_passes_check(self):
+        self.path.write_bytes(self.text.encode('utf-8'))
+        self.run_main('--check', '94')
+
+    def test_crlf_record_fails_check(self):
+        # Exactly what a Windows text-mode rewrite leaves on disk: the same
+        # text with CRLF endings. A read_text() comparison translates the
+        # CRLF back to LF and certifies the drifted bytes as matching.
+        self.path.write_bytes(self.text.replace('\n', '\r\n').encode('utf-8'))
+        with self.assertRaises(SystemExit):
+            self.run_main('--check', '94')
+
+    def test_write_mode_emits_canonical_lf_bytes(self):
+        self.run_main('94')
+        self.assertEqual(self.path.read_bytes(), self.text.encode('utf-8'))
+
+
+class RecordTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        art = self.root / TARGETS['94']
+        art.parent.mkdir(parents=True)
+        art.write_bytes(b'fake-node-bytes')
+        (self.root / 'provenance').mkdir()
+        self.old_root, self.old_derive = bp.ROOT, bp.derive
+        bp.ROOT = self.root
+        bp.derive = lambda data: []
+
+    def tearDown(self):
+        bp.ROOT, bp.derive = self.old_root, self.old_derive
+        self.tmp.cleanup()
+
+    def _write_manifest(self, text):
+        (self.root / 'provenance/artifacts.json').write_text(text)
+
+    def _valid_item(self):
+        data = (self.root / TARGETS['94']).read_bytes()
+        return {'path': TARGETS['94'], 'sha256': hashlib.sha256(data).hexdigest(), 'size': len(data)}
+
+    def test_missing_files_key_is_rejected(self):
+        self._write_manifest('{}')
+        with self.assertRaises(ValueError):
+            record('94')
+
+    def test_non_dict_manifest_is_rejected(self):
+        self._write_manifest('[]')
+        with self.assertRaises(ValueError):
+            record('94')
+
+    def test_missing_target_entry_is_rejected(self):
+        self._write_manifest(json.dumps({'files': [{'path': 'artifacts/node/115/hl-node',
+                                                    'sha256': '0' * 64, 'size': 1}]}))
+        with self.assertRaises(ValueError):
+            record('94')
+
+    def test_non_dict_files_entry_is_rejected(self):
+        self._write_manifest(json.dumps({'files': ['not-a-record']}))
+        with self.assertRaises(ValueError):
+            record('94')
+
+    def test_valid_manifest_still_records(self):
+        self._write_manifest(json.dumps({'files': [self._valid_item()]}))
+        rec = record('94')
+        self.assertEqual((rec['target'], rec['sha256'], rec['size']), (TARGETS['94'], self._valid_item()['sha256'], self._valid_item()['size']))
 
 
 if __name__ == '__main__':

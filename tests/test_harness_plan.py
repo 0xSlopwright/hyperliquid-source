@@ -1,4 +1,5 @@
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -75,6 +76,39 @@ class RequestGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'target_sha256 does not match'):
             hp.validate_request(req, self.fixtures)
 
+    def test_selected_fixture_release_must_match_request(self):
+        import copy
+        for release in ('115', 'visor', 'unknown', None, 94, [], {}):
+            with self.subTest(release=release):
+                fixtures = copy.deepcopy(self.fixtures)
+                req = self._load('plan-only.json')
+                fixtures[req['fixture_ids'][0]]['target_release'] = release
+                with self.assertRaisesRegex(ValueError, 'release.*does not match request release'):
+                    hp.validate_request(req, fixtures)
+
+    def test_release_mismatch_cannot_be_hidden_by_matching_digest(self):
+        import copy
+        fixtures = copy.deepcopy(self.fixtures)
+        req = self._load('plan-only.json')
+        req['target_release'] = '115'
+        req['target_sha256'] = hp.KNOWN_TARGET_DIGESTS['115']
+        row = fixtures[req['fixture_ids'][0]]
+        row['target_sha256'] = req['target_sha256']
+        self.assertEqual(row['target_release'], '94')
+        with self.assertRaisesRegex(ValueError, 'release.*does not match request release'):
+            hp.validate_request(req, fixtures)
+
+    def test_matching_release_and_digest_accepted_for_every_target(self):
+        import copy
+        for release, digest in hp.KNOWN_TARGET_DIGESTS.items():
+            with self.subTest(release=release):
+                fixtures = copy.deepcopy(self.fixtures)
+                req = self._load('plan-only.json')
+                req['target_release'], req['target_sha256'] = release, digest
+                row = fixtures[req['fixture_ids'][0]]
+                row['target_release'], row['target_sha256'] = release, digest
+                self.assertEqual(hp.validate_request(req, fixtures)['target_release'], release)
+
     def test_unknown_fixture_rejected(self):
         req = self._load('plan-only.json')
         req['fixture_ids'] = ['does-not-exist']
@@ -141,6 +175,46 @@ class RequestGateTests(unittest.TestCase):
         self.assertEqual(plan['status'], 'planned')
         self.assertEqual(plan['declared_side_effects'], ['writes_fixture_output'])
 
+    def test_denial_text_does_not_cover_network_allow(self):
+        req = self._load('deny-network.json')
+        req['approval_present'] = True
+        with tempfile.TemporaryDirectory() as tmp:
+            approval = Path(tmp) / 'APPROVAL.md'
+            approval.write_text(
+                f"request_id={req['request_id']} is unauthorized\n",
+                encoding='utf-8',
+            )
+            with mock.patch.object(hp, 'APPROVAL_PATH', approval):
+                with self.assertRaisesRegex(ValueError, 'APPROVAL.md does not cover'):
+                    hp.validate_request(req, self.fixtures)
+
+    def test_other_request_approval_does_not_cover_network_allow(self):
+        req = self._load('deny-network.json')
+        req['approval_present'] = True
+        with tempfile.TemporaryDirectory() as tmp:
+            approval = Path(tmp) / 'APPROVAL.md'
+            approval.write_text(
+                f"authorized request_id={req['request_id']}-extended\n",
+                encoding='utf-8',
+            )
+            with mock.patch.object(hp, 'APPROVAL_PATH', approval):
+                with self.assertRaisesRegex(ValueError, 'APPROVAL.md does not cover'):
+                    hp.validate_request(req, self.fixtures)
+
+    def test_genuine_approval_still_covers_network_allow(self):
+        req = self._load('deny-network.json')
+        req['approval_present'] = True
+        with tempfile.TemporaryDirectory() as tmp:
+            approval = Path(tmp) / 'APPROVAL.md'
+            approval.write_text(
+                f"authorized request_id={req['request_id']}\n",
+                encoding='utf-8',
+            )
+            with mock.patch.object(hp, 'APPROVAL_PATH', approval):
+                plan = hp.validate_request(req, self.fixtures)
+        self.assertEqual(plan['status'], 'planned')
+        self.assertEqual(plan['network'], 'allow')
+
     def test_superset_fixture_effect_cover_accepted(self):
         fixtures, fid = self._fixtures_with_effect()
         req = self._load('plan-only.json')
@@ -152,6 +226,48 @@ class RequestGateTests(unittest.TestCase):
             plan['declared_side_effects'],
             ['writes_fixture_output', 'extra_declared'],
         )
+
+
+class PlanScopeCliTests(unittest.TestCase):
+    def _request(self):
+        return hp.load_json(PACKET / 'examples/plan-only.json')
+
+    def _plan(self, request):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'request.json'
+            path.write_text(json.dumps(request), encoding='utf-8')
+            result = subprocess.run(
+                [sys.executable, '-B', *(['-O'] if sys.flags.optimize else []),
+                 str(ROOT / 'tools/harness_plan.py'), '--request', str(path)],
+                capture_output=True, text=True, timeout=30,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_cli_preserves_required_component_and_question(self):
+        request = self._request()
+        plan = self._plan(request)
+        for field in ('component_id', 'bounded_question'):
+            self.assertIn(field, plan)
+            self.assertEqual(plan[field], request[field])
+
+    def test_cli_distinguishes_different_components(self):
+        request = self._request()
+        original = self._plan(request)
+        request['component_id'] = 'foundation'
+        changed = self._plan(request)
+        self.assertNotEqual(original, changed)
+        self.assertEqual(changed['component_id'], 'foundation')
+        self.assertEqual(changed['bounded_question'], request['bounded_question'])
+
+    def test_cli_distinguishes_different_questions(self):
+        request = self._request()
+        original = self._plan(request)
+        request['bounded_question'] = 'Record another bounded offline question'
+        changed = self._plan(request)
+        self.assertNotEqual(original, changed)
+        self.assertEqual(changed['bounded_question'], request['bounded_question'])
+        self.assertEqual(changed['component_id'], request['component_id'])
 
 
 if __name__ == '__main__':
