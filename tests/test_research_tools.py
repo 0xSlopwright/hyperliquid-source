@@ -86,6 +86,14 @@ class CatalogueTests(unittest.TestCase):
             parts = copy.deepcopy(self.parts); parts[0]['depends_on'] = bad
             with self.assertRaises(ValueError): validate_progress(parts, self.progress, self.root)
         validate_progress(self.parts, self.progress, self.root)
+    def test_missing_component_id_rejected_by_owner(self):
+        parts = copy.deepcopy(self.parts)
+        for c in parts:
+            if c['id'] == 'exchange':
+                del c['id']
+                break
+        with self.assertRaises(ValueError): owner('l1/exchange/impl_trading.rs', parts)
+        self.assertEqual(owner('l1/exchange/impl_trading.rs', self.parts), 'exchange')
 
     def test_complete_gate_without_evidence_rejected(self):
         d = copy.deepcopy(self.progress)
