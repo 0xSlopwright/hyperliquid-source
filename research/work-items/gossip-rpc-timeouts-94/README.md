@@ -109,6 +109,12 @@ a shared default for NodePort listen, the gossip RPC connect, and the
 `gossip rpc height` step of the wrapper the lead seeds as `AsyncSleepRetry`
 (`0x22689f0`).
 
+Note: whether a given loop actually stops after the stored 10 is not checked
+here. For the `gossip rpc height` instance, the open packet
+[#451](https://github.com/lalalune/hyperliquid-source/pull/451) reads the loop
+in `0x22689f0`. It finds that the 10 is never read there, and that the
+attempt bound is `max(-1, 1)` = `u64::MAX`.
+
 For each of the other four sites, the tool takes the last call through
 `0x576e040` within 0x90 bytes before the count store. It then takes the last
 `lea rsi,[rip+t]` within 0x40 bytes before that call. It reads the template's
