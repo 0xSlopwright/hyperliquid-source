@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import struct
 import subprocess
-from artifacts import ROOT, check
+from artifacts import ROOT, check, manifest_item
 from elf_index import sections
 
 RANGES = {
@@ -114,8 +114,7 @@ def relocations(data):
     return [rows[slot] for slot in sorted(rows)]
 
 def generate(binary, output):
-    identity = next(item for item in json.loads((ROOT / 'provenance/artifacts.json').read_text())['files']
-                    if item['path'] == 'artifacts/node/94/hl-node')
+    identity = manifest_item(ROOT, 'artifacts/node/94/hl-node')
     check(binary, identity)
     data = binary.read_bytes()
     instruction_controls(data)
@@ -134,19 +133,19 @@ def generate(binary, output):
                         'bytes': len(body), 'sha256': hashlib.sha256(body).hexdigest()}
         result = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
                                           f'--stop-address={end:#x}', str(binary)], text=True)
-        (output / (name + '.objdump.txt')).write_text(result.replace(str(binary), '<authenticated-node94>'))
+        (output / (name + '.objdump.txt')).write_text(result.replace(str(binary), '<authenticated-node94>'), encoding='utf-8', newline='\n')
     (output / 'frames.txt').write_text('\n'.join(line for line in frames.splitlines()
-        if 'FDE' in line and any(f'pc={a:016x}..{b:016x}' in line for a, b in RANGES.values())) + '\n')
+        if 'FDE' in line and any(f'pc={a:016x}..{b:016x}' in line for a, b in RANGES.values())) + '\n', encoding='utf-8', newline='\n')
     raw_rela = subprocess.check_output(['readelf', '-rW', str(binary)], text=True)
     slots = {*RELATIVE, 0x5777378}
     (output / 'relocations.txt').write_text('\n'.join(line for line in raw_rela.splitlines()
-        if re.match(r'^[0-9a-f]+\s', line) and int(line.split()[0], 16) in slots) + '\n')
+        if re.match(r'^[0-9a-f]+\s', line) and int(line.split()[0], 16) in slots) + '\n', encoding='utf-8', newline='\n')
     record = {'target_sha256': identity['sha256'], 'target_bytes': len(data), 'ranges': ranges,
               'jump_tables': jump_tables, 'relocations': relocation_rows,
               'instruction_controls': {hex(a): b for a, b in CONTROLS.items()},
               'fde_records_observed': len(extents), 'captured_binary_executed': False,
               'limits': 'Numeric poll states and terminal call path only. No full channel/API, scheduler, wait duration, runtime reachability, floating conversion equivalence, ownership or component gate claim.'}
-    (output / 'records.json').write_text(json.dumps(record, indent=2) + '\n')
+    (output / 'records.json').write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8', newline='\n')
     return record
 
 if __name__ == '__main__':

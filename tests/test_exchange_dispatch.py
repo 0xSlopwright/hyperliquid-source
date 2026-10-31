@@ -1,6 +1,8 @@
 """RE-010 tests: pinned output, tamper controls, boundaries, determinism, binutils cross-check."""
 import bisect
+import contextlib
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -11,6 +13,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from gnu_binutils import requires_gnu  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
@@ -215,6 +219,7 @@ class Boundaries(unittest.TestCase):
             ed.decode_one(b'\xf4' + b'\0' * 15, 0, 0x1000)  # hlt not in subset
 
 
+@requires_gnu('objdump', 'readelf')
 class Binutils(unittest.TestCase):
     def test_arms_are_instruction_starts(self):
         od = objdump_lines()
@@ -273,6 +278,29 @@ class Binutils(unittest.TestCase):
                 self.assertEqual(fdes[c['first_call']['target']], c['first_call']['target_fde_end'])
         for r in result()['address_survey']:
             self.assertEqual(fdes[r['fde_start']], r['fde_end'])
+
+
+class MainErrorHandling(unittest.TestCase):
+    def run_main(self, argv):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            rc = ed.main(argv)
+        return rc, err.getvalue()
+
+    def test_missing_binary_is_one_line_error(self):
+        rc, err = self.run_main(['--binary', '/nonexistent.bin'])
+        self.assertEqual(rc, 1)
+        self.assertNotIn('Traceback', err)
+        self.assertEqual(len(err.strip().splitlines()), 1)
+
+    def test_wrong_binary_is_one_line_error(self):
+        with tempfile.TemporaryDirectory() as d:
+            junk = Path(d) / 'junk.bin'
+            junk.write_bytes(b'not an elf at all, just junk bytes for the parser')
+            rc, err = self.run_main(['--binary', str(junk)])
+        self.assertEqual(rc, 1)
+        self.assertNotIn('Traceback', err)
+        self.assertEqual(len(err.strip().splitlines()), 1)
 
 
 if __name__ == '__main__':

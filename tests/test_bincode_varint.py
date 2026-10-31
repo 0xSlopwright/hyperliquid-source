@@ -3,11 +3,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import shutil
+import struct
 import subprocess
 import sys
 import tempfile
 import unittest
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from gnu_binutils import requires_gnu  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
@@ -156,7 +158,7 @@ class Determinism(unittest.TestCase):
         self.assertEqual(hashlib.sha256(outs.pop()).hexdigest(), OUTPUT_SHA256)
 
 
-@unittest.skipUnless(shutil.which('readelf') and shutil.which('objdump'), 'binutils required')
+@requires_gnu('objdump', 'readelf')
 class BinutilsCrossCheck(unittest.TestCase):
     def test_fde_extents_match_readelf(self):
         r = bv.scan(data())
@@ -196,6 +198,26 @@ class BinutilsCrossCheck(unittest.TestCase):
         shifted = list(sites)
         shifted[i] = (sites[i][0] + 1, sites[i][1])
         self.assertEqual(boundary_misses(shifted), [0x27ab30c])
+
+
+class RelativeRelocBounds(unittest.TestCase):
+    def test_aligned_relative_record_is_kept(self):
+        data = struct.pack('<QQq', 0x1000, 8, 0x2000)
+        found = bv.relative_relocs(data, {'.rela.dyn': {'offset': 0, 'size': 24, 'addr': 0}})
+        self.assertEqual(found, {0x1000: 0x2000})
+
+    def test_tail_read_from_the_next_bytes_is_rejected(self):
+        good = struct.pack('<QQq', 0x1000, 8, 0x2000)
+        forged = struct.pack('<QQq', 0x9999, 8, 0x1111)
+        secs = {'.rela.dyn': {'offset': 0, 'size': 25, 'addr': 0}}
+        with self.assertRaisesRegex(bv.EvidenceError, 'truncated .rela.dyn'):
+            bv.relative_relocs(good + forged, secs)
+
+    def test_tail_at_eof_is_rejected(self):
+        data = struct.pack('<QQq', 0x1000, 8, 0x2000) + b'\x00'
+        secs = {'.rela.dyn': {'offset': 0, 'size': len(data), 'addr': 0}}
+        with self.assertRaisesRegex(bv.EvidenceError, 'truncated .rela.dyn'):
+            bv.relative_relocs(data, secs)
 
 
 if __name__ == '__main__':
