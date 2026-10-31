@@ -24,6 +24,9 @@ for release in ['94', '115']:
     expected = next((i for i in manifest['files'] if i['path'] == relative), None)
     if expected is None:
         raise SystemExit(f'No provenance/artifacts.json entry for {relative}')
+    missing = [field for field in ('size', 'sha256') if field not in expected]
+    if missing:
+        raise SystemExit(f'provenance/artifacts.json entry for {relative} is missing {", ".join(missing)}')
     check(ROOT / relative, expected)
     output = subprocess.check_output([sys.executable, str(ROOT / 'tools/rea.py'), 'inspect-rust-binary', str(ROOT / relative), '--format', 'json'], text=True)
     evidence = json.loads(output)
