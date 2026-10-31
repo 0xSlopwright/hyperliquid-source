@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """Node94: bounded static evidence for 0x4956d50 and its caller's result use."""
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
+import stat
 import struct
 import subprocess
+import tempfile
 
-from artifacts import ROOT, check
+from artifacts import ROOT, check, digest
 from elf_index import sections
 from fde_extents import eh_frame_records
 
@@ -118,6 +121,43 @@ def verify_listing(raw, image, start, end):
         raise ValueError('Incomplete selected disassembly')
 
 
+def source_unchanged(binary, before, expected):
+    """Source hard-link metadata may change; identity and complete bytes may not."""
+    def identity(status):
+        return (status.st_dev, status.st_ino, status.st_mode, status.st_size, status.st_mtime_ns)
+    try:
+        return identity(binary.stat()) == identity(before) and digest(binary) == expected
+    except OSError:
+        return False
+
+
+@contextmanager
+def native_snapshot(data):
+    """Native readers consume only an owned, byte-bound, non-executable image."""
+    expected = hashlib.sha256(data).hexdigest()
+    with tempfile.TemporaryDirectory(prefix='rate-lookup-result-') as temporary:
+        directory = Path(temporary)
+        if stat.S_IMODE(directory.stat().st_mode) != 0o700:
+            raise ValueError('Snapshot directory is not private')
+        snapshot = directory / 'authenticated-input.elf'
+        descriptor = os.open(snapshot, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, 'wb') as stream:
+            os.fchmod(stream.fileno(), 0o600)
+            stream.write(data)
+        before = snapshot.lstat()
+        if not stat.S_ISREG(before.st_mode) or stat.S_IMODE(before.st_mode) != 0o600 or before.st_nlink != 1:
+            raise ValueError('Snapshot is not an owned non-executable regular file')
+        if digest(snapshot) != expected:
+            raise ValueError('Snapshot differs from authenticated bytes')
+        yield snapshot
+        after = snapshot.lstat()
+        def identity(status):
+            return (status.st_dev, status.st_ino, status.st_mode, status.st_size,
+                    status.st_mtime_ns, status.st_ctime_ns, status.st_nlink)
+        if identity(before) != identity(after) or digest(snapshot) != expected:
+            raise ValueError('Snapshot changed during static collection')
+
+
 def generate(binary, output):
     if output.exists() or output.is_symlink():
         raise FileExistsError(f'Output already exists; preserve retained evidence: {output}')
@@ -125,6 +165,7 @@ def generate(binary, output):
     identities = [i for i in manifest['files'] if i.get('path') == TARGET]
     if len(identities) != 1 or identities[0].get('sha256') != TARGET_SHA256 or identities[0].get('size') != TARGET_BYTES:
         raise ValueError('Expected the pinned Node94 manifest identity')
+    before = binary.stat()
     check(binary, identities[0])
     data = binary.read_bytes()
     if len(data) != TARGET_BYTES or hashlib.sha256(data).hexdigest() != TARGET_SHA256:
@@ -142,6 +183,20 @@ def generate(binary, output):
         selected_frames[name] = {**{key: hex(value) if value is not None else None for key, value in matches[0].items()},
                                 'file_offset': hex(offset), 'bytes': len(body),
                                 'sha256': hashlib.sha256(body).hexdigest()}
+    with native_snapshot(data) as snapshot:
+        result, exports = native_exports(snapshot, image, selected_frames, selected_relocations)
+    if not source_unchanged(binary, before, TARGET_SHA256):
+        raise ValueError('Source changed during static collection')
+    # Validate the snapshot and source before publishing any output. A later I/O
+    # failure leaves only this newly created directory, never earlier evidence.
+    output.mkdir(parents=True, exist_ok=False)
+    for name, value in exports.items():
+        (output / name).write_text(value, encoding='utf-8', newline='\n')
+    return result
+
+
+def native_exports(binary, image, selected_frames, selected_relocations):
+    """Stage native text and records; the caller validates their input before writing."""
     versions = {}
     native_environment = {**os.environ, 'LC_ALL': 'C'}
     for tool in ('objdump', 'readelf'):
@@ -153,38 +208,33 @@ def generate(binary, output):
     native_frames = [(int(a, 16), int(b, 16)) for a, b in re.findall(r'FDE[^\n]*pc=([0-9a-f]+)\.\.([0-9a-f]+)', frame_listing)]
     if any(native_frames.count(pair) != 1 for pair in FDE_RANGES.values()):
         raise ValueError('GNU readelf exact-FDE cross-check failed')
-    # Atomic directory creation rejects an intervening existing entry as well.
-    # A later failure retains partial output for inspection, never a replacement.
-    output.mkdir(parents=True, exist_ok=False)
-    displayed = {}
+    displayed, exports = {}, {}
     for name, (start, end) in DISPLAY_RANGES.items():
         offset, body = image.read(start, end - start)
         raw = subprocess.check_output(['objdump', '-d', '--insn-width=16',
                                        f'--start-address={start:#x}', f'--stop-address={end:#x}', str(binary)],
                                       encoding='utf-8', env=native_environment)
         verify_listing(raw, image, start, end)
-        (output / (name + '.objdump.txt')).write_text(raw.replace(str(binary), '<authenticated-node94>'),
-                                                    encoding='utf-8', newline='\n')
+        exports[name + '.objdump.txt'] = raw.replace(str(binary), '<authenticated-node94>')
         displayed[name] = {'start_va': hex(start), 'end_va_exclusive': hex(end), 'file_offset': hex(offset),
                            'bytes': len(body), 'sha256': hashlib.sha256(body).hexdigest()}
-    (output / 'frames.txt').write_text('\n'.join(line for line in frame_listing.splitlines() if 'FDE' in line
-        and any(f'pc={start:016x}..{end:016x}' in line for start, end in FDE_RANGES.values())) + '\n',
-        encoding='utf-8', newline='\n')
+    exports['frames.txt'] = '\n'.join(line for line in frame_listing.splitlines() if 'FDE' in line
+        and any(f'pc={start:016x}..{end:016x}' in line for start, end in FDE_RANGES.values())) + '\n'
     relocation_listing = subprocess.check_output(['readelf', '-rW', str(binary)], encoding='utf-8', env=native_environment)
     selected_lines = [line for line in relocation_listing.splitlines()
                       if re.match(r'^[0-9a-f]+\s', line)
                       and int(line.split()[0], 16) in RELOCATIONS]
     if len(selected_lines) != len(RELOCATIONS):
         raise ValueError('GNU readelf selected-relocation cross-check failed')
-    (output / 'relocations.txt').write_text('\n'.join(selected_lines) + '\n', encoding='utf-8', newline='\n')
-    result = {'target_sha256': TARGET_SHA256, 'target_bytes': len(data), 'tools': versions,
+    exports['relocations.txt'] = '\n'.join(selected_lines) + '\n'
+    result = {'target_sha256': TARGET_SHA256, 'target_bytes': len(image.data), 'tools': versions,
               'fde_extents': selected_frames, 'displayed_ranges': displayed,
               'instruction_controls': {hex(va): value for va, value in CONTROLS.items()},
               'selected_relocations': selected_relocations, 'decoded_numeric_targets': branch_targets(image),
               'displayed_bytes': sum(row['bytes'] for row in displayed.values()),
               'captured_binary_executed': False, 'limits': LIMITS}
-    (output / 'records.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8', newline='\n')
-    return result
+    exports['records.json'] = json.dumps(result, indent=2) + '\n'
+    return result, exports
 
 
 if __name__ == '__main__':

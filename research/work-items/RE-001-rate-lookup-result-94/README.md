@@ -40,18 +40,44 @@ make doctor verify test catalogue-check reproduce
 ```
 
 The collector authenticates the complete input against both the checked-in
-artifact identity and this question's explicit Node94 pin. It checks selected
-actual instruction bytes and five RELA records. The project's `.eh_frame`
+artifact identity and this question's explicit Node94 pin. Native tools receive
+only a separate, owned mode-0600 non-executable snapshot in a mode-0700 temporary
+directory. Full snapshot SHA-256 and identity checks run before and after native
+collection. The source identity and full digest must also remain unchanged;
+incidental source hard-link count/ctime changes are allowed. Only the owned
+snapshot is cleaned up. It checks selected instruction bytes and five RELA records.
+The project's `.eh_frame`
 reader and GNU `readelf -wf` independently agree on the two selected extents.
 GNU `objdump -d --insn-width=16` uses default AT&T syntax and linked ELF VAs;
 displayed bytes must match the selected file bytes contiguously. No instruction
-operand or value is normalized. The input pathname alone becomes
+operand or value is normalized. The private snapshot pathname alone becomes
 `<authenticated-node94>` in raw disassembly. Binutils rendering can vary;
 `observed/records.json` also binds actual body hashes and options are fixed above.
 Native exports use `LC_ALL=C` and explicit UTF-8/LF text writes. The output
 directory must not already exist: use a fresh path for every author repeat.
-An existing empty directory, file or symlink is rejected; a later failure
-retains partial output for inspection rather than replacing earlier evidence.
+An existing empty directory, file or symlink is rejected. Input/native validation
+finishes before output creation. A later publication I/O failure can leave only
+the newly created partial directory; earlier evidence is preserved.
+
+### Native input consistency control
+
+The initial collector at `f1dad89734bb94f3a87d6d5bb1a697b8f202e4b2`
+authenticated a byte vector but let native tools reopen the caller's pathname.
+A private-copy reproduction replaced that pathname after authentication and
+changed just the lookup FDE's CIE-reference field at file offset `0x12aaa44`:
+`18ce2e00` became `2c955c00`, selecting the existing valid `zR` CIE at
+`0xce1518` instead of `0xfbdc2c`. Real GNU `readelf` then exported the changed
+CIE binding while `records.json` still described the original bytes, and the
+initial collector returned success. The other four exports stayed identical.
+`input-binding-before.json` retains those exact hashes, coordinates and lines.
+
+The corrected regression performs the same swap on an owned copy and uses real
+GNU tools. All native readers stay on the admitted snapshot; the final source
+identity/digest check rejects the replaced source before publishing any output.
+The regression fails on the initial collector with `ValueError not raised` and
+passes on the correction. Small independent filesystem controls reject mutation
+of the owned snapshot and allow source hard-link metadata changes while still
+rejecting changed bytes with restored size/mtime. No canonical input is edited.
 
 No captured executable, emulator, node service, chain action, network protocol,
 filesystem operation implemented by the target, or reference implementation runs.
@@ -155,7 +181,7 @@ Nearest-symbol offsets on other objdump labels do not identify callee symbols.
 
 ## Validation, implementation and limits
 
-Seven focused tests authenticate the real Node94 bytes, verify 16 instruction
+Ten focused tests authenticate the real Node94 bytes, verify 16 instruction
 sites, reject a single-byte mutation at each site and five actual relocation
 addend retargets below the whole-input hash gate, and check numeric targets.
 The arithmetic tests examine actual encoded stride/operand bytes and selected
@@ -164,6 +190,7 @@ semantic differential tests. The listing tests reject missing, shifted and
 byte-altered selected output. The real CLI is also run against an existing
 empty output directory and one containing prior binary/text bytes: both fail
 without changing entries or bytes. `focused-tests.txt` retains the author run.
+The three native-input/filesystem controls above are included in that count.
 
 Independent Rust path, Cargo.lock/build flags, two-build comparison, raw or
 normalized equivalence, masks, runtime fixtures and performance: **not yet
