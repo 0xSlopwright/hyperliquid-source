@@ -48,14 +48,19 @@ with tempfile.TemporaryDirectory(prefix='hl-ignored-catalogue-') as directory:
     git(reference,'checkout','--quiet','--detach',pin)
     for name in ('research/components.json','research/progress.json',
                  'research/imported/hl-node-94.inventory.json','research/imported/hl-node-115.inventory.json',
-                 'research/imported/hl-visor.inventory.json','research/imported/can1357-literal-classes.json'):
+                 'research/imported/hl-visor.inventory.json','research/imported/can1357-literal-classes.json',
+                 'provenance/artifacts.json'):
         destination=root/name
         destination.parent.mkdir(parents=True,exist_ok=True)
         shutil.copyfile(anchor/name,destination)
     destination=root/'artifacts/node/94/hl-node'
     destination.parent.mkdir(parents=True)
     destination.symlink_to(artifact)
-    (root/'provenance').mkdir()
+    for relative in ('artifacts/node/115/hl-node', 'artifacts/visor/captured/hl-visor'):
+        destination=root/relative
+        destination.parent.mkdir(parents=True,exist_ok=True)
+        destination.symlink_to(anchor/relative)
+    (root/'provenance').mkdir(exist_ok=True)
     imports=json.loads((anchor/'provenance/imports.json').read_text())
     sources=json.loads((anchor/'provenance/sources.json').read_text())
     for name in ('imports.json','sources.json'):

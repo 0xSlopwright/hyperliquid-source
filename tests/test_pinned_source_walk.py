@@ -28,7 +28,10 @@ def source_view(binary, versioned=True):
                      'research/imported/hl-node-94.inventory.json',
                      'research/imported/hl-node-115.inventory.json',
                      'research/imported/hl-visor.inventory.json',
-                     'research/imported/can1357-literal-classes.json'):
+                     'research/imported/can1357-literal-classes.json',
+                     'provenance/artifacts.json',
+                     'artifacts/node/115/hl-node',
+                     'artifacts/visor/captured/hl-visor'):
             target = root / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, target)
