@@ -133,7 +133,10 @@ def sections(data):
     for h in raw:
         if h[1] == 8:  # SHT_NOBITS occupies no file bytes; mapping its VAs would
             continue  # return unrelated file bytes as if they lived there.
-        end = data.index(b'\0', stro + h[0])
+        try:
+            end = data.index(b'\0', stro + h[0])
+        except ValueError:
+            raise EvidenceError('section name is not NUL-terminated')
         try:
             name = data[stro + h[0]:end].decode()
         except UnicodeDecodeError:
