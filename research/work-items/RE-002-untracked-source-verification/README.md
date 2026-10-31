@@ -1,4 +1,4 @@
-# RE-002: source verification independent of Git's display and index flags
+# RE-002: verification and analysis bound to pinned source inputs
 
 - Component: build provenance and pinned analysis inputs. No progress gate requested.
 - Source base: `1f8c67c63ca4794c9689235471c60297f8a5c985`.
@@ -11,8 +11,8 @@
 `make verify` promises to reject modified pinned source repositories. With Git's
 `status.showUntrackedFiles=no`, an extra source file does not appear in
 `git status --porcelain`. The verifier used that output and printed that all
-pinned source repositories were verified. The source walker in
-`tools/catalogue.py` still reads `reference.rglob('*.rs')`, which includes the
+pinned source repositories were verified. Before the input-selection correction, the source walker in
+`tools/catalogue.py` reads `reference.rglob('*.rs')`, which includes the
 extra file. A correct HEAD alone does not establish the analysis input tree.
 
 This is an ordinary Git display setting, set only in the temporary fixture for
@@ -74,9 +74,9 @@ disabled only for those commands, and read-tree bypasses sparse filtering.
 Disable optional index writes for the status reads, preserving the user's real
 index and configuration. Never clear their flags or refresh their index in place.
 
-This does not change source policy, ignored-file handling, any artifact or
-inferred source, inventory interpretation, Rust reconstruction or acceptance
-gates. Machine-code addresses and new runtime-equivalence measurements are not
+Ignored-file acceptance is preserved. The input-selection extension below
+keeps those files out of canonical analysis without changing any artifact,
+inferred source, clean inventory output, Rust reconstruction or acceptance gate. Machine-code addresses and new runtime-equivalence measurements are not
 applicable. Existing artifact, signature, pin, catalogue and reproduction checks
 remain the validation of those separate inputs.
 
@@ -92,3 +92,12 @@ records their exact-head results separately from the earlier six-test run.
 
 Next step: maintainers review this verification change separately from open
 manifest-key validation (#115) and retained-import coverage (#190).
+
+
+## Ignored local inputs
+
+[The input-selection extension](ignored-inputs.md) preserves the reproduced
+237-to-239 reference count and 209-to-290 address-survey contamination from two
+ignored local backups. Both consumers now select committed Rust paths. The
+before/after JSON and reusable `ignored-inputs-probe.py --check` preserve this
+additional source-input failure and its correction in the same packet.
