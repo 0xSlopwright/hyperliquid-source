@@ -160,7 +160,7 @@ Observed body (labels in parentheses are inferences from callee evidence):
    value `i64::MIN` in the capacity word ends the loop. There is no pre-loop
    `next()`, so the first yielded element participates.
 2. Skip an argument when its length is at least 2 and it starts with `--`.
-3. When `0x1440df0` reports that `/cham/` occurs in the argument:
+3. When the opaque `0x1440df0` predicate returns nonzero for the six-byte `/cham/` slice and the current argument (substring semantics remain an inference):
    - assert that it does not end with `/` (`build_mode.rs:29:17`);
    - find the **last** `/` with an inline backward scan and keep the suffix
      after it. A suffix start at a UTF-8 continuation byte panics
@@ -177,7 +177,7 @@ Observed body (labels in parentheses are inferences from callee evidence):
 5. After the last argument, pass the accumulator through `0x1407ac0` and
    return an owned copy.
 
-Derived from these rules, not executed: an argument `…/cham/hl-node-x-1`
+Derived from these local rules, assuming the opaque predicate takes the nonzero route and the inferred argument/format/trim helper contracts, not executed: an argument `…/cham/hl-node-x-1`
 yields `hl-node-x`, and arguments `["a", ""]` yield `a` (the trailing
 separator is trimmed).
 

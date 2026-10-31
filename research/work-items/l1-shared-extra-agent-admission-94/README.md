@@ -188,8 +188,12 @@ Corruption controls in `tests/test_extra_agent_admission.py`:
 
 Inferences, not proved by bytes:
 - The function is the extra-agent save and the sixth argument is a quota tier.
-- The direct call before the tier block returns account equity in raw units. 10^7 and
-  10^10 would be $10 and $10,000 at 6 decimals, but the unit is not established.
+- The direct call before the tier block supplies the raw quantity used by the gate.
+  The original equity label and speculative six-decimal amounts are not established
+  here. The later [sub-account packet](../vaults-subaccount-create-94/README.md)
+  follows the first copy's `0x275fee0` producer and supports a volume interpretation.
+  JSON field `equity_gate` retains its historical name for reproducibility; it is
+  the observed integer threshold, not proof of equity or units.
 - The fixed-tier-10 branch is the reference's `is_foundation_self_signer`.
 
 Unresolved:

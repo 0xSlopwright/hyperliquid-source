@@ -388,9 +388,11 @@ def decode(code, i):
         if W:
             imm = struct.unpack_from("<Q", code, i)[0]
             return i - start + 8, "movabs", reg, imm
-        imm = struct.unpack_from("<I", code, i)[0]
         if op66:
-            return i - start + 4, "clobber", reg, ()
+            # MOV r16, imm16 consumes two immediate bytes and preserves upper bits.
+            struct.unpack_from("<H", code, i)
+            return i - start + 2, "clobber", reg, ()
+        imm = struct.unpack_from("<I", code, i)[0]
         return i - start + 4, "movimm", reg, imm
     if 0xB0 <= op <= 0xB7:
         return i - start + 1, "clobber", _r8((op - 0xB0) | (8 if B else 0), rex), ()

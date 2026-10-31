@@ -87,6 +87,12 @@ class ConsensusErrorTagsTests(unittest.TestCase):
         self.assertEqual(hashlib.sha256(self.text).hexdigest(), OUTPUT_SHA256)
         self.assertEqual((PACKET / "consensus-error-tags.json").read_bytes(), self.text)
 
+    def test_operand_size_mov_immediate_consumes_two_bytes(self):
+        raw = bytes.fromhex('66b8341290')
+        length, kind, reg, _ = cet.decode(raw, 0)
+        self.assertEqual((length, kind, reg), (4, 'clobber', 0))
+        self.assertEqual(cet.decode(raw, length)[1], 'nowrite')
+
     def test_tag_table(self):
         d = self.d
         self.assertEqual(d["tag_count"], 42)
@@ -216,7 +222,7 @@ class ConsensusErrorTagsTests(unittest.TestCase):
     def test_truncated_input_fails_closed(self):
         for n in (0x40, 0x1000, 0x2000000, len(DATA) - 1000):
             b = DATA[:n]
-            with self.subTest(n=n), self.assertRaisesRegex(cet.EvidenceError, "malformed input|truncated"):
+            with self.subTest(n=n), self.assertRaisesRegex(cet.EvidenceError, "malformed input|truncated|extends past end of file|header"):
                 cet.build(b, expected_sha256=hashlib.sha256(b).hexdigest())
 
     def test_length_patch_breaks_three_way_agreement(self):

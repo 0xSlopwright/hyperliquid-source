@@ -67,7 +67,7 @@ they do not declare a recovered Rust struct or generic value type.
 | Newer modification | `0x13cc6b9..0x13cc6d5` compares DWORDs with `setg`, `seta`, then `ja` | First word is signed; the second and third are unsigned tie breakers. Equal or older triples return zero. |
 | Load result | `0x13cc6f4` calls `0x144d470`; `0x13cc6f9..0x13cc703` compares zero with the first returned word and uses `jno` | The overflow case is the word `0x8000000000000000`, which enters the error route. Its full Rust Result/value ABI remains unresolved. |
 | Load error | `0x13cc709..0x13cc77d` prepares the diagnostic, calls a helper, releases a previous error through an indirect call and writes `+0x48` | This path has no direct replacement stores to value `+0x18..+0x2f` or modification `+0x50..+0x5b`, and returns zero. |
-| Load success | `0x13cc862..0x13cc8b5` installs 24 returned bytes at `+0x18`, copies three modification DWORDs to `+0x50/+0x54/+0x58`, clears `+0x48`, and sets BL to 1 | The ordinary epilogue returns one, including if the conditional call through slot `0x576e8b8` returns. |
+| Load success | `0x13cc862..0x13cc8b5` installs 24 returned bytes at `+0x18`, copies three modification DWORDs to `+0x50/+0x54/+0x58`, clears `+0x48`, and sets BL to 1 | The ordinary epilogue returns AL=1, including if the conditional call through slot `0x576e8b8` returns. It does not zero the rest of EBX before copying EBX to EAX: the upper 24 bits of EAX retain the low tracker-pointer bits. This is a low-byte success observation; the source return type remains unresolved. |
 
 Success first traverses/releases the old value using 40-byte outer and 24-byte
 inner strides. Error replacement also invokes an old error's indirect drop

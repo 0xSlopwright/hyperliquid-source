@@ -34,6 +34,18 @@ class FileTrackerUpdateTests(unittest.TestCase):
         self.assertEqual(len(tracker.calls(self.data)), 8)
         self.assertEqual(tracker.frames(self.data)['updater']['end'] - 0x13CC5D0, 931)
 
+    def test_success_is_low_byte_not_full_integer_one(self):
+        # Bind the pointer reload, BL-only write and EBX -> EAX epilogue.
+        for va, raw in [(0x13CC87B, '488b5c2470'),
+                        (0x13CC8B1, 'b301'), (0x13CC77F, '89d8')]:
+            self.assertEqual(tracker.read_va(self.data, va, len(bytes.fromhex(raw)))[1],
+                             bytes.fromhex(raw))
+        pointer = 0x577AD40  # Selected caller's linked tracker coordinate.
+        eax = ((pointer & ~0xff) | 1) & 0xffffffff
+        self.assertEqual(eax, 0x577AD01)
+        self.assertEqual(eax & 0xff, 1)
+        self.assertNotEqual(eax, 1)
+
     def test_every_instruction_obligation_rejects_real_byte_corruption(self):
         for name, (va, _) in tracker.CONTROLS.items():
             with self.subTest(control=name):
