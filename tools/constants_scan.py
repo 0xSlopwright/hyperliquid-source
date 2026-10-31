@@ -49,7 +49,13 @@ class ScanError(ValueError):
 def artifact(release):
     path = ROOT / f'artifacts/node/{release}/hl-node'
     data = path.read_bytes()
-    record = load_manifest(ROOT)
+    try:
+        record = load_manifest(ROOT)
+    except ValueError as exc:
+        raise ScanError(f'invalid provenance record: {exc}') from exc
+    for entry in record['files']:
+        if not isinstance(entry, dict) or 'path' not in entry or 'sha256' not in entry:
+            raise ScanError('invalid provenance record')
     expected = next((f['sha256'] for f in record['files']
                      if f['path'] == f'artifacts/node/{release}/hl-node'), None)
     if expected is None:
@@ -79,6 +85,8 @@ def entries_size(data, name):
     """Read sh_entsize for `name` from the raw section table."""
     if data[:6] != b'\x7fELF\x02\x01':
         raise ScanError('expected ELF64 little-endian input')
+    if len(data) < 64:
+        raise ScanError('truncated ELF header')
     shoff = struct.unpack_from('<Q', data, 40)[0]
     entsize, count, _ = struct.unpack_from('<HHH', data, 58)
     if entsize < 64 or shoff + entsize * count > len(data):
@@ -103,7 +111,10 @@ def section_name(data, index, entsize, count):
     end = table.find(b'\0', start)
     if end < 0:
         raise ScanError('unterminated section name')
-    return table[start:end].decode('utf-8')
+    try:
+        return table[start:end].decode('utf-8')
+    except UnicodeDecodeError:
+        raise ScanError('section name is not valid UTF-8')
 
 
 def relocations(data):
@@ -111,6 +122,8 @@ def relocations(data):
     sec = section(data, '.rela.dyn')
     if entries_size(data, '.rela.dyn') != 24:
         raise ScanError('unsupported .rela.dyn entsize')
+    if sec['size'] % 24:
+        raise ScanError('truncated .rela.dyn entry')
     out = {}
     for index in range(sec['size'] // 24):
         offset, info, addend = struct.unpack_from('<QQq', data, sec['offset'] + index * 24)
@@ -150,6 +163,12 @@ def pool_entry(data, rodata, needle, require_marker=False):
     hits = []
     for offset in starts:
         length = len(encoded)
+        # The length byte and text were found inside .rodata. The terminator is
+        # the next byte and must be in that section too; a NUL in the following
+        # section is not this entry's terminator. Also refuse a short buffer so
+        # the index itself cannot run off the file.
+        if offset + length >= end or offset + length >= len(data):
+            continue
         if data[offset + length] not in (0, POOL_MARKER):
             continue
         if offset - 2 >= rodata['offset'] and data[offset - 2] == POOL_MARKER and data[offset - 1] == length:
@@ -169,7 +188,8 @@ def string_table(data, rodata, relro, names, count=EXPECTED_VARIANTS):
     """Find the longest 16-byte-stride (pointer, length) run into .rodata."""
     relocs = relocations(data)
     hits = {}
-    for offset in range(0, relro['size'] - 16, 8):
+    # A complete 16-byte slot may start exactly at size - 16.
+    for offset in range(0, relro['size'] - 15, 8):
         slot = relro['address'] + offset
         pointer = relocs.get(slot)
         if pointer is None:
@@ -178,6 +198,10 @@ def string_table(data, rodata, relro, names, count=EXPECTED_VARIANTS):
         if not rodata['address'] <= pointer < rodata['address'] + rodata['size']:
             continue
         if not 2 <= length <= 16:
+            continue
+        # The pointer is inside .rodata. Every byte of the declared length has
+        # to be there too; the next section's bytes are not part of this string.
+        if pointer + length > rodata['address'] + rodata['size']:
             continue
         text = data[va_to_offset(rodata, pointer):va_to_offset(rodata, pointer) + length]
         if not text.isascii() or not all(32 < byte < 127 for byte in text):
@@ -259,6 +283,8 @@ def main():
                 raise ScanError(f'table entry {index}: {got!r} != reference {want!r}')
         raise ScanError('table and reference differ in length')
 
+    if 'NvTestnet' not in names:
+        raise ScanError('NvTestnet is not in the reference order')
     default_index = names.index('NvTestnet')
     if default_index != 32:
         raise ScanError('NvTestnet is not discriminant 32 in the reference order')
@@ -369,5 +395,5 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except ScanError as error:
+    except (ScanError, OSError) as error:
         raise SystemExit(f'constants_scan: {error}')

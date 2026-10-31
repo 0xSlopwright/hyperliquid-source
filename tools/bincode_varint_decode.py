@@ -63,6 +63,33 @@ DISPATCH_FUNCTIONS = 16
 LOCATION_LEAS = (0x25593ea, 0x25593f7)
 
 
+def rel32_table(data, secs, table, count=4):
+    """Absolute targets of `count` rel32s that lie entirely in one section."""
+    need = 4 * count
+    for section in secs.values():
+        if not section['addr']:
+            continue
+        if section['addr'] <= table and table + need <= section['addr'] + section['size']:
+            off = section['offset'] + table - section['addr']
+            if off < 0 or off + need > len(data):
+                raise bv.EvidenceError(f'jump table {table:#x} leaves the file')
+            return tuple(table + struct.unpack_from('<i', data, off + 4 * i)[0] for i in range(count))
+    raise bv.EvidenceError(f'jump table {table:#x}+{need} leaves its section')
+
+
+def section_slice(data, secs, va, size):
+    """Return `(file_offset, bytes)` for a range that lies in one section."""
+    for section in secs.values():
+        if not section['addr']:
+            continue
+        if section['addr'] <= va and va + size <= section['addr'] + section['size']:
+            off = section['offset'] + va - section['addr']
+            if off < 0 or off + size > len(data):
+                raise bv.EvidenceError(f'range {va:#x}+{size} leaves the file')
+            return off, data[off:off + size]
+    raise bv.EvidenceError(f'range {va:#x}+{size} leaves its section')
+
+
 def scan(data, expected_sha256=bv.SHA256):
     digest = hashlib.sha256(data).hexdigest()
     if digest != expected_sha256:
@@ -79,12 +106,13 @@ def scan(data, expected_sha256=bv.SHA256):
         rows = []
         for va, hexbytes, meaning in anchors:
             want = bytes.fromhex(hexbytes)
-            o = bv.va_to_off(secs, va)
-            if not start <= va < end or data[o:o + len(want)] != want:
+            if not start <= va < end:
+                raise bv.EvidenceError(f'{name}: bytes at {va:#x} are not {hexbytes}')
+            o, got = section_slice(data, secs, va, len(want))
+            if got != want:
                 raise bv.EvidenceError(f'{name}: bytes at {va:#x} are not {hexbytes}')
             rows.append({'va': f'{va:#x}', 'file_offset': f'{o:#x}', 'bytes': hexbytes, 'meaning': meaning})
-        o = bv.va_to_off(secs, table)
-        got = tuple(table + struct.unpack_from('<i', data, o + 4 * i)[0] for i in range(4))
+        got = rel32_table(data, secs, table)
         if got != targets:
             raise bv.EvidenceError(f'{name}: jump table {table:#x} targets changed')
         out.append({'name': name, 'fde_start': f'{start:#x}', 'fde_end': f'{end:#x}', 'anchors': rows,

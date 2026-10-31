@@ -22,6 +22,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from elf_index import sections, unwind_index
+from fde_extents import eh_frame_records
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -88,6 +89,8 @@ def load_segments(data):
     """Return loadable segments as (file_offset, va, size, flags)."""
     if data[:6] != b'\x7fELF\x02\x01':
         raise ValueError('Expected ELF64 little-endian input')
+    if len(data) < 64:
+        raise ValueError('Invalid or unsupported program header table')
     phoff = struct.unpack_from('<Q', data, 32)[0]
     phentsize, phnum = struct.unpack_from('<HH', data, 54)
     if phentsize < 56 or not phnum or phoff + phentsize * phnum > len(data):
@@ -110,37 +113,64 @@ class Mapping:
         self.segments = segments
 
     def va_to_offset(self, va, size=1):
-        for off, vaddr, filesz, _flags in self.segments:
-            if vaddr <= va and va + size <= vaddr + filesz:
-                return off + (va - vaddr)
-        raise ValueError(f'VA {va:#x} not backed by file bytes')
+        offsets = {off + va - vaddr for off, vaddr, filesz, _flags in self.segments
+                   if vaddr <= va and va + size <= vaddr + filesz}
+        if not offsets:
+            raise ValueError(f'VA {va:#x} not backed by file bytes')
+        if len(offsets) != 1:
+            raise ValueError(f'VA {va:#x} has ambiguous file mappings')
+        return offsets.pop()
 
     def offset_to_va(self, offset):
-        for off, vaddr, filesz, _flags in self.segments:
-            if off <= offset < off + filesz:
-                return vaddr + (offset - off)
-        raise ValueError(f'offset {offset:#x} outside loadable segments')
+        addresses = {vaddr + offset - off for off, vaddr, filesz, _flags in self.segments
+                     if off <= offset < off + filesz}
+        if not addresses:
+            raise ValueError(f'offset {offset:#x} outside loadable segments')
+        if len(addresses) != 1:
+            raise ValueError(f'offset {offset:#x} has ambiguous virtual mappings')
+        return addresses.pop()
 
     def read(self, data, va, size):
         off = self.va_to_offset(va, size)
         return data[off:off + size]
 
     def execute_segment(self):
-        for off, vaddr, filesz, flags in self.segments:
-            if flags & 1:
-                return off, vaddr, filesz
-        raise ValueError('No executable segment')
+        regions = {(off, vaddr, filesz) for off, vaddr, filesz, flags in self.segments if flags & 1}
+        if not regions:
+            raise ValueError('No executable segment')
+        if len(regions) != 1:
+            raise ValueError('Multiple executable regions; single-region scan would be incomplete')
+        return regions.pop()
 
 
 def function_bounds(data, va):
-    """Enclosing and following unwind start for `va` (FDE start table)."""
-    _sections, entries = unwind_index(data)
+    """Enclosing function extent for `va`: FDE pc_begin .. pc_begin + pc_range.
+
+    The end comes from the enclosing FDE body (as in info_request_path's
+    fde_index), not from the next unwind start: a function followed by
+    alignment padding ends before the padding, while the next start sits
+    after it.
+    """
+    secs, entries = unwind_index(data)
     starts = sorted(entry['start'] for entry in entries)
     index = bisect.bisect_right(starts, va) - 1
     if index < 0:
         raise ValueError(f'VA {va:#x} precedes the first unwind start')
     start = starts[index]
-    end = starts[index + 1] if index + 1 < len(starts) else None
+    entry = next(e for e in entries if e['start'] == start)
+    # Decode the CIE and complete FDE record before interpreting its range.
+    # An index pointer alone does not establish the field encoding or extent.
+    _cies, fdes = eh_frame_records(data, secs)
+    matches = [fde for fde in fdes if fde['fde'] == entry['fde']]
+    if len(matches) != 1 or matches[0]['start'] != start:
+        raise ValueError(f'FDE does not match unwind start {start:#x}')
+    end = matches[0]['end']
+    if not start <= va < end:
+        raise ValueError(f'VA {va:#x} lies outside the indexed FDE extent')
+    if not any(section['type'] != 8 and section['flags'] & 4
+               and section['address'] <= start < end <= section['address'] + section['size']
+               for section in secs):
+        raise ValueError('FDE extent leaves executable file-backed section')
     return start, end
 
 

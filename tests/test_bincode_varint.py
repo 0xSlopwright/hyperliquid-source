@@ -3,6 +3,9 @@ import hashlib
 import json
 import os
 from pathlib import Path
+
+
+import shutil
 import struct
 import subprocess
 import sys
@@ -143,8 +146,80 @@ class NegativeControls(unittest.TestCase):
 
 
 def struct_error():
-    import struct
     return struct.error
+
+
+def location_elf(text, rodata, relro):
+    """Minimal ELF64 whose section table the RE-005 reader accepts.
+
+    `rodata` is the whole .rodata section. The byte X that follows it in the
+    file belongs to no section, so a length that overruns .rodata can see it.
+    """
+    names = b'\0.shstrtab\0.text\0.eh_frame\0.eh_frame_hdr\0.rela.dyn\0.data.rel.ro\0.rodata\0'
+    chunks = [
+        ('.shstrtab', 0, names),
+        ('.text', 0x1000, text),
+        ('.eh_frame', 0, b''),
+        ('.eh_frame_hdr', 0, b''),
+        ('.rela.dyn', 0, b''),
+        ('.data.rel.ro', 0x3000, relro),
+        ('.rodata', 0x2000, rodata),
+    ]
+    body = bytearray(64)
+    body[:6] = b'\x7fELF\x02\x01'
+    laid = []
+    for name, addr, blob in chunks:
+        laid.append((name, addr, len(body), len(blob)))
+        body += blob
+    body += b'X'
+    struct.pack_into('<Q', body, 40, len(body))
+    struct.pack_into('<HHH', body, 58, 64, 1 + len(chunks), 1)
+    body += struct.pack('<IIQQQQIIQQ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    for name, addr, off, size in laid:
+        body += struct.pack('<IIQQQQIIQQ', names.index(name.encode() + b'\0'), 1, 0, addr, off, size, 0, 0, 1, 0)
+    return bytes(body)
+
+
+class PanicLocationBounds(unittest.TestCase):
+    LEA_VA = 0x1000
+    LOC_VA = 0x3000
+    PATH_VA = 0x2000
+
+    def elf(self, rodata, length, relro_size=24):
+        text = bytes.fromhex('488d3d') + struct.pack('<i', self.LOC_VA - (self.LEA_VA + 7))
+        if relro_size == 24:
+            relro = struct.pack('<QQII', 0, length, 3, 4)
+        elif relro_size == 20:
+            relro = struct.pack('<QQI', 0, length, 9)
+        else:
+            raise AssertionError(relro_size)
+        return location_elf(text, rodata, relro)
+
+    def read(self, data):
+        return bv.panic_location(data, bv.sections(data), {self.LOC_VA: self.PATH_VA}, self.LEA_VA)
+
+    def test_path_contained_in_rodata_is_reported(self):
+        got = self.read(self.elf(b'/a.rs', 5))
+        self.assertEqual(got['path'], '/a.rs')
+        self.assertEqual(got['line'], 3)
+        self.assertEqual(got['column'], 4)
+        self.assertEqual(got['location'], hex(self.LOC_VA))
+        self.assertEqual(got['path_va'], hex(self.PATH_VA))
+
+    def test_length_past_rodata_is_rejected(self):
+        data = self.elf(b'/a.rs', 6)
+        with self.assertRaisesRegex(bv.EvidenceError, r'range 0x2000\+6 leaves section \.rodata'):
+            self.read(data)
+
+    def test_header_past_location_section_is_rejected(self):
+        data = self.elf(b'/a.rs', 5, relro_size=20)
+        with self.assertRaisesRegex(bv.EvidenceError, r'range 0x3008\+16 leaves section \.data\.rel\.ro'):
+            self.read(data)
+
+    def test_non_utf8_path_is_rejected(self):
+        data = self.elf(b'\xff', 1)
+        with self.assertRaisesRegex(bv.EvidenceError, 'not valid UTF-8'):
+            self.read(data)
 
 
 class Determinism(unittest.TestCase):
@@ -219,6 +294,115 @@ class RelativeRelocBounds(unittest.TestCase):
         with self.assertRaisesRegex(bv.EvidenceError, 'truncated .rela.dyn'):
             bv.relative_relocs(data, secs)
 
+
+
+class SectionHeaderTests(unittest.TestCase):
+    def test_sections_rejects_shstrndx_out_of_range(self):
+        data = bytearray(128)
+        data[:6] = b'\x7fELF\x02\x01'
+        data[40:48] = (64).to_bytes(8, 'little')
+        data[58:60] = (64).to_bytes(2, 'little')
+        data[60:62] = (1).to_bytes(2, 'little')
+        data[62:64] = (3).to_bytes(2, 'little')
+        with self.assertRaises(bv.EvidenceError):
+            bv.sections(bytes(data))
+
+
+
+
+def framed_elf(hdr_size, count, table, fde):
+    """ELF64 with a .eh_frame_hdr of exactly `hdr_size` bytes.
+
+    `table` is appended in the file after those bytes, so a reader that ignores
+    the section size can treat it as an index entry.
+    """
+    names = b'\0.shstrtab\0.text\0.eh_frame\0.eh_frame_hdr\0.rela.dyn\0.data.rel.ro\0.rodata\0'
+    hdr = bytes([1, 0x1b, 0x03, 0x3b]) + b'\0\0\0\0' + struct.pack('<I', count) + table
+    body = bytearray(64)
+    body[:6] = b'\x7fELF\x02\x01'
+    chunks = []
+
+    def add(name, addr, blob, size=None):
+        chunks.append((name, addr, len(body), len(blob) if size is None else size))
+        body.extend(blob)
+
+    add('.shstrtab', 0, names)
+    add('.text', 0x1000, b'\x90')
+    add('.eh_frame_hdr', 0x2000, hdr[:hdr_size], hdr_size)
+    if len(hdr) > hdr_size:
+        body.extend(hdr[hdr_size:])
+    add('.eh_frame', 0x5000, fde)
+    add('.rela.dyn', 0, b'')
+    add('.data.rel.ro', 0, b'')
+    add('.rodata', 0, b'')
+    struct.pack_into('<Q', body, 40, len(body))
+    struct.pack_into('<HHH', body, 58, 64, 1 + len(chunks), 1)
+    body += struct.pack('<IIQQQQIIQQ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    for name, addr, off, size in chunks:
+        body += struct.pack('<IIQQQQIIQQ', names.index(name.encode() + b'\0'), 1, 0, addr, off, size, 0, 0, 1, 0)
+    return bytes(body)
+
+class FdeTableBounds(unittest.TestCase):
+    def record(self, length):
+        begin_rel = 0x3000 - (0x5000 + 8)
+        # Pad so a short length still has readable bytes after the record.
+        body = struct.pack('<IIiI', length, 1, begin_rel, 0x10)
+        return body + b'\x00' * 16
+
+    def test_index_entry_inside_header_is_decoded(self):
+        table = struct.pack('<ii', 0x1000, 0x3000)
+        data = framed_elf(12 + len(table), 1, table, self.record(12))
+        self.assertEqual(bv.fde_extents(data, bv.sections(data)), {0x3000: 0x3010})
+
+    def test_index_entry_past_header_is_rejected(self):
+        table = struct.pack('<ii', 0x1000, 0x3000)
+        data = framed_elf(12, 1, table, self.record(12))
+        with self.assertRaisesRegex(bv.EvidenceError, 'truncated .eh_frame_hdr table'):
+            bv.fde_extents(data, bv.sections(data))
+
+    def test_short_fde_body_is_rejected(self):
+        table = struct.pack('<ii', 0x1000, 0x3000)
+        data = framed_elf(12 + len(table), 1, table, self.record(4))
+        with self.assertRaisesRegex(bv.EvidenceError, 'malformed'):
+            bv.fde_extents(data, bv.sections(data))
+
+
+
+def elf_with_names(inside, outside=b''):
+    """ELF64 whose .shstrtab is `inside` and whose next file bytes are `outside`."""
+    shstr_off = 64
+    labels = [b'', b'.text', b'.eh_frame', b'.eh_frame_hdr', b'.rela.dyn',
+              b'.data.rel.ro', b'.rodata', b'.shstrtab', b'.extra']
+    shoff = shstr_off + len(inside) + len(outside)
+
+    def name_off(label):
+        if label == b'':
+            return 0
+        return inside.index(label)
+
+    headers = b''
+    for label in labels:
+        off, size = (shstr_off, len(inside)) if label == b'.shstrtab' else (0, 0)
+        headers += struct.pack('<IIQQQQIIQQ', name_off(label), 3 if label == b'.shstrtab' else 1,
+                               0, 0, off, size, 0, 0, 1, 0)
+    header = bytearray(64)
+    header[0:6] = b'\x7fELF\x02\x01'
+    struct.pack_into('<Q', header, 40, shoff)
+    struct.pack_into('<HHH', header, 58, 64, len(labels), labels.index(b'.shstrtab'))
+    return bytes(header) + inside + outside + headers
+
+NAMES = (b'\0.text\0.eh_frame\0.eh_frame_hdr\0.rela.dyn\0.data.rel.ro\0'
+         b'.rodata\0.shstrtab\0')
+
+class SectionNameBounds(unittest.TestCase):
+    def test_name_terminated_inside_shstrtab_is_kept(self):
+        data = elf_with_names(NAMES + b'.extra\0')
+        self.assertIn('.extra', bv.sections(data))
+
+    def test_name_finished_outside_shstrtab_is_rejected(self):
+        data = elf_with_names(NAMES + b'.extra', b'_name\0')
+        with self.assertRaisesRegex(bv.EvidenceError, 'unterminated section name'):
+            bv.sections(data)
 
 if __name__ == '__main__':
     unittest.main()
