@@ -393,5 +393,5 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except ScanError as error:
+    except (ScanError, OSError) as error:
         raise SystemExit(f'constants_scan: {error}')
