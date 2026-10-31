@@ -124,6 +124,17 @@ class VerifyImportsTests(unittest.TestCase):
             '{"repositories": [{"path": "refs/sub", '
             f'"commit": "{"0" * 40}", "commit": "{self.commit}"}}]}}')
         with self.assertRaises(ValueError):
+    def test_sources_manifest_must_list_repositories(self):
+        for payload in ('[]', '{}', '{"repositories":{}}', '{"repositories":"refs/sub"}'):
+            with self.subTest(payload=payload):
+                self.sources.write_text(payload)
+                with self.assertRaises(ValueError) as caught:
+                    verify_imports.verify(self.root)
+                self.assertEqual(str(caught.exception), 'Invalid source repository manifest')
+
+    def test_empty_repository_list_passes(self):
+        self.sources.write_text(json.dumps({'repositories': []}))
+        with contextlib.redirect_stdout(io.StringIO()):
             verify_imports.verify(self.root)
 
     def test_missing_git_binary_is_a_message(self):
