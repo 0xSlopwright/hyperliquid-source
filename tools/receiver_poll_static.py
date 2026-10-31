@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Authenticate and export node #94 receiver poll/terminal-path static evidence."""
 import argparse
+import sys
 import hashlib
 import json
 from pathlib import Path
@@ -172,4 +173,8 @@ if __name__ == '__main__':
     parser.add_argument('--binary', type=Path, default=ROOT / 'artifacts/node/94/hl-node')
     parser.add_argument('--output', type=Path, default=ROOT / 'work/receiver-poll-94')
     args = parser.parse_args()
-    print(json.dumps(generate(args.binary.resolve(), args.output), indent=2))
+    try:
+        print(json.dumps(generate(args.binary.resolve(), args.output), indent=2))
+    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+        print(f'receiver_poll_static: {error}', file=sys.stderr)
+        raise SystemExit(1)

@@ -146,16 +146,20 @@ def main():
     p.add_argument('--release', choices=['94', '115', 'visor'], required=True)
     p.add_argument('--output-dir', type=Path, default=ROOT / 'work/index')
     args = p.parse_args()
-    from artifacts import check, manifest_item
-    rel, inventory, prefix = target_for(args.release)
-    item = manifest_item(ROOT, rel)
-    check(ROOT / rel, item)
-    summary = generate(ROOT / rel, args.output_dir / prefix)
-    expected = load_inventory(ROOT / inventory)['fde_count_eh_frame_hdr']
-    if summary['unwind_entries'] != expected:
-        raise ValueError('Parsed unwind count differs from retained inventory')
-    print(json.dumps(summary, indent=2))
-    return 0
+    try:
+        from artifacts import check, manifest_item
+        rel, inventory, prefix = target_for(args.release)
+        item = manifest_item(ROOT, rel)
+        check(ROOT / rel, item)
+        summary = generate(ROOT / rel, args.output_dir / prefix)
+        expected = load_inventory(ROOT / inventory)['fde_count_eh_frame_hdr']
+        if summary['unwind_entries'] != expected:
+            raise ValueError('Parsed unwind count differs from retained inventory')
+        print(json.dumps(summary, indent=2))
+        return 0
+    except (ValueError, OSError, struct.error) as error:
+        print(f'elf_index: {error}', file=sys.stderr)
+        raise SystemExit(1)
 
 
 if __name__ == '__main__':
