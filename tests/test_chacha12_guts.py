@@ -12,8 +12,8 @@ PACKET = ROOT / "research" / "work-items" / "RE-022-chacha12-guts-94"
 sys.path.insert(0, str(ROOT / "tools"))
 import chacha12_guts as tool  # noqa: E402
 
-OUTPUT_SHA256 = "66f083054342ba1320e13341e3fdfe568f26c57f10b90f2d528910d0aab8d4cf"
-NO_EMU_OUTPUT_SHA256 = "380e3bc513dad8d0bfaf0e317b7d3b442fc91e3c1e8193282ca4b55e7eef5de0"
+OUTPUT_SHA256 = "146a164a1fbc9be96ede3696385ee093560a303539b890fc68707f6770d9c3ab"
+NO_EMU_OUTPUT_SHA256 = "d3d31f80bfbf74bc86c3fb528853e413e53548025288ca4c0335e07fa569d48b"
 HAS_UNICORN = importlib.util.find_spec("unicorn") is not None
 
 

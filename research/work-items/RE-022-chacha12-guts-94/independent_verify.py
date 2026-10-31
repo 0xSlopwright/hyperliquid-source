@@ -2,7 +2,7 @@
 """RE-022 independent verifier. Imports only hashlib, pathlib, struct.
 
 Checks every key VA byte against the pinned node #94 binary, re-derives the
-expand rip target and caller GOT slot, checks the guts.rs Location path,
+expand rip target and caller GOT slot, checks the guts.rs Location pin (VA/len/sha256/suffix),
 recomputes ChaCha20/12/8 4x reference outputs, and checks the packet JSON
 hash. Prints PASS or FAIL; exit 0 or 1.
 """
@@ -15,16 +15,15 @@ ROOT = HERE.parents[2]
 BINARY = ROOT / "artifacts" / "node" / "94" / "hl-node"
 SHA256 = "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
 PACKET_JSON = HERE / "chacha12-guts.json"
-JSON_SHA256 = "66f083054342ba1320e13341e3fdfe568f26c57f10b90f2d528910d0aab8d4cf"
+JSON_SHA256 = "146a164a1fbc9be96ede3696385ee093560a303539b890fc68707f6770d9c3ab"
 FN = 0x4E13780
 FN_RET = 0x4E13E59
 CARVED_SHA256 = "1bea6b14e546e8037c041345946203e3994be41e7b83d5c75eca60d40da59eae"
 EXPAND_VA = 0x204670
 LOCATION_PATH_VA = 0x1E6959
-LOCATION_PATH = (
-    b"/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/"
-    b"rand_chacha-0.3.1/src/guts.rs"
-)
+LOCATION_PATH_LEN = 95
+LOCATION_PATH_SHA256 = "79cee213bb7bba7155a035070bbc1abed8bd176a9839bdb674df8816801602b7"
+LOCATION_PATH_SUFFIX = "rand_chacha-0.3.1/src/guts.rs"
 WRAP = 0x4E14560
 WRAP_E9 = 0x4E14DB7
 GOT_SLOT = 0x576E900
@@ -125,8 +124,13 @@ def main():
     exp = read_va(data, segs, 0x4E1381B, 9)
     if 0x4E1381B + 9 + struct.unpack_from("<i", exp, 5)[0] != EXPAND_VA:
         failures.append("expand rip")
-    if read_va(data, segs, LOCATION_PATH_VA, len(LOCATION_PATH)) != LOCATION_PATH:
-        failures.append("location")
+    loc_raw = read_va(data, segs, LOCATION_PATH_VA, LOCATION_PATH_LEN)
+    if len(loc_raw) != LOCATION_PATH_LEN:
+        failures.append("location len")
+    if hashlib.sha256(loc_raw).hexdigest() != LOCATION_PATH_SHA256:
+        failures.append("location sha256")
+    if not loc_raw.decode("ascii", errors="replace").endswith(LOCATION_PATH_SUFFIX):
+        failures.append("location suffix")
     e9 = read_va(data, segs, WRAP_E9, 5)
     if WRAP_E9 + 5 + struct.unpack_from("<i", e9, 1)[0] != FN:
         failures.append("wrapper e9")

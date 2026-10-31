@@ -5,9 +5,11 @@ Standalone. From the pinned node #94 binary only, it recovers:
   * SSE4x ChaCha block extent 0x4e13780..0x4e13e5a (sha256-pinned carved bytes);
   * ABI (rdi=48-byte state key||counter64||nonce64, esi=double-rounds, rdx=256-byte out);
   * rounds==0 early path and dec/jne round loop; expand 32-byte k rip-load;
-  * GOT-exported CPU-feature wrapper 0x4e14560 (slot 0x576e900, RELA addend);
+  * GOT-exported wrapper 0x4e14560 (slot 0x576e900, RELA addend) that tests
+    flag bits loaded via [0x576e350]; one branch e9-tails to the SSE block;
   * a real refill caller at 0x13c9ed2 (mov esi,6 = ChaCha12; consume 0x100 bytes);
-  * Location pin to rand_chacha-0.3.1/src/guts.rs;
+  * Location string at 0x1e6959 (len 95, sha256-pinned) ending in
+    rand_chacha-0.3.1/src/guts.rs (no xref from FN/wrapper pinned);
   * behavioural proof: Unicorn on the carved bytes for ChaCha20/12/8 (ndr=10/6/4)
     against DJB 64-bit-counter reference outputs (4 sequential 64-byte blocks).
 
@@ -36,11 +38,9 @@ CARVED_LEN = 1754
 EXPAND_VA = 0x204670
 EXPAND_BYTES = b"expand 32-byte k"
 LOCATION_PATH_VA = 0x1E6959
-LOCATION_PATH = (
-    "/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/"
-    "rand_chacha-0.3.1/src/guts.rs"
-)
 LOCATION_PATH_LEN = 95
+LOCATION_PATH_SHA256 = "79cee213bb7bba7155a035070bbc1abed8bd176a9839bdb674df8816801602b7"
+LOCATION_PATH_SUFFIX = "rand_chacha-0.3.1/src/guts.rs"
 
 WRAP = 0x4E14560
 WRAP_E9_TO_FN = 0x4E14DB7
@@ -62,7 +62,7 @@ KEY_INSNS = [
     (0x4E13E55, "4883c428", "add rsp,0x28"),
     (0x4E13E59, "c3", "ret"),
     (0x4E14560, "55", "wrapper push rbp"),
-    (0x4E1456D, "488b1ddc9d9500", "wrapper mov rbx,[rip] cpu-feature word"),
+    (0x4E1456D, "488b1ddc9d9500", "wrapper mov rbx,[rip] -> word at 0x576e350"),
     (0x4E14DB7, "e9c4e9ffff", "wrapper e9 tail -> block FN"),
     (0x13C9E99, "498dbe20010000", "caller lea rdi,[r14+0x120] state"),
     (0x13C9EBC, "4881c100ffffff", "caller add rcx,-0x100 consume 256 bytes"),
@@ -194,17 +194,16 @@ def count_got_callers(data, segs):
     return n
 
 
+def unicorn_available():
+    import importlib.util
+    return importlib.util.find_spec("unicorn") is not None
+
+
 def emulate_block(data, segs, ndr, key32, counter0, nonce64):
-    try:
-        from unicorn import Uc, UC_ARCH_X86, UC_MODE_64, UC_PROT_ALL, UcError
-        from unicorn.x86_const import (
-            UC_X86_REG_RDI, UC_X86_REG_RSI, UC_X86_REG_RDX, UC_X86_REG_RSP,
-        )
-    except ImportError as e:
-        raise RuntimeError(
-            "unicorn is required for behavioural proof of carved bytes; "
-            "install with: python3 -m venv .venv && .venv/bin/pip install unicorn"
-        ) from e
+    from unicorn import Uc, UC_ARCH_X86, UC_MODE_64, UC_PROT_ALL, UcError
+    from unicorn.x86_const import (
+        UC_X86_REG_RDI, UC_X86_REG_RSI, UC_X86_REG_RDX, UC_X86_REG_RSP,
+    )
 
     mu = Uc(UC_ARCH_X86, UC_MODE_64)
     page = 0x1000
@@ -289,17 +288,20 @@ def analyse(data, check_sha=True, run_emu=True):
 
     caller_count = count_got_callers(data, segs)
 
+    want_emu = bool(run_emu)
+    do_emu = want_emu and unicorn_available()
+    emu_skipped = want_emu and not do_emu
     vectors_out = {}
     for name, spec in sorted(VECTORS.items()):
         entry = {
             "n_double_rounds": spec["n_double_rounds"],
             "counter0": spec["counter0"],
             "nonce64": spec["nonce64"],
-            "key_hex": VECTOR_KEY.hex(),
+            "material_hex": VECTOR_KEY.hex(),
             "expected_output_hex": spec["output_hex"],
             "expected_output_sha256": spec["output_sha256"],
         }
-        if run_emu:
+        if do_emu:
             out, ctr_after = emulate_block(
                 data, segs, spec["n_double_rounds"], VECTOR_KEY, spec["counter0"], spec["nonce64"]
             )
@@ -308,15 +310,21 @@ def analyse(data, check_sha=True, run_emu=True):
             entry["emulated_match"] = out.hex() == spec["output_hex"]
             entry["counter_after"] = ctr_after
             entry["counter_after_expected"] = spec["counter0"] + 4
+        elif emu_skipped:
+            entry["emulated_skipped"] = True
         vectors_out[name] = entry
+
+    loc_sha = hashlib.sha256(loc_raw).hexdigest()
+    loc_suffix_ok = loc_raw.decode("ascii", errors="replace").endswith(LOCATION_PATH_SUFFIX)
+    loc_match = loc_sha == LOCATION_PATH_SHA256 and loc_suffix_ok and len(loc_raw) == LOCATION_PATH_LEN
 
     return {
         "abi": {
-            "rdi": "48-byte state: key[32] || counter_u64_le || nonce_u64_le",
+            "rdi": "48-byte state: material[32] || counter_u64_le || nonce_u64_le",
             "esi": "double-round count (10=ChaCha20, 6=ChaCha12, 4=ChaCha8)",
             "rdx": "256-byte output (4 sequential 64-byte blocks)",
             "side_effect": "counter at state+32 becomes counter0+4",
-            "simd": "SSE xmm only (not AVX2); Unicorn-capable",
+            "simd": "SSE xmm on carved FN; other wrapper paths not examined; Unicorn-capable",
         },
         "binary_sha256": BINARY_SHA256,
         "caller_call_slot": hex(call_slot),
@@ -326,7 +334,8 @@ def analyse(data, check_sha=True, run_emu=True):
         "caller_va": hex(CALLER),
         "carved_len": len(carved),
         "carved_sha256": carved_sha,
-        "emu_ran": run_emu,
+        "emu_ran": do_emu,
+        "emu_skipped": emu_skipped,
         "expand_ascii": expand.decode("ascii"),
         "expand_bytes": expand.hex(),
         "expand_rip_target": hex(exp_tgt),
@@ -340,8 +349,10 @@ def analyse(data, check_sha=True, run_emu=True):
         "got_slot": hex(GOT_SLOT),
         "key_bytes": key_bytes,
         "key_insns_count": len(key_bytes),
-        "location_path": loc_raw.decode("ascii"),
-        "location_path_match": loc_raw == LOCATION_PATH.encode(),
+        "location_path_len": LOCATION_PATH_LEN,
+        "location_path_match": loc_match,
+        "location_path_sha256": loc_sha,
+        "location_path_suffix": LOCATION_PATH_SUFFIX,
         "location_path_va": hex(LOCATION_PATH_VA),
         "vectors": vectors_out,
         "wrapper_e9_target": hex(e9_tgt),

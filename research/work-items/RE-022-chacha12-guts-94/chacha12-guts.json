@@ -1,10 +1,10 @@
 {
   "abi": {
     "esi": "double-round count (10=ChaCha20, 6=ChaCha12, 4=ChaCha8)",
-    "rdi": "48-byte state: key[32] || counter_u64_le || nonce_u64_le",
+    "rdi": "48-byte state: material[32] || counter_u64_le || nonce_u64_le",
     "rdx": "256-byte output (4 sequential 64-byte blocks)",
     "side_effect": "counter at state+32 becomes counter0+4",
-    "simd": "SSE xmm only (not AVX2); Unicorn-capable"
+    "simd": "SSE xmm on carved FN; other wrapper paths not examined; Unicorn-capable"
   },
   "binary_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",
   "caller_call_slot": "0x576e900",
@@ -15,6 +15,7 @@
   "carved_len": 1754,
   "carved_sha256": "1bea6b14e546e8037c041345946203e3994be41e7b83d5c75eca60d40da59eae",
   "emu_ran": true,
+  "emu_skipped": false,
   "expand_ascii": "expand 32-byte k",
   "expand_bytes": "657870616e642033322d62797465206b",
   "expand_rip_target": "0x204670",
@@ -119,7 +120,7 @@
       "bytes": "488b1ddc9d9500",
       "expected": "488b1ddc9d9500",
       "match": true,
-      "note": "wrapper mov rbx,[rip] cpu-feature word",
+      "note": "wrapper mov rbx,[rip] -> word at 0x576e350",
       "va": "0x4e1456d"
     },
     {
@@ -173,8 +174,10 @@
     }
   ],
   "key_insns_count": 20,
-  "location_path": "/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand_chacha-0.3.1/src/guts.rs",
+  "location_path_len": 95,
   "location_path_match": true,
+  "location_path_sha256": "79cee213bb7bba7155a035070bbc1abed8bd176a9839bdb674df8816801602b7",
+  "location_path_suffix": "rand_chacha-0.3.1/src/guts.rs",
   "location_path_va": "0x1e6959",
   "vectors": {
     "chacha12_ndr6_ctr0_nonce0": {
@@ -186,7 +189,7 @@
       "emulated_output_sha256": "d842f70da3bf07003b911bf8360e23abab0176922865303b07a5c55bb8656479",
       "expected_output_hex": "f231f9ffd17ac65e4405f325d7e940aa4913601fc2be46bce9c3cac3d91a1a365940b308c2857c9f29d6e2548528d49a612b1b0ae6765d16e585aefb463688796cfa9aa0833b72e0db5c15523dd18346358e0ceb2e1b6448049d30327eee851622c65ea358aab7d50d49d2d9151bebc0d9d4261f48cc6c657f8a2b3ce7e08f88fe769153ca48a6f44c778ee379c8783d035da5d9969d22db0209962b74d41715b335ddd9bc9c6d374448c3be176d97871118fef03017bf1702201e35cccdf04145678a22ab58e907ab41780ba4675d0750688c7c3b06579e180c27629b33827be633b89bd5039035393a9866cbb09f00135c36fa5794f5457938255a2166624b",
       "expected_output_sha256": "d842f70da3bf07003b911bf8360e23abab0176922865303b07a5c55bb8656479",
-      "key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "material_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
       "n_double_rounds": 6,
       "nonce64": 0
     },
@@ -199,7 +202,7 @@
       "emulated_output_sha256": "ec79b7a536038d2e8602bb95c785efe8f3a8a762c676a98cd20ab28af4824f10",
       "expected_output_hex": "39fd2b7dd9c5196a8dbd0377b8dc4a498a35d86fbcde6accb2cc7d4cd8ea24922b23cce7a26023ab3f0eef693ac87f64258235eab1f7a32dc22762a0485b410c18b84231ade6a6d113615c61af434e27f8b1f3f5e1ad5b5cecf8fc122a35755c7208086dd1ee3c5d9d815824640e003c9ba0f65ede5d59ce0d2a4a7f31955acd42f22ddca74a92d56ca78aef298e723b60237f3647eabeb7f3e09c30ce80e3e284a8021b8a5c0b2494cd3c8d5b13507ec7e7a0784df4a3e2ea8162d261c59d23e7ab11c0f73c3b7eb0983950b3e2c4a08f843da95fb7fcb3f13456816b51b7824df2f9bd5613d4b4ed952fd858cd1b984acbf8ff1fd1a7c806d81ca8e4ae3b2c",
       "expected_output_sha256": "ec79b7a536038d2e8602bb95c785efe8f3a8a762c676a98cd20ab28af4824f10",
-      "key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "material_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
       "n_double_rounds": 10,
       "nonce64": 0
     },
@@ -212,7 +215,7 @@
       "emulated_output_sha256": "293c4d57eb663356d1e34a624e10313d3a045214e489e2a263257670578559b0",
       "expected_output_hex": "4015b28f6e12ab6ad9e8667b31c51233f78f172790b2d94f326b2ed7ffbcbecbff9ead365f89ce3b6f4055bc759d90fd8f831d27c7b0df93b3b9ed8238a256d6761a6e0fc8b2b859f5a9f3ae170a7599b0b023ce79d7659b32ee79373e727289712ff289f30f641fcd822ff8e656ffd8725691f839a7b433a5b61053d99baee042777fee89b729f64c36f0da14fe6b486409d7023b34b22d364a2a718f4f888e27b18e0f0ad18a245b6f39720c7083ef7fe327c8768a762d647830246daef63959b423fcd539ddad10690d9285404106a864e35bcb83afa33009c07ae094e222f9bcf75b1d656dce4cbed17b3e6e8721a8bf09fda8ffd986da2022263cecb493",
       "expected_output_sha256": "293c4d57eb663356d1e34a624e10313d3a045214e489e2a263257670578559b0",
-      "key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "material_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
       "n_double_rounds": 4,
       "nonce64": 0
     }

@@ -15,7 +15,7 @@
 ## Wrapper + wiring
 
 - Wrapper `0x4e14560`; RELA `R_X86_64_RELATIVE` at GOT `0x576e900` addend `0x4e14560`
-- Tail `e9` at `0x4e14db7` -> block FN
+- Loads a word via `[0x576e350]` (rip at `0x4e1456d`) and tests bits `0x4000` / `0x400`; one branch tail-jumps (`e9` @ `0x4e14db7`) to FN. Other wrapper paths not examined.
 - **21** `ff15` callers of the GOT slot; exemplar `0x13c9ed2`:
   - `lea rdi,[r14+0x120]` state
   - `add rcx,-0x100` / store remaining at `[r14+0x158]`
@@ -25,7 +25,9 @@
 
 ## Source pin
 
-- VA `0x1e6959` len 95: `.../rand_chacha-0.3.1/src/guts.rs`
+- VA `0x1e6959`, len 95, sha256 `79cee213bb7bba7155a035070bbc1abed8bd176a9839bdb674df8816801602b7`
+- suffix (endswith): `rand_chacha-0.3.1/src/guts.rs`
+- Crate link = this string pin + code shape; no pinned xref from FN or wrapper to `0x1e6959`.
 
 ## Emulation vectors (32-byte material `00..1f`, ctr0=0, nonce=0)
 
