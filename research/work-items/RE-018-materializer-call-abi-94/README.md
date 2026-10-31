@@ -18,8 +18,8 @@ for s in 0 7 99; do PYTHONHASHSEED=$s python3 -B tools/materializer_call_abi.py 
 
 - EVIDENCE.md 873252fe4e8631e13944d9d80f3a381235c54541cda11b0b8c8af41aac57dacd
 - materializer-call-abi.json 4789cdd0cb2dd7af93b0a20b50cd976da3b3fc18fe0307505d0b25a98c6f52f0
-- verify.py df0fc6c57ec33362ea638788ebedcb2e01d3a0e9acdf91d0eac5a494fe375c5b
-- independent_verify.py 93257c1c6280a1c592b4590ff7cd404b73826750bd55393c789ab0cfc87279da
+- verify.py 4987057e4ae85727fe51b5b985d693f74a82a5275e893acfd0bb1931d002eb8e
+- independent_verify.py ab8cc47dbdeb1bf1e5db86fc68581d15edf8398d1edb7e68bd77a00139252ba3
 - tools/materializer_call_abi.py c133cb4f6f794c6752569d29b3520b51e143edc81ddc15a75af0a47ce5160597
 - tests/test_materializer_call_abi.py 08c454c971fac42c66ace10b26885a27f192f0d063d52cdb01c0c0a258d8eb1f
 

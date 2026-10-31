@@ -163,7 +163,7 @@ def main():
         return 2
     for f in fails:
         print('FAIL', f)
-    print(f'{"FAIL" if fails else "PASS"}: keys={len(KEYS)} sites={len(SITES)} windows={len(WINDOWS)} '
+    print(f'{"FAIL" if fails else "PASS"}: key_insns={len(KEYS)} sites={len(SITES)} windows={len(WINDOWS)} '
           f'callers={len(CALLERS)} failures={len(fails)}')
     return 1 if fails else 0
 

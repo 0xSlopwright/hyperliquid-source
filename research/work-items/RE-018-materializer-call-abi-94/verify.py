@@ -24,7 +24,7 @@ def main():
     for e in errors:
         print('FAIL', e)
     cs = result['caller_scan']
-    print(f"verify: keys={len(result['key_bytes'])} sites={len(result['sites'])} "
+    print(f"verify: key_insns={len(result['key_bytes'])} sites={len(result['sites'])} "
           f"ff15={len(cs['ff15_slot_sites']['0x5773aa8'])} windows={len(result['window_sha256'])} "
           f"errors={len(errors)}")
     return 1 if errors else 0
