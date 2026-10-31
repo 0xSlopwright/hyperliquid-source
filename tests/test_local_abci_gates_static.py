@@ -151,6 +151,14 @@ class Results(unittest.TestCase):
                           o['flow']['reject_drop_state']), ('0x2268db2', '0x2268db2', '0x226adb1', '0x225a3b0'))
         self.assertEqual(o['templates'], {'0x2268ae0': '0x1f2309', '0x226acb9': '0x1f402c', '0x226ae90': '0x1e97e3'})
 
+    def test_consumers(self):
+        c = self.result['consumers']
+        self.assertEqual(c['names'], ['fresh', 'stale', 'missing'])
+        self.assertEqual(c['direct_calls'], ['0x227a250', '0x22b4919'])
+        self.assertEqual((c['flow']['a_not_fresh'], c['flow']['b_fresh'], c['flow']['b_missing_to_bootstrap'],
+                          c['flow']['b_stale_to_bootstrap']), ('0x227a457', '0x22b4b48', '0x22b5047', '0x22b5047'))
+        self.assertEqual(c['templates'], {'0x227a3d9': '0x1fa1bc', '0x22b5119': '0x1f4129'})
+
     def test_node_ips(self):
         n = self.result['node_ips']
         self.assertEqual(n['flow'], {'no_root_to_validator': '0x22695db', 'clone_call': '0x254e7b0',
@@ -307,6 +315,13 @@ class Corruptions(unittest.TestCase):
     def test_extra_branch_into_return(self):
         self.refuses(patched((PLANT, b'\xe9' + struct.pack('<i', 0x226ad84 - (PLANT + 5)))),
                      'branches into the return block')
+
+    def test_variant_name(self):
+        self.refuses(patched((0x3d7947, b'S')), 'variant names are')
+
+    def test_extra_caller_of_startup_future(self):
+        self.refuses(patched((PLANT, b'\xe8' + struct.pack('<i', la.STARTUP_FDE - (PLANT + 5)))),
+                     r"direct calls to 0x22689f0: \['0x2268c80', '0x227a250', '0x22b4919'\]")
 
     def test_file_stem(self):
         self.refuses(patched((0x3d73f8 + 4, b'X')), 'file stem at 0x569db40')

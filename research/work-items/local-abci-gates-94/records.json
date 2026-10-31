@@ -16,6 +16,43 @@
     "poll_table": "0x3d5f10",
     "state0_arm": "0x2271d38"
   },
+  "consumers": {
+    "callers": [
+      "0x227a0e0",
+      "0x22b47c0"
+    ],
+    "direct_calls": [
+      "0x227a250",
+      "0x22b4919"
+    ],
+    "flow": {
+      "a_call": "0x22689f0",
+      "a_fresh_done": "0x227aac6",
+      "a_not_fresh": "0x227a457",
+      "a_pending": "0x227a765",
+      "b_call": "0x22689f0",
+      "b_fresh": "0x22b4b48",
+      "b_missing_to_bootstrap": "0x22b5047",
+      "b_not_missing": "0x22b4b83",
+      "b_once": "0x22b5b2e",
+      "b_once_back": "0x22b50cc",
+      "b_ready": "0x22b4a9e",
+      "b_stale_to_bootstrap": "0x22b5047"
+    },
+    "index": "word0 ^ 2**63 if word0 < 0 (signed) else 1",
+    "missing_and_stale_flag": "[rbx+0x3b1c] = 1 in 0x22b47c0",
+    "name_lengths": "0x3d8398",
+    "name_offsets": "0x3d83b0",
+    "names": [
+      "fresh",
+      "stale",
+      "missing"
+    ],
+    "templates": {
+      "0x227a3d9": "0x1fa1bc",
+      "0x22b5119": "0x1f4129"
+    }
+  },
   "freshness": {
     "added_seconds": 600,
     "after_panic": "0x227283d",
@@ -372,6 +409,14 @@
     "after_panic": "0x227283d",
     "call_a": "0x22aef54",
     "call_b": "0x22affbf",
+    "caller_a_call": "0x227a23e",
+    "caller_a_fresh": "0x227a410",
+    "caller_a_log": "0x227a330",
+    "caller_b_bootstrap": "0x22b5047",
+    "caller_b_call": "0x22b48ff",
+    "caller_b_dispatch": "0x22b4a9e",
+    "caller_b_once": "0x22b5b2e",
+    "caller_b_stale": "0x22b4b83",
     "decode": "0x2268d1b",
     "entry": "0x2268a18",
     "exhausted_r15": "0x2268e95",

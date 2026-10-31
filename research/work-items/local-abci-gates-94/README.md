@@ -16,9 +16,9 @@ lead (`node/local_abci_state.rs`, `node/startup.rs`) differ?
   copied.
 - Claim status: observation for byte-level facts, inference where marked,
   unresolved where listed. Partial `node-runtime` research; no gate change.
-- Scope: forty-eight fixed windows in `0x22689f0` (the lead's
+- Scope: fifty-six fixed windows in `0x22689f0` (the lead's
   `local_abci_state.rs` seed), its helpers `0x1459ca0`, `0x254e7b0` and
-  `0x144a710`, `0x2271d00`,
+  `0x144a710`, its two callers `0x227a0e0` and `0x22b47c0`, `0x2271d00`,
   its caller `0x22ae8a0` and the panic shim `0x157b810`.
   Excluded: what `0x226bb20` sends and decodes, how the timestamp is produced,
   what `0x3994ea0` collects for validator node IPs, the rest of the `0x22ae8a0`
@@ -38,8 +38,8 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 48
-windows (1787 instructions), one per checked byte window. All 99 `records.json`
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 56
+windows (1962 instructions), one per checked byte window. All 112 `records.json`
 VAs (values and keys) that fall inside a window are instruction starts there, except `slot_refs`
 and `record_refs` entries, which are ModRM-byte addresses inside instructions. The other code VAs
 are FDE starts, call targets and branch targets outside the windows.
@@ -345,12 +345,43 @@ byte to 3 (`0x226a8bc..0x226a912`).
   the state copy (`0x225a3b0`), frees the original Vec and returns
   `{len, ptr, len}`.
 
-Inference: the output is an enum whose niche lives in word 0. It is
-`Local(Box<AbciState>)` (fresh by age, or height accepted),
-`Bootstrap(Vec<NodeIp>)` (stale by height: the caller gets the peers that
-were queried), `None` (no usable `abci_state.rmp`), or `Pending`. The
-message chosen by the height gate is only logged as `stale_reason`; it is
-not returned. `startup_outcome` models the word-0 decoding.
+Inference: the output is a three-variant enum whose niche lives in word 0.
+The consumer below names the variants: `fresh` (`Box` of the state: fresh by
+age, or height accepted), `stale` (the queried peer `Vec`: rejected by
+height) and `missing` (no usable `abci_state.rmp`). Polls can also return
+pending. The message chosen by the height gate is only logged as
+`stale_reason`; it is not returned. `startup_outcome` models the word-0
+decoding.
+
+### Who consumes the outcome (observation)
+
+A scan of every `e8`/`e9` in `.text` finds exactly two direct calls to
+`0x22689f0`: `0x227a250` in `0x227a0e0` and `0x22b4919` in `0x22b47c0`.
+Both first test word 0 against `0x8000000000000000 + 3` (pending).
+
+- **Variant names (`0x227a0e0`):** the code computes
+  `index = word0 ^ 2^63` if word 0 is negative, else 1 (`cmovs`). It
+  indexes a length table (`0x3d8398`, 8-byte entries) and a relative-offset
+  table (`0x3d83b0`, 4-byte entries). Entries 0, 1 and 2 decode to `fresh`,
+  `stale` and `missing`. The name is logged as
+  `… @@ using local AbciState: {}` (template `0x1fa1bc`). Then
+  `word0 == 0x8000000000000000` (fresh) moves 0x3ae8 bytes out of the box,
+  frees it (`esi = 0x3ae8`) and jumps to `0x227aac6`. The other variants go to
+  `0x227a457`.
+- **Dispatch (`0x22b47c0`):** the same index computation. Index 0 (fresh)
+  goes to `0x22b4b48`, which reads byte `+0x8f2` of the boxed state and calls
+  slot `0x57732e8`, the first call `0x3994ea0` also makes. Index 2 (missing)
+  and index 1 (stale, `0x22b4b83`) both set `[rbx+0x3b1c] = 1` and jump to
+  `0x22b5047`. That path logs
+  `… @@ running non-validator to get initial abci state for consensus`
+  (template `0x1f4129`), with an optional once-style detour (`0x22b50c6`
+  to `0x22b5b2e`, back to `0x22b50cc`).
+
+Inference: in `0x22b47c0`, a `fresh` local state skips the non-validator
+bootstrap. A `stale` or `missing` state runs it. Words 1 and 2 are loaded
+into `[rsp+0x28]` and `r13` (`0x22b4a9e`). Word 0 stays in `[rsp+0x8]` for
+`stale`, and is replaced by `0x8000000000000000` for `missing` (`0x22b4ae8`). Deciding what the bootstrap
+does with that `Vec` would need the rest of `0x22b47c0`, which is not checked.
 No checked path produces `0x8000000000000001`.
 
 ### Freshness check in `0x2271d00`: panic at `hl_node.rs:346:9` (observation)
@@ -460,13 +491,20 @@ states, 0xa and 0xb, and treats a set `al` as pending.
   then by the height gate. It returns the boxed local state, the queried
   peer list (with the reason only logged), or `None` when
   `/hyperliquid_data/abci_state.rmp` is not a readable, decodable file.
+  These are the binary's own `fresh` / `stale` / `missing` names.
+- **`0x22B47C0`:** the lead's `base/production.rs` names it
+  `base_production__async_touch_state_poll` from its `async_touch` spans.
+  It is also a direct caller of this local abci_state future, and on
+  `stale` or `missing` it logs `running non-validator to get initial abci
+  state for consensus`. The lead places that message in
+  `startup.rs::run_non_validator_for_initial_state`.
 - **Stale hardfork:** the lead's stale-hardfork reason compares the local
   height with a peer initial height. That matches the operand order here
   (`local_height < initial_height`, tested only when not too far behind).
 
 ## Controls
 
-`tests/test_local_abci_gates_static.py` (55 tests) regenerates
+`tests/test_local_abci_gates_static.py` (58 tests) regenerates
 `records.json` and checks nine models: the peer-reply collection, the height selection, the height gate
 including saturation, the day division against exact truncating division,
 the lexicographic compare, the tolerance-to-nanoseconds conversion, the
@@ -505,6 +543,8 @@ output word-0 decoding. It refuses each of these corruptions:
 - The `abci_state` file stem, the stale-log template or the `is_file` mode
   test changed.
 - An extra branch into the return block planted.
+- A variant-name byte changed.
+- An extra direct call to `0x22689f0` planted.
 
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
 producer does not use either.
@@ -514,7 +554,8 @@ producer does not use either.
 - What `0x226bb20` sends for request tag 2 and how it decodes the reply.
 - The exact path from `0x2269034` to `0x226915c`, and any jump-table edge into
   the join.
-- How the caller of `0x22689f0` uses each outcome, what object `[rbx+0x80]` points to, what
+- What the non-validator bootstrap in `0x22b47c0` does with a `stale`
+  peer list, what object `[rbx+0x80]` points to, what
   `0x3994ea0` collects from `[rbx+0x980]`, and what `0x3751e80` builds.
 - What `[rbx+0x740]+0x60` holds, and which orchestrator paths reach states
   0xa and 0xb.

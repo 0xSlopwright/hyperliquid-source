@@ -133,6 +133,33 @@ WINDOWS = {
     'pass_once': (STARTUP_FDE, 0x226b10a,
                   '488d053ffa500348894424204d89e74c89642450488d3d43fa5003488d0d3cee3f034c8d051dee3f03488d542450be0100'
                   '0000ff15753750034d89fce91bfdffff'),
+    'caller_a_call': (0x227a0e0, 0x227a23e,
+                      '4c8d6b60488dbc24980200004c89ee4c89e2e89be7feff48b80000000000000080488d4803b00348398c24980200000f84'
+                      'f2040000'),
+    'caller_a_log': (0x227a0e0, 0x227a330,
+                     '4c8d7b38660f10051c085003660f11842410010000498b074889c14c31e14885c0b801000000480f48c1488d0d37e015fe'
+                     '488b0cc1488d1544e015fe486304824801d048898424e03e000048898c24e83e0000488d8424f803000048898424c87900'
+                     '00488d05460d700048898424d07900004c8db424100100004c89b424d8790000488d05d7cff3ff48898424e0790000488d'
+                     '8c24e03e000048898c24e879000048898424f0790000488d3ddcfdf7fd488db424c8790000ff157a454f03'),
+    'caller_a_fresh': (0x227a0e0, 0x227a410,
+                       '48b8000000000000008049390748896c24087533c64359004c8b7340488dbc24c8790000bae83a00004c89f6ff159e3b4f'
+                       '03bee83a00004c89f731d2ff15be3b4f03e96f060000'),
+    'caller_b_call': (0x22b47c0, 0x22b48ff,
+                      '488dab283b0000488dbc24b00000004889ee4c897424184c89f2e8d240fbff49be0000000000000080488b9424b0000000'
+                      '498d460348895424084839c20f855c010000b003e9010d0000'),
+    'caller_b_dispatch': (0x22b47c0, 0x22b4a9e,
+                          '488b8424b800000048894424284c8bac24c00000004889efe81555f8ff488b4424084889c14c31f14885c0b80100'
+                          '0000480f48c14885c074714883f8020f85a2000000c6831c3b0000014c89742408e955050000'),
+    'caller_b_stale': (0x22b47c0, 0x22b4b83, 'c6831c3b000001e9b8040000'),
+    'caller_b_bootstrap': (0x22b47c0, 0x22b5047,
+                           '488dbc2440fa0000ff154b984b038b842440fa0000898424fc000000c78424f000000001000000488b842444fa0000'
+                           '48898424f40000004c89b424b0000000488d05752312fe48898424d000000048c78424d80000001600000048c78424'
+                           'e00000000800000048c78424e8000000000000008b05a95a4c0385c0488b6c24280f85620a00000f1005855a4c030f'
+                           '11842460bf0000488d8424b00000004889842450420000488d05ee5f6c004889842458420000488d842460bf000048'
+                           '89842460420000488d057f22f0ff4889842468420000488d3d09f0f3fd488db42450420000ff153a984b03'),
+    'caller_b_once': (0x22b47c0, 0x22b5b2e,
+                      '488d051b504c034889842418350100488d8424183501004889842450420000488d3d14504c03488d0d0d443b034c8d05ee'
+                      '433b03488d942450420000be01000000ff15438d4b03e952f5ffff'),
     'is_file': (0x144a710, 0x144a710,
                 '55415741564154534881ecc00000004889f34989feff15e54e320484c07436488d7c24104c89f64889daff15d84e3204837c'
                 '24100275224c8b6424188b054604330485c00f85900000004489e083e00383f801742831edeb12b800f00000234424483d00'
@@ -275,6 +302,20 @@ OUTCOME_TEMPLATES = {
     0x226acb9: (0x1f402c, [None, b' WARN >>> ', None, b' @@ considering local abci state as stale @@ [stale_reason: ',
                            None, b'] @ [node_ips: ', None, b']\n\n']),
     0x226ae90: (0x1e97e3, [None, b' WARN >>> ', None, b' @@ initializing with local abci_state\n\n']),
+}
+CONSUMER_FLOW = {
+    'a_call': (0x227a250, 5, STARTUP_FDE), 'a_pending': (0x227a26d, 6, 0x227a765),
+    'a_not_fresh': (0x227a422, 2, 0x227a457), 'a_fresh_done': (0x227a452, 5, 0x227aac6),
+    'b_call': (0x22b4919, 5, STARTUP_FDE), 'b_ready': (0x22b493c, 6, 0x22b4a9e),
+    'b_fresh': (0x22b4ad5, 2, 0x22b4b48), 'b_not_missing': (0x22b4adb, 6, 0x22b4b83),
+    'b_missing_to_bootstrap': (0x22b4aed, 5, 0x22b5047), 'b_stale_to_bootstrap': (0x22b4b8a, 5, 0x22b5047),
+    'b_once': (0x22b50c6, 6, 0x22b5b2e), 'b_once_back': (0x22b5b75, 5, 0x22b50cc),
+}
+VARIANT_NAMES = (b'fresh', b'stale', b'missing')
+CONSUMER_TEMPLATES = {
+    0x227a3d9: (0x1fa1bc, [None, b' WARN >>> ', None, b' @@ using local AbciState: ', None, b'\n\n']),
+    0x22b5119: (0x1f4129, [None, b' WARN >>> ', None,
+                           b' @@ running non-validator to get initial abci state for consensus\n\n']),
 }
 NODE_IP_FLOW = {
     'no_root_to_validator': (0x22693cd, 6, 0x22695db), 'clone_call': (0x2269415, 5, 0x254e7b0),
@@ -701,6 +742,35 @@ def check_outcomes(img):
                 stale_return='{len, ptr, len} clone of the 5-byte peer Vec; local state copy dropped via 0x225a3b0')
 
 
+def check_consumers(img):
+    for name, (va, n, want) in CONSUMER_FLOW.items():
+        got = flow_target(img, va, n)
+        require(got == want, f'{name} at {va:#x} goes to {got:#x}, not {want:#x}')
+    for va in (0x227a25f, 0x22b4930):
+        require(img.read(va, 4)[-1] == 3, f'pending test at {va:#x} is not niche + 3')
+    lens, offs = img.rip(0x227a35a, 7), img.rip(0x227a365, 7)
+    names = []
+    for i in range(len(VARIANT_NAMES)):
+        n = struct.unpack('<Q', img.read(lens + 8 * i, 8))[0]
+        names.append(img.read(offs + img.i32(offs + 4 * i), n))
+    require(tuple(names) == VARIANT_NAMES, f'variant names are {names}')
+    templates = {}
+    for va, (tpl, pieces) in CONSUMER_TEMPLATES.items():
+        got = img.rip(va, 7)
+        dec = template(img, got)
+        require(got == tpl and dec == pieces, f'consumer template at {va:#x} is {got:#x} {dec!r}')
+        templates[hex(va)] = hex(tpl)
+    calls = direct_calls(img, STARTUP_FDE)
+    require(calls == [hex(CONSUMER_FLOW['a_call'][0]), hex(CONSUMER_FLOW['b_call'][0])],
+            f'direct calls to {STARTUP_FDE:#x}: {calls}')
+    fresh = bytes.fromhex(WINDOWS['caller_a_fresh'][2])
+    require(fresh.count(struct.pack('<I', STATE_BYTES)) == 2, 'caller_a fresh path does not move and free 0x3ae8 bytes')
+    return dict(callers=[hex(0x227a0e0), hex(0x22b47c0)], direct_calls=calls, flow={k: hex(v[2]) for k, v in CONSUMER_FLOW.items()},
+                name_lengths=hex(lens), name_offsets=hex(offs), names=[x.decode() for x in names],
+                index='word0 ^ 2**63 if word0 < 0 (signed) else 1', templates=templates,
+                missing_and_stale_flag='[rbx+0x3b1c] = 1 in 0x22b47c0')
+
+
 def startup_outcome(word0):
     """Decode word 0 of the 0x22689f0 output."""
     if word0 < 2 ** 63:
@@ -732,6 +802,18 @@ def uses_local_state(deadline, now):
     return not deadline < now
 
 
+def direct_calls(img, target):
+    """Every e8/e9 rel32 encoding in .text whose target is `target`."""
+    text = next(x for x in img.secs if x['name'] == '.text' and x['type'] != 8)
+    body = img.data[text['offset']:text['offset'] + text['size']]
+    calls = []
+    for m in re.finditer(rb'[\xe8\xe9]', body):
+        o = m.start()
+        if o + 5 <= len(body) and text['address'] + o + 5 + struct.unpack_from('<i', body, o + 1)[0] == target:
+            calls.append(hex(text['address'] + o))
+    return calls
+
+
 def check_callers(img):
     entry = WINDOWS['poll_entry'][1]
     require(img.rip(entry + 0x11, 7) == POLL_TABLE, 'poll dispatch table moved')
@@ -739,13 +821,7 @@ def check_callers(img):
     require(arm0 == entry + 0x21, f'state-0 arm is {arm0:#x}')
     require(entry + len(bytes.fromhex(WINDOWS['poll_entry'][2])) == WINDOWS['freshness'][1],
             'state-0 arm does not run straight into the freshness window')
-    text = next(x for x in img.secs if x['name'] == '.text' and x['type'] != 8)
-    body = img.data[text['offset']:text['offset'] + text['size']]
-    calls = []
-    for m in re.finditer(rb'[\xe8\xe9]', body):
-        o = m.start()
-        if o + 5 <= len(body) and text['address'] + o + 5 + struct.unpack_from('<i', body, o + 1)[0] == FRESH_FDE:
-            calls.append(hex(text['address'] + o))
+    calls = direct_calls(img, FRESH_FDE)
     want = [hex(WINDOWS['call_a'][1] + 0x0d), hex(WINDOWS['call_b'][1] + 0x28)]
     require(calls == want, f'direct calls to {FRESH_FDE:#x}: {calls}')
     states = [img.read(WINDOWS['call_a'][1] + 0x19, 1)[0], img.read(WINDOWS['call_b'][1] + 0x34, 1)[0]]
@@ -796,7 +872,7 @@ def analyse(data):
     fresh = check_freshness(img)
     return dict(target=TARGET, windows={k: hex(v) for k, v in wins.items()},
                 peer_queries=check_queries(img), height_selection=check_selection(img), status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=fresh,
-                stale_gate=check_stale_gate(img, fresh['slots']), node_ips=check_node_ips(img), outcomes=check_outcomes(img), callers=check_callers(img))
+                stale_gate=check_stale_gate(img, fresh['slots']), node_ips=check_node_ips(img), outcomes=check_outcomes(img), consumers=check_consumers(img), callers=check_callers(img))
 
 
 def main(argv=None):
