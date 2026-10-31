@@ -4,7 +4,7 @@
 - Target release and full SHA-256: artifacts/node/94/hl-node, 3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f
 - Source commit / reference commit: main 1f8c67c63ca4794c9689235471c60297f8a5c985 (no source; binary-only)
 - Claim status: observation for the byte-level facts (lane inputs, lengths, IV bytes, output layout, call order); inference for "BLAKE3-256" (structure, not symbols) and for reading the 16-byte trailers as two u64 counters.
-- Scope included and excluded: included 0x37e2610 (whole function, 147 instructions to ret 0x37e2957), its two callers 0x326aec0 and 0x32fc190 (lattice copies through the writer call), the writer prefix 0x32699c0..0x3269a7b, the IV at 0x20c020 and four anchor instructions in the hasher bodies. Excluded: the hasher bodies beyond the anchors, the once-init routine, and the writer past its save call. Post-digest windows after 0x326af55 and 0x32fc224 are now in scope (dead-digest negative). Related packets #158, #262, #285 and #316 are cited; nothing is imported from them or from other tools/.
+- Scope included and excluded: included 0x37e2610 (whole function, 147 instructions to ret 0x37e2957), its two callers 0x326aec0 and 0x32fc190 (lattice copies through the writer call), the writer prefix 0x32699c0..0x3269a7b, the IV at 0x20c020 and four anchor instructions in the hasher bodies. Excluded: the hasher bodies beyond the anchors, the once-init routine, and the writer past its save call. Post-digest windows after 0x326af55 and 0x32fc224 are now in scope (bounded dead-digest negative: no consumer observed). Related packets #158, #262, #285 and #316 are cited; nothing is imported from them or from other tools/.
 
 ## Reproduce
 
@@ -19,7 +19,7 @@ python3 -B -m unittest tests.test_lattice_digest
 for s in 0 7 99; do PYTHONHASHSEED=$s python3 -B tools/lattice_digest.py | sha256sum; done
 ```
 
-Output: lattice-digest.json, sha256 eb596303760c90b8c027d5a14819d7eb09e07d55acdd9365e1cf1936ec52fc77 (identical for seeds 0, 7, 99 and under -O). The tool reads only the binary, writes only --out (or stdout), and refuses to emit output unless every exact expectation in EXPECT holds.
+Output: lattice-digest.json, sha256 53d36b84f3f5cca3821964e1670abdf38ff389d2b62a5b4e75d6f993f74860a0 (identical for seeds 0, 7, 99 and under -O). The tool reads only the binary, writes only --out (or stdout), and refuses to emit output unless every exact expectation in EXPECT holds.
 
 ## Evidence
 
@@ -74,13 +74,13 @@ Neither caller passes the digest struct to the writer.
 
 **Negative: the digest is computed and discarded in both callers (no downstream consumer observed).**
 
-Caller A (after 0x326af55): the tool's length scan of 0x326af5a..0x326b018 (50 instructions) finds zero accesses to rsp+0x8..0x97. The frame is freed at 0x326b006 (`add rsp,0x18c8`) and the function returns at 0x326b017. The digest bytes are never read.
+Caller A (after 0x326af55): the tool's length scan of 0x326af5a..0x326b018 (50 instructions) finds zero accesses to rsp+0x8..0x97. The frame is freed at 0x326b006 (`add rsp,0x18c8`) and the function returns at 0x326b017. No read of the digest bytes is observed in this window.
 
 Caller B (after 0x32fc224): the scan of 0x32fc229..0x32fc44e (125 instructions) finds three overwrite stores of a cap/ptr/len record into the first 32 bytes of the digest slot:
 - 0x32fc33a `mov [rsp+0x38],rax`
 - 0x32fc345 `movups [rsp+0x28],xmm0`
 - 0x32fc34a `mov [rsp+0x20],r12`
-Then 0x32fc3f1 `lea rsi,[rsp+0x20]` / 0x32fc414 `lea rdx,[rsp+0x20]` pass that record pointer into 0x332d440 and 0x3269ae0. The only subsequent read of the slot is 0x32fc429 `mov rdi,[rsp+0x28]` (the overwritten pointer, freed via [0x576e010]). Digest content at struct offsets >= 0x20 is never read. The frame is freed at 0x32fc43c (`add rsp,0x1948`).
+Then 0x32fc3f1 `lea rsi,[rsp+0x20]` / 0x32fc414 `lea rdx,[rsp+0x20]` pass that record pointer into 0x332d440 and 0x3269ae0. The only subsequent read of the slot is 0x32fc429 `mov rdi,[rsp+0x28]` (the overwritten pointer, freed via [0x576e010]). No read of digest content at struct offsets >= 0x20 is observed in this window (see caveat). The frame is freed at 0x32fc43c (`add rsp,0x1948`).
 
 Caveat: a later read of rsp+0x40..0xaf after 0x332d440 / 0x3269ae0 receive the record pointer is only possible, not observed. 0x3269ae0's opening uses only `[rdx+0x8]` / `[rdx+0x10]`, and only its first 0x180 bytes were read for this packet.
 
@@ -106,7 +106,7 @@ Not yet implemented. There is no independent Rust reimplementation, and no diges
   - Reading the trailers as two u64 counters is inference.
   - The 0x3269ae0 caveat above: only the first 0x180 bytes of that function were read.
 
-Next question: closed for the two callers — the digest is dead there. A remaining open is whether any other path materialises the same 0x90 layout, and the unchecked caveat on 0x3269ae0 beyond its first 0x180 bytes.
+Next question: no consumer observed in the two callers' post-digest windows (bounded; see the 0x3269ae0 caveat). A remaining open is whether any other path materialises the same 0x90 layout, and the unchecked caveat on 0x3269ae0 beyond its first 0x180 bytes.
 
 ## Verifier transcript (this revision)
 

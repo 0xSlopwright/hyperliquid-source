@@ -505,7 +505,7 @@ def _modrm_len(b, i, rex):
 
 
 def post_digest(read):
-    """Classify the 0x90 digest as dead: computed then discarded in both callers."""
+    """Classify the 0x90 digest as dead (bounded): no consumer observed in either caller's post-digest window."""
     res = {}
     for name, w in sorted(POST_WINDOWS.items()):
         lo, hi = w['struct']
@@ -552,9 +552,9 @@ def post_digest(read):
             'write_struct_offsets': write_offs,
             'header_free_load': header_loads[0] if header_loads else None,
             'frame_free': frame,
-            'claim': ('dead: frame freed unread'
+            'claim': ('dead (bounded): frame freed, no read observed'
                       if name == 'A'
-                      else 'dead: first 32 bytes overwritten then header freed; digest unread'),
+                      else 'dead (bounded): first 32 bytes overwritten then header freed; no digest read observed'),
         }
     return res
 

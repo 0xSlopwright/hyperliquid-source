@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 import lattice_digest as tool  # noqa: E402
 
 PACKET_JSON = HERE / 'lattice-digest.json'
-JSON_SHA256 = 'eb596303760c90b8c027d5a14819d7eb09e07d55acdd9365e1cf1936ec52fc77'
+JSON_SHA256 = '53d36b84f3f5cca3821964e1670abdf38ff389d2b62a5b4e75d6f993f74860a0'
 
 
 def main():

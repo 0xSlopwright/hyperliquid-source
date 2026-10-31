@@ -238,7 +238,7 @@
  "post_digest": {
   "A": {
    "caller": "0x326aec0",
-   "claim": "dead: frame freed unread",
+   "claim": "dead (bounded): frame freed, no read observed",
    "digest_content_reads": 0,
    "frame_free": {
     "size": "0x18c8",
@@ -260,7 +260,7 @@
   },
   "B": {
    "caller": "0x32fc190",
-   "claim": "dead: first 32 bytes overwritten then header freed; digest unread",
+   "claim": "dead (bounded): first 32 bytes overwritten then header freed; no digest read observed",
    "digest_content_reads": 0,
    "frame_free": {
     "size": "0x1948",
