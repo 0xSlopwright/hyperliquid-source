@@ -12,7 +12,7 @@ import struct
 import subprocess
 import tempfile
 
-from artifacts import ROOT, check, digest
+from artifacts import ROOT, check, digest, load_manifest
 from elf_index import sections
 from fde_extents import eh_frame_records
 
@@ -161,7 +161,7 @@ def native_snapshot(data):
 def generate(binary, output):
     if output.exists() or output.is_symlink():
         raise FileExistsError(f'Output already exists; preserve retained evidence: {output}')
-    manifest = json.loads((ROOT / 'provenance/artifacts.json').read_text(encoding='utf-8'))
+    manifest = load_manifest(ROOT)
     identities = [i for i in manifest['files'] if i.get('path') == TARGET]
     if len(identities) != 1 or identities[0].get('sha256') != TARGET_SHA256 or identities[0].get('size') != TARGET_BYTES:
         raise ValueError('Expected the pinned Node94 manifest identity')

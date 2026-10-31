@@ -25,6 +25,12 @@ class VisorLookupResultTests(unittest.TestCase):
         cls.data = lookup.TARGET.read_bytes()
         cls.sections = sections(cls.data)
         cls.record = json.loads((PACKET/'record.json').read_text())
+        spec = importlib.util.spec_from_file_location('visor_lookup_packet_check',PACKET/'check_packet.py')
+        cls.checker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.checker)
+
+    def assertTargetRecordEqual(self, actual, expected):
+        self.assertEqual(self.checker.target_record(actual), self.checker.target_record(expected))
 
     def offset(self,va):
         sec = next(s for s in self.sections if s['type']!=8 and s['address']<=va<s['address']+s['size'])
@@ -38,7 +44,7 @@ class VisorLookupResultTests(unittest.TestCase):
 
     def test_actual_target_regenerates_record_native_and_cutset(self):
         record,native = lookup.collect(self.data)
-        self.assertEqual(record,self.record)
+        self.assertTargetRecordEqual(record,self.record)
         self.assertEqual(native,(PACKET/'lookup.objdump.txt').read_bytes())
         self.assertEqual(record['normal_CFG']['decoded_instructions'],94)
         self.assertEqual(record['normal_CFG']['returns'],['0x5d335c'])
@@ -136,7 +142,7 @@ class VisorLookupResultTests(unittest.TestCase):
             output = Path(tmp)/'record with spaces.json'
             result = self.invoke(lookup.TARGET,output)
             self.assertEqual(result.returncode,0,result.stderr)
-            self.assertEqual(json.loads(output.read_text()),self.record)
+            self.assertTargetRecordEqual(json.loads(output.read_text()),self.record)
             before = output.read_bytes()
             result = self.invoke(lookup.TARGET,output)
             self.assertNotEqual(result.returncode,0)
@@ -167,6 +173,11 @@ class VisorLookupResultTests(unittest.TestCase):
             path = packet/'record.json'
             record = json.loads(path.read_text())
             record['return_cutset']['normal_return_low32_upper_bound'] = [0,2]
+            path.write_text(json.dumps(record))
+            with self.assertRaisesRegex(ValueError,'record differs'):
+                checker.verify(packet,self.data)
+            record = json.loads(json.dumps(self.record))
+            record['native_method']['input_sha256'] = '0'*64
             path.write_text(json.dumps(record))
             with self.assertRaisesRegex(ValueError,'record differs'):
                 checker.verify(packet,self.data)

@@ -12,6 +12,7 @@ import re
 import struct
 
 from elf_index import sections
+from artifacts import load_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = 'artifacts/node/94/hl-node'
@@ -187,7 +188,7 @@ def analyze(data):
 
 def generate(root=ROOT):
     root = Path(root)
-    manifest = json.loads((root / 'provenance/artifacts.json').read_text())
+    manifest = load_manifest(root)
     identity = next(i for i in manifest['files'] if i['path'] == TARGET)
     data = (root / TARGET).read_bytes()
     actual = hashlib.sha256(data).hexdigest()
