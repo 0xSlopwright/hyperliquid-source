@@ -1,4 +1,5 @@
 """Actual visor byte/metadata controls for a conditional local-return proof."""
+import importlib.util
 import hashlib
 import json
 import mmap
@@ -14,6 +15,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 import visor_allocator_cache as cache
+PACKET = ROOT / "research/work-items/RE-013-visor-allocator-cache"
 
 
 class VisorAllocatorCacheTests(unittest.TestCase):
@@ -25,6 +27,12 @@ class VisorAllocatorCacheTests(unittest.TestCase):
             raise AssertionError('Genuine pinned captured visor is required')
         cls.record, cls.exports = cache.collect(cls.data)
         cls.image = cache.Image(cls.data)
+        spec = importlib.util.spec_from_file_location('review_packet_visor_allocator_cache', PACKET/'check_packet.py')
+        cls.checker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.checker)
+
+    def assertTargetRecordEqual(self, actual, expected):
+        self.assertEqual(self.checker.target_record(actual), self.checker.target_record(expected))
 
     @classmethod
     def tearDownClass(cls):
@@ -180,7 +188,7 @@ class VisorAllocatorCacheTests(unittest.TestCase):
         self.assertEqual(exports, self.exports)
         packet = ROOT / 'research/work-items/RE-013-visor-allocator-cache'
         if (packet / 'record.json').exists():
-            self.assertEqual(json.loads((packet / 'record.json').read_text()), again)
+            self.assertTargetRecordEqual(json.loads((packet / 'record.json').read_text()), again)
             self.assertEqual((packet / 'allocator.objdump.txt').read_bytes(), exports['allocator.objdump.txt'].encode())
         with tempfile.TemporaryDirectory(prefix='valloc-cli-') as temporary:
             output = Path(temporary) / 'report with spaces.json'

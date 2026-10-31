@@ -9,12 +9,23 @@ sys.path.insert(0,str(ROOT/'tools'))
 from visor_child_args_utf8 import TARGET, collect, require
 
 
+def target_record(record):
+    """Mask only GNU version text; every target/native binding remains exact."""
+    value = json.loads(json.dumps(record))
+    require(value['native_methods']['validator']['tool'].startswith('GNU objdump'), 'record does not name GNU objdump')
+    value['native_methods']['validator']['tool'] = '<GNU objdump version metadata>'
+    require(value['native_methods']['adapter']['tool'].startswith('GNU objdump'), 'record does not name GNU objdump')
+    value['native_methods']['adapter']['tool'] = '<GNU objdump version metadata>'
+    return value
+
+
 def verify(packet,data):
     record,exports = collect(data)
-    require(json.loads((packet/'record.json').read_text())==record,'UTF8 record differs from fresh target bindings')
+    retained = json.loads((packet / 'record.json').read_text())
+    require(target_record(retained) == target_record(record),'UTF8 record differs from fresh target bindings')
     for name,raw in exports.items():
         require((packet/name).read_bytes()==raw,'UTF8 native export differs from fresh target bindings')
-    return {'validator_bytes':503,'validator_instructions':143,'validator_blocks':57,
+    return {'comparison_mask':['native_methods.validator.tool', 'native_methods.adapter.tool'], 'validator_bytes':503,'validator_instructions':143,'validator_blocks':57,
             'adapter_bytes':67,'adapter_instructions':15,'table_entries':256,
             'open_adapter_error_boundary':'0x48dc43','code_executed_or_emulated':False,
             'automatic_machine_equivalence_verifier':False}

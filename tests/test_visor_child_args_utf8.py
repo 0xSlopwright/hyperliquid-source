@@ -24,6 +24,12 @@ class VisorChildArgsUtf8Tests(unittest.TestCase):
         cls.data = utf8.TARGET.read_bytes()
         cls.sections = sections(cls.data)
         cls.record = json.loads((PACKET/'record.json').read_text())
+        spec = importlib.util.spec_from_file_location('review_packet_visor_child_args_utf8', PACKET/'check_packet.py')
+        cls.checker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.checker)
+
+    def assertTargetRecordEqual(self, actual, expected):
+        self.assertEqual(self.checker.target_record(actual), self.checker.target_record(expected))
 
     def offset(self,va):
         s = next(s for s in self.sections if s['type']!=8 and s['address']<=va<s['address']+s['size'])
@@ -37,7 +43,7 @@ class VisorChildArgsUtf8Tests(unittest.TestCase):
 
     def test_actual_full_bodies_graph_table_protocol_and_witnesses(self):
         record,exports = utf8.collect(self.data)
-        self.assertEqual(record,self.record)
+        self.assertTargetRecordEqual(record,self.record)
         for name,raw in exports.items():
             self.assertEqual(raw,(PACKET/name).read_bytes())
         v,a = record['graphs']['validator'],record['graphs']['adapter']
@@ -203,7 +209,7 @@ class VisorChildArgsUtf8Tests(unittest.TestCase):
             output = root/'record with spaces.json'
             first = self.invoke(utf8.TARGET,output)
             self.assertEqual(first.returncode,0,first.stderr)
-            self.assertEqual(json.loads(output.read_text()),self.record)
+            self.assertTargetRecordEqual(json.loads(output.read_text()),self.record)
             before = output.read_bytes()
             self.assertNotEqual(self.invoke(utf8.TARGET,output).returncode,0)
             self.assertEqual(output.read_bytes(),before)

@@ -24,7 +24,13 @@ class VisorCollectionTests(unittest.TestCase):
         cls.data = collect.TARGET.read_bytes()
         cls.sections = sections(cls.data)
         cls.record = json.loads((PACKET/'record.json').read_text())
+        spec = importlib.util.spec_from_file_location('review_packet_visor_child_args_collection', PACKET/'check_packet.py')
+        cls.checker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.checker)
         cls.terms = cls.record['actual_terms']
+
+    def assertTargetRecordEqual(self, actual, expected):
+        self.assertEqual(self.checker.target_record(actual), self.checker.target_record(expected))
 
     def offset(self,va):
         section = next(s for s in self.sections if s['type']!=8 and s['address']<=va<s['address']+s['size'])
@@ -37,7 +43,7 @@ class VisorCollectionTests(unittest.TestCase):
 
     def test_complete_actual_body_record_and_conditional_projection(self):
         record,exports = collect.collect(self.data)
-        self.assertEqual(record,self.record)
+        self.assertTargetRecordEqual(record,self.record)
         for name,raw in exports.items():self.assertEqual(raw,(PACKET/name).read_bytes())
         graph = record['graph']
         self.assertEqual((graph['instructions'],len(graph['blocks']),len(graph['branches']),len(graph['calls'])),(220,61,33,16))
@@ -164,7 +170,7 @@ class VisorCollectionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='collection spaces ') as temporary:
             p=Path(temporary);output=p/'record with spaces.json'
             first=run(collect.TARGET,output);self.assertEqual(first.returncode,0,first.stderr)
-            self.assertEqual(json.loads(output.read_text()),self.record);prior=output.read_bytes()
+            self.assertTargetRecordEqual(json.loads(output.read_text()),self.record);prior=output.read_bytes()
             self.assertNotEqual(run(collect.TARGET,output).returncode,0);self.assertEqual(output.read_bytes(),prior)
             wrong=p/'wrong';wrong.write_bytes(self.data[:64])
             absent=p/'absent';self.assertNotEqual(run(wrong,absent).returncode,0);self.assertFalse(absent.exists())
