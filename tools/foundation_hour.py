@@ -9,6 +9,7 @@ import hashlib
 import json
 from pathlib import Path
 import struct
+import sys
 from elf_index import sections
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,6 +38,16 @@ def analyze(data):
     """Structural checks, separate from identity so corruption controls reach them."""
     secs = sections(data)
     by_name = {s['name']: s for s in secs}
+    # The dict above keeps only the last section of a given name, so a
+    # duplicate would silently decide which bytes the pinned checks below
+    # run against. Refuse the ambiguity for every name this tool reads,
+    # mirroring read()'s exactly-one-match rule for VA mappings.
+    for name in ('.eh_frame', '.rela.dyn', '.text'):
+        require(sum(s['name'] == name for s in secs) <= 1, 'Duplicate section: ' + name)
+
+    def section(name):
+        require(name in by_name, f'Missing section {name}')
+        return by_name[name]
 
     def read(va, size):
         matches = [s for s in secs if s['type'] != 8 and s['address'] <= va
@@ -48,7 +59,7 @@ def analyze(data):
 
     body = read(START, END - START)
     require(body == BODY, 'Hour instruction window changed')
-    eh = by_name['.eh_frame']
+    eh = section('.eh_frame')
     require(read(eh['address'], len(CIE)) == CIE, 'CIE changed')
     caller_cie = bytes.fromhex('1c00000000000000017a504c5200017810079b29ca7b041b1b0c070890010000')
     require(read(eh['address'] + 0x2dc714, len(caller_cie)) == caller_cie, 'Caller CIE changed')
@@ -60,7 +71,7 @@ def analyze(data):
         pc = eh['address'] + offset + 8 + struct.unpack_from('<i', record, 8)[0]
         extent = struct.unpack_from('<I', record, 12)[0]
         require((pc, pc + extent) == (start, end), 'FDE PC/range changed')
-    relsec = by_name['.rela.dyn']
+    relsec = section('.rela.dyn')
     require(relsec['size'] % 24 == 0, 'Truncated RELA section')
     rels = {}
     raw = read(relsec['address'], relsec['size'])
@@ -94,7 +105,7 @@ def analyze(data):
 
     # This byte-pattern scan is explicitly NOT a complete xref census. LLVM
     # disassembly from the caller FDE start validates the one retained candidate.
-    text = by_name['.text']; code = read(text['address'], text['size'])
+    text = section('.text'); code = read(text['address'], text['size'])
     indirect, direct = [], []
     for opcode in (b'\xff\x15', b'\xff\x25', b'\xe8'):
         pos = 0
@@ -127,6 +138,19 @@ def analyze(data):
                 captured_binary_executed=False, progress_gate_requested=False)
 
 
+def _unique_object(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError(f'Duplicate key in retained check input: {key}')
+        out[key] = value
+    return out
+
+
+def load_check(path):
+    return json.loads(Path(path).read_text(), object_pairs_hook=_unique_object)
+
+
 def inspect(path):
     data = Path(path).read_bytes()
     require(len(data) == 91774280 and hashlib.sha256(data).hexdigest() == SHA256, 'Expected exact node #94 size/SHA-256')
@@ -138,12 +162,16 @@ def main():
     parser.add_argument('--binary', type=Path, default=TARGET)
     parser.add_argument('--check', type=Path, help='Compare with retained JSON; fail on drift')
     args = parser.parse_args()
-    result = inspect(args.binary)
-    if args.check:
-        require(result == json.loads(args.check.read_text()), 'Retained evidence differs')
-        print('Foundation hour evidence reproduces exactly.')
-    else:
-        print(json.dumps(result, indent=2))
+    try:
+        result = inspect(args.binary)
+        if args.check:
+            require(result == load_check(args.check), 'Retained evidence differs')
+            print('Foundation hour evidence reproduces exactly.')
+        else:
+            print(json.dumps(result, indent=2))
+    except (ValueError, OSError, struct.error) as error:
+        print(f'foundation_hour: {error}', file=sys.stderr)
+        raise SystemExit(1)
 
 
 if __name__ == '__main__':
