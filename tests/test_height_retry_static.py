@@ -80,6 +80,19 @@ class Results(unittest.TestCase):
         self.assertEqual(c['[rbx+0x3c30]'], ['0x2268c65', '0x2269c65', '0x226a79d', '0x226a897'])
         self.assertEqual(c['[rbx+0x3bd0]'], ['0x2268c8d', '0x2269c43'])
 
+    def test_all_record_sites(self):
+        sites = self.result['sites']
+        self.assertEqual(sorted(sites), sorted(['0x22c54a0', '0x438ed70', '0x47b4950', '0x2039060', '0x4387f40',
+                                                '0x439fa90', '0x4b399a0', '0x22689f0']))
+        self.assertEqual(sites['0x2039060']['census']['count_slot'],
+                         ['0x20391a8', '0x20392bc', '0x20399cc', '0x2039bd6', '0x2039bfb'])
+        self.assertEqual(sites['0x439fa90']['census']['count_slot'], ['0x439fb56', '0x439fb77'])
+        self.assertEqual({k: len(v['pointer_loads']) for k, v in sites.items()},
+                         {'0x22c54a0': 3, '0x438ed70': 5, '0x47b4950': 5, '0x2039060': 3, '0x4387f40': 3,
+                          '0x439fa90': 3, '0x4b399a0': 3, '0x22689f0': 3})
+        self.assertIsNone(sites['0x22c54a0']['census']['pointer_slot'])
+        self.assertEqual(sites['0x22689f0']['pointer_loads'], ['0x2269c63', '0x226a79b', '0x226a895'])
+
     def test_flow(self):
         fl = self.result['flow']
         self.assertEqual((fl['bound_reached_to_exhausted'], fl['failure_to_sleep'], fl['first_attempt']),
@@ -139,6 +152,12 @@ class Corruptions(unittest.TestCase):
 
     def test_sleep_skip_branch(self):
         self.refuses(patched((0x2269bde + 1, b'\x41')), 'sleep at 0x2269bcc: bytes changed')
+
+    def test_rpc_connect_bound(self):
+        self.refuses(patched((0x2039321 + 3, struct.pack('<i', 10))), '0x2039060 bound at 0x2039321: bytes changed')
+
+    def test_rpc_connect_pointer_read_planted(self):
+        self.refuses(patched((0x2039060 + 0x40, bytes.fromhex('488b83a8010000'))), r'0x2039060 \[rbx\+0x1a8\] operands are')
 
 
 if __name__ == '__main__':

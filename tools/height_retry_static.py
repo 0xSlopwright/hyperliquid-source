@@ -84,6 +84,84 @@ CENSUS = {
     0x3c58: [0x2269c5e, 0x226a7a8], 0x3c60: [0x2268c29, 0x2268d11],
 }
 
+# Every FDE holding a `mov [rbx+d],10; movabs rax,2.0` retry record (the 8-site census of PR #211).
+# bound: `mov rax,-1` .. `jb`; count: the 10 store; pointer_loads: each `mov reg,[rbx+pointer_slot]`
+# up to the instruction that overwrites reg or leaves the block.  census*: ModRM VAs of every
+# [rbx+disp32] operand on the slot (None: the slot is a disp8 and is not scanned).
+SITES = {
+    0x22c54a0: dict(
+        bound=(0x22c5620, '48c7c0ffffffff66c783a0000000000148894b40488943484883f8014883d0004c89735048c74328000000004889433031c94839c10f82df040000'),
+        count=(0x22c55c2, '48c783880100000a000000'),
+        pointer_slot=0x40, bound_slot=0x30, count_slot=0x188,
+        pointer_loads=[(0x22c5b46, '488b4340488b00'), (0x22c5d26, '488b43404883c008'), (0x22c5dea, '488b4340f20f104020f20f1183c80000004c8dbb60010000c6836001000000e9adfcffff')],
+        censusP=None,
+        censusB=None,
+        censusC=[0x22c55c4],
+    ),
+    0x438ed70: dict(
+        bound=(0x438f328, '48c7c0ffffffff66c783d8020000000148898b78020000488983800200004883f8014883d0004889ab8802000048c78360020000000000004889836802000031c94839c10f82d31b0000'),
+        count=(0x438f2c1, '48c783c00300000a000000'),
+        pointer_slot=0x278, bound_slot=0x268, count_slot=0x3c0,
+        pointer_loads=[(0x438ff3d, '488b8378020000488b8b980200000fb693a0020000488b7010488b8690000000'), (0x4390924, '488b8b78020000488b8380020000e952f3ffff'), (0x4390f57, '488b8378020000488b00'), (0x4391163, '488b83780200004883c008'), (0x4391260, '488b8378020000f20f104020f20f118300030000c6839803000000488dbb00030000488db424e0010000e8914bfaff')],
+        censusP=[0x438f33a, 0x438fb18, 0x438fc76, 0x438ff3f, 0x4390926, 0x4390f59, 0x4391165, 0x4391262],
+        censusB=[0x438f362, 0x438f5ed, 0x438fb06, 0x438fc49, 0x4390f37],
+        censusC=[0x438f2c3],
+    ),
+    0x47b4950: dict(
+        bound=(0x47b4bdf, '48c7c0ffffffff66c783f8020000000148898b98020000488983a00200004883f8014883d0004c89bba802000048c78380020000000000004889838802000031c94839c10f82b41b0000'),
+        count=(0x47b4b79, '48c783e00300000a000000'),
+        pointer_slot=0x298, bound_slot=0x288, count_slot=0x3e0,
+        pointer_loads=[(0x47b57b0, '488b8398020000488b8bb80200000fb693c0020000488b7010488b8690000000'), (0x47b619a, '488b8b98020000488b83a0020000e956f3ffff'), (0x47b67ef, '488b8398020000488b00'), (0x47b69fb, '488b83980200004883c008'), (0x47b6af8, '488b8398020000f20f104020f20f118320030000c683b803000000488dbb20030000488bb42498000000e8a9bbf6ff')],
+        censusP=[0x47b4bf1, 0x47b5394, 0x47b54f0, 0x47b57b2, 0x47b619c, 0x47b67f1, 0x47b69fd, 0x47b6afa],
+        censusB=[0x47b4c19, 0x47b4ea4, 0x47b5382, 0x47b54c4, 0x47b67cf],
+        censusC=[0x47b4b7b],
+    ),
+    0x2039060: dict(
+        bound=(0x2039321, '48c7c0ffffffff66c78378020000000148898ba8010000488983b00100004883f8014883d0004c89abb801000048c78390010000000000004889839801000031c94839c10f821b030000'),
+        count=(0x20392ba, '48c783600100000a000000'),
+        pointer_slot=0x1a8, bound_slot=0x198, count_slot=0x160,
+        pointer_loads=[(0x2039698, '488b83a8010000488b00'), (0x2039739, '488b83a80100004883c008'), (0x2039815, '488b83a8010000f30f7e4020660fd683a0020000c6833803000000488dbba00200004c89e6e8e124f5ff')],
+        censusP=[0x2039333, 0x203969a, 0x203973b, 0x2039817, 0x2039c1c],
+        censusB=[0x203935b, 0x2039678],
+        censusC=[0x20391a8, 0x20392bc, 0x20399cc, 0x2039bd6, 0x2039bfb],
+    ),
+    0x4387f40: dict(
+        bound=(0x4388201, '48c7c0ffffffff66c78378020000000148898ba8010000488983b00100004883f8014883d0004c89abb801000048c78390010000000000004889839801000031c94839c10f821b030000'),
+        count=(0x438819a, '48c783600100000a000000'),
+        pointer_slot=0x1a8, bound_slot=0x198, count_slot=0x160,
+        pointer_loads=[(0x4388578, '488b83a8010000488b00'), (0x4388619, '488b83a80100004883c008'), (0x43886f5, '488b83a8010000f30f7e4020660fd683a0020000c6833803000000488dbba00200004c89e6e801d7faff')],
+        censusP=[0x4388213, 0x438857a, 0x438861b, 0x43886f7, 0x4388afc],
+        censusB=[0x438823b, 0x4388558],
+        censusC=[0x4388088, 0x438819c, 0x43888ac, 0x4388ab6, 0x4388adb],
+    ),
+    0x439fa90: dict(
+        bound=(0x439fbf5, '48c7c0ffffffff66c78390010000000148898bc0000000488983c80000004883f8014883d0004c89b3d000000048c783a800000000000000488983b000000031c94839c10f8263020000'),
+        count=(0x439fb54, '48c783900000000a000000'),
+        pointer_slot=0xc0, bound_slot=0xb0, count_slot=0x90,
+        pointer_loads=[(0x439feb4, '488b83c0000000488b00'), (0x439ff50, '488b83c00000004883c008'), (0x43a0023, '488b83c0000000f20f104020f20f1183b8010000c6835002000000488dbbb80100004c89e6e8d35df9ff')],
+        censusP=[0x439fc07, 0x439feb6, 0x439ff52, 0x43a0025],
+        censusB=[0x439fc2f, 0x439fe94],
+        censusC=[0x439fb56, 0x439fb77],
+    ),
+    0x4b399a0: dict(
+        bound=(0x4b39cf0, '48c7c0ffffffff66c78350030000000148898b80020000488983880200004883f8014883d00048b9000000000000008048898b9002000048c78368020000000000004889837002000031c94839c10f8228070000'),
+        count=(0x4b39c79, '48c783500200000a000000'),
+        pointer_slot=0x280, bound_slot=0x270, count_slot=0x250,
+        pointer_loads=[(0x4b3a482, '488b8380020000488b00'), (0x4b3aad8, '488b83800200004883c008'), (0x4b3abe3, '488b8380020000f20f104020f20f1183780300004c8db310040000c6831004000000e9e0f7ffff')],
+        censusP=[0x4b39d02, 0x4b3a484, 0x4b3aada, 0x4b3abe5],
+        censusB=[0x4b39d34, 0x4b3a45e],
+        censusC=[0x4b39c7b, 0x4b39c9c],
+    ),
+    0x22689f0: dict(
+        bound=(0x2268c53, '48c7c0ffffffff66c783683c0000000148898b303c0000488983383c00004883f8014883d0004c89a3403c000048c783c83b000000000000488983d03b000031c94839c10f82b40f0000'),
+        count=(0x2268bb4, '48c783b03b00000a000000'),
+        pointer_slot=0x3c30, bound_slot=0x3bd0, count_slot=0x3bb0,
+        pointer_loads=[(0x2269c63, '488b83303c0000488b00'), (0x226a79b, '488b83303c00004883c008'), (0x226a895, '488b83303c0000f20f104020f20f1183d83c00004c8db3703d0000c683703d000000e910f3ffff')],
+        censusP=[0x2268c65, 0x2269c65, 0x226a79d, 0x226a897],
+        censusB=[0x2268c8d, 0x2269c43],
+        censusC=[0x2268bb6],
+    ),
+}
 
 class EvidenceError(RuntimeError):
     pass
@@ -268,6 +346,46 @@ def check_flow(img):
     return out
 
 
+def modrm_census(img, fde, disp):
+    start, end = img.fde(fde)
+    code = img.read(start, end - start)
+    pat = struct.pack('<I', disp)
+    return [start + i for i in range(len(code) - 4) if code[i] & 0xc7 == 0x83 and code[i + 1:i + 5] == pat]
+
+
+def check_sites(img):
+    out = {}
+    for fde, site in SITES.items():
+        start, end = img.fde(fde)
+        windows_ = [('bound', *site['bound']), ('count', *site['count'])]
+        windows_ += [('pointer_load', va, hx) for va, hx in site['pointer_loads']]
+        for kind, va, hx in windows_:
+            raw = bytes.fromhex(hx)
+            require(start <= va and va + len(raw) <= end, f'{fde:#x} {kind} window {va:#x} outside FDE')
+            require(img.read(va, len(raw)) == raw, f'{fde:#x} {kind} at {va:#x}: bytes changed')
+        bound = bytes.fromhex(site['bound'][1])
+        require(bound.startswith(bytes.fromhex('48c7c0ffffffff')) and bytes.fromhex('4883f8014883d000') in bound
+                and bound[-6:-4] == b'\x0f\x82', f'{fde:#x} bound is not max(-1, 1)')
+        count = bytes.fromhex(site['count'][1])
+        require(count[-4:] == struct.pack('<i', 10), f'{fde:#x} count store is not 10')
+        for va, hx in site['pointer_loads']:
+            raw = bytes.fromhex(hx)
+            hits = [i for i in range(len(raw) - 1) if raw[i] & 0xc7 == 0x40 and raw[i + 1] == 0x18]
+            require(not hits, f'{fde:#x} pointer load at {va:#x} has a [reg+0x18] operand')
+        census = {}
+        for key, slot in (('censusP', 'pointer_slot'), ('censusB', 'bound_slot'), ('censusC', 'count_slot')):
+            if site[key] is None:
+                census[slot] = None
+                continue
+            got = modrm_census(img, fde, site[slot])
+            require(got == site[key], f'{fde:#x} [rbx+{site[slot]:#x}] operands are {[hex(v) for v in got]}')
+            census[slot] = [hex(v) for v in got]
+        out[hex(fde)] = dict(bound_window=hex(site['bound'][0]), count_store=hex(site['count'][0]),
+                             slots={k: hex(site[k]) for k in ('pointer_slot', 'bound_slot', 'count_slot')},
+                             pointer_loads=[hex(va) for va, _ in site['pointer_loads']], census=census)
+    return out
+
+
 def max_one(x):
     """`cmp rax,1; adc rax,0` on u64: x if x >= 1 else 1."""
     return x + (1 if x < 1 else 0)
@@ -286,7 +404,7 @@ def analyse(data):
     img = Image(data)
     return dict(target=TARGET, windows={k: hex(v) for k, v in windows(img).items()},
                 record=check_record(img), bound=check_bound(img), logs=check_logs(img),
-                flow=check_flow(img), census=census(img),
+                flow=check_flow(img), census=census(img), sites=check_sites(img),
                 sleep=dict(source='[[rbx+0x3c30]+0x20] = record +0x20', copied_to=['[rbx+0x3cd8]', '[rbx+0x3ce0]'],
                            zero_skips_sleep=True))
 

@@ -18,9 +18,10 @@ the `n_tries=` field of its failure log print? Where does the can1357 lead
   unresolved where listed. Partial `node-runtime` research; no gate change.
 - Scope: seven fixed windows in `0x22689f0`, the whole formatter FDE
   `0x1570900`, and a census of fifteen `[rbx+disp32]` retry-state fields over
-  the whole `0x22689f0` FDE. Excluded: the body of each attempt (the peer
-  height queries), the sleep future `0x2237090`, other `AsyncSleepRetry`
-  instances, and release #115.
+  the whole `0x22689f0` FDE. It also covers the bound, the count store and
+  every record-pointer load in all eight FDEs that build a
+  `{descriptor, 10, 2.0}` record (the census of open PR #211). Excluded: the
+  body of each attempt, the sleep futures, and release #115.
 
 ## Reproduce
 
@@ -36,10 +37,11 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 8
-windows (165 instructions), one per checked byte window. All 12 `records.json`
-VAs that fall inside a window are instruction starts there. The `census`
-entries are ModRM-byte addresses, not instruction starts.
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 52
+windows (371 instructions), one per checked byte window (the `0x22689f0`
+pointer loads appear twice). All 56 `records.json` VAs that fall inside a
+window are instruction starts there. The `census` entries are ModRM-byte
+addresses, not instruction starts.
 
 Format templates are decoded as rustc 1.94 packs them: a byte below 0x80 is a
 literal length, and `0xc0` is a placeholder followed by the length of the next
@@ -133,6 +135,50 @@ here. The peer list behind `+0x0` is the one the peer height loop iterates
 (see the open local-abci packet,
 [#430](https://github.com/lalalune/hyperliquid-source/pull/430)).
 
+### All eight `{descriptor, 10, 2.0}` records (observation)
+
+PR #211's byte census found exactly eight `mov [rbx+d],10; movabs rax,2.0`
+sites. The table names each FDE's descriptor. In every one of those FDEs:
+
+1. **Bound:** the retry init loads `rax = -1` and computes
+   `cmp rax,1; adc rax,0`, then stores the result as the bound and enters the
+   first attempt with `rcx = 0 < bound` (`jb`). The window from `mov rax,-1`
+   to that `jb` is pinned per site.
+2. **Pointer loads:** each load of the record-pointer slot is pinned up to the
+   instruction that overwrites the register or leaves the block. None of these
+   spans has a `[reg+0x18]` operand. The uses are `+0x0`, `+0x8` (by `add`)
+   and `+0x20` at every site.
+3. **Extra loads at two sites:** in `0x438ed70` and `0x47b4950`, two further
+   loads read `+0x10` into a `lock cmpxchg` loop, or jump to a block that
+   stores the slot elsewhere.
+
+| FDE | Descriptor | Count store | Bound window | Pointer slot |
+| --- | --- | --- | --- | --- |
+| `0x22c54a0` | `NodePort::listen` | `0x22c55c2` | `0x22c5620` | `[rbx+0x40]` (disp8, not censused) |
+| `0x438ed70` | `NodePort::listen` | `0x438f2c1` | `0x438f328` | `[rbx+0x278]` |
+| `0x47b4950` | `NodePort::listen` | `0x47b4b79` | `0x47b4bdf` | `[rbx+0x298]` |
+| `0x2039060` | `rpc connect …` | `0x20392ba` | `0x2039321` | `[rbx+0x1a8]` |
+| `0x4387f40` | `rpc connect …` | `0x438819a` | `0x4388201` | `[rbx+0x1a8]` |
+| `0x439fa90` | `tcp_stream_with_retry …` | `0x439fb54` | `0x439fbf5` | `[rbx+0xc0]` |
+| `0x4b399a0` | `tcp_stream_with_retry …` | `0x4b39c79` | `0x4b39cf0` | `[rbx+0x280]` |
+| `0x22689f0` | `gossip rpc height` | `0x2268bb4` | `0x2268c53` | `[rbx+0x3c30]` |
+
+Censuses of the pointer, bound and count slots (disp32 slots only) are pinned
+in `records.json` `sites`:
+
+- **Count slot:** has its one store at five sites. At the two `rpc connect`
+  sites `[rbx+0x160]` also takes a 60.0, a register store and two LEAs. At
+  the two `tcp_stream_with_retry` sites the 10 is overwritten with -1 when
+  `bpl` is 0 (`0x439fb75`, `0x4b39c9a`). No count-slot operand is a load.
+- **NodePort extras:** the NodePort FDEs `0x438ed70` and `0x47b4950` also
+  store to the pointer and bound slots in another state (for example
+  `0x438fb04`, `0x438fc47`). Inference: that is storage reuse by a later
+  future state. This is not resolved here.
+
+Inference: every `{descriptor, 10, 2.0}` retry in node #94 is bounded only by
+`u64::MAX` attempts and sleeps its record's 2.0 s between them. The 10 (or
+the -1 written over it) is not consulted by any of these loops.
+
 ## Comparison with the lead
 
 - **Bound:** `async_sleep_retry` uses `max_tries = policy.max_tries.max(1)`
@@ -146,13 +192,18 @@ here. The peer list behind `+0x0` is the one the peer height loop iterates
   only the zero-delay skip, which is moot with a bound of `u64::MAX`.
 - **Delay:** the lead's delay comes from a caller closure. Here it is the
   record's 2.0 every time, with no growth.
+- **Other instances:** `AsyncSleepRetryPolicy::rpc_connect()` is
+  `("rpc connect", 10, 2 s)`, and `reconnecting_tcp_client.rs` says
+  `tcp_stream_with_retry` retries "ten times with a two-second sleep". In the
+  binary both (`0x2039060`/`0x4387f40` and `0x439fa90`/`0x4b399a0`) have the
+  same `max(-1, 1)` bound, as do the three `NodePort::listen` instances.
 - **Exhaustion text:** the lead's `Display` is
   `async_sleep_retry retries exhausted: {} [n_retries: {}]`. The binary's
   template has ` @@ [n_retries: `.
 
 ## Controls
 
-`tests/test_height_retry_static.py` (18 tests) regenerates `records.json`.
+`tests/test_height_retry_static.py` (21 tests) regenerates `records.json`.
 It checks the `max(.., 1)` and attempt-index models. It refuses each of
 these corruptions:
 
@@ -164,14 +215,18 @@ these corruptions:
 - The retry or exhaustion template changed.
 - The `n_tries` formatter's RELATIVE addend redirected.
 - The zero-sleep branch changed.
+- The `rpc connect` site's raw bound changed to 10.
+- An extra `[rbx+0x1a8]` read planted in `0x2039060`.
 
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
 producer does not use either.
 
 ## Unresolved
 
-- Why the record carries 10 if this instance ignores it. Another
-  `AsyncSleepRetry` instance may consume it.
+- Why the records carry 10 (or -1 when `bpl` is 0) if no loop consumes it.
+  A callee reaching the record through another path is not excluded.
+- The pointer and bound slots of `0x22c54a0` (disp8, not censused) and the
+  extra slot writes in the two other NodePort FDEs.
 - What `0x2237090` and the formatter `0x26aaba0` do (named by shape only).
 - Whether a callee reads the retry state through `rbx`-relative pointers
   passed elsewhere in the future.

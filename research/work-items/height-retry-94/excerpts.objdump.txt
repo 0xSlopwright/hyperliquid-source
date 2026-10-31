@@ -223,3 +223,332 @@
  157094d:	41 5e                	pop    r14
  157094f:	5d                   	pop    rbp
  1570950:	c3                   	ret
+
+## site 0x22c54a0 (NodePort::listen): count store [0x22c55c2, 0x22c55cd)
+ 22c55c2:	48 c7 83 88 01 00 00 	mov    QWORD PTR [rbx+0x188],0xa
+ 22c55c9:	0a 00 00 00
+
+## site 0x22c54a0 (NodePort::listen): bound max(-1, 1) [0x22c5620, 0x22c565b)
+ 22c5620:	48 c7 c0 ff ff ff ff 	mov    rax,0xffffffffffffffff
+ 22c5627:	66 c7 83 a0 00 00 00 	mov    WORD PTR [rbx+0xa0],0x100
+ 22c562e:	00 01
+ 22c5630:	48 89 4b 40          	mov    QWORD PTR [rbx+0x40],rcx
+ 22c5634:	48 89 43 48          	mov    QWORD PTR [rbx+0x48],rax
+ 22c5638:	48 83 f8 01          	cmp    rax,0x1
+ 22c563c:	48 83 d0 00          	adc    rax,0x0
+ 22c5640:	4c 89 73 50          	mov    QWORD PTR [rbx+0x50],r14
+ 22c5644:	48 c7 43 28 00 00 00 	mov    QWORD PTR [rbx+0x28],0x0
+ 22c564b:	00
+ 22c564c:	48 89 43 30          	mov    QWORD PTR [rbx+0x30],rax
+ 22c5650:	31 c9                	xor    ecx,ecx
+ 22c5652:	48 39 c1             	cmp    rcx,rax
+ 22c5655:	0f 82 df 04 00 00    	jb     22c5b3a <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2ce22c6>
+
+## site 0x22c54a0 (NodePort::listen): record pointer load [0x22c5b46, 0x22c5b4d)
+ 22c5b46:	48 8b 43 40          	mov    rax,QWORD PTR [rbx+0x40]
+ 22c5b4a:	48 8b 00             	mov    rax,QWORD PTR [rax]
+
+## site 0x22c54a0 (NodePort::listen): record pointer load [0x22c5d26, 0x22c5d2e)
+ 22c5d26:	48 8b 43 40          	mov    rax,QWORD PTR [rbx+0x40]
+ 22c5d2a:	48 83 c0 08          	add    rax,0x8
+
+## site 0x22c54a0 (NodePort::listen): record pointer load [0x22c5dea, 0x22c5e0e)
+ 22c5dea:	48 8b 43 40          	mov    rax,QWORD PTR [rbx+0x40]
+ 22c5dee:	f2 0f 10 40 20       	movsd  xmm0,QWORD PTR [rax+0x20]
+ 22c5df3:	f2 0f 11 83 c8 00 00 	movsd  QWORD PTR [rbx+0xc8],xmm0
+ 22c5dfa:	00
+ 22c5dfb:	4c 8d bb 60 01 00 00 	lea    r15,[rbx+0x160]
+ 22c5e02:	c6 83 60 01 00 00 00 	mov    BYTE PTR [rbx+0x160],0x0
+ 22c5e09:	e9 ad fc ff ff       	jmp    22c5abb <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2ce2345>
+
+## site 0x438ed70 (NodePort::listen): count store [0x438f2c1, 0x438f2cc)
+ 438f2c1:	48 c7 83 c0 03 00 00 	mov    QWORD PTR [rbx+0x3c0],0xa
+ 438f2c8:	0a 00 00 00
+
+## site 0x438ed70 (NodePort::listen): bound max(-1, 1) [0x438f328, 0x438f372)
+ 438f328:	48 c7 c0 ff ff ff ff 	mov    rax,0xffffffffffffffff
+ 438f32f:	66 c7 83 d8 02 00 00 	mov    WORD PTR [rbx+0x2d8],0x100
+ 438f336:	00 01
+ 438f338:	48 89 8b 78 02 00 00 	mov    QWORD PTR [rbx+0x278],rcx
+ 438f33f:	48 89 83 80 02 00 00 	mov    QWORD PTR [rbx+0x280],rax
+ 438f346:	48 83 f8 01          	cmp    rax,0x1
+ 438f34a:	48 83 d0 00          	adc    rax,0x0
+ 438f34e:	48 89 ab 88 02 00 00 	mov    QWORD PTR [rbx+0x288],rbp
+ 438f355:	48 c7 83 60 02 00 00 	mov    QWORD PTR [rbx+0x260],0x0
+ 438f35c:	00 00 00 00
+ 438f360:	48 89 83 68 02 00 00 	mov    QWORD PTR [rbx+0x268],rax
+ 438f367:	31 c9                	xor    ecx,ecx
+ 438f369:	48 39 c1             	cmp    rcx,rax
+ 438f36c:	0f 82 d3 1b 00 00    	jb     4390f45 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc16ebb>
+
+## site 0x438ed70 (NodePort::listen): record pointer load [0x438ff3d, 0x438ff5d)
+ 438ff3d:	48 8b 83 78 02 00 00 	mov    rax,QWORD PTR [rbx+0x278]
+ 438ff44:	48 8b 8b 98 02 00 00 	mov    rcx,QWORD PTR [rbx+0x298]
+ 438ff4b:	0f b6 93 a0 02 00 00 	movzx  edx,BYTE PTR [rbx+0x2a0]
+ 438ff52:	48 8b 70 10          	mov    rsi,QWORD PTR [rax+0x10]
+ 438ff56:	48 8b 86 90 00 00 00 	mov    rax,QWORD PTR [rsi+0x90]
+
+## site 0x438ed70 (NodePort::listen): record pointer load [0x4390924, 0x4390937)
+ 4390924:	48 8b 8b 78 02 00 00 	mov    rcx,QWORD PTR [rbx+0x278]
+ 439092b:	48 8b 83 80 02 00 00 	mov    rax,QWORD PTR [rbx+0x280]
+ 4390932:	e9 52 f3 ff ff       	jmp    438fc89 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc18177>
+
+## site 0x438ed70 (NodePort::listen): record pointer load [0x4390f57, 0x4390f61)
+ 4390f57:	48 8b 83 78 02 00 00 	mov    rax,QWORD PTR [rbx+0x278]
+ 4390f5e:	48 8b 00             	mov    rax,QWORD PTR [rax]
+
+## site 0x438ed70 (NodePort::listen): record pointer load [0x4391163, 0x439116e)
+ 4391163:	48 8b 83 78 02 00 00 	mov    rax,QWORD PTR [rbx+0x278]
+ 439116a:	48 83 c0 08          	add    rax,0x8
+
+## site 0x438ed70 (NodePort::listen): record pointer load [0x4391260, 0x439128f)
+ 4391260:	48 8b 83 78 02 00 00 	mov    rax,QWORD PTR [rbx+0x278]
+ 4391267:	f2 0f 10 40 20       	movsd  xmm0,QWORD PTR [rax+0x20]
+ 439126c:	f2 0f 11 83 00 03 00 	movsd  QWORD PTR [rbx+0x300],xmm0
+ 4391273:	00
+ 4391274:	c6 83 98 03 00 00 00 	mov    BYTE PTR [rbx+0x398],0x0
+ 439127b:	48 8d bb 00 03 00 00 	lea    rdi,[rbx+0x300]
+ 4391282:	48 8d b4 24 e0 01 00 	lea    rsi,[rsp+0x1e0]
+ 4391289:	00
+ 439128a:	e8 91 4b fa ff       	call   4335e20 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc71fe0>
+
+## site 0x47b4950 (NodePort::listen): count store [0x47b4b79, 0x47b4b84)
+ 47b4b79:	48 c7 83 e0 03 00 00 	mov    QWORD PTR [rbx+0x3e0],0xa
+ 47b4b80:	0a 00 00 00
+
+## site 0x47b4950 (NodePort::listen): bound max(-1, 1) [0x47b4bdf, 0x47b4c29)
+ 47b4bdf:	48 c7 c0 ff ff ff ff 	mov    rax,0xffffffffffffffff
+ 47b4be6:	66 c7 83 f8 02 00 00 	mov    WORD PTR [rbx+0x2f8],0x100
+ 47b4bed:	00 01
+ 47b4bef:	48 89 8b 98 02 00 00 	mov    QWORD PTR [rbx+0x298],rcx
+ 47b4bf6:	48 89 83 a0 02 00 00 	mov    QWORD PTR [rbx+0x2a0],rax
+ 47b4bfd:	48 83 f8 01          	cmp    rax,0x1
+ 47b4c01:	48 83 d0 00          	adc    rax,0x0
+ 47b4c05:	4c 89 bb a8 02 00 00 	mov    QWORD PTR [rbx+0x2a8],r15
+ 47b4c0c:	48 c7 83 80 02 00 00 	mov    QWORD PTR [rbx+0x280],0x0
+ 47b4c13:	00 00 00 00
+ 47b4c17:	48 89 83 88 02 00 00 	mov    QWORD PTR [rbx+0x288],rax
+ 47b4c1e:	31 c9                	xor    ecx,ecx
+ 47b4c20:	48 39 c1             	cmp    rcx,rax
+ 47b4c23:	0f 82 b4 1b 00 00    	jb     47b67dd <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x7f1623>
+
+## site 0x47b4950 (NodePort::listen): record pointer load [0x47b57b0, 0x47b57d0)
+ 47b57b0:	48 8b 83 98 02 00 00 	mov    rax,QWORD PTR [rbx+0x298]
+ 47b57b7:	48 8b 8b b8 02 00 00 	mov    rcx,QWORD PTR [rbx+0x2b8]
+ 47b57be:	0f b6 93 c0 02 00 00 	movzx  edx,BYTE PTR [rbx+0x2c0]
+ 47b57c5:	48 8b 70 10          	mov    rsi,QWORD PTR [rax+0x10]
+ 47b57c9:	48 8b 86 90 00 00 00 	mov    rax,QWORD PTR [rsi+0x90]
+
+## site 0x47b4950 (NodePort::listen): record pointer load [0x47b619a, 0x47b61ad)
+ 47b619a:	48 8b 8b 98 02 00 00 	mov    rcx,QWORD PTR [rbx+0x298]
+ 47b61a1:	48 8b 83 a0 02 00 00 	mov    rax,QWORD PTR [rbx+0x2a0]
+ 47b61a8:	e9 56 f3 ff ff       	jmp    47b5503 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x7f28fd>
+
+## site 0x47b4950 (NodePort::listen): record pointer load [0x47b67ef, 0x47b67f9)
+ 47b67ef:	48 8b 83 98 02 00 00 	mov    rax,QWORD PTR [rbx+0x298]
+ 47b67f6:	48 8b 00             	mov    rax,QWORD PTR [rax]
+
+## site 0x47b4950 (NodePort::listen): record pointer load [0x47b69fb, 0x47b6a06)
+ 47b69fb:	48 8b 83 98 02 00 00 	mov    rax,QWORD PTR [rbx+0x298]
+ 47b6a02:	48 83 c0 08          	add    rax,0x8
+
+## site 0x47b4950 (NodePort::listen): record pointer load [0x47b6af8, 0x47b6b27)
+ 47b6af8:	48 8b 83 98 02 00 00 	mov    rax,QWORD PTR [rbx+0x298]
+ 47b6aff:	f2 0f 10 40 20       	movsd  xmm0,QWORD PTR [rax+0x20]
+ 47b6b04:	f2 0f 11 83 20 03 00 	movsd  QWORD PTR [rbx+0x320],xmm0
+ 47b6b0b:	00
+ 47b6b0c:	c6 83 b8 03 00 00 00 	mov    BYTE PTR [rbx+0x3b8],0x0
+ 47b6b13:	48 8d bb 20 03 00 00 	lea    rdi,[rbx+0x320]
+ 47b6b1a:	48 8b b4 24 98 00 00 	mov    rsi,QWORD PTR [rsp+0x98]
+ 47b6b21:	00
+ 47b6b22:	e8 a9 bb f6 ff       	call   47226d0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x885730>
+
+## site 0x2039060 (rpc connect): count store [0x20392ba, 0x20392c5)
+ 20392ba:	48 c7 83 60 01 00 00 	mov    QWORD PTR [rbx+0x160],0xa
+ 20392c1:	0a 00 00 00
+
+## site 0x2039060 (rpc connect): bound max(-1, 1) [0x2039321, 0x203936b)
+ 2039321:	48 c7 c0 ff ff ff ff 	mov    rax,0xffffffffffffffff
+ 2039328:	66 c7 83 78 02 00 00 	mov    WORD PTR [rbx+0x278],0x100
+ 203932f:	00 01
+ 2039331:	48 89 8b a8 01 00 00 	mov    QWORD PTR [rbx+0x1a8],rcx
+ 2039338:	48 89 83 b0 01 00 00 	mov    QWORD PTR [rbx+0x1b0],rax
+ 203933f:	48 83 f8 01          	cmp    rax,0x1
+ 2039343:	48 83 d0 00          	adc    rax,0x0
+ 2039347:	4c 89 ab b8 01 00 00 	mov    QWORD PTR [rbx+0x1b8],r13
+ 203934e:	48 c7 83 90 01 00 00 	mov    QWORD PTR [rbx+0x190],0x0
+ 2039355:	00 00 00 00
+ 2039359:	48 89 83 98 01 00 00 	mov    QWORD PTR [rbx+0x198],rax
+ 2039360:	31 c9                	xor    ecx,ecx
+ 2039362:	48 39 c1             	cmp    rcx,rax
+ 2039365:	0f 82 1b 03 00 00    	jb     2039686 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2f6e77a>
+
+## site 0x2039060 (rpc connect): record pointer load [0x2039698, 0x20396a2)
+ 2039698:	48 8b 83 a8 01 00 00 	mov    rax,QWORD PTR [rbx+0x1a8]
+ 203969f:	48 8b 00             	mov    rax,QWORD PTR [rax]
+
+## site 0x2039060 (rpc connect): record pointer load [0x2039739, 0x2039744)
+ 2039739:	48 8b 83 a8 01 00 00 	mov    rax,QWORD PTR [rbx+0x1a8]
+ 2039740:	48 83 c0 08          	add    rax,0x8
+
+## site 0x2039060 (rpc connect): record pointer load [0x2039815, 0x203983f)
+ 2039815:	48 8b 83 a8 01 00 00 	mov    rax,QWORD PTR [rbx+0x1a8]
+ 203981c:	f3 0f 7e 40 20       	movq   xmm0,QWORD PTR [rax+0x20]
+ 2039821:	66 0f d6 83 a0 02 00 	movq   QWORD PTR [rbx+0x2a0],xmm0
+ 2039828:	00
+ 2039829:	c6 83 38 03 00 00 00 	mov    BYTE PTR [rbx+0x338],0x0
+ 2039830:	48 8d bb a0 02 00 00 	lea    rdi,[rbx+0x2a0]
+ 2039837:	4c 89 e6             	mov    rsi,r12
+ 203983a:	e8 e1 24 f5 ff       	call   1f8bd20 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x301c0e0>
+
+## site 0x4387f40 (rpc connect): count store [0x438819a, 0x43881a5)
+ 438819a:	48 c7 83 60 01 00 00 	mov    QWORD PTR [rbx+0x160],0xa
+ 43881a1:	0a 00 00 00
+
+## site 0x4387f40 (rpc connect): bound max(-1, 1) [0x4388201, 0x438824b)
+ 4388201:	48 c7 c0 ff ff ff ff 	mov    rax,0xffffffffffffffff
+ 4388208:	66 c7 83 78 02 00 00 	mov    WORD PTR [rbx+0x278],0x100
+ 438820f:	00 01
+ 4388211:	48 89 8b a8 01 00 00 	mov    QWORD PTR [rbx+0x1a8],rcx
+ 4388218:	48 89 83 b0 01 00 00 	mov    QWORD PTR [rbx+0x1b0],rax
+ 438821f:	48 83 f8 01          	cmp    rax,0x1
+ 4388223:	48 83 d0 00          	adc    rax,0x0
+ 4388227:	4c 89 ab b8 01 00 00 	mov    QWORD PTR [rbx+0x1b8],r13
+ 438822e:	48 c7 83 90 01 00 00 	mov    QWORD PTR [rbx+0x190],0x0
+ 4388235:	00 00 00 00
+ 4388239:	48 89 83 98 01 00 00 	mov    QWORD PTR [rbx+0x198],rax
+ 4388240:	31 c9                	xor    ecx,ecx
+ 4388242:	48 39 c1             	cmp    rcx,rax
+ 4388245:	0f 82 1b 03 00 00    	jb     4388566 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc1f89a>
+
+## site 0x4387f40 (rpc connect): record pointer load [0x4388578, 0x4388582)
+ 4388578:	48 8b 83 a8 01 00 00 	mov    rax,QWORD PTR [rbx+0x1a8]
+ 438857f:	48 8b 00             	mov    rax,QWORD PTR [rax]
+
+## site 0x4387f40 (rpc connect): record pointer load [0x4388619, 0x4388624)
+ 4388619:	48 8b 83 a8 01 00 00 	mov    rax,QWORD PTR [rbx+0x1a8]
+ 4388620:	48 83 c0 08          	add    rax,0x8
+
+## site 0x4387f40 (rpc connect): record pointer load [0x43886f5, 0x438871f)
+ 43886f5:	48 8b 83 a8 01 00 00 	mov    rax,QWORD PTR [rbx+0x1a8]
+ 43886fc:	f3 0f 7e 40 20       	movq   xmm0,QWORD PTR [rax+0x20]
+ 4388701:	66 0f d6 83 a0 02 00 	movq   QWORD PTR [rbx+0x2a0],xmm0
+ 4388708:	00
+ 4388709:	c6 83 38 03 00 00 00 	mov    BYTE PTR [rbx+0x338],0x0
+ 4388710:	48 8d bb a0 02 00 00 	lea    rdi,[rbx+0x2a0]
+ 4388717:	4c 89 e6             	mov    rsi,r12
+ 438871a:	e8 01 d7 fa ff       	call   4335e20 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc71fe0>
+
+## site 0x439fa90 (tcp_stream_with_retry): count store [0x439fb54, 0x439fb5f)
+ 439fb54:	48 c7 83 90 00 00 00 	mov    QWORD PTR [rbx+0x90],0xa
+ 439fb5b:	0a 00 00 00
+
+## site 0x439fa90 (tcp_stream_with_retry): bound max(-1, 1) [0x439fbf5, 0x439fc3f)
+ 439fbf5:	48 c7 c0 ff ff ff ff 	mov    rax,0xffffffffffffffff
+ 439fbfc:	66 c7 83 90 01 00 00 	mov    WORD PTR [rbx+0x190],0x100
+ 439fc03:	00 01
+ 439fc05:	48 89 8b c0 00 00 00 	mov    QWORD PTR [rbx+0xc0],rcx
+ 439fc0c:	48 89 83 c8 00 00 00 	mov    QWORD PTR [rbx+0xc8],rax
+ 439fc13:	48 83 f8 01          	cmp    rax,0x1
+ 439fc17:	48 83 d0 00          	adc    rax,0x0
+ 439fc1b:	4c 89 b3 d0 00 00 00 	mov    QWORD PTR [rbx+0xd0],r14
+ 439fc22:	48 c7 83 a8 00 00 00 	mov    QWORD PTR [rbx+0xa8],0x0
+ 439fc29:	00 00 00 00
+ 439fc2d:	48 89 83 b0 00 00 00 	mov    QWORD PTR [rbx+0xb0],rax
+ 439fc34:	31 c9                	xor    ecx,ecx
+ 439fc36:	48 39 c1             	cmp    rcx,rax
+ 439fc39:	0f 82 63 02 00 00    	jb     439fea2 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc07f5e>
+
+## site 0x439fa90 (tcp_stream_with_retry): record pointer load [0x439feb4, 0x439febe)
+ 439feb4:	48 8b 83 c0 00 00 00 	mov    rax,QWORD PTR [rbx+0xc0]
+ 439febb:	48 8b 00             	mov    rax,QWORD PTR [rax]
+
+## site 0x439fa90 (tcp_stream_with_retry): record pointer load [0x439ff50, 0x439ff5b)
+ 439ff50:	48 8b 83 c0 00 00 00 	mov    rax,QWORD PTR [rbx+0xc0]
+ 439ff57:	48 83 c0 08          	add    rax,0x8
+
+## site 0x439fa90 (tcp_stream_with_retry): record pointer load [0x43a0023, 0x43a004d)
+ 43a0023:	48 8b 83 c0 00 00 00 	mov    rax,QWORD PTR [rbx+0xc0]
+ 43a002a:	f2 0f 10 40 20       	movsd  xmm0,QWORD PTR [rax+0x20]
+ 43a002f:	f2 0f 11 83 b8 01 00 	movsd  QWORD PTR [rbx+0x1b8],xmm0
+ 43a0036:	00
+ 43a0037:	c6 83 50 02 00 00 00 	mov    BYTE PTR [rbx+0x250],0x0
+ 43a003e:	48 8d bb b8 01 00 00 	lea    rdi,[rbx+0x1b8]
+ 43a0045:	4c 89 e6             	mov    rsi,r12
+ 43a0048:	e8 d3 5d f9 ff       	call   4335e20 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0xc71fe0>
+
+## site 0x4b399a0 (tcp_stream_with_retry): count store [0x4b39c79, 0x4b39c84)
+ 4b39c79:	48 c7 83 50 02 00 00 	mov    QWORD PTR [rbx+0x250],0xa
+ 4b39c80:	0a 00 00 00
+
+## site 0x4b399a0 (tcp_stream_with_retry): bound max(-1, 1) [0x4b39cf0, 0x4b39d44)
+ 4b39cf0:	48 c7 c0 ff ff ff ff 	mov    rax,0xffffffffffffffff
+ 4b39cf7:	66 c7 83 50 03 00 00 	mov    WORD PTR [rbx+0x350],0x100
+ 4b39cfe:	00 01
+ 4b39d00:	48 89 8b 80 02 00 00 	mov    QWORD PTR [rbx+0x280],rcx
+ 4b39d07:	48 89 83 88 02 00 00 	mov    QWORD PTR [rbx+0x288],rax
+ 4b39d0e:	48 83 f8 01          	cmp    rax,0x1
+ 4b39d12:	48 83 d0 00          	adc    rax,0x0
+ 4b39d16:	48 b9 00 00 00 00 00 	movabs rcx,0x8000000000000000
+ 4b39d1d:	00 00 80
+ 4b39d20:	48 89 8b 90 02 00 00 	mov    QWORD PTR [rbx+0x290],rcx
+ 4b39d27:	48 c7 83 68 02 00 00 	mov    QWORD PTR [rbx+0x268],0x0
+ 4b39d2e:	00 00 00 00
+ 4b39d32:	48 89 83 70 02 00 00 	mov    QWORD PTR [rbx+0x270],rax
+ 4b39d39:	31 c9                	xor    ecx,ecx
+ 4b39d3b:	48 39 c1             	cmp    rcx,rax
+ 4b39d3e:	0f 82 28 07 00 00    	jb     4b3a46c <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x46d994>
+
+## site 0x4b399a0 (tcp_stream_with_retry): record pointer load [0x4b3a482, 0x4b3a48c)
+ 4b3a482:	48 8b 83 80 02 00 00 	mov    rax,QWORD PTR [rbx+0x280]
+ 4b3a489:	48 8b 00             	mov    rax,QWORD PTR [rax]
+
+## site 0x4b399a0 (tcp_stream_with_retry): record pointer load [0x4b3aad8, 0x4b3aae3)
+ 4b3aad8:	48 8b 83 80 02 00 00 	mov    rax,QWORD PTR [rbx+0x280]
+ 4b3aadf:	48 83 c0 08          	add    rax,0x8
+
+## site 0x4b399a0 (tcp_stream_with_retry): record pointer load [0x4b3abe3, 0x4b3ac0a)
+ 4b3abe3:	48 8b 83 80 02 00 00 	mov    rax,QWORD PTR [rbx+0x280]
+ 4b3abea:	f2 0f 10 40 20       	movsd  xmm0,QWORD PTR [rax+0x20]
+ 4b3abef:	f2 0f 11 83 78 03 00 	movsd  QWORD PTR [rbx+0x378],xmm0
+ 4b3abf6:	00
+ 4b3abf7:	4c 8d b3 10 04 00 00 	lea    r14,[rbx+0x410]
+ 4b3abfe:	c6 83 10 04 00 00 00 	mov    BYTE PTR [rbx+0x410],0x0
+ 4b3ac05:	e9 e0 f7 ff ff       	jmp    4b3a3ea <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x46da16>
+
+## site 0x22689f0 (gossip rpc height): count store [0x2268bb4, 0x2268bbf)
+ 2268bb4:	48 c7 83 b0 3b 00 00 	mov    QWORD PTR [rbx+0x3bb0],0xa
+ 2268bbb:	0a 00 00 00
+
+## site 0x22689f0 (gossip rpc height): bound max(-1, 1) [0x2268c53, 0x2268c9d)
+ 2268c53:	48 c7 c0 ff ff ff ff 	mov    rax,0xffffffffffffffff
+ 2268c5a:	66 c7 83 68 3c 00 00 	mov    WORD PTR [rbx+0x3c68],0x100
+ 2268c61:	00 01
+ 2268c63:	48 89 8b 30 3c 00 00 	mov    QWORD PTR [rbx+0x3c30],rcx
+ 2268c6a:	48 89 83 38 3c 00 00 	mov    QWORD PTR [rbx+0x3c38],rax
+ 2268c71:	48 83 f8 01          	cmp    rax,0x1
+ 2268c75:	48 83 d0 00          	adc    rax,0x0
+ 2268c79:	4c 89 a3 40 3c 00 00 	mov    QWORD PTR [rbx+0x3c40],r12
+ 2268c80:	48 c7 83 c8 3b 00 00 	mov    QWORD PTR [rbx+0x3bc8],0x0
+ 2268c87:	00 00 00 00
+ 2268c8b:	48 89 83 d0 3b 00 00 	mov    QWORD PTR [rbx+0x3bd0],rax
+ 2268c92:	31 c9                	xor    ecx,ecx
+ 2268c94:	48 39 c1             	cmp    rcx,rax
+ 2268c97:	0f 82 b4 0f 00 00    	jb     2269c51 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d3e1af>
+
+## site 0x22689f0 (gossip rpc height): record pointer load [0x2269c63, 0x2269c6d)
+ 2269c63:	48 8b 83 30 3c 00 00 	mov    rax,QWORD PTR [rbx+0x3c30]
+ 2269c6a:	48 8b 00             	mov    rax,QWORD PTR [rax]
+
+## site 0x22689f0 (gossip rpc height): record pointer load [0x226a79b, 0x226a7a6)
+ 226a79b:	48 8b 83 30 3c 00 00 	mov    rax,QWORD PTR [rbx+0x3c30]
+ 226a7a2:	48 83 c0 08          	add    rax,0x8
+
+## site 0x22689f0 (gossip rpc height): record pointer load [0x226a895, 0x226a8bc)
+ 226a895:	48 8b 83 30 3c 00 00 	mov    rax,QWORD PTR [rbx+0x3c30]
+ 226a89c:	f2 0f 10 40 20       	movsd  xmm0,QWORD PTR [rax+0x20]
+ 226a8a1:	f2 0f 11 83 d8 3c 00 	movsd  QWORD PTR [rbx+0x3cd8],xmm0
+ 226a8a8:	00
+ 226a8a9:	4c 8d b3 70 3d 00 00 	lea    r14,[rbx+0x3d70]
+ 226a8b0:	c6 83 70 3d 00 00 00 	mov    BYTE PTR [rbx+0x3d70],0x0
+ 226a8b7:	e9 10 f3 ff ff       	jmp    2269bcc <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d3e234>
