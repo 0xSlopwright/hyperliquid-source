@@ -18,6 +18,11 @@ from constants_scan import (ScanError, entries_size, pool_entry, relocations,
                             section, string_table, window, xrefs)
 
 
+import constants_scan
+from constants_scan import (ScanError, artifact, entries_size, pool_entry,
+                            relocations, section, string_table, window, xrefs)
+
+
 def fixture():
     """Minimal ELF64-LE with .text/.rodata/.data.rel.ro/.rela.dyn/.eh_frame*."""
     data = bytearray(0x1000)
@@ -119,6 +124,51 @@ class PoolTests(unittest.TestCase):
         self.data[0x370:0x378] = b'\xc0\x05/cham\x00'
         with self.assertRaises(ScanError):
             pool_entry(self.data, self.rodata, '/cham', require_marker=True)
+
+
+class ArtifactEntryTests(unittest.TestCase):
+    """artifact(): a malformed files entry must fail closed with ScanError,
+    not escape as TypeError/KeyError from the bare f['path']/f['sha256']
+    lookups in the provenance-record generator."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        (self.root / 'artifacts/node/94').mkdir(parents=True)
+        (self.root / 'artifacts/node/94/hl-node').write_bytes(b'x')
+        (self.root / 'provenance').mkdir()
+        self.old_root = constants_scan.ROOT
+        constants_scan.ROOT = self.root
+
+    def tearDown(self):
+        constants_scan.ROOT = self.old_root
+        self.tmp.cleanup()
+
+    def write_manifest(self, files):
+        (self.root / 'provenance/artifacts.json').write_text(
+            json.dumps({'files': files}))
+
+    def test_non_dict_entry_rejected(self):
+        self.write_manifest([None])
+        with self.assertRaises(ScanError):
+            artifact('94')
+
+    def test_entry_missing_path_rejected(self):
+        self.write_manifest([{'sha256': 'abc'}])
+        with self.assertRaises(ScanError):
+            artifact('94')
+
+    def test_matching_entry_missing_sha256_rejected(self):
+        self.write_manifest([{'path': 'artifacts/node/94/hl-node'}])
+        with self.assertRaises(ScanError):
+            artifact('94')
+
+    def test_valid_entry_still_verifies(self):
+        digest = hashlib.sha256(b'x').hexdigest()
+        self.write_manifest([{'path': 'artifacts/node/94/hl-node',
+                              'sha256': digest}])
+        data, expected = artifact('94')
+        self.assertEqual((data, expected), (b'x', digest))
 
 
 class TableTests(unittest.TestCase):

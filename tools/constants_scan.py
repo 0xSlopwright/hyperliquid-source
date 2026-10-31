@@ -53,6 +53,9 @@ def artifact(release):
         record = load_manifest(ROOT)
     except ValueError as exc:
         raise ScanError(f'invalid provenance record: {exc}') from exc
+    for entry in record['files']:
+        if not isinstance(entry, dict) or 'path' not in entry or 'sha256' not in entry:
+            raise ScanError('invalid provenance record')
     expected = next((f['sha256'] for f in record['files']
                      if f['path'] == f'artifacts/node/{release}/hl-node'), None)
     if expected is None:
