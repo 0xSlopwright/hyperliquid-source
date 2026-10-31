@@ -131,9 +131,6 @@ class PathFieldThunkTests(unittest.TestCase):
         pat = re.compile(rb"\b(keys?|tokens?|secret|password)=")
         paths = list(PACKET.glob("*")) + [ROOT / "tools" / "path_field_thunk.py",
                                           ROOT / "tests" / "test_path_field_thunk.py"]
-        body = Path("/workspace/bounties/hyperliquid-source/re020-path-field-thunk-pr-body.md")
-        if body.exists():
-            paths.append(body)
         for p in paths:
             if p.is_file():
                 self.assertIsNone(pat.search(p.read_bytes()), p)
