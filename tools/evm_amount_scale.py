@@ -163,9 +163,11 @@ class Image:
     def slots(self):
         """GOT contents after load: RELATIVE addends, plus the two libc symbols the helpers use."""
         _, off, size = self.section('.rela.dyn')
-        _, sym_off, _ = self.section('.dynsym')
-        _, str_off, _ = self.section('.dynstr')
-        got = self.section('.got')
+        if off + size > len(self.data) or size % 24:
+            raise EvidenceError('.rela.dyn truncated')
+        _, sym_off, _ = self.sec['.dynsym']
+        _, str_off, _ = self.sec['.dynstr']
+        got = self.sec['.got']
         stubs = {b'memset': MEMSET_STUB, b'memcpy': MEMCPY_STUB}
         out = {}
         for where, info, addend in struct.iter_unpack('<QQq', self.data[off:off + size]):
