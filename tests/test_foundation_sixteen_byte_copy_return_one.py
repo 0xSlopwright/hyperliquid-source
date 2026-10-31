@@ -43,6 +43,13 @@ def write_va(data, va, raw):
 
 
 class TestSixteenByteCopyReturnOne(unittest.TestCase):
+    def test_target_source_displacement_wraps(self):
+        data = TARGET.read_bytes()
+        section = sections_of(data)['.text']
+        off = section['offset'] + START - section['address']
+        self.assertEqual(data[off + 16:off + 21], bytes.fromhex('f30f6f42f0'))
+        self.assertEqual(parse(0x1000, 8), (0x1000, (1 << 64) - 8, 1))
+
     def test_check_reproduces(self):
         result = analyze(bytes(load_bytes()))
         self.assertEqual(result['window'], (START, END))

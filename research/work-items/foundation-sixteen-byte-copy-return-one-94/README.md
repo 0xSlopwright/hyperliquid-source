@@ -106,6 +106,10 @@ Exactly one `R_X86_64_RELATIVE` record in `.rela.dyn` names this window as adden
 - Which source-level function, if any, this window belongs to; the nearest-symbol label is disclaimed above.
 - Whether indirect callers or tail jumps reach this window; the scan covers direct `e8` sites only.
 
+## Review clarification
+
+The source effective address is (q - 0x10) modulo 2^64. Arithmetic helper examples describe addresses only; successful execution additionally requires valid accessible ranges. The 16-byte source load precedes the store, so source/destination overlap uses the already loaded vector.
+
 ## Limits
 
 - No stdlib type, source-level function, field meaning, or caller purpose is claimed anywhere.

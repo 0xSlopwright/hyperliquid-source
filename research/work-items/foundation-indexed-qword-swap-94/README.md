@@ -114,6 +114,10 @@ No relocation record of any type in any `.rela.*` section names this window as a
 - No claim is made about which callers beyond the four direct sites exist (indirect calls and tail jumps are out of scope for the scan).
 - No claim is made about whether the two table bases ever alias or overlap.
 
+## Review clarification
+
+Both source qwords are loaded before either store. The first-loaded qword is stored at the second pointer, then the second-loaded qword at the first pointer. For disjoint or identical qword regions this is a swap; partial overlaps follow that ordered byte-store behavior instead of an abstract simultaneous swap.
+
 ## Limits
 
 - The byte-pattern scan is not a complete xref census, and the absence of a naming relocation does not identify the window's provenance.

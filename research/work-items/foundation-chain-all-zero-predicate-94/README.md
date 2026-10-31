@@ -102,13 +102,17 @@ objdump --dwarf=frames artifacts/node/94/hl-node
 
 ## Distinction from packet #88
 
-Packet #88 (`0x50e69f0`, pointer-mark walk) walks entry chains and *stamps* a mark byte when a node's field equals a mask sentinel: it writes. This window walks one chain and only *reads*: it compares each node's `+0x10` field against zero and returns a byte. A predicate vs a stamping walk, one chain vs entry-selected chains, no store vs a store: the mechanisms differ even though both windows walk chains. No shared primitive is claimed, and no census of chain walks was built.
+Packet #88 (`0x50e69f0`, pointer-mark walk) walks entry chains and *stamps* a mark qword when a node's field equals a mask sentinel: it writes. This window walks one chain and only *reads*: it compares each node's `+0x10` field against zero and returns a byte. A predicate vs a stamping walk, one chain vs entry-selected chains, no store vs a store: the mechanisms differ even though both windows walk chains. No shared primitive is claimed, and no census of chain walks was built.
 
 ## Unknowns
 
 - The struct types, the meaning of the `+0x48` head hop, the `+0x70` flag byte, and the `+0x10` node field, and the caller's purpose.
 - Whether indirect callers or tail jumps reach this window (outside the byte-pattern scan's scope).
 - Whether the result is consumed as a boolean or as one byte of a wider value (all return paths write full edx then move it to eax, so eax is exactly 0 or 1, but consumption is not observed).
+
+## Review clarification
+
+The all-zero result of 1 requires the walk to reach a null link. An all-zero cycle can run indefinitely; the helper list represents a finite sequence ending at null. Encountering a nonzero node field returns 0 immediately. This is a terminating-path predicate, not a proof that arbitrary linked memory terminates.
 
 ## Limits
 

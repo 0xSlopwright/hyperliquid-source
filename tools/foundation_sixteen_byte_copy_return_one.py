@@ -46,7 +46,7 @@ def parse(dest, q):
     the loaded [[rsi+0x10]+8] value. Returns (destination, source, 1): the
     16 bytes at q-0x10 are stored at dest, and the window returns 1.
     """
-    return (dest, q - 0x10, 1)
+    return (dest, (q - 0x10) & ((1 << 64) - 1), 1)
 
 
 def analyze(data):

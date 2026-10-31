@@ -71,29 +71,33 @@ def walk(mem, rdi_in, rsi):
     emulation of the captured binary. Mutates and returns the memory dict.
     """
     m = dict(mem)
-    mark = m[m[rdi_in + 0x68] + 0x108]
-    diff = (m[rsi + 0x58] - m[rsi + 0x50]) & M64
+
+    def load(address):
+        return m[address & M64]
+
+    mark = load(load(rdi_in + 0x68) + 0x108)
+    diff = (load(rsi + 0x58) - load(rsi + 0x50)) & M64
     signed = diff - (1 << 64) if diff & (1 << 63) else diff
-    n = (m[rsi] + (signed >> 3)) & M64
+    n = (load(rsi) + (signed >> 3)) & M64
     if n == 0:
         return m
-    r9 = (m[rsi + 0x50] - 0x40) & M64
+    r9 = (load(rsi + 0x50) - 0x40) & M64
     i = 0
     while i != n:
         if i <= 7:
-            slot = (m[rsi + 0x48] + 8 * i) & M64
+            slot = (load(rsi + 0x48) + 8 * i) & M64
         else:
             slot = r9
-        entry = m[slot]
-        rcx = m[entry + 0x8f8]
-        cur = m[rcx]
+        entry = load(slot)
+        rcx = load(entry + 0x8f8)
+        cur = load(rcx)
         if cur != rcx:
             while True:
-                node = m[cur + 0x10]
-                if m[node + 0xcc8] != MASK:
+                node = load(cur + 0x10)
+                if load(node + 0xcc8) != MASK:
                     break
-                cur = m[cur]
-                m[node + 0xcc8] = mark
+                cur = load(cur)
+                m[(node + 0xcc8) & M64] = mark
                 if cur == rcx:
                     break
         i += 1

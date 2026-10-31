@@ -58,7 +58,7 @@ def init(base):
     emulation of the captured binary. Returns (stores, return_value) where
     stores maps a field offset to the stored value.
     """
-    stores = {0: base + 0x10, 8: 0, 0x10: 0}
+    stores = {0: (base + 0x10) & ((1 << 64) - 1), 8: 0, 0x10: 0}
     return stores, base
 
 

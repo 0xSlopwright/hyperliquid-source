@@ -132,6 +132,10 @@ Bit-writer drain `0x5494050` (packet #84) sits `0x38f60` below this window. The 
 - Whether any caller reaches this window through an indirect call or tail jump (outside the byte-pattern scan).
 - What the three callers do with the returned pointer and the stored selector after the window returns.
 
+## Review clarification
+
+The selector is loaded before the optional out store, while the table entry is loaded after that store. The helper table_entry argument denotes this post-store loaded value; no nonalias relation between out and the table is established by the window.
+
 ## Limits
 
 - No source-level function, type, or field meaning is claimed anywhere.

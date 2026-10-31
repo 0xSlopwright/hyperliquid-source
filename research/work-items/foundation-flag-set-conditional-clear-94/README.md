@@ -102,6 +102,10 @@ Caller purposes are not claimed, and no caller setup pattern is asserted: the ca
 
 No relocation record of any type in any `.rela.*` section names this window as addend (full-section scan: 80,022 `.rela.dyn` + 278 `.rela.plt` entries). The absence of a naming relocation does not identify the window's provenance.
 
+## Review clarification
+
+The helper reports store events, not a final flag postcondition. The pointer is loaded first, then the dword 1 is stored, then its pointed-to byte is cleared. If that byte aliases the flag, the later clear can change the flag value; no disjointness is established by this window.
+
 ## Limits
 
 - No stdlib type, source-level function, field meaning, or caller purpose is claimed anywhere. The "flag-set plus conditional clear" label is an inference, kept separate from the observed rule.

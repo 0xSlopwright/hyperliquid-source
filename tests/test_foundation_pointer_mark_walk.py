@@ -55,6 +55,16 @@ def check_bytes(data):
 
 
 class TestPointerMarkWalk(unittest.TestCase):
+    def test_target_mark_load_address_wraps(self):
+        data = TARGET.read_bytes()
+        secs = sections_of(data)
+        section = secs['.text']
+        off = section['offset'] + START - section['address']
+        self.assertEqual(data[off + 11:off + 18], bytes.fromhex('488bb808010000'))
+        mem = {0x1068: (1 << 64) - 8, 0x100: 0x4242,
+               0x2000: 0, 0x2050: 0x3000, 0x2058: 0x3000}
+        self.assertEqual(walk(mem, 0x1000, 0x2000), mem)
+
     def test_check_reproduces(self):
         result = inspect(str(TARGET))
         self.assertEqual(result['window'], (START, END))

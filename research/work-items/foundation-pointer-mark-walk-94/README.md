@@ -15,7 +15,7 @@ The component map asks to map time/quantity conversion helpers and distinguish l
 
 This window was checked for overlap before building: no work-item, tool, or test in the tree mentions `0x50e69f0`, no open pull request title mentions it or pointer-mark-walk, and its bytes overlap nothing in packets #1–#87.
 
-Heaviness is stated head-on: this is a heavy backup item (round-13 backup B2) — a 146-byte window with an outer entry loop, an inner chain walk, two entry arrays, and three termination conditions, component-entangled through the 0x8f8/0xcc8/0x10 fields. It is bound only because the rule locks exactly from its own bytes and survived independent re-verification (a Capstone-decoded interpreter over 3,070 synthetic layouts with 0 mismatches; see below), not because it is small.
+Heaviness is stated head-on: this is a heavy backup item (round-13 backup B2) — a 146-byte window with an outer entry loop, an inner chain walk, two entry arrays, and three termination conditions, component-entangled through the 0x8f8/0xcc8/0x10 fields. It is bound only because the rule locks exactly from its own bytes and the original author reported a Capstone interpreter sweep of 3,070 synthetic layouts with 0 mismatches; that unretained script is not a reproduced review gate (see below), not because it is small.
 
 ## Scout note
 
@@ -134,7 +134,7 @@ This is explicitly not a complete xref census: indirect calls, tail jumps, and P
 
 No relocation record of any type in any `.rela.*` section names this window as addend (full-section scan: 80,022 `.rela.dyn` + 278 `.rela.plt` entries). The absence of a naming relocation does not identify the window's provenance.
 
-### Independent re-verification: Capstone-decoded interpreter sweep
+### Historical author report: unretained Capstone interpreter sweep
 
 Because the scout flagged this window as heavy and entangled, the decoded rule was re-verified independently of its transcription: the window bytes were decoded with Capstone and executed by a small interpreter (deriving every operand from the decode — mnemonics, registers, memory operands, and branch targets — so it is independent of the rule's transcription) over **3,070 synthetic layouts with 0 mismatches**. The sweep covered count sweeps (`s0` in {0, 1, 3, 8} × second-array counts in {0, 1, 5, 8, 12}), randomized entry/chain shapes (empty heads, mask/non-mask chains, multi-link chains), the entry-7/entry-8 array boundary, and 50 hand-built self-loop-link cases. Final memory states (every mark field) matched the rule model exactly in all cases. The check was non-vacuous: a 13-entry mixed-shape case changed exactly 15 mark fields, all to the mark value, matching the mask-prefix lengths of its chains. The emulator script is not committed (it needs Capstone, not stdlib); the committed checker replays the rule edges on synthetic layouts with the standard library only.
 
@@ -149,6 +149,10 @@ Because the scout flagged this window as heavy and entangled, the decoded rule w
 - What the `rsi` fields mean (`+0x00`, `+0x48`, `+0x50`, `+0x58`), what the `+0x8f8` head pointer, `+0x10` link field, and `+0xcc8` stamp field belong to, and what the mark value represents.
 - What reads the marked nodes, whether marking is idempotent in the callers' use, and what happens for inputs outside the valid range (negative `N`, unaligned array bounds, non-mask first nodes on every entry).
 - Which source-level function, if any, this window corresponds to; the nearest-symbol label is stripped-binary arithmetic, not an identity.
+
+## Review clarification
+
+The preceding 3,070-layout interpreter result is retained as an author report; its script is absent and was not independently reproduced during review. Review instead checked the complete instruction flow and fresh disassembly. The helper uses qword-cell synthetic memory with 64-bit effective-address wrap; it does not model partial overlaps between distinct cells, faults or concurrency. A self-loop stops after a mark only when the written mark differs from the mask; mark == mask can leave a cycle running indefinitely. No general termination guarantee is claimed.
 
 ## Limits
 

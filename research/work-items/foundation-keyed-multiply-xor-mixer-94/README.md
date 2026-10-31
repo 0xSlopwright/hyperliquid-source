@@ -21,7 +21,7 @@ The round-14 scout note listed this window (ranked #2) with FDE `[0x399c600, 0x3
 
 **Material scout correction — the input loads are qwords, not dwords.** The scout summary described `[rsi+0xc]` and `[rsi+4]` as dword reads, implying a 16-byte input block. The encodings say otherwise: `48 8b 46 0c` and `48 8b 46 04` carry the REX.W prefix, so all four input loads are 64-bit qwords at `rsi+0`, `+4`, `+8`, `+12` — a 20-byte input span read through overlapping windows. The corrected rule below is what the checker locks and what the emulator sweep verified; the scout's dword framing is not used anywhere. All other scouted elements verified exactly (FDE range, 70-byte body, 10 padding bytes, both callers and their FDE ranges, no naming relocation).
 
-**Second scout refinement — the key table is reached through a GOT pointer, not read directly.** The first instruction loads a pointer from the GOT slot at `0x576e3e0`; `k0` is the qword at that pointer, `k1` the qword 8 bytes past it. Both the slot and the table are runtime-filled, so no key value is claimed anywhere; the rule is parameterized by `(k0, k1)`.
+**Second scout refinement — the key table is reached through a GOT pointer, not read directly.** The first instruction loads a pointer from the GOT slot at `0x576e3e0`; `k0` is the qword at that pointer, `k1` the qword 8 bytes past it. The slot has a RELATIVE relocation to ELF VA 0x5788348 in .bss; the loader establishes the pointer, and the table can be populated later. No post-initialization key value is established by this window; the rule is parameterized by `(k0, k1)`.
 
 ## Mixer-family justification, stated head-on
 
@@ -29,7 +29,7 @@ This window resembles packets #29 (multiply/xor mixer), #43 (multiply-mix divide
 
 ## Heavy caveat, discharged by re-verification
 
-This is the heaviest rule in the recent packets, so it is bound only because the rule locks exactly **and** survived independent re-verification: the window bytes were decoded with Capstone and executed by a small interpreter (deriving every operand from the decode, so it is independent of the rule's transcription) over **5,680 cases with 0 mismatches** — edge keys, edge blocks, 5,000 random cases, and single-bit/single-byte block variations. The emulator script is not committed (needs Capstone, not stdlib); 8 fixed emulator-generated vectors are recorded in `evidence.json` and replayed by the checker's `--check` path.
+The original author reported a Capstone-decoded interpreter sweep of **5,680 cases with 0 mismatches**. Its script was not retained, so this historical report is not an independently reproduced review gate. Eight retained vectors are replayed by the mathematical helper only. Review independently checked the complete three-multiply instruction flow and fresh disassembly.
 
 ## Reproduce
 
@@ -133,6 +133,10 @@ No `R_X86_64_RELATIVE` or other relocation record in any `.rela.*` section names
 - The key table's contents, owner, and lifetime (runtime-filled).
 - Whether the window is also reached via indirect calls or tail jumps (out of scope for the direct-e8 scan).
 - The source-level function, type, and component ownership of this window.
+
+## Review clarification
+
+Review read the slot relocation directly: ELF VA 0x576e3e0 has type 8, symbol index 0, addend 0x5788348 in SHT_NOBITS .bss. Initial zero-filled storage does not establish later runtime keys. The helper uses qword-width inputs; all three products are unsigned 64-by-64 to 128 bits. Reversed high/low local names were corrected without changing the symmetric XOR result.
 
 ## Limits
 

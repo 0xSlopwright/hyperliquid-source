@@ -49,7 +49,7 @@ def parse(v_rdi, block, k0, k1):
 
     A Python restatement of the retained instruction sequence, not a run or
     emulation of the captured binary. All four input loads are 64-bit qwords
-    at rsi+0, +4, +8, +12 (a 20-byte span, not a 16-byte block); both
+    at rsi+0, +4, +8, +12 (a 20-byte span, not a 16-byte block); all three
     multiplies are unsigned 64x64->128.
     """
     mask = (1 << 64) - 1
@@ -57,10 +57,10 @@ def parse(v_rdi, block, k0, k1):
     def qword(off):
         return struct.unpack_from('<Q', block, off)[0]
 
-    lo1, hi1 = divmod((qword(12) ^ k0) * (qword(8) ^ k1), 1 << 64)
-    lo2, hi2 = divmod((qword(4) ^ k0) * (qword(0) ^ v_rdi), 1 << 64)
+    hi1, lo1 = divmod((qword(12) ^ k0) * (qword(8) ^ k1), 1 << 64)
+    hi2, lo2 = divmod((qword(4) ^ k0) * (qword(0) ^ v_rdi), 1 << 64)
     folded = lo1 ^ lo2 ^ hi1 ^ hi2 ^ 0x14
-    lo3, hi3 = divmod(folded * k0, 1 << 64)
+    hi3, lo3 = divmod(folded * k0, 1 << 64)
     return (lo3 ^ hi3) & mask
 
 
@@ -165,7 +165,8 @@ def analyze(data):
     require(parse(0, bytes(20), 0, 0) == 0, 'Zero edge changed')
     require(parse(0, bytes(20), 1, 0) == 0x14, 'Unit-key edge changed')
     require(parse(0, bytes(20), 0, 0xffffffffffffffff) == 0, 'Zero-k0 edge changed')
-    # Emulator vectors recorded in evidence.json (Capstone-decode sweep output).
+    # Fixed vectors retain the original author-reported interpreter outcomes.
+    # The interpreter script is absent; replay checks only this mathematical helper.
     return body
 
 

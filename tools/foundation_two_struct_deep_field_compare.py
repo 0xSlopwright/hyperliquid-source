@@ -46,7 +46,7 @@ def parse(first, second):
     """Decoded rule, for edge checks only.
 
     A Python restatement of the retained instruction sequence, not a run or
-    emulation of the captured binary. Returns 1 exactly when the second
+    emulation of the captured binary. Returns the AL byte only: 1 when the second
     struct's deep field is strictly below the first struct's, unsigned.
     """
     return 1 if second < first else 0

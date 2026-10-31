@@ -43,6 +43,15 @@ def write_va(data, va, raw):
 
 
 class TestSelfLinkInit(unittest.TestCase):
+    def test_target_self_pointer_wraps(self):
+        data = TARGET.read_bytes()
+        section = sections_of(data)['.text']
+        off = section['offset'] + START - section['address']
+        self.assertEqual(data[off + 4:off + 8], bytes.fromhex('488d5710'))
+        stores, ret = init((1 << 64) - 8)
+        self.assertEqual(stores[0], 8)
+        self.assertEqual(ret, (1 << 64) - 8)
+
     def test_check_reproduces(self):
         result = analyze(bytes(load_bytes()))
         self.assertEqual(result['window'], (START, END))

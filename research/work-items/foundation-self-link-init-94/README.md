@@ -95,6 +95,10 @@ Sixty-six `R_X86_64_RELATIVE` records in `.rela.dyn` name this window as addend 
 - Whether the 66 relocation slots belong to one table or several, and what the table is for.
 - Which source-level function, if any, this window corresponds to.
 
+## Review clarification
+
+The LEA self-pointer value wraps modulo 2^64. The helper reports store values by field offset and assumes the mapped writable object required by the instructions; it does not model memory faults.
+
 ## Limits
 
 - No stdlib type, source-level function, field meaning, or consumer is claimed anywhere.
