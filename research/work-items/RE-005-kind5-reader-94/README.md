@@ -1,6 +1,6 @@
 # RE-005: kind-5 reader and its little-endian wrapper, node94
 
-Static evidence only; no component gate requested. This closes the specific
+Static target evidence and a bounded independent Rust contract; no component gate requested. This closes the specific
 Reader0x466dad0 gap explicitly excluded by [PR253](https://github.com/lalalune/hyperliquid-source/pull/253),
 without changing its u32/u64 work or the merged varint packet. The kind-5 label
 means the literal byte5 passed to the error builder, not a recovered Rust type.
@@ -100,16 +100,64 @@ The collector refuses an existing output directory. It never launches the
 captured node, networks, signs, or installs packages. The packet verifier
 checks source/file hashes and repeats both native decodes and all fixtures.
 This host used Python3.12.10, GNU2.47.20260726 and Apple LLVM17 on macOS15.7.7
-arm64. Hosted CI, containers, Rust compilation and target runtime: NOT RUN.
+arm64. Hosted CI, containers and captured target runtime: NOT RUN. The Rust
+component below has its own host-build evidence.
 The next question is the caller's actual type/layout ownership and how these
 raw error/cursor states are consumed; neither is established by the marker
 family or the kind byte. All four serialization gates remain false.
 
 ## Executed repository checks
 
-`make doctor verify test catalogue-check reproduce` passes on the final source:
+The original static packet at `dbb74f3be862ba16106a44b92d2c39796ec110f9`
+passed `make doctor verify test catalogue-check reproduce`:
 440 tests in103.621s, no skips; all8 artifact identities,3 public signatures,
 37 imports and7 reference pins verify; catalogue and all retained inventory/
 classification outputs reproduce. The packet verifier passes. A second full
 collection reproduces all5 exports byte-for-byte on the recorded host. These
 are local results, not hosted CI or component acceptance.
+
+
+## Independent Rust decoder contract
+
+`components/node94-kind5-reader` implements these three FDEs' observed
+byte/cursor/fixed-charge behavior through a safe, allocation-free `no_std`
+interface. This closes the initial packet's lack of any Rust implementation.
+The original disassembly, integer evaluator, byte equations and compressed
+case ledger are unchanged. The new Rust is authored from those authenticated
+instructions and packet data without copying unlicensed inferred source.
+
+The new interface does not assert native ABI or source-type recovery. It
+keeps the kind byte5 opaque. Its output adapter writes only observed fields;
+the fixture's synthetic pointer base and40-byte state window occur only in
+its test adapter, not in the library's Rust representation.
+
+```sh
+python3 tools/kind5_reader_rust.py --controls --output work/kind5-rust-new
+# Or use make kind5-rust once; its default output must not already exist.
+```
+
+The runner first authenticates and dual-decodes the same node94 snapshot and
+repeats the original169-instruction evaluation. The fresh28,992-row ledger
+must equal the retained ledger byte-for-byte before Rust runs. Rust debug and
+release each pass7 tests, including the complete corpus with no ignored tests.
+Every24 output bytes and40 state bytes match for every row. This validates
+the declared finite data contract, not captured execution or all possible
+inputs. The default direct Cargo test deliberately ignores that corpus until
+its fresh export is supplied; the runner explicitly includes it.
+
+Nine actual Rust-source mutations compile and then fail tests: marker
+consumption, payload width, endian direction, the8/9-byte fast threshold,
+fixed charge, charge/limit store order, opaque error kind, invalid255 code
+and success tag. These do not merely alter expected fixtures. Original13 ELF
+corruption controls remain in the static suite. Two clean offline release
+builds produce raw-identical `.rlib` archives; hashes and all command results
+are in `rust/comparison.json`. This is component build reproducibility, not
+identity with the captured ELF. Formatting and Clippy with warnings denied
+pass. No packages are installed or fetched.
+
+This host uses existing Rust/Cargo1.88.0 on macOS arm64, GNU objdump2.47 and
+Apple LLVM17. The missing whole-node manifests, exact Linux build provenance,
+caller/source type ownership and target runtime proof remain unresolved.
+The repository's root rebuild toolchains and all four serialization gates
+are unchanged. `rust/source-sha256.json` pins the actual compared sources;
+`rust/` retains raw test/build/control logs without home-directory paths.
