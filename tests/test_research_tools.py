@@ -77,6 +77,10 @@ class CatalogueTests(unittest.TestCase):
     def test_missing_component_patterns_rejected(self):
         parts = copy.deepcopy(self.parts); del parts[0]['patterns']
         with self.assertRaises(ValueError): owner('l1/exchange/handlers/14_order.rs', parts)
+    def test_non_dict_component_record_rejected_by_owner(self):
+        for bad in (123, None, 'patterns', ['patterns']):
+            with self.assertRaises(ValueError): owner('l1/exchange/impl_trading.rs', [bad])
+        self.assertEqual(owner('l1/exchange/impl_trading.rs', self.parts), 'exchange')
 
     def test_complete_gate_without_evidence_rejected(self):
         d = copy.deepcopy(self.progress)

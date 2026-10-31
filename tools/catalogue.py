@@ -14,6 +14,7 @@ ACCEPTANCE_GATES = frozenset({'mapped', 'built', 'behavior', 'identity'})
 
 def owner(path, components):
     if any('patterns' not in c for c in components):
+    if any(type(c) is not dict for c in components):
         raise ValueError('Invalid component record')
     for c in components:
         if any(fnmatch.fnmatchcase(path, p) for p in c['patterns']):
