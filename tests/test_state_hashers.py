@@ -1,27 +1,76 @@
 import hashlib
+
+
 import importlib.util
+
+
 import json
+
+
 import os
+
+
 import re
+
+
+
+import shutil
+
+
 import struct
+
+
 import subprocess
+
+
 import sys
+
+
 import unittest
+
+
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from gnu_binutils import requires_gnu  # noqa: E402
 
+
 ROOT = Path(__file__).resolve().parents[1]
+
+
 spec = importlib.util.spec_from_file_location("state_hashers", ROOT / "tools/state_hashers.py")
+
+
 sh = importlib.util.module_from_spec(spec)
+
+
 spec.loader.exec_module(sh)
+
+
 sr = sh.sr
+
+
 BIN = ROOT / "artifacts/node/94/hl-node"
+
+
 PACKET = ROOT / "research/work-items/RE-009-storage-state-roots"
+
+
 OUTPUT_SHA256 = "6411981c8f0953dc152e432a3c9abeb8512f703599e36df675d39dfb9f6a77f0"
+
+
 DATA = BIN.read_bytes() if BIN.exists() else None
+
+
 BLAKE3_SLOT = 0x57700C8
+
+
 BLAKE3_FN = 0x14F93E0
+
+
+import contextlib
+
+
+import io
 
 
 def path(r, source, kinds):
@@ -97,7 +146,6 @@ class StateHashersTests(unittest.TestCase):
             outs.add(hashlib.sha256(p.stdout).hexdigest())
         self.assertEqual(outs, {OUTPUT_SHA256})
 
-    # --- tamper / boundary ------------------------------------------------
     def test_wrong_binary_rejected(self):
         with self.assertRaises(sh.EvidenceError):
             sh.build(DATA[:-1] + bytes([DATA[-1] ^ 1]))
@@ -166,6 +214,17 @@ class StateHashersTests(unittest.TestCase):
                                   f"--stop-address={e:#x}", str(BIN)], capture_output=True, text=True,
                                  check=True).stdout
             self.assertRegex(out, rf"(?m)^ +{s:x}:\s+ff 15 [0-9a-f ]+\s+call\s+QWORD PTR \[rip\+0x[0-9a-f]+\]\s+# {slot:x}")
+
+
+class MainErrorHandlingTests(unittest.TestCase):
+    def test_missing_binary_is_one_line_error(self):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            rc = sh.main(["--binary", "/nonexistent.bin"])
+        self.assertEqual(rc, 2)
+        self.assertTrue(err.getvalue().startswith("state_hashers: "))
+        self.assertEqual(len(err.getvalue().strip().splitlines()), 1)
+        self.assertNotIn("Traceback", err.getvalue())
 
 
 if __name__ == "__main__":
