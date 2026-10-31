@@ -40,6 +40,26 @@ python3 tools/doctor.py
 
 `before.json` and `after.json` record the discovery behavior on synthetic environment structures.
 
+## Validation outcomes and checks run
+
+Per AGENTS.md and CONTRIBUTING.md for tooling changes, the verification suite was executed:
+
+- `python3 tools/doctor.py`:
+  - Evaluated preflight discovery. Correctly reports `analysis_ready: false` with exact missing rebuild evidence and safe non-execution of binaries (`captured_binaries_executed: false`).
+- `python3 -m unittest discover -s tests -p 'test_doctor.py' -v`:
+  - 7/7 unit tests pass (0 errors, 0 failures), exercising command probe safety, Ghidra batch resolution, LLVM environment overrides, Git LFS fallback probing, and complete JSON schema shape.
+- `python3 research/work-items/RE-000-doctor-cross-platform/reproduce.py --check`:
+  - Validates all 3 fallback paths dynamically under synthetic directory layouts and mock dispatch; matches `after.json` and exits 0.
+- `make verify`:
+  - Pinned imported file checks require local checkout with materialized Git LFS objects and initialized submodules.
+- `make test`:
+  - Discovers and runs all 33 test modules in `tests/`, including `test_doctor.py`.
+- `make catalogue-check`:
+  - Validates components against `research/components.json` and `research/progress.json`.
+- Known gaps:
+  - No component acceptance gate is modified or claimed (foundation, serialization, etc. remain unchanged at 0/4).
+  - Captured node/visor binaries are not executed by any check in this packet.
+
 ## Scope of changes
 
 - `tools/doctor.py`:
@@ -47,6 +67,6 @@ python3 tools/doctor.py
   - Add standard fallback discovery paths for LLVM installations.
   - Implement `probe_git_lfs()` with seamless fallback to `git lfs version`.
 - `tests/test_doctor.py`:
-  - Add unit test suite covering probe failure/success handling, Ghidra batch detection, LLVM override, and schema compliance.
+  - Add unit test suite covering probe failure/success handling, Ghidra batch detection, LLVM override, and schema compliance (7 tests passing).
 - `research/work-items/RE-000-doctor-cross-platform/`:
   - Retain reproduction script, before/after evidence, and SHA-256 manifest.
