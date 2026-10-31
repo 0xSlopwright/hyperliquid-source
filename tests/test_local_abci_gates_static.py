@@ -1,0 +1,153 @@
+"""Controls for tools/local_abci_gates_static.py (node #94 local abci_state startup gates)."""
+import contextlib
+import io
+import json
+import random
+import struct
+import sys
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'tools'))
+import local_abci_gates_static as la  # noqa: E402
+from artifacts import check  # noqa: E402
+
+BINARY = ROOT / la.TARGET
+PACKET = ROOT / 'research/work-items/local-abci-gates-94/records.json'
+CACHE = {}
+
+
+def load():
+    if not CACHE:
+        identity = next(i for i in json.loads((ROOT / 'provenance/artifacts.json').read_text())['files']
+                        if i['path'] == la.TARGET)
+        check(BINARY, identity)
+        CACHE['data'] = BINARY.read_bytes()
+        CACHE['img'] = la.Image(CACHE['data'])
+        CACHE['result'] = la.analyse(CACHE['data'])
+        CACHE['sha256'] = identity['sha256']
+    return CACHE
+
+
+def patched(*edits):
+    c = load()
+    data = bytearray(c['data'])
+    for va, new in edits:
+        off = c['img'].offset(va, len(new))
+        data[off:off + len(new)] = new
+    return bytes(data)
+
+
+class Models(unittest.TestCase):
+    def test_height_gate(self):
+        self.assertTrue(la.too_far_behind(0, 20000))
+        self.assertFalse(la.too_far_behind(1, 20000))
+        self.assertTrue(la.too_far_behind(100, 20100))
+        self.assertFalse(la.too_far_behind(2 ** 64 - 10, 2 ** 64 - 2))
+        self.assertTrue(la.too_far_behind(2 ** 64 - 10, 2 ** 64 - 1))
+
+    def test_day_division_truncates(self):
+        rng = random.Random(94)
+        values = [0, 1, 86399, 86400, -1, -86399, -86400, -86401, 2 ** 40, -(2 ** 40)]
+        values += [rng.randrange(-(2 ** 47), 2 ** 47) for _ in range(2000)]
+        for x in values:
+            q = abs(x) // 86400
+            want = (q if x >= 0 else -q) & 0xffffffff
+            self.assertEqual(la.days_86400(x), want, x)
+
+    def test_freshness_compare(self):
+        self.assertTrue(la.freshness_panics((1, 2, 3), (1, 2, 4)))
+        self.assertFalse(la.freshness_panics((1, 2, 3), (1, 2, 3)))
+        self.assertFalse(la.freshness_panics((2, 0, 0), (1, 86399, 999)))
+
+
+@unittest.skipUnless(BINARY.exists(), 'pinned node #94 binary not present')
+class Results(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.result = load()['result']
+
+    def test_height_gate(self):
+        g = self.result['height_gate']
+        self.assertEqual((g['tolerance'], g['saturating'], g['ok_branch']), (20000, True, '0x226adb1'))
+        self.assertEqual({k: (v['len'], v['text']) for k, v in g['messages'].items()},
+                         {'too_far_behind': (30, 'local height is too far behind'),
+                          'stale_hardfork': (35, 'local height is from stale hardfork')})
+
+    def test_tolerance_log(self):
+        t = self.result['tolerance_log']
+        self.assertEqual((t['default'], t['hardfork'], t['join']), (540.0, 840.0, '0x2269164'))
+        self.assertEqual(t['branches_into_join'], ['0x226901b', '0x226902e'])
+        self.assertEqual((t['log_placeholders'], t['tolerance_arg_index']), (5, 2))
+
+    def test_freshness(self):
+        f = self.result['freshness']
+        self.assertEqual((f['added_seconds'], f['message_seconds'], f['template_placeholders']), (600, 600.0, 2))
+        self.assertEqual((f['location_file'], f['location_line'], f['location_column']),
+                         ('/home/ubuntu/hl/code_Mainnet/node/src/hl_node.rs', 346, 9))
+        self.assertEqual(f['slots']['panic'], ['0x576e098', '0x157b810'])
+
+    def test_packet_matches_regeneration(self):
+        expected = json.loads(PACKET.read_text())
+        got = dict(self.result, target_sha256=load()['sha256'])
+        self.assertEqual(json.loads(json.dumps(got, sort_keys=True)), expected)
+
+    def test_cli(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(la.main([]), 0)
+        self.assertIn('saturating_add(20000)', out.getvalue())
+
+
+@unittest.skipUnless(BINARY.exists(), 'pinned node #94 binary not present')
+class Corruptions(unittest.TestCase):
+    def refuses(self, data, pattern):
+        with self.assertRaisesRegex(la.EvidenceError, pattern):
+            la.analyse(data)
+
+    def test_gate_constant(self):
+        self.refuses(patched((0x226ab20, struct.pack('<i', 200))), 'gate at 0x226ab0a: bytes changed')
+
+    def test_gate_messages(self):
+        self.refuses(patched((0x3d79b2, b'L')), 'too_far_behind message at 0x3d79b2')
+        self.refuses(patched((0x3d798f, b'L')), 'stale_hardfork message at 0x3d798f')
+
+    def test_tolerance_constants(self):
+        self.refuses(patched((0x20a3d8, struct.pack('<d', 600.0))), 'tolerance constants are 600.0, 840.0')
+        self.refuses(patched((0x20a230, struct.pack('<d', 600.0))), 'tolerance constants are 540.0, 600.0')
+
+    def test_extra_branch_into_join(self):
+        start = la.STARTUP_FDE + 0x100
+        rel = 0x2269164 - (start + 6)
+        self.refuses(patched((start, b'\x0f\x84' + struct.pack('<i', rel))), 'branches into join 0x2269164')
+
+    def test_extra_slot_reference(self):
+        self.refuses(patched((la.STARTUP_FDE + 0x100, b'\x48\x8b\x84\x24\xe0\x00\x00\x00')), r'\[rsp\+0xe0\] references')
+
+    def test_log_template(self):
+        self.refuses(patched((0x1f5428 + 20, b'X')), 'log template 0x1f5428 changed')
+
+    def test_freshness_seconds(self):
+        self.refuses(patched((0x2271d52 + 0x55, struct.pack('<I', 0x4e20))), 'freshness at 0x2271d52: bytes changed')
+
+    def test_location_file(self):
+        self.refuses(patched((0x1f40cf + 1, b'X')), 'Location file is')
+
+    def test_panic_slot_relocation(self):
+        c = load()
+        img = c['img']
+        rela = next(s for s in img.secs if s['name'] == '.rela.dyn')
+        data = bytearray(c['data'])
+        for pos in range(rela['offset'], rela['offset'] + rela['size'], 24):
+            where, info, _ = struct.unpack_from('<QQq', data, pos)
+            if where == 0x576e098 and info & 0xffffffff == 8:
+                struct.pack_into('<q', data, pos + 16, 0x157b840)
+        self.refuses(bytes(data), 'panic slot does not reach the panic shim')
+
+    def test_template_text(self):
+        self.refuses(patched((0x1ed195, b'U')), 'freshness template 0x1ed194 changed')
+
+
+if __name__ == '__main__':
+    unittest.main()

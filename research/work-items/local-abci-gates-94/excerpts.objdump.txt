@@ -1,0 +1,183 @@
+# GNU objdump excerpts for node #94 SHA-256 3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f
+# tool: GNU objdump (GNU Binutils) 2.47.20260726
+# command per window: objdump -d -M intel --start-address=LO --stop-address=HI artifacts/node/94/hl-node
+# symbol annotations in <...> are objdump nearest-dynamic-symbol noise (no .symtab); ignore them.
+
+## 0x22689f0 height gate (saturating +0x4e20, two messages) [0x226ab0a, 0x226ab88)
+ 226ab0a:	48 8b 84 24 d8 00 00 	mov    rax,QWORD PTR [rsp+0xd8]
+ 226ab11:	00
+ 226ab12:	48 3d e0 b1 ff ff    	cmp    rax,0xffffffffffffb1e0
+ 226ab18:	72 38                	jb     226ab52 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d3d2ae>
+ 226ab1a:	48 89 c2             	mov    rdx,rax
+ 226ab1d:	48 81 c2 20 4e 00 00 	add    rdx,0x4e20
+ 226ab24:	48 c7 c1 ff ff ff ff 	mov    rcx,0xffffffffffffffff
+ 226ab2b:	48 0f 43 ca          	cmovae rcx,rdx
+ 226ab2f:	48 8d b3 88 00 00 00 	lea    rsi,[rbx+0x88]
+ 226ab36:	48 3b 8c 24 d0 00 00 	cmp    rcx,QWORD PTR [rsp+0xd0]
+ 226ab3d:	00
+ 226ab3e:	77 2a                	ja     226ab6a <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d3d296>
+ 226ab40:	49 89 ee             	mov    r14,rbp
+ 226ab43:	41 bd 1e 00 00 00    	mov    r13d,0x1e
+ 226ab49:	48 8d 2d 62 ce 16 fe 	lea    rbp,[rip+0xfffffffffe16ce62]        # 3d79b2 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4bd044e>
+ 226ab50:	eb 36                	jmp    226ab88 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d3d278>
+ 226ab52:	48 8d 88 20 4e 00 00 	lea    rcx,[rax+0x4e20]
+ 226ab59:	48 8d b3 88 00 00 00 	lea    rsi,[rbx+0x88]
+ 226ab60:	48 3b 8c 24 d0 00 00 	cmp    rcx,QWORD PTR [rsp+0xd0]
+ 226ab67:	00
+ 226ab68:	76 d6                	jbe    226ab40 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d3d2c0>
+ 226ab6a:	48 3b 84 24 c8 00 00 	cmp    rax,QWORD PTR [rsp+0xc8]
+ 226ab71:	00
+ 226ab72:	0f 83 39 02 00 00    	jae    226adb1 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d3d04f>
+ 226ab78:	49 89 ee             	mov    r14,rbp
+ 226ab7b:	41 bd 23 00 00 00    	mov    r13d,0x23
+ 226ab81:	48 8d 2d 07 ce 16 fe 	lea    rbp,[rip+0xfffffffffe16ce07]        # 3d798f <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4bd0471>
+
+## 0x22689f0 tolerance 540.0 and hardfork condition [0x226900c, 0x2269034)
+ 226900c:	f2 0f 10 05 c4 13 fa 	movsd  xmm0,QWORD PTR [rip+0xfffffffffdfa13c4]        # 20a3d8 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4d9da28>
+ 2269013:	fd
+ 2269014:	83 bb 18 0c 00 00 01 	cmp    DWORD PTR [rbx+0xc18],0x1
+ 226901b:	0f 85 43 01 00 00    	jne    2269164 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d3ec9c>
+ 2269021:	48 39 83 20 0c 00 00 	cmp    QWORD PTR [rbx+0xc20],rax
+ 2269028:	0f 82 32 07 00 00    	jb     2269760 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d3e6a0>
+ 226902e:	0f 85 30 01 00 00    	jne    2269164 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d3ec9c>
+
+## 0x22689f0 applying-hardfork log call [0x226911b, 0x2269130)
+ 226911b:	48 8d 3d 14 40 f8 fd 	lea    rdi,[rip+0xfffffffffdf84014]        # 1ed136 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4dbacca>
+ 2269122:	48 8d b4 24 10 3c 00 	lea    rsi,[rsp+0x3c10]
+ 2269129:	00
+ 226912a:	ff 15 38 58 50 03    	call   QWORD PTR [rip+0x3505838]        # 576e968 <__register_atfork@plt+0x10d728>
+
+## 0x22689f0 tolerance 840.0 and join store to [rsp+0xe0] [0x226915c, 0x2269171)
+ 226915c:	f2 0f 10 05 cc 10 fa 	movsd  xmm0,QWORD PTR [rip+0xfffffffffdfa10cc]        # 20a230 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4d9dbd0>
+ 2269163:	fd
+ 2269164:	48 8d 43 60          	lea    rax,[rbx+0x60]
+ 2269168:	f2 0f 11 84 24 e0 00 	movsd  QWORD PTR [rsp+0xe0],xmm0
+ 226916f:	00 00
+
+## 0x22689f0 initializing-with-local-abci_state log arguments [0x226928a, 0x2269339)
+ 226928a:	48 8d 84 24 e0 00 00 	lea    rax,[rsp+0xe0]
+ 2269291:	00
+ 2269292:	48 89 44 24 48       	mov    QWORD PTR [rsp+0x48],rax
+ 2269297:	48 89 5c 24 08       	mov    QWORD PTR [rsp+0x8],rbx
+ 226929c:	4c 89 74 24 20       	mov    QWORD PTR [rsp+0x20],r14
+ 22692a1:	4c 89 bc 24 20 01 00 	mov    QWORD PTR [rsp+0x120],r15
+ 22692a8:	00
+ 22692a9:	48 8d 05 30 1e 71 00 	lea    rax,[rip+0x711e30]        # 297b0e0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x262cd20>
+ 22692b0:	48 89 84 24 28 01 00 	mov    QWORD PTR [rsp+0x128],rax
+ 22692b7:	00
+ 22692b8:	48 8d 84 24 00 77 00 	lea    rax,[rsp+0x7700]
+ 22692bf:	00
+ 22692c0:	48 89 84 24 30 01 00 	mov    QWORD PTR [rsp+0x130],rax
+ 22692c7:	00
+ 22692c8:	48 8d 05 c1 e0 f4 ff 	lea    rax,[rip+0xfffffffffff4e0c1]        # 21b7390 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2df0a70>
+ 22692cf:	48 89 84 24 38 01 00 	mov    QWORD PTR [rsp+0x138],rax
+ 22692d6:	00
+ 22692d7:	48 8d 44 24 48       	lea    rax,[rsp+0x48]
+ 22692dc:	48 89 84 24 40 01 00 	mov    QWORD PTR [rsp+0x140],rax
+ 22692e3:	00
+ 22692e4:	48 8d 05 65 13 44 00 	lea    rax,[rip+0x441365]        # 26aa650 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x28fd7b0>
+ 22692eb:	48 89 84 24 48 01 00 	mov    QWORD PTR [rsp+0x148],rax
+ 22692f2:	00
+ 22692f3:	48 8d 44 24 08       	lea    rax,[rsp+0x8]
+ 22692f8:	48 89 84 24 50 01 00 	mov    QWORD PTR [rsp+0x150],rax
+ 22692ff:	00
+ 2269300:	48 8d 05 d9 1c 44 00 	lea    rax,[rip+0x441cd9]        # 26aafe0 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x28fce20>
+ 2269307:	48 89 84 24 58 01 00 	mov    QWORD PTR [rsp+0x158],rax
+ 226930e:	00
+ 226930f:	48 8d 4c 24 20       	lea    rcx,[rsp+0x20]
+ 2269314:	48 89 8c 24 60 01 00 	mov    QWORD PTR [rsp+0x160],rcx
+ 226931b:	00
+ 226931c:	48 89 84 24 68 01 00 	mov    QWORD PTR [rsp+0x168],rax
+ 2269323:	00
+ 2269324:	48 8d 3d fd c0 f8 fd 	lea    rdi,[rip+0xfffffffffdf8c0fd]        # 1f5428 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4db29d8>
+ 226932b:	48 8d b4 24 20 01 00 	lea    rsi,[rsp+0x120]
+ 2269332:	00
+ 2269333:	ff 15 2f 56 50 03    	call   QWORD PTR [rip+0x350562f]        # 576e968 <__register_atfork@plt+0x10d728>
+
+## 0x2271d00 state_time + 600 s vs now, panic call [0x2271d52, 0x2271e8c)
+ 2271d52:	4c 8b bb 40 07 00 00 	mov    r15,QWORD PTR [rbx+0x740]
+ 2271d59:	48 b8 00 00 00 00 00 	movabs rax,0x4082c00000000000
+ 2271d60:	c0 82 40
+ 2271d63:	48 89 84 24 38 01 00 	mov    QWORD PTR [rsp+0x138],rax
+ 2271d6a:	00
+ 2271d6b:	49 8b 47 60          	mov    rax,QWORD PTR [r15+0x60]
+ 2271d6f:	48 89 84 24 40 01 00 	mov    QWORD PTR [rsp+0x140],rax
+ 2271d76:	00
+ 2271d77:	41 8b 47 68          	mov    eax,DWORD PTR [r15+0x68]
+ 2271d7b:	89 84 24 48 01 00 00 	mov    DWORD PTR [rsp+0x148],eax
+ 2271d82:	41 8b 47 68          	mov    eax,DWORD PTR [r15+0x68]
+ 2271d86:	89 84 24 c8 00 00 00 	mov    DWORD PTR [rsp+0xc8],eax
+ 2271d8d:	49 8b 47 60          	mov    rax,QWORD PTR [r15+0x60]
+ 2271d91:	48 89 84 24 c0 00 00 	mov    QWORD PTR [rsp+0xc0],rax
+ 2271d98:	00
+ 2271d99:	48 8d b4 24 c4 00 00 	lea    rsi,[rsp+0xc4]
+ 2271da0:	00
+ 2271da1:	48 8d 7c 24 10       	lea    rdi,[rsp+0x10]
+ 2271da6:	ba 58 02 00 00       	mov    edx,0x258
+ 2271dab:	31 c9                	xor    ecx,ecx
+ 2271dad:	ff 15 f5 ca 4f 03    	call   QWORD PTR [rip+0x34fcaf5]        # 576e8a8 <__register_atfork@plt+0x10d668>
+ 2271db3:	48 8b 44 24 18       	mov    rax,QWORD PTR [rsp+0x18]
+ 2271db8:	48 b9 00 00 00 00 40 	movabs rcx,0xffff574000000000
+ 2271dbf:	57 ff ff
+ 2271dc2:	48 01 c1             	add    rcx,rax
+ 2271dc5:	48 ba 81 ae fe ff 7f 	movabs rdx,0xfffeae7ffffeae81
+ 2271dcc:	ae fe ff
+ 2271dcf:	48 39 d1             	cmp    rcx,rdx
+ 2271dd2:	0f 82 95 05 00 00    	jb     227236d <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d35a93>
+ 2271dd8:	44 8b 64 24 10       	mov    r12d,DWORD PTR [rsp+0x10]
+ 2271ddd:	44 8b 74 24 14       	mov    r14d,DWORD PTR [rsp+0x14]
+ 2271de2:	8b bc 24 c0 00 00 00 	mov    edi,DWORD PTR [rsp+0xc0]
+ 2271de9:	48 b9 57 29 51 ce a0 	movabs rcx,0x1845c8a0ce512957
+ 2271df0:	c8 45 18
+ 2271df3:	48 f7 e9             	imul   rcx
+ 2271df6:	48 89 d6             	mov    rsi,rdx
+ 2271df9:	48 c1 ee 3f          	shr    rsi,0x3f
+ 2271dfd:	48 c1 ea 0d          	shr    rdx,0xd
+ 2271e01:	01 d6                	add    esi,edx
+ 2271e03:	ff 15 a7 ca 4f 03    	call   QWORD PTR [rip+0x34fcaa7]        # 576e8b0 <__register_atfork@plt+0x10d670>
+ 2271e09:	89 c5                	mov    ebp,eax
+ 2271e0b:	85 c0                	test   eax,eax
+ 2271e0d:	0f 84 5a 05 00 00    	je     227236d <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d35a93>
+ 2271e13:	48 8d 7c 24 10       	lea    rdi,[rsp+0x10]
+ 2271e18:	ff 15 82 ca 4f 03    	call   QWORD PTR [rip+0x34fca82]        # 576e8a0 <__register_atfork@plt+0x10d660>
+ 2271e1e:	3b 6c 24 10          	cmp    ebp,DWORD PTR [rsp+0x10]
+ 2271e22:	0f 9d c0             	setge  al
+ 2271e25:	75 61                	jne    2271e88 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d35f78>
+ 2271e27:	44 3b 64 24 14       	cmp    r12d,DWORD PTR [rsp+0x14]
+ 2271e2c:	0f 93 c0             	setae  al
+ 2271e2f:	75 57                	jne    2271e88 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d35f78>
+ 2271e31:	44 3b 74 24 18       	cmp    r14d,DWORD PTR [rsp+0x18]
+ 2271e36:	73 54                	jae    2271e8c <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d35f74>
+ 2271e38:	48 8d 84 24 38 01 00 	lea    rax,[rsp+0x138]
+ 2271e3f:	00
+ 2271e40:	48 89 44 24 10       	mov    QWORD PTR [rsp+0x10],rax
+ 2271e45:	48 8b 05 cc cb 4f 03 	mov    rax,QWORD PTR [rip+0x34fcbcc]        # 576ea18 <__register_atfork@plt+0x10d7d8>
+ 2271e4c:	48 89 44 24 18       	mov    QWORD PTR [rsp+0x18],rax
+ 2271e51:	48 8d 84 24 40 01 00 	lea    rax,[rsp+0x140]
+ 2271e58:	00
+ 2271e59:	48 89 44 24 20       	mov    QWORD PTR [rsp+0x20],rax
+ 2271e5e:	48 8b 05 c3 d6 4f 03 	mov    rax,QWORD PTR [rip+0x34fd6c3]        # 576f528 <__register_atfork@plt+0x10e2e8>
+ 2271e65:	48 89 44 24 28       	mov    QWORD PTR [rsp+0x28],rax
+ 2271e6a:	48 8d 3d 23 b3 f7 fd 	lea    rdi,[rip+0xfffffffffdf7b323]        # 1ed194 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4dbac6c>
+ 2271e71:	48 8d 15 d0 ca 42 03 	lea    rdx,[rip+0x342cad0]        # 569e948 <__register_atfork@plt+0x3d708>
+ 2271e78:	48 8d 74 24 10       	lea    rsi,[rsp+0x10]
+ 2271e7d:	ff 15 15 c2 4f 03    	call   QWORD PTR [rip+0x34fc215]        # 576e098 <__register_atfork@plt+0x10ce58>
+ 2271e83:	e9 b5 09 00 00       	jmp    227283d <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d355c3>
+ 2271e88:	84 c0                	test   al,al
+ 2271e8a:	74 ac                	je     2271e38 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d35fc8>
+
+## 0x2271d00 ud2 after the panic call [0x227283d, 0x227283f)
+ 227283d:	0f 0b                	ud2
+
+## 0x157b810 panic shim (whole FDE) [0x157b810, 0x157b83c)
+ 157b810:	55                   	push   rbp
+ 157b811:	48 89 e5             	mov    rbp,rsp
+ 157b814:	48 83 ec 30          	sub    rsp,0x30
+ 157b818:	48 89 7d f0          	mov    QWORD PTR [rbp-0x10],rdi
+ 157b81c:	48 89 75 f8          	mov    QWORD PTR [rbp-0x8],rsi
+ 157b820:	48 8d 45 f0          	lea    rax,[rbp-0x10]
+ 157b824:	48 89 45 d8          	mov    QWORD PTR [rbp-0x28],rax
+ 157b828:	48 89 55 e0          	mov    QWORD PTR [rbp-0x20],rdx
+ 157b82c:	66 c7 45 e8 01 00    	mov    WORD PTR [rbp-0x18],0x1
+ 157b832:	48 8d 7d d8          	lea    rdi,[rbp-0x28]
+ 157b836:	ff 15 a4 4e 1f 04    	call   QWORD PTR [rip+0x41f4ea4]        # 57706e0 <__register_atfork@plt+0x10f4a0>

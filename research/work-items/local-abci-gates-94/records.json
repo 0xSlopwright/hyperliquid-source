@@ -1,0 +1,96 @@
+{
+  "freshness": {
+    "added_seconds": 600,
+    "after_panic": "0x227283d",
+    "compare": "panic iff (date, secs, frac) of state_time + 600 s < now (lexicographic)",
+    "day_divisor": 86400,
+    "fde": "0x2271d00",
+    "location": "0x569e948",
+    "location_column": 9,
+    "location_file": "/home/ubuntu/hl/code_Mainnet/node/src/hl_node.rs",
+    "location_line": 346,
+    "message_seconds": 600.0,
+    "panic_shim": "0x157b810",
+    "panic_shim_slot": "0x57706e0",
+    "panic_shim_target": "0x4ecdcf0",
+    "slots": {
+      "add_days": [
+        "0x576e8b0",
+        "0x151f870"
+      ],
+      "add_time": [
+        "0x576e8a8",
+        "0x15206e0"
+      ],
+      "now": [
+        "0x576e8a0",
+        "0x151cba0"
+      ],
+      "panic": [
+        "0x576e098",
+        "0x157b810"
+      ]
+    },
+    "state_time": "[[rbx+0x740]+0x60] (12 bytes)",
+    "template": "0x1ed194",
+    "template_placeholders": 2
+  },
+  "height_gate": {
+    "fde": "0x22689f0",
+    "initial": "[rsp+0xc8]",
+    "local": "[rsp+0xd8]",
+    "messages": {
+      "stale_hardfork": {
+        "lea": "0x226ab81",
+        "len": 35,
+        "text": "local height is from stale hardfork",
+        "va": "0x3d798f"
+      },
+      "too_far_behind": {
+        "lea": "0x226ab49",
+        "len": 30,
+        "text": "local height is too far behind",
+        "va": "0x3d79b2"
+      }
+    },
+    "ok_branch": "0x226adb1",
+    "saturating": true,
+    "target": "[rsp+0xd0]",
+    "tolerance": 20000,
+    "window": "0x226ab0a"
+  },
+  "target": "artifacts/node/94/hl-node",
+  "target_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",
+  "tolerance_log": {
+    "branches_into_join": [
+      "0x226901b",
+      "0x226902e"
+    ],
+    "default": 540.0,
+    "default_const": "0x20a3d8",
+    "fde": "0x22689f0",
+    "hardfork": 840.0,
+    "hardfork_condition": "[rbx+0xc18] == 1 and [rbx+0xc20] == rax (jb -> 0x2269760)",
+    "hardfork_const": "0x20a230",
+    "hardfork_template": "0x1ed136",
+    "join": "0x2269164",
+    "log_placeholders": 5,
+    "log_template": "0x1f5428",
+    "slot": "[rsp+0xe0]",
+    "slot_refs": [
+      "0x226916b",
+      "0x226928c"
+    ],
+    "tolerance_arg_index": 2
+  },
+  "windows": {
+    "after_panic": "0x227283d",
+    "freshness": "0x2271d52",
+    "gate": "0x226ab0a",
+    "hardfork_log": "0x226911b",
+    "panic_shim": "0x157b810",
+    "select_540": "0x226900c",
+    "select_840": "0x226915c",
+    "tolerance_log": "0x226928a"
+  }
+}
