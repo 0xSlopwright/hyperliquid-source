@@ -60,7 +60,7 @@ corruptions for all five ranges/two literals, three RELA retargets, independent
 branch/sentinel decoding, output-field writes and diagnostic terminator checks.
 Local corruptions run below the whole-input gate to exercise those obligations.
 
-Required checks pass:437tests,151.712seconds. Four producer exports match an
+Required checks passed: 437 tests in 151.712 seconds. Four producer exports match an
 author repeat byte-for-byte; not independent peer review. Eight artifact
 identities,three signatures,37imports and seven pins unchanged. Analysis ready,
 exact rebuild unavailable. Logs mask local checkout/tool prefixes and normalize
