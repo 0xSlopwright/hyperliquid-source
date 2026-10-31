@@ -117,7 +117,10 @@ def relocations(data):
                 end = string_table.find(b'\0', name_offset)
                 if end < 0:
                     raise ValueError('Receiver dynamic symbol name not terminated inside string table')
-                name = string_table[name_offset:end].decode('ascii')
+                try:
+                    name = string_table[name_offset:end].decode('ascii')
+                except UnicodeDecodeError:
+                    raise ValueError('Receiver dynamic symbol name is not ASCII')
                 if info & 0xFFFFFFFF != 6 or name != 'exit' or addend != 0:
                     raise ValueError('Exit import binding changed')
                 exit_symbol = True
