@@ -1,0 +1,7 @@
+b223c64cdc1335b22dc77c0684cc89edd651ba7c46015d8eeeda4038c5c11ceb  EVIDENCE.md
+91b9f80be9b78e8eb2e488649babfdb4850dbec961cbbf7563c3b3800aed485f  README.md
+770b58f520ceb30c5efe8d735f4e09a5e39faf5a7845897a360fb4435333e5a4  independent_verify.py
+0002eb0b646cec85223eb616730ba09343202880fe3dacecdb82aa7b03db81d4  lattice-digest.json
+1a799e246811ae8b8a757e58f225353baf8b8eb70c59fa5c29c2e8470c61e953  verify.py
+b2c8b1213d010673166942d7d24fc8b788951bff38735cb7f08d28c29a65e7a6  ../../../tools/lattice_digest.py
+847e32f71273a421b10f79da66ca8c93b7b78ae4c0b30cdaaf16d57c90e2d7ed  ../../../tests/test_lattice_digest.py
