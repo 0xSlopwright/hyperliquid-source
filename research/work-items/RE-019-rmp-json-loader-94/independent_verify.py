@@ -35,9 +35,12 @@ KEYS = [
     (0x3c1561c, "488d35f91e5efc"),
     (0x3c1564a, "48c70302000000"),
     (0x3c15668, "c684242001000006"),
+    (0x3c15670, "8884244a010000"),
     (0x3c1568e, "ff15bc91b501"),
     (0x3c15696, "807c242009"),
+    (0x3c156af, "4883fa02"),
     (0x3c156b5, "66813e2e2e"),
+    (0x3c156ba, "0f8495010000"),
     (0x3c156e1, "807c3eff2e"),
     (0x3c15701, "0fb6540801"),
     (0x3c15718, "4080fe72"),
@@ -59,6 +62,9 @@ KEYS = [
     (0x3c15b6a, "ff157084b501"),
     (0x3c15b9a, "4889d8"),
     (0x3c15bab, "c3"),
+    (0x144a60b, "4989d6"),
+    (0x144a624, "66813e7e2f"),
+    (0x144a629, "7441"),
     (0x22aefdb, "488d0d460c4303"),
     (0x22aefea, "e8b1659601"),
     (0x3273856, "488d0d9bc34602"),
@@ -234,6 +240,19 @@ def read_location(data, segs, loc_va):
     raise KeyError(".rela.dyn")
 
 
+
+def got_relative_addend(data, got_va):
+    for name, h in shdrs(data):
+        if name != b".rela.dyn\0":
+            continue
+        n = h[5] // 24
+        for i in range(n):
+            o = h[4] + i * 24
+            r_offset, r_info, r_addend = struct.unpack_from("<QQq", data, o)
+            if r_offset == got_va and (r_info & 0xffffffff) == 8:
+                return r_addend
+    raise KeyError("no RELATIVE for GOT " + hex(got_va))
+
 def check_keys(data, check_sha=True, callers=True, labels=True, locations=True, extent=True):
     if check_sha and hashlib.sha256(data).hexdigest() != SHA256:
         return ["binary sha256 mismatch"]
@@ -245,6 +264,11 @@ def check_keys(data, check_sha=True, callers=True, labels=True, locations=True, 
         ext = at(data, segs, FN, FN_END - FN)
         if hashlib.sha256(ext).hexdigest() != EXTENT_SHA256:
             fails.append("extent sha256 mismatch")
+    try:
+        if got_relative_addend(data, 0x576f628) != 0x144a600:
+            fails.append("tilde GOT addend mismatch")
+    except KeyError as e:
+        fails.append(str(e))
     for va, hx in KEYS:
         got = at(data, segs, va, len(hx) // 2).hex()
         if got != hx:

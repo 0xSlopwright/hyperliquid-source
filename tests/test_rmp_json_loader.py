@@ -13,7 +13,7 @@ PACKET = ROOT / "research" / "work-items" / "RE-019-rmp-json-loader-94"
 sys.path.insert(0, str(ROOT / "tools"))
 import rmp_json_loader as tool  # noqa: E402
 
-OUTPUT_SHA256 = "d434acc77db5a0e8636833b1fab0d009416a9548b16d7ac49a4866d894fb472d"
+OUTPUT_SHA256 = "58cf74dd36110d624b1df3422838f9f242c3ed14623a9b3bd44eb1e334ded75f"
 
 
 def load(name, path):
@@ -72,14 +72,17 @@ class RmpJsonLoaderTests(unittest.TestCase):
     def test_exact_counts(self):
         r = tool.analyse(bytes(DATA))
         self.assertEqual(len(r["callers"]), 3)
-        self.assertEqual(len(tool.KEY_INSNS), 35)
+        self.assertEqual(len(tool.KEY_INSNS), 41)
         self.assertEqual(len(tool.CALLER_KEYS), 6)
-        self.assertEqual(len(r["key_bytes"]), 41)
+        self.assertEqual(len(r["key_bytes"]), 47)
         self.assertEqual(len(r["labels"]), 5)
         self.assertEqual(len(r["locations"]), 2)
         self.assertEqual(r["extent_len"], 1744)
         self.assertEqual(r["ok_payload_len"], 0x1fc8)
         self.assertEqual(r["err_tag"], 2)
+        self.assertEqual(r["path_abi"]["rsi"], "path pointer")
+        self.assertEqual(r["tilde_expander"]["va"], "0x144a600")
+        self.assertEqual(r["tilde_expander"]["cmpw_imm"], "0x2f7e")
 
     def test_seeds_and_optimize_byte_identical(self):
         outs = set()

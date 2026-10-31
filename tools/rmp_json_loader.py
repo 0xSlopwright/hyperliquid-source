@@ -2,9 +2,12 @@
 """RE-019: 0x3c155a0 path-selected MessagePack/JSON loader (node #94).
 
 Standalone. From the pinned node #94 binary only, it recovers:
+  * path ABI (rdi=out, rsi=path_ptr, rdx=path_len, rcx=Location);
+  * first call [0x576f628] -> 0x144a600 ~/ expander (cmpw $0x2f7e);
+  * absolute-/ is sete-flag (not reject); exact-.. (len==2, cmpw $0x2e2e) -> non-rmp arm;
   * the FDE extent 0x3c155a0..0x3c15c70 (sha256-pinned);
   * a whole-section e8 caller pass: exactly three sites call 0x3c155a0;
-  * the .rmp case-insensitive extension gate (bytes for / .. . r m p);
+  * the .rmp case-insensitive extension gate;
   * the two format arms: .rmp -> call 0x2e0db40 + LEA rmp_serde::from_slice;
     else -> call 0x2fe2fe0 + LEA serde_json::from_str;
   * Ok payload length 0x1fc8 (memcpy) and Err tag movq $2;
@@ -32,18 +35,21 @@ CALLERS = (0x22aefea, 0x3273862, 0x4546bca)
 KEY_INSNS = [
     (0x3c155a0, "4157415641545348", "prologue push r15,r14,r12,rbx"),
     (0x3c155a7, "4881ec00100000", "sub rsp,0x1000 stack probe"),
-    (0x3c155cc, "4889fb", "mov rbx,rdi out Result"),
+    (0x3c155cc, "4889fb", "mov rbx,rdi out Result (path ABI rdi)"),
     (0x3c155cf, "4c8d742458", "lea r14,[rsp+0x58]"),
-    (0x3c155d7, "ff154ba0b501", "call [0x576f628] current_dir slot"),
+    (0x3c155d7, "ff154ba0b501", "call [0x576f628] ~/ expander GOT (rsi/rdx path)"),
     (0x3c155ed, "ff15f593b501", "call [0x576e9e8] path probe"),
-    (0x3c155fc, "41803f2f", "cmpb $0x2f,(r15) absolute slash"),
-    (0x3c15600, "0f94c0", "sete al"),
+    (0x3c155fc, "41803f2f", "cmpb $0x2f,(r15) detect absolute slash"),
+    (0x3c15600, "0f94c0", "sete al is_absolute flag (not a reject)"),
     (0x3c1561c, "488d35f91e5efc", "lea rsi, missing file:"),
     (0x3c1564a, "48c70302000000", "movq $2,(rbx) early Err tag"),
     (0x3c15668, "c684242001000006", "movb $6,[rsp+0x120]"),
+    (0x3c15670, "8884244a010000", "movb al,[rsp+0x14a] store is_absolute"),
     (0x3c1568e, "ff15bc91b501", "call [0x576e850] Path construct"),
     (0x3c15696, "807c242009", "cmpb $9,[rsp+0x20]"),
-    (0x3c156b5, "66813e2e2e", "cmpw $0x2e2e,(rsi) dotdot"),
+    (0x3c156af, "4883fa02", "cmp $2,rdx before exact-.. check"),
+    (0x3c156b5, "66813e2e2e", "cmpw $0x2e2e,(rsi) exact-.. path"),
+    (0x3c156ba, "0f8495010000", "je non-rmp arm when path is exact .."),
     (0x3c156e1, "807c3eff2e", "cmpb $0x2e,-1(rsi,rdi) trailing-dot scan"),
     (0x3c15701, "0fb6540801", "movzbl 1(rax,rcx),edx ext0"),
     (0x3c15718, "4080fe72", "cmp $0x72,sil folded r"),
@@ -65,6 +71,9 @@ KEY_INSNS = [
     (0x3c15b6a, "ff157084b501", "call [0x576dfe0] memcpy Ok payload"),
     (0x3c15b9a, "4889d8", "mov rax,rbx"),
     (0x3c15bab, "c3", "ret"),
+    (0x144a60b, "4989d6", "tilde expander: mov r14,rdx path_len"),
+    (0x144a624, "66813e7e2f", "tilde expander: cmpw $0x2f7e,(rsi) ~/"),
+    (0x144a629, "7441", "tilde expander: je home-expand"),
 ]
 
 CALLER_KEYS = [
@@ -108,6 +117,20 @@ LOCATIONS = {
     },
 }
 
+PATH_ABI = {
+    "rdi": "out Result pointer",
+    "rsi": "path pointer",
+    "rdx": "path length",
+    "rcx": "Location pointer",
+}
+TILDE_EXPANDER = {
+    "va": "0x144a600",
+    "got": "0x576f628",
+    "got_addend": "0x144a600",
+    "cmpw_imm": "0x2f7e",
+    "cmpw_va": "0x144a624",
+    "cmpw_bytes": "66813e7e2f",
+}
 EXTENT_SHA256 = "b9475c6190243bb4674d50321121a69fe42b87751dfcbea6acf3455738b08f8e"
 CALLER_FDES = {
     "0x22aefea": "0x22ae8a0",
@@ -149,6 +172,8 @@ EXPECT = {
     "key_insns": len(KEY_INSNS) + len(CALLER_KEYS),
     "labels": LABELS,
     "locations": LOCATIONS,
+    "path_abi": PATH_ABI,
+    "tilde_expander": TILDE_EXPANDER,
 }
 
 
@@ -269,6 +294,18 @@ def read_location(data, segs, loc_va):
     }
 
 
+def got_relative_addend(data, got_va):
+    secs = section_map(data)
+    h = secs[b".rela.dyn"]
+    n = h[5] // 24
+    for i in range(n):
+        o = h[4] + i * 24
+        r_offset, r_info, r_addend = struct.unpack_from("<QQq", data, o)
+        if r_offset == got_va and (r_info & 0xffffffff) == 8:
+            return r_addend
+    raise KeyError("no RELATIVE for GOT " + hex(got_va))
+
+
 def analyse(data, check_sha=True):
     if check_sha and hashlib.sha256(data).hexdigest() != BINARY_SHA256:
         raise ValueError("binary sha256 mismatch")
@@ -299,6 +336,10 @@ def analyse(data, check_sha=True):
     locs = {k: read_location(data, segs, int(k, 16)) for k in LOCATIONS}
     callers = caller_scan(data)
     caller_fdes = {hex(c): hex(fde_start(data, segs, c)) for c in callers}
+    got_addend = got_relative_addend(data, 0x576f628)
+    if got_addend != 0x144a600:
+        raise ValueError("tilde GOT addend %s != 0x144a600" % hex(got_addend))
+    tilde = dict(TILDE_EXPANDER)
     return {
         "binary_sha256": BINARY_SHA256,
         "function": hex(FN),
@@ -309,6 +350,8 @@ def analyse(data, check_sha=True):
         "caller_fdes": {k: caller_fdes[k] for k in sorted(caller_fdes)},
         "ok_payload_len": 0x1fc8,
         "err_tag": 2,
+        "path_abi": dict(PATH_ABI),
+        "tilde_expander": tilde,
         "key_bytes": keys,
         "targets": {k: targets[k] for k in sorted(targets)},
         "labels": labels,
@@ -323,7 +366,8 @@ def analyse(data, check_sha=True):
 def expectation_errors(result):
     errs = []
     for k, v in EXPECT.items():
-        if k in ("key_insns", "labels", "locations", "caller_fdes", "callers"):
+        if k in ("key_insns", "labels", "locations", "caller_fdes", "callers",
+                 "path_abi", "tilde_expander"):
             continue
         if result.get(k) != v:
             errs.append("%s: %r != %r" % (k, result.get(k), v))
@@ -337,6 +381,10 @@ def expectation_errors(result):
         errs.append("labels mismatch")
     if result["locations"] != EXPECT["locations"]:
         errs.append("locations mismatch")
+    if result.get("path_abi") != EXPECT["path_abi"]:
+        errs.append("path_abi mismatch")
+    if result.get("tilde_expander") != EXPECT["tilde_expander"]:
+        errs.append("tilde_expander mismatch")
     for va, exp in TARGETS.items():
         got = result["targets"].get(va)
         if got != exp:
@@ -359,7 +407,9 @@ def render(result):
         "labels": result["labels"],
         "locations": result["locations"],
         "ok_payload_len": result["ok_payload_len"],
+        "path_abi": result["path_abi"],
         "targets": result["targets"],
+        "tilde_expander": result["tilde_expander"],
     }
     return json.dumps(payload, sort_keys=True, indent=1) + "\n"
 

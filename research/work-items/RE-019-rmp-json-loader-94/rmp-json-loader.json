@@ -29,6 +29,18 @@
  "function": "0x3c155a0",
  "function_end": "0x3c15c70",
  "key_bytes": {
+  "0x144a60b": {
+   "bytes": "4989d6",
+   "role": "tilde expander: mov r14,rdx path_len"
+  },
+  "0x144a624": {
+   "bytes": "66813e7e2f",
+   "role": "tilde expander: cmpw $0x2f7e,(rsi) ~/"
+  },
+  "0x144a629": {
+   "bytes": "7441",
+   "role": "tilde expander: je home-expand"
+  },
   "0x22aefdb": {
    "bytes": "488d0d460c4303",
    "role": "caller 0x22aefea: lea rcx, Location state.rs:86"
@@ -55,7 +67,7 @@
   },
   "0x3c155cc": {
    "bytes": "4889fb",
-   "role": "mov rbx,rdi out Result"
+   "role": "mov rbx,rdi out Result (path ABI rdi)"
   },
   "0x3c155cf": {
    "bytes": "4c8d742458",
@@ -63,7 +75,7 @@
   },
   "0x3c155d7": {
    "bytes": "ff154ba0b501",
-   "role": "call [0x576f628] current_dir slot"
+   "role": "call [0x576f628] ~/ expander GOT (rsi/rdx path)"
   },
   "0x3c155ed": {
    "bytes": "ff15f593b501",
@@ -71,11 +83,11 @@
   },
   "0x3c155fc": {
    "bytes": "41803f2f",
-   "role": "cmpb $0x2f,(r15) absolute slash"
+   "role": "cmpb $0x2f,(r15) detect absolute slash"
   },
   "0x3c15600": {
    "bytes": "0f94c0",
-   "role": "sete al"
+   "role": "sete al is_absolute flag (not a reject)"
   },
   "0x3c1561c": {
    "bytes": "488d35f91e5efc",
@@ -89,6 +101,10 @@
    "bytes": "c684242001000006",
    "role": "movb $6,[rsp+0x120]"
   },
+  "0x3c15670": {
+   "bytes": "8884244a010000",
+   "role": "movb al,[rsp+0x14a] store is_absolute"
+  },
   "0x3c1568e": {
    "bytes": "ff15bc91b501",
    "role": "call [0x576e850] Path construct"
@@ -97,9 +113,17 @@
    "bytes": "807c242009",
    "role": "cmpb $9,[rsp+0x20]"
   },
+  "0x3c156af": {
+   "bytes": "4883fa02",
+   "role": "cmp $2,rdx before exact-.. check"
+  },
   "0x3c156b5": {
    "bytes": "66813e2e2e",
-   "role": "cmpw $0x2e2e,(rsi) dotdot"
+   "role": "cmpw $0x2e2e,(rsi) exact-.. path"
+  },
+  "0x3c156ba": {
+   "bytes": "0f8495010000",
+   "role": "je non-rmp arm when path is exact .."
   },
   "0x3c156e1": {
    "bytes": "807c3eff2e",
@@ -218,6 +242,12 @@
   }
  },
  "ok_payload_len": 8136,
+ "path_abi": {
+  "rcx": "Location pointer",
+  "rdi": "out Result pointer",
+  "rdx": "path length",
+  "rsi": "path pointer"
+ },
  "targets": {
   "0x22aefdb": "0x56dfc28",
   "0x22aefea": "0x3c155a0",
@@ -238,5 +268,13 @@
   "0x3c15b6a": "0x576dfe0",
   "0x4546bbe": "0x56dfc28",
   "0x4546bca": "0x3c155a0"
+ },
+ "tilde_expander": {
+  "cmpw_bytes": "66813e7e2f",
+  "cmpw_imm": "0x2f7e",
+  "cmpw_va": "0x144a624",
+  "got": "0x576f628",
+  "got_addend": "0x144a600",
+  "va": "0x144a600"
  }
 }
