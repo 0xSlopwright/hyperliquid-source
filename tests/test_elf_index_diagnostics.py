@@ -1,6 +1,7 @@
 """elf_index must report a missing/wrong artifact as one line, not a traceback."""
 import contextlib
 import io
+import runpy
 import sys
 import unittest
 from pathlib import Path
@@ -19,7 +20,7 @@ class MissingArtifactDiagnostics(unittest.TestCase):
                 mock.patch.object(sys, 'argv', ['elf_index.py', '--release', '94']), \
                 contextlib.redirect_stderr(stderr):
             with self.assertRaises(SystemExit) as caught:
-                elf_index.main()
+                runpy.run_path(str(ROOT / "tools/elf_index.py"), run_name="__main__")
         self.assertEqual(caught.exception.code, 1)
         lines = [line for line in stderr.getvalue().splitlines() if line.strip()]
         self.assertEqual(len(lines), 1, lines)
