@@ -6,6 +6,7 @@ Each fact is labelled exact (bytes read at a stated section/offset), inferred
 """
 import argparse
 import collections
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -13,7 +14,7 @@ import struct
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from artifacts import check
+from artifacts import load_manifest
 from elf_index import sections
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,39 +63,102 @@ def grouped(data, pattern):
 
 
 def section_bytes(data, sec):
+    if sec['type'] == 8:
+        raise ValueError('Cannot derive file-backed facts from NOBITS section: ' + sec['name'])
     return data[sec['offset']:sec['offset'] + sec['size']]
 
 
 def program_headers(data):
     phoff = struct.unpack_from('<Q', data, 32)[0]
     entsize, count = struct.unpack_from('<HH', data, 54)
+    if not count:
+        return []
+    if entsize != 56 or phoff < 64 or phoff + entsize * count > len(data):
+        raise ValueError('Invalid or unsupported ELF64 program-header table')
     return [struct.unpack_from('<IIQQQQQQ', data, phoff + i * entsize) for i in range(count)]
+
+
+def dynamic_string(table, offset, context):
+    """Read one DT_* string that must be NUL-terminated inside .dynstr."""
+    if not isinstance(offset, int) or isinstance(offset, bool) or offset < 0 or offset >= len(table):
+        raise ValueError(f'{context} string offset is outside .dynstr')
+    end = table.find(b'\0', offset)
+    if end < 0:
+        raise ValueError(f'{context} string is not terminated inside .dynstr')
+    raw = table[offset:end]
+    try:
+        return raw.decode('utf-8')
+    except UnicodeDecodeError as error:
+        raise ValueError(f'{context} string is not UTF-8') from error
 
 
 def dynamic(data, by_name):
     dyn, dstr = by_name['.dynamic'], section_bytes(data, by_name['.dynstr'])
     raw = section_bytes(data, dyn)
+    if len(raw) % 16:
+        raise ValueError('Incomplete .dynamic entry')
     tags = []
     for i in range(0, len(raw) - 15, 16):
         tag = struct.unpack_from('<qQ', raw, i)
         if tag[0] == 0:  # DT_NULL ends the dynamic array; later slots are not entries
             break
         tags.append(tag)
-    name = lambda v: dstr[v:dstr.index(b'\0', v)].decode()
+    else:
+        raise ValueError('Missing DT_NULL terminator in .dynamic')
+
+    def name(value, context):
+        return dynamic_string(dstr, value, context)
+
     return tags, name
+
+
+def has_gnu_property_note(data, secs):
+    """Identify GNU type-5 records in SHT_NOTE data, independently of names."""
+    shoff = struct.unpack_from('<Q', data, 40)[0]
+    shentsize = struct.unpack_from('<H', data, 58)[0]
+    found = False
+    for index, sec in enumerate(secs):
+        if sec['type'] != 7:  # SHT_NOTE is file-backed; sections() checks its span.
+            continue
+        declared_alignment = struct.unpack_from('<Q', data, shoff + index * shentsize + 48)[0]
+        alignment = 8 if declared_alignment == 8 else 4
+        offset, end = sec['offset'], sec['offset'] + sec['size']
+        while offset < end:
+            if end - offset < 12:
+                raise ValueError('Note header outside section')
+            namesz, descsz, kind = struct.unpack_from('<III', data, offset)
+            name_start = offset + 12
+            name_end = name_start + namesz
+            desc_start = sec['offset'] + ((name_end - sec['offset'] + alignment - 1) // alignment) * alignment
+            desc_end = desc_start + descsz
+            if name_end > end or desc_end > end:
+                raise ValueError('Note payload outside section')
+            if kind == 5 and data[name_start:name_end] == b'GNU\0':
+                found = True
+            offset = (end if desc_end == end else sec['offset'] +
+                      ((desc_end - sec['offset'] + alignment - 1) // alignment) * alignment)
+            if offset > end:
+                raise ValueError('Note padding outside section')
+    return found
 
 
 def derive(data):
     secs = sections(data)
+    # The dict below keeps only the last section of a given name, so a
+    # duplicate would silently decide which bytes the facts below read.
+    # Refuse the ambiguity for every name whose content derive() reads.
+    for name in ('.comment', '.interp', '.dynamic', '.dynstr', '.gcc_except_table'):
+        if sum(s['name'] == name for s in secs) > 1:
+            raise ValueError(f'Duplicate section: {name}')
     by_name = {s['name']: s for s in secs}
     f = Facts(data, secs)
 
     f.exact('elf.type', {2: 'EXEC', 3: 'DYN'}.get(struct.unpack_from('<H', data, 16)[0]), 16)
     f.exact('elf.machine', {0x3E: 'x86-64'}.get(struct.unpack_from('<H', data, 18)[0]), 18)
-    f.exact('elf.has_symtab', '.symtab' in by_name, note='section table lookup')
+    f.exact('elf.has_symtab', any(s['type'] == 2 for s in secs), note='section table lookup')
     f.exact('elf.debug_sections', sorted(n for n in by_name if n.startswith(('.debug', '.zdebug'))),
             note='section table lookup')
-    f.exact('elf.has_gnu_property_note', '.note.gnu.property' in by_name,
+    f.exact('elf.has_gnu_property_note', has_gnu_property_note(data, secs),
             note='absent note means no IBT/SHSTK property was recorded by the linker')
 
     comment = by_name.get('.comment')
@@ -102,12 +166,20 @@ def derive(data):
         pos = comment['offset']
         for chunk in section_bytes(data, comment).split(b'\0'):
             if chunk:
-                f.exact('comment', chunk.decode(), data.index(chunk, pos))
+                try:
+                    text = chunk.decode()
+                except UnicodeDecodeError:
+                    raise ValueError('Invalid comment encoding')
+                f.exact('comment', text, data.index(chunk, pos))
             pos += len(chunk) + 1
 
     interp = by_name.get('.interp')
     if interp:
-        f.exact('interp', section_bytes(data, interp).rstrip(b'\0').decode(), interp['offset'])
+        try:
+            text = section_bytes(data, interp).rstrip(b'\0').decode()
+        except UnicodeDecodeError:
+            raise ValueError('Invalid interp encoding')
+        f.exact('interp', text, interp['offset'])
 
     phdrs = program_headers(data)
     kinds = {0x6474E552: 'GNU_RELRO', 0x6474E551: 'GNU_STACK', 0x6474E550: 'GNU_EH_FRAME'}
@@ -118,14 +190,15 @@ def derive(data):
 
     if '.dynamic' in by_name:
         tags, name = dynamic(data, by_name)
-        f.exact('dynamic.needed', [name(v) for t, v in tags if t == 1], by_name['.dynamic']['offset'])
+        f.exact('dynamic.needed', [name(v, 'DT_NEEDED') for t, v in tags if t == 1], by_name['.dynamic']['offset'])
         flags = [v for t, v in tags if t == 30]
         flags1 = [v for t, v in tags if t == 0x6FFFFFFB]
         f.exact('dynamic.bind_now', any(t == 24 for t, _ in tags)  # DT_BIND_NOW
                 or bool(flags and flags[0] & 8) or bool(flags1 and flags1[0] & 1),
                 by_name['.dynamic']['offset'])
         f.exact('dynamic.pie_flag', bool(flags1 and flags1[0] & 0x08000000), by_name['.dynamic']['offset'])
-        f.exact('dynamic.runpath', [name(v) for t, v in tags if t in (15, 29)], by_name['.dynamic']['offset'])
+        f.exact('dynamic.runpath', [name(v, 'DT_RPATH' if t == 15 else 'DT_RUNPATH') for t, v in tags if t in (15, 29)],
+                by_name['.dynamic']['offset'])
         names = section_bytes(data, by_name['.dynstr']).decode('ascii', 'replace').split('\0')
         f.exact('dynamic.hardening_imports', sorted({n for n in names if re.fullmatch(r'__stack_chk_fail|__[a-z]+_chk', n)}),
                 by_name['.dynstr']['offset'])
@@ -206,8 +279,18 @@ def interpret(items):
         f.inferred('debug_assertions', 'off (release-like profile)',
                    'std ub_checks precondition message is absent; it is emitted when debug assertions '
                    'are enabled in the calling crate. Weak: absence can also mean no checked API was used')
-    f.inferred('stripped', 'symbols and debuginfo removed' if get('elf.has_symtab') == [False] else 'not stripped',
-               'no .symtab or .debug* sections; this could be Cargo strip= or a post-link strip')
+    debug_sections = (get('elf.debug_sections') or [[]])[0]
+    if get('elf.has_symtab') == [False]:
+        if debug_sections:
+            f.inferred('stripped', 'static symbols absent; debug sections retained',
+                       '.symtab is absent but debug sections are present: ' + ', '.join(debug_sections) +
+                       '; this does not identify a historical strip command')
+        else:
+            f.inferred('stripped', 'symbols and debuginfo removed',
+                       'no .symtab or .debug* sections; this could be Cargo strip= or a post-link strip')
+    else:
+        f.inferred('stripped', 'not stripped',
+                   '.symtab is present, so static symbols remain; elf.debug_sections records debug sections separately')
     f.unknown('overflow_checks', 'overflow panic strings exist, but only callers into core panic_const '
               'helpers from first-party code would show the profile; needs xref analysis (RE-001)')
     for key, resolve in [
@@ -225,11 +308,21 @@ def interpret(items):
 
 
 def record(release):
-    manifest = json.loads((ROOT / 'provenance/artifacts.json').read_text())
+    manifest = load_manifest(ROOT)
     rel = TARGETS[release]
-    item = next(x for x in manifest['files'] if x['path'] == rel)
-    check(ROOT / rel, item)
-    facts = derive((ROOT / rel).read_bytes())
+    item = next((x for x in manifest['files'] if x['path'] == rel), None)
+    if item is None:
+        raise ValueError('Invalid artifact manifest')
+    missing = [field for field in ('size', 'sha256') if field not in item]
+    if missing:
+        raise ValueError(f'provenance/artifacts.json entry for {rel} is missing ' + '/'.join(missing))
+    path = ROOT / rel
+    if not path.is_file():
+        raise ValueError(f'Missing artifact: {path}')
+    data = path.read_bytes()
+    if len(data) != item['size'] or hashlib.sha256(data).hexdigest() != item['sha256']:
+        raise ValueError(f'Artifact size/SHA-256 mismatch: {ROOT / rel}')
+    facts = derive(data)
     return {'target': rel, 'sha256': item['sha256'], 'size': item['size'],
             'tool': 'tools/build_provenance.py', 'facts': facts + interpret(facts)}
 
@@ -259,11 +352,14 @@ def main():
         path = OUT / f'provenance-{release}.json'
         text = json.dumps(record(release), indent=1, sort_keys=True) + '\n'
         if args.check:
-            if not path.exists() or path.read_text() != text:
+            # Byte-exact: a text comparison would translate CRLF back to LF
+            # and certify a record whose bytes drifted (e.g. a Windows
+            # text-mode rewrite) as matching.
+            if not path.exists() or path.read_bytes() != text.encode('utf-8'):
                 stale.append(str(path.relative_to(ROOT)))
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(text)
+            path.write_text(text, encoding='utf-8', newline='\n')
             print('wrote', path.relative_to(ROOT))
     if stale:
         raise SystemExit('Stale provenance records: ' + ', '.join(stale) + '; run make provenance')

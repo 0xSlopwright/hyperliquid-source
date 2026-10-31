@@ -2,10 +2,12 @@
 """Checksum-locked artifact recovery and static signature verification."""
 import argparse
 import hashlib
+import http.client
 import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import urllib.request
 
@@ -20,12 +22,54 @@ def digest(path):
     return h.hexdigest()
 
 
+def is_lfs_pointer(path, item):
+    """True when path is the Git LFS v1 pointer for exactly this item."""
+    if path.stat().st_size > 1024:
+        return False
+    lines = path.read_bytes().decode('ascii', 'replace').splitlines()
+    return (lines[:1] == ['version https://git-lfs.github.com/spec/v1']
+            and f"oid sha256:{item['sha256']}" in lines and f"size {item['size']}" in lines)
+
+
 def check(path, item):
     path = Path(path)
+    if type(item) is not dict or 'size' not in item or 'sha256' not in item:
+        raise ValueError(f'Invalid artifact record: {path}')
     if not path.is_file():
         raise ValueError(f'Missing artifact: {path}')
     if path.stat().st_size != item['size'] or digest(path) != item['sha256']:
+        if is_lfs_pointer(path, item):
+            raise ValueError(f'Git LFS pointer, not the artifact: {path}; run git lfs pull')
         raise ValueError(f'Artifact size/SHA-256 mismatch: {path}')
+
+
+def _unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f'Duplicate key in artifact manifest: {key}')
+        result[key] = value
+    return result
+
+
+def load_manifest(root=ROOT):
+    """Load artifact identities without ambiguous keys, paths or record shapes."""
+    manifest = json.loads((root / 'provenance/artifacts.json').read_text(), object_pairs_hook=_unique_object)
+    if not isinstance(manifest, dict) or not isinstance(manifest.get('files'), list):
+        raise ValueError('Invalid artifact manifest')
+    if any(not isinstance(item, dict) or 'path' not in item for item in manifest['files']):
+        raise ValueError('Invalid artifact record')
+    paths = [item['path'] for item in manifest['files']]
+    if len(set(paths)) != len(paths):
+        raise ValueError('Duplicate path in artifact manifest')
+    return manifest
+
+
+def manifest_item(root, relative):
+    item = next((i for i in load_manifest(root)['files'] if i['path'] == relative), None)
+    if item is None:
+        raise ValueError(f'No provenance/artifacts.json entry for {relative}')
+    return item
 
 
 def fetch_one(root, item):
@@ -38,12 +82,16 @@ def fetch_one(root, item):
         raise ValueError(f'No upstream recovery URL for {path}; run git lfs pull / git restore')
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = None
+    written = 0
     try:
         with tempfile.NamedTemporaryFile(dir=path.parent, suffix='.part', delete=False) as f:
             temp = Path(f.name)
             with urllib.request.urlopen(url, timeout=120) as response:
                 for block in iter(lambda: response.read(1024 * 1024), b''):
+                    if len(block) > item['size'] - written:
+                        raise ValueError(f'Artifact exceeds manifest size: {path}')
                     f.write(block)
+                    written += len(block)
         check(temp, item)
         temp.chmod(0o644)
         os.replace(temp, path)
@@ -52,9 +100,23 @@ def fetch_one(root, item):
             temp.unlink(missing_ok=True)
 
 
+def fetch_all(root, manifest):
+    """Try every item, so one unrecoverable file does not block the others."""
+    failures = []
+    for item in manifest['files']:
+        try:
+            fetch_one(root, item)
+        except (OSError, ValueError, http.client.HTTPException) as error:
+            failures.append(f"{item['path']}: {error}")
+    if failures:
+        raise ValueError('Not recovered by fetch:\n  ' + '\n  '.join(failures))
+
+
 def verify_signatures(root, fingerprint):
     with tempfile.TemporaryDirectory(prefix='hl-verify-') as home:
-        base = ['gpg', '--batch', '--no-options', '--homedir', home]
+        # This workflow imports only a public verification key. It must not
+        # require starting a secret-key agent or other helper in a sandbox.
+        base = ['gpg', '--batch', '--no-options', '--no-autostart', '--homedir', home]
         subprocess.run(base + ['--import', str(root / 'artifacts/keys/pub_key.asc')],
                        check=True, capture_output=True)
         for rel in ['node/94/hl-node', 'node/115/hl-node', 'visor/captured/hl-visor']:
@@ -88,16 +150,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['verify', 'fetch'])
     args = parser.parse_args()
-    manifest = json.loads((ROOT / 'provenance/artifacts.json').read_text())
+    manifest = load_manifest(ROOT)
+    if args.command == 'fetch':
+        fetch_all(ROOT, manifest)
     for item in manifest['files']:
-        if args.command == 'fetch':
-            fetch_one(ROOT, item)
         check(ROOT / item['path'], item)
         print(f"SHA-256 OK: {item['path']}")
+    if 'signing_fingerprint' not in manifest:
+        raise ValueError('Invalid artifact manifest')
     verify_signatures(ROOT, manifest['signing_fingerprint'])
     verify_pinned_pairs(ROOT)
     print('Pinned upstream binary, signature and public key match.')
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except (ValueError, OSError) as error:
+        print(f'artifacts: {error}', file=sys.stderr)
+        raise SystemExit(1)

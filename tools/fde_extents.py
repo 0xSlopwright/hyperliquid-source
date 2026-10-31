@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import struct
+import sys
 
 from elf_index import sections, unwind_index
 
@@ -33,6 +34,8 @@ def uleb(data, pos, end):
         result |= (byte & 0x7f) << shift
         shift += 7
         if byte < 0x80:
+            if result >= 1 << 64:
+                raise ValueError('Oversized ULEB128')
             return result, pos
 
 
@@ -46,7 +49,10 @@ def sleb(data, pos, end):
         result |= (byte & 0x7f) << shift
         shift += 7
         if byte < 0x80:
-            return result - (1 << shift) if byte & 0x40 else result, pos
+            value = result - (1 << shift) if byte & 0x40 else result
+            if not -(1 << 63) <= value < 1 << 63:
+                raise ValueError('Oversized SLEB128')
+            return value, pos
 
 
 def sdata4(data, pos, end):
@@ -68,7 +74,10 @@ def parse_cie(data, start, body, end, va, base):
     terminator = data.find(b'\0', body + 1, end)
     if terminator < 0:
         raise ValueError('Unterminated CIE augmentation')
-    augmentation = data[body + 1:terminator].decode('ascii')
+    try:
+        augmentation = data[body + 1:terminator].decode('ascii')
+    except UnicodeDecodeError:
+        raise ValueError(f'Unsupported CIE augmentation {data[body + 1:terminator]!r}; do not guess')
     if not augmentation.startswith('z') or set(augmentation) - AUGMENTATION_CHARS or augmentation.count('z') != 1:
         raise ValueError(f'Unsupported CIE augmentation {augmentation!r}; do not guess')
     pos = terminator + 1
@@ -112,7 +121,10 @@ def parse_cie(data, start, body, end, va, base):
 def eh_frame_records(data, secs=None):
     """Return CIEs keyed by VA and FDEs in section order from a captured .eh_frame."""
     secs = secs or sections(data)
-    frame = next((s for s in secs if s['name'] == '.eh_frame'), None)
+    frames = [s for s in secs if s['name'] == '.eh_frame']
+    if len(frames) > 1:
+        raise ValueError('Duplicate section: .eh_frame')
+    frame = frames[0] if frames else None
     if frame is None or frame['type'] == 8:
         raise ValueError('No .eh_frame contents')
     base, limit, va = frame['offset'], frame['offset'] + frame['size'], frame['address']
@@ -176,7 +188,10 @@ def fde_extents(data):
     if frame_ptr != frame['address']:
         raise ValueError('.eh_frame_hdr eh_frame_ptr does not name .eh_frame')
     executable = [s for s in secs if s['flags'] & 4 and s['size']]
-    except_table = next((s for s in secs if s['name'] == '.gcc_except_table'), None)
+    except_tables = [s for s in secs if s['name'] == '.gcc_except_table']
+    if len(except_tables) > 1:
+        raise ValueError('Duplicate section: .gcc_except_table')
+    except_table = except_tables[0] if except_tables else None
     by_va = {f['fde']: f for f in fdes}
     if len(by_va) != len(fdes):
         raise ValueError('Duplicate FDE record addresses')
@@ -267,8 +282,21 @@ def generate(binary, prefix):
         writer.writerow(['start_va', 'end_va', 'size', 'section', 'int3_only'])
         for g in gaps:
             writer.writerow([hex(g['start']), hex(g['end']), g['end'] - g['start'], g['section'], str(g['int3_only']).lower()])
-    prefix.with_suffix('.json').write_text(json.dumps(summary, indent=2) + '\n')
+    prefix.with_suffix('.json').write_bytes((json.dumps(summary, indent=2) + '\n').encode())
     return summary
+
+
+def _unique_object(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError(f'Duplicate key in inventory input: {key}')
+        out[key] = value
+    return out
+
+
+def load_inventory(path):
+    return json.loads(Path(path).read_text(), object_pairs_hook=_unique_object)
 
 
 def main():
@@ -276,16 +304,23 @@ def main():
     p.add_argument('--release', choices=['94', '115'], required=True)
     p.add_argument('--output-dir', type=Path, default=ROOT / 'work/index')
     args = p.parse_args()
-    from artifacts import check
+    from artifacts import check, manifest_item
     rel = f'artifacts/node/{args.release}/hl-node'
-    item = next(i for i in json.loads((ROOT / 'provenance/artifacts.json').read_text())['files'] if i['path'] == rel)
+    inventory = f'research/imported/hl-node-{args.release}.inventory.json'
+    prefix = f'node-{args.release}-fde'
+    item = manifest_item(ROOT, rel)
     check(ROOT / rel, item)
-    summary = generate(ROOT / rel, args.output_dir / f'node-{args.release}-fde')
-    expected = json.loads((ROOT / f'research/imported/hl-node-{args.release}.inventory.json').read_text())['fde_count_eh_frame_hdr']
+    summary = generate(ROOT / rel, args.output_dir / prefix)
+    expected = load_inventory(ROOT / inventory)['fde_count_eh_frame_hdr']
     if summary['unwind_table_entries'] != expected:
         raise ValueError('Parsed unwind count differs from retained inventory')
     print(json.dumps(summary, indent=2))
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        raise SystemExit(main())
+    except (ValueError, OSError) as error:
+        print(f'fde_extents: {error}', file=sys.stderr)
+        raise SystemExit(1)

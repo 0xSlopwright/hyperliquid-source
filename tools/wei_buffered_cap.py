@@ -18,7 +18,7 @@ call or memory read.
     python3 tools/wei_buffered_cap.py --out <dir>
 
 writes evidence.json, sites.tsv, boundaries.tsv and tail-bytes.txt.  Only the Python
-standard library and objdump are used.
+standard library and GNU objdump are used.
 """
 
 import argparse
@@ -31,6 +31,9 @@ import struct
 import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gnu_binutils import gnu_objdump  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 BINARY = 'artifacts/node/94/hl-node'
@@ -72,16 +75,31 @@ def check_digest(data, expected=SHA256):
 # ------------------------------------------------------------------- ELF / FDE
 
 def sections(data):
-    if data[:6] != b'\x7fELF\x02\x01':
+    if data[:6] != b'\x7fELF\x02\x01' or len(data) < 64:
         raise EvidenceError('not an ELF64 little-endian file')
     shoff = struct.unpack_from('<Q', data, 0x28)[0]
     shentsize, shnum, shstrndx = struct.unpack_from('<HHH', data, 0x3a)
+    if shentsize < 64 or shstrndx >= shnum or shoff + shentsize * shnum > len(data):
+        raise EvidenceError('Invalid or unsupported ELF section table')
     raw = [struct.unpack_from('<IIQQQQIIQQ', data, shoff + i * shentsize) for i in range(shnum)]
-    stroff = raw[shstrndx][4]
+    stroff, strsize = raw[shstrndx][4], raw[shstrndx][5]
+    if stroff > len(data) or strsize > len(data) - stroff:
+        raise EvidenceError('section name table extends past end of file')
+    table = data[stroff:stroff + strsize]
     out = {}
-    for name, _typ, _flags, addr, off, size, *_ in raw:
-        end = data.index(b'\0', stroff + name)
-        out[data[stroff + name:end].decode()] = (addr, off, size)
+    for name, typ, _flags, addr, off, size, *_ in raw:
+        if typ == 8:  # SHT_NOBITS has no file bytes.
+            continue
+        if name >= len(table):
+            raise EvidenceError('section name offset outside .shstrtab')
+        end = table.find(b'\0', name)
+        if end < 0:
+            raise EvidenceError('unterminated section name')
+        try:
+            decoded = table[name:end].decode()
+        except UnicodeDecodeError:
+            raise EvidenceError('Non-UTF8 section name') from None
+        out[decoded] = (addr, off, size)
     return out
 
 
@@ -100,12 +118,20 @@ class Image:
         o = self.off(va, size)
         return self.data[o:o + size]
 
+    def section(self, name):
+        try:
+            return self.sec[name]
+        except KeyError:
+            raise EvidenceError(f'missing required section {name}') from None
+
     def text(self):
-        addr, off, size = self.sec['.text']
+        addr, off, size = self.section('.text')
         return addr, self.data[off:off + size]
 
     def relative_relocs(self):
-        _, off, size = self.sec['.rela.dyn']
+        _, off, size = self.section('.rela.dyn')
+        if off + size > len(self.data) or size % 24:
+            raise EvidenceError('.rela.dyn truncated')
         return {where: addend for where, info, addend in
                 struct.iter_unpack('<QQq', self.data[off:off + size]) if info & 0xffffffff == 8}
 
@@ -113,16 +139,23 @@ class Image:
 def uleb(buf, i):
     val = shift = 0
     while True:
+        if i >= len(buf) or shift > 63:
+            raise EvidenceError('Truncated or oversized ULEB128')
         b = buf[i]
         i += 1
         val |= (b & 0x7f) << shift
         shift += 7
         if b < 0x80:
+            if val >= 1 << 64:
+                raise EvidenceError('ULEB128 value exceeds 64 bits')
             return val, i
 
 
 def read_enc(img, va, enc):
-    size, code = {0x03: (4, '<I'), 0x0b: (4, '<i'), 0x04: (8, '<Q'), 0x0c: (8, '<q')}[enc & 0x0f]
+    try:
+        size, code = {0x03: (4, '<I'), 0x0b: (4, '<i'), 0x04: (8, '<Q'), 0x0c: (8, '<q')}[enc & 0x0f]
+    except KeyError:
+        raise EvidenceError(f'unsupported pointer encoding {enc:#x}')
     val = struct.unpack(code, img.read(va, size))[0]
     if enc & 0x70 == 0x10:
         val += va
@@ -136,7 +169,7 @@ class Fdes:
 
     def __init__(self, img):
         self.img = img
-        hdr = img.sec['.eh_frame_hdr'][0]
+        hdr = img.section('.eh_frame_hdr')[0]
         version, ptr_enc, cnt_enc, tbl_enc = img.read(hdr, 4)
         if (version, cnt_enc, tbl_enc) != (1, 0x03, 0x3b):
             raise EvidenceError('unexpected .eh_frame_hdr encodings')
@@ -148,6 +181,8 @@ class Fdes:
             loc, fde = struct.unpack_from('<ii', table, i * 8)
             self.starts.append(hdr + loc)
             self.fde.append(hdr + fde)
+        if any(b <= a for a, b in zip(self.starts, self.starts[1:])):
+            raise EvidenceError('.eh_frame_hdr table not strictly increasing')
         self.count = count
 
     def cie_r_encoding(self, cie):
@@ -155,8 +190,14 @@ class Fdes:
         if struct.unpack_from('<I', body, 0)[0] != 0:
             raise EvidenceError('CIE id is not zero')
         version = body[4]
-        end = body.index(b'\0', 5)
-        aug = body[5:end].decode()
+        try:
+            end = body.index(b'\0', 5)
+        except ValueError:
+            raise EvidenceError('Unterminated CIE augmentation') from None
+        try:
+            aug = body[5:end].decode()
+        except UnicodeDecodeError:
+            raise EvidenceError('Non-ASCII CIE augmentation') from None
         i = end + 1
         _, i = uleb(body, i)
         _, i = uleb(body, i)
@@ -166,15 +207,29 @@ class Fdes:
             _, i = uleb(body, i)
         if not aug.startswith('z'):
             raise EvidenceError('CIE without z augmentation')
-        _, i = uleb(body, i)
+        aug_length, i = uleb(body, i)
+        aug_end = i + aug_length
+        if aug_end > len(body):
+            raise EvidenceError('CIE augmentation data outside record')
         for ch in aug[1:]:
             if ch == 'R':
+                if i >= aug_end:
+                    raise EvidenceError('Truncated CIE augmentation data')
                 return body[i]
             if ch == 'L':
+                if i >= aug_end:
+                    raise EvidenceError('Truncated CIE augmentation data')
                 i += 1
             elif ch == 'P':
+                if i >= aug_end:
+                    raise EvidenceError('Truncated CIE augmentation data')
                 penc = body[i]
-                i += 1 + {0x03: 4, 0x0b: 4, 0x04: 8, 0x0c: 8}[penc & 0x0f]
+                step = {0x03: 4, 0x0b: 4, 0x04: 8, 0x0c: 8}.get(penc & 0x0f)
+                if step is None:
+                    raise EvidenceError(f'Unsupported personality encoding {penc:#x}')
+                if i + 1 + step > aug_end:
+                    raise EvidenceError('Truncated CIE augmentation data')
+                i += 1 + step
             else:
                 raise EvidenceError(f'unsupported augmentation {aug!r}')
         raise EvidenceError('CIE has no R augmentation')
@@ -198,7 +253,10 @@ class Fdes:
 # ------------------------------------------------------------ instruction reader
 
 def disassemble(binary, start, end):
-    cmd = ['objdump', '-d', '-M', 'intel', '--no-show-raw-insn',
+    objdump, why = gnu_objdump()
+    if objdump is None:
+        raise EvidenceError(f'{why}; the listing parser reads GNU objdump Intel syntax only')
+    cmd = [objdump, '-d', '-M', 'intel', '--no-show-raw-insn',
            f'--start-address={start:#x}', f'--stop-address={end:#x}', str(binary)]
     return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
 
@@ -576,7 +634,7 @@ LEA_RIP_RE = re.compile(rb'[\x48\x4c]\x8d[\x05\x0d\x15\x1d\x25\x2d\x35\x3d]....'
 
 
 def find_constant(img, value):
-    addr, off, size = img.sec['.rodata']
+    addr, off, size = img.section('.rodata')
     ro = img.data[off:off + size]
     needle = struct.pack('<d', value)
     hits = [m.start() for m in re.finditer(re.escape(needle), ro)]
@@ -609,17 +667,33 @@ def direct_refs(text_va, text, targets):
 
 def find_tail(insns):
     """Anchors of the cap arithmetic inside one function listing."""
-    idx = next(i for i, ins in enumerate(insns) if ins[1] == 'cvtsi2sd')
+    idx = next((i for i, ins in enumerate(insns) if ins[1] == 'cvtsi2sd'), None)
+    if idx is None:
+        raise EvidenceError('no cvtsi2sd anchor in listing')
     load = insns[idx - 1]
     if load[3] != 'mov    eax,DWORD PTR [rsp+0x14]':
         raise EvidenceError(f'unexpected factor load at {load[0]:#x}')
-    ok_store = next(i for i in range(idx, len(insns)) if insns[i][3] == 'mov    WORD PTR [rdi],0x186')
-    err_store = next(i for i in range(idx, len(insns)) if insns[i][3] == 'mov    WORD PTR [rdi],0x13f')
+    ok_store = next((i for i in range(idx, len(insns)) if insns[i][3] == 'mov    WORD PTR [rdi],0x186'), None)
+    if ok_store is None:
+        raise EvidenceError('no ok store anchor in listing')
+    err_store = next((i for i in range(idx, len(insns)) if insns[i][3] == 'mov    WORD PTR [rdi],0x13f'), None)
+    if err_store is None:
+        raise EvidenceError('no error store anchor in listing')
+    if err_store + 1 >= len(insns):
+        raise EvidenceError('no join instruction after error store')
     join = insns[err_store + 1][2][0][1]
-    mul_buffer = next(i for i in range(idx, ok_store) if insns[i][1] == 'mulsd' and insns[i][2][1][0] == 'a')
-    stage2 = next(i for i in range(mul_buffer, ok_store) if insns[i][1] == 'ucomisd')
-    stage1_end = next(i for i in range(idx, stage2) if insns[i][3] == 'movq   xmm2,rcx')
-    tag_b2 = next(i for i in range(stage2, ok_store) if insns[i][1] == 'mov' and insns[i][2][1] == ('i', 0xb2))
+    mul_buffer = next((i for i in range(idx, ok_store) if insns[i][1] == 'mulsd' and insns[i][2][1][0] == 'a'), None)
+    if mul_buffer is None:
+        raise EvidenceError('no mulsd anchor in listing')
+    stage2 = next((i for i in range(mul_buffer, ok_store) if insns[i][1] == 'ucomisd'), None)
+    if stage2 is None:
+        raise EvidenceError('no ucomisd anchor in listing')
+    stage1_end = next((i for i in range(idx, stage2) if insns[i][3] == 'movq   xmm2,rcx'), None)
+    if stage1_end is None:
+        raise EvidenceError('no stage1 end anchor in listing')
+    tag_b2 = next((i for i in range(stage2, ok_store) if insns[i][1] == 'mov' and insns[i][2][1] == ('i', 0xb2)), None)
+    if tag_b2 is None:
+        raise EvidenceError('no 0xb2 tag anchor in listing')
     return {'tail_start': load[0], 'cvt': insns[idx][0], 'join': join, 'stage1_end': insns[stage1_end][0],
             'stage2': insns[stage2][0], 'stage2_end': insns[tag_b2][0], 'ok_store': insns[ok_store][0],
             'err_store': insns[err_store][0], 'indices': (idx - 1, ok_store + 1)}
@@ -695,6 +769,33 @@ def check_site(machine, tail, insns):
             'doubles': len(double_grid()), 'clamp_mismatch': clamp}
 
 
+def extract_reciprocal_shift(insns):
+    """Total right shift of the reciprocal division idiom, from the code.
+
+    The sequence is: movabs rax, RECIPROCAL; mul <src> (unsigned, leaving
+    the 128-bit product in rdx:rax); mov reg, rdx (the high half, an
+    implicit shift of 64); shr reg, imm. Returns 64 + imm, or None when
+    the idiom is not present in this shape.
+    """
+    for i, ins in enumerate(insns):
+        if not re.search(r'movabs rax,0x346dc5d63886594b', ins[3]):
+            continue
+        window = insns[i + 1:i + 10]
+        if not any(w[1] == 'mul' for w in window):
+            return None
+        for j, w in enumerate(window):
+            m = re.search(r'mov\s+(r\w+),rdx$', w[3])
+            if not m:
+                continue
+            for v in window[j + 1:]:
+                s = re.search(rf'shr\s+{m.group(1)},0x([0-9a-f]+)$', v[3])
+                if s:
+                    return 64 + int(s.group(1), 16)
+            return None
+        return None
+    return None
+
+
 def scan_head(insns):
     """Decoded facts of the accumulation loop, by instruction text."""
     text = [ins[3] for ins in insns]
@@ -708,6 +809,20 @@ def scan_head(insns):
             'times_100': has(r'imul\s+rbp,QWORD PTR \[rsp\+0x38\],0x64'),
             'ratio_flag_one': has(r'mov\s+ecx,0x1$'),
             'direct_calls': [hex(c) for c in calls]}
+
+
+def find_recorder_call(insns, ok_store, relocs):
+    """The recorder call after the tail's ok store, or EvidenceError.
+
+    analyse() previously located this call through a bare next(), so a
+    listing whose tail pattern matched but which carried no recorder call
+    escaped main()'s EvidenceError-only handler as StopIteration.
+    """
+    for ins in insns:
+        if (ins[1] == 'call' and ins[2] and ins[2][0][0] == 'a'
+                and ins[0] > ok_store and relocs.get(ins[2][0][2]) == RECORDER_TARGET):
+            return ins
+    raise EvidenceError(f'no recorder call after {ok_store:#x}')
 
 
 # --------------------------------------------------------------------- analysis
@@ -725,6 +840,7 @@ def analyse(binary_path, data):
         raise EvidenceError('no reference to the 1.001 constant')
 
     sites, forms, details = [], {}, []
+    reciprocal_shifts = set()
     agg = {'grid': 0, 'grid_mismatch': 0, 'factor_window_mismatch': 0, 'clamp_mismatch': 0, 'doubles': 0}
     recorder = None
     for ref in sse:
@@ -732,9 +848,13 @@ def analyse(binary_path, data):
         insns = parse_listing(disassemble(binary_path, r['start'], r['end']))
         tail = find_tail(insns)
         heads = scan_head(insns)
+        if heads['dex_reciprocal']:
+            shift = extract_reciprocal_shift(insns)
+            if shift is None:
+                raise EvidenceError('reciprocal shift not extractable at a dex site')
+            reciprocal_shifts.add(shift)
         drops = {DROP_A, DROP_B} & set(int(c, 16) for c in heads['direct_calls'])
-        rec_lea = next(ins for ins in insns if ins[1] == 'call' and ins[2][0][0] == 'a'
-                       and ins[0] > tail['ok_store'] and relocs.get(ins[2][0][2]) == RECORDER_TARGET)
+        rec_lea = find_recorder_call(insns, tail['ok_store'], relocs)
         recorder = rec_lea[2][0][2]
         machine = Machine(insns, img, drops, recorder)
         res = check_site(machine, tail, insns)
@@ -785,6 +905,9 @@ def analyse(binary_path, data):
     for site, start in zip(sites, starts):
         site['direct_refs'] = [[kind, hex(va)] for kind, va in refs[start]]
     limit_refs = rip_refs(text_va, text, find_constant(img, 1.01))[0]
+    if len(reciprocal_shifts) != 1:
+        raise EvidenceError(f'reciprocal shifts disagree across sites: {sorted(reciprocal_shifts)}')
+    reciprocal_shift = reciprocal_shifts.pop()
 
     result = {
         'task': 'RE-004', 'question': 'Wei cap arithmetic: factor guard, float chain, buffered saturating add',
@@ -795,8 +918,8 @@ def analyse(binary_path, data):
                      'location': {'va': hex(RECORD_LOCATION), 'file': path.split(b'/code_Mainnet/')[-1].decode(),
                                   'line': line, 'col': col}},
         'sites': sites, 'tail_text': list(tail_form),
-        'reciprocal_10000': {'multiplier': hex(RECIPROCAL), 'shift': 75,
-                             'exact_for_all_u64': reciprocal_exact(RECIPROCAL, 75, 10000)},
+        'reciprocal_10000': {'multiplier': hex(RECIPROCAL), 'shift': reciprocal_shift,
+                             'exact_for_all_u64': reciprocal_exact(RECIPROCAL, reciprocal_shift, 10000)},
         'factor': {'max_admitted': MAX_FACTOR_INT,
                    'quotient_at_max': (MAX_FACTOR_INT / 1e8).hex(), 'limit': (1.01).hex(),
                    'quotient_above_max': ((MAX_FACTOR_INT + 1) / 1e8).hex()},
@@ -816,7 +939,7 @@ def analyse(binary_path, data):
             'doubles_per_site': agg['doubles'] // len(sites), 'clamp_mismatches': agg['clamp_mismatch'],
             'max_factor_int': MAX_FACTOR_INT,
             'lead_grid_mismatches': lead_mismatch, 'lead_clamp_differences': len(lead_clamp),
-            'reciprocal_exact': reciprocal_exact(RECIPROCAL, 75, 10000),
+            'reciprocal_exact': reciprocal_exact(RECIPROCAL, reciprocal_shift, 10000),
             'nan_or_inf_reachable': not (math.isfinite(max_x) and math.isfinite(max_y)),
         },
     }
@@ -854,7 +977,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     try:
         result, boundary_rows, details = analyse(args.binary, args.binary.read_bytes())
-    except (EvidenceError, Unmodelled) as exc:
+    except (EvidenceError, Unmodelled, OSError) as exc:
         print(f'error: {exc}', file=sys.stderr)
         return 1
     write(args.out, result, boundary_rows, details)
