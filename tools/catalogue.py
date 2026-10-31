@@ -171,6 +171,7 @@ def generate(root=ROOT):
     literal_items = literal_data['items']
     literal_items = json.loads((root / 'research/imported/can1357-literal-classes.json').read_text())['items']
     if any('class' not in i for i in literal_items):
+    if any('file' not in i for i in literal_items):
         raise ValueError('Invalid literal-classes record')
     rows = []
     for c in components:
