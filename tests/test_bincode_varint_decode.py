@@ -1,3 +1,4 @@
+import shutil
 """RE-005 decode-side tests: pinned output, tamper controls, determinism, objdump cross-check."""
 import hashlib
 import os
@@ -172,6 +173,20 @@ class Binutils(unittest.TestCase):
             shifted[i] = (sites[i][0] + 1, sites[i][1])
             self.assertEqual(boundary_misses(shifted), [sites[i][0] + 1])
 
+
+
+
+class AnchorBounds(unittest.TestCase):
+    def test_anchor_inside_section_is_returned(self):
+        raw = bytes.fromhex('81f9fb000000')
+        secs = {'.text': {'addr': 0x1000, 'offset': 0, 'size': len(raw)}}
+        self.assertEqual(dv.section_slice(raw, secs, 0x1000, len(raw)), (0, raw))
+
+    def test_anchor_that_leaves_section_is_rejected(self):
+        raw = bytes.fromhex('81f9fb000000')
+        secs = {'.text': {'addr': 0x1000, 'offset': 0, 'size': 2}}
+        with self.assertRaisesRegex(bv.EvidenceError, r'range 0x1000\+6 leaves its section'):
+            dv.section_slice(raw, secs, 0x1000, len(raw))
 
 if __name__ == '__main__':
     unittest.main()
