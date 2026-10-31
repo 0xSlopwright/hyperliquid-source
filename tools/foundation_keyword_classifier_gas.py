@@ -122,7 +122,7 @@ def analyze(data):
     require(call == bytes.fromhex('e8dd59c900'), 'Caller call bytes changed')
     require(CALL_SITE + 5 + struct.unpack_from('<i', call, 1)[0] == START,
             'Caller call target changed')
-    require(read(0x18fa9e0, 4) == bytes.fromhex('8b742410'),
+    require(read(0x18fa9df, 5) == bytes.fromhex('488b742410'),
             'Caller string-pointer setup changed')
     require(read(0x18fa9e4, 5) == bytes.fromhex('488b542418'),
             'Caller length setup changed')

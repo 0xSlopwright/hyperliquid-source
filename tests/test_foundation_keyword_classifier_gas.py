@@ -103,6 +103,12 @@ class ClassifierGasTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             analyze(mutated([(CALL_SITE + 1, b'\xdd', b'\xde')]))
 
+    def test_caller_pointer_rex_prefix_corruption_fails(self):
+        # Full-FDE decode puts the 64-bit pointer-load prefix one byte before
+        # the old clipped export. Losing it must not silently become MOV ESI.
+        with self.assertRaises(ValueError):
+            analyze(mutated([(0x18fa9df, b'\x48', b'\x40')]))
+
     def test_caller_setup_corruption_fails(self):
         with self.assertRaises(ValueError):
             analyze(mutated([(0x18fa9e9, b'\x48', b'\x49')]))

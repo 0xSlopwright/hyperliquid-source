@@ -46,7 +46,7 @@ def s32(value):
 
 
 def lookup(edi, esi, edx):
-    """Return (table, index) for the window's rule, indices sign-extended.
+    """Return (table, index), combining sign-extended i32 operands in 64 bits.
 
     edi/esi are compared as low 32 bits; edx is sign-extended for the index.
     Table contents are unknown, so only the table choice and index are given.

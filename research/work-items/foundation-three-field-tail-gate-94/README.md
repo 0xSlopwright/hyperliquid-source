@@ -64,8 +64,9 @@ grounded in target bytes.
   when all three pass, rdi advances by `0x68` and control leaves by the
   tail jump. The third test is a 16-bit word compare, so a value such as
   `0x103` fails it even though its low byte is 3.
-- No return value is set by this window on either path: the ret path sets
-  nothing, and the tail path leaves by jump. The window reads only rdi's
+- RAX is unchanged on the local RET path. The tail path transfers control
+  to an unanalyzed target; its eventual result and the source-level return
+  contract remain unknown. The window reads only rdi's
   three fields; no other argument is read, and there are no calls inside
   the window.
 - Tail callee, named not decoded: `0x47301d0` has its own FDE

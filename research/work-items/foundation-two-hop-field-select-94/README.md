@@ -72,7 +72,7 @@ Decoded from the FDE start, the window takes a struct pointer in `rdi`:
 Rule:
 
 - p = [rdi+0x8]; q = [p+0x1e0]; if q != 0 return [q+0x8]; else return [p+0x178].
-- The result is a qword load in both paths; no register other than `rax`/`rdx` is written, and the window contains no calls.
+- The result is the qword value loaded in either path; its source-level type is unknown; no register other than `rax`/`rdx` is written, and the window contains no calls.
 
 ### No scout correction needed
 

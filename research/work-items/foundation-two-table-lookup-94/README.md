@@ -77,9 +77,10 @@ ret
 Rule: gate = low32(edi) − 3, compared unsigned; if gate ≤ 2 and
 low32(esi) == 1, return table2[sign32(gate) + 3·sign32(edx)]; otherwise
 return table1[sign32(edi) + 10·sign32(edx)]. Both tables hold 8-byte
-entries (scale 8); both indices are sign-extended 32-bit values
-(`movslq`/`cltq`), so a negative low32 edi or edx lowers the index
-rather than wrapping to a huge unsigned offset.
+entries (scale 8). Index operands are sign-extended from 32 bits
+(`movslq`/`cltq`), then combined using 64-bit arithmetic. The final index
+is not truncated to 32 bits; a negative operand can lower it. No memory
+bounds or valid table-index domain is established.
 
 Both table bases live in `.data.rel.ro`. Table2 − table1 = `0x140`
 (320 bytes = 40 entries), but the tables' contents and lengths are not

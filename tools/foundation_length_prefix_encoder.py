@@ -53,7 +53,9 @@ def encode(length, payload):
     run or emulation of the captured binary. The first path's header uses
     8-bit cl, the second 16-bit cx, the third 32-bit ecx — so the third
     path truncates lengths above 2^32, while the first two paths take the
-    full 64-bit length (their thresholds keep the products small).
+    full 64-bit length (their thresholds keep the products small). Payload
+    is the byte observed after the header store; aliasing entry memory is
+    not modeled by this helper.
     """
     if length <= 0x1f:
         return bytes([(length * 8 + 1) & 0xff, payload]), 2
@@ -130,9 +132,9 @@ def analyze(data):
     require(CALL_SITE + 5 + struct.unpack_from('<i', call, 1)[0] == START,
             'Caller call target changed')
     require(read(0x5573e20, 5) == bytes.fromhex('488b742408'),
-            'Caller payload-pointer setup changed')
+            'Caller RSI setup changed')
     require(read(0x5573e25, 3) == bytes.fromhex('4c89d2'),
-            'Caller length setup changed')
+            'Caller RDX payload-pointer setup changed')
     require(read(0x5573e28, 3) == bytes.fromhex('4c89e7'),
             'Caller output-pointer setup changed')
     # Incoming calls: exactly one direct e8 call, no indirect slot calls.

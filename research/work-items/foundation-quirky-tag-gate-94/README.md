@@ -75,7 +75,7 @@ Rule, stated exactly:
 - t == 3 and byte [rdi+0x10] != 2 → tail-jump to 0x22429e0 with rdi unchanged.
 - Otherwise (any other t, or t == 3 with byte [rdi+0x10] == 2) → return, with no store and no pointer change.
 
-The shared tail target with and without the add is the window's distinctive (odd) property; it is stated exactly here and is not smoothed over into a single path. The tail target is named, not decoded: it is an FDE start (`[0x22429e0, 0x2242adc)`), and no claim is made about what it does with the adjusted (or unadjusted) argument. The window contains no calls, no stores, and no return value on the jump paths — it either returns (fall-through paths) or transfers control.
+The shared tail target with and without the add is the window's distinctive (odd) property; it is stated exactly here and is not smoothed over into a single path. The tail target is named, not decoded: it is an FDE start (`[0x22429e0, 0x2242adc)`), and no claim is made about what it does with the adjusted (or unadjusted) argument. The window contains no calls or stores. Its local RET paths leave RAX equal to the zero-extended tag; jump paths transfer control to an unanalyzed destination, whose eventual return behavior is unknown.
 
 ### Incoming calls: exactly one direct site
 

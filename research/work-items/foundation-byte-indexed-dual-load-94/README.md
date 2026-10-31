@@ -66,13 +66,13 @@ Decoded from the FDE start, the window takes a struct pointer in `rdi`:
 
 The rule is therefore `i = movzbl [rdi]; rdx = tableA[i]; rax = tableB[i]`, with 8-byte entries and the index scaled by 8. There are no branches and no calls: the window is straight-line. The window opens directly with the byte load — no `endbr64` (an observation, not a scout deviation).
 
-Table A is file-readable in `.rodata`; its first twelve entries are `8, 9, 3, 9, 14, 9, 14, 10, 8, 11, 6, 6`, and the checker locks them. Table B is not file-readable in any usable sense: its first eight file entries are all zero, and 127 `R_X86_64_RELATIVE` relocations target slots within its 256-entry range, so its runtime contents are load-time values that cannot be recovered from the file alone. No table-B content is claimed anywhere in this packet.
+Table A is file-readable in `.rodata`; its first twelve entries are `8, 9, 3, 9, 14, 9, 14, 10, 8, 11, 6, 6`, and the checker locks them. The checker locks the first eight file words at table B to zero and counts 127 `R_X86_64_RELATIVE` relocations within the 256-qword address range reachable by a byte index. This does not establish a logical table extent. Other file words in that range are nonzero; the whole range is not a zero array. RELATIVE addends establish normalized target addresses, while exact loaded pointers also depend on load bias. This packet does not decode those addends or interpret the wider contents.
 
 ### Data edge: one naming relocation, plus a load-time table
 
 The full `.rela.*` scan (80,022 `.rela.dyn` + 278 `.rela.plt` entries) finds exactly one record naming this window as addend: `R_X86_64_RELATIVE` at slot `0x57494c0` in `.data.rel.ro` (VA range `[0x56632a0, 0x576d770)`). It is a single naming slot, not a pointer table, and nothing about its purpose or owner is claimed. The checker locks exactly this one slot: any added, removed, or retyped slot fails the check.
 
-Separately, the 127 `R_X86_64_RELATIVE` relocations landing in the table-B range are the reason table-B contents are unclaimable: they overwrite file zeros with loader-resolved values. The checker locks the count (127), not any content.
+Separately, the checker locks the count of 127 `R_X86_64_RELATIVE` relocations in that address range. Their normalized addends could be analyzed from the ELF; they are outside this packet's retained content analysis, not intrinsically unrecoverable.
 
 ### Call edge: zero direct callers
 
@@ -99,7 +99,7 @@ The nearest previously claimed window is the double threshold gate at `0x5028a40
 ## Unknowns
 
 - What the index byte represents, and what either table's entries mean.
-- Table-B runtime contents (load-time values, unrecoverable from the file).
+- The wider table-B contents and their meaning, which are not decoded here; exact loaded pointers also depend on load bias.
 - Whether any caller reaches this window indirectly, and what the naming slot belongs to.
 - The source-level function, type, or component this window belongs to.
 

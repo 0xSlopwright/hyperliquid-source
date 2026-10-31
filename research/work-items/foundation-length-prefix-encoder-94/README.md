@@ -50,7 +50,7 @@ All addresses below are **ELF VAs**, without a guessed loader or Ghidra rebase. 
 - `.eh_frame+0x2d14c4` describes `[0x55716a0, 0x557170a)`, 106 bytes. GNU's independent frame dump agrees. Complete linear decoding from that start gives the instruction sequence below, ending exactly at the FDE endpoint (the `ret` at `0x5571709` is inside the FDE).
 - The unwind index stride to the next entry is 112 bytes, ending at `0x5571710`, only because six `int3` bytes (`0xcc`) pad the window after the FDE end. The stride is **not** the FDE extent; any description of this window as "112-byte FDE-bounded" would overstate the frame by those six padding bytes, and the checker locks the 106-byte body and the padding separately.
 - No relocation record of any type in any `.rela.*` section names this window as addend (full-section scan: 80,022 `.rela.dyn` + 278 `.rela.plt` entries), so the window has no indirect incoming call slot. The exact `.text` byte-pattern scan covers 70,370,352 bytes and finds exactly one direct `e8` call to the window, at `0x5573e2b`, subsequently visible as an instruction start in GNU disassembly from the caller FDE start. Register-indirect references, other pointer paths, prefixes, and data sections are not a complete xref census.
-- The caller FDE is `[0x55739f0, 0x5573f89)`, 1,529 bytes. Before the call it sets the arguments: `mov 0x8(%rsp),%rsi` (payload-byte pointer), `mov %r10,%rdx` (length), `mov %r12,%rdi` (output pointer); the caller's full behavior and the meaning of those registers are not closed here.
+- The caller FDE is `[0x55739f0, 0x5573f89)`, 1,529 bytes. Before the call it sets the arguments: `mov 0x8(%rsp),%rsi` (RSI is not read by this window), `mov %r10,%rdx` (payload-byte pointer), `mov %r12,%rdi` (output pointer). The length arrives in RCX, whose earlier setup is outside this retained excerpt; the caller's full behavior and the values' meaning are not established.
 
 ### Body behavior: two thresholds, three paths, no calls
 
@@ -94,6 +94,8 @@ Rule, stated exactly:
 - length ≤ 0x1f: byte `[rdi]` = (length × 8 + 1) mod 256, byte `[rdi + 1]` = byte `[rdx]`, return 2.
 - length ≤ 0xfff: word `[rdi]` = (length × 16 + 5) mod 65536, little-endian, byte `[rdi + 2]` = byte `[rdx]`, return 3.
 - else: dword `[rdi]` = ((length mod 2^32) × 16 + 13) mod 2^32, little-endian, byte `[rdi + 3]` = byte `[rdx]`, return 4.
+
+The payload load follows the header store on every path. If `[rdx]` overlaps the header, the value read can therefore differ from its entry value. The helper takes the byte observed at that load; it does not model a caller's memory aliasing or establish a nonaliasing invariant.
 
 Header widths, stated exactly: the first path's header uses 8-bit `cl`, the second 16-bit `cx`, the third 32-bit `ecx`. The third path is the only one that truncates: its `shl` operates on 32-bit `ecx`, so a length above 2^32 is reduced mod 2^32 before the multiply — for example length `0x100000001` encodes header dword `0x0000001d`, and length `0xffffffff` encodes header dword `0xfffffffd` (observable output `fd ff ff` plus the payload byte, since the payload overwrites the dword's top byte). The first two paths take the full 64-bit length, but their thresholds (0x1f, 0xfff) keep the products small, so no truncation is observable there. The payload is a single byte in every path; no longer payload is claimed, and no meaning is claimed for the header constants or multipliers.
 
