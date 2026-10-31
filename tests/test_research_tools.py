@@ -324,6 +324,8 @@ class CatalogueTests(unittest.TestCase):
         # as a ValueError — on base it escaped as KeyError from the gate
         # comparison in the component loop.
         d = copy.deepcopy(self.progress); del d['gates']
+    def test_missing_components_key_rejected(self):
+        d = copy.deepcopy(self.progress); del d['components']
         with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
 
 
