@@ -611,6 +611,22 @@ output word-0 decoding. It refuses each of these corruptions:
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
 producer does not use either.
 
+## Related open packets
+
+None of these is imported or relied on here; they are cited so overlapping
+claims can be compared.
+
+- [#352](https://github.com/lalalune/hyperliquid-source/pull/352) pins the
+  same saturating `min(A + 20000, u64::MAX) <= B` and `A < C` reason
+  comparisons in `0x22689f0`, without naming the operands.
+- [#363](https://github.com/lalalune/hyperliquid-source/pull/363) and
+  [#408](https://github.com/lalalune/hyperliquid-source/pull/408) follow slot
+  `0x5773aa8` → `0x3751e80` and its argument setup at `0x2268f61`, the call
+  that builds the state at `[rbx+0x88]` here.
+- [#459](https://github.com/lalalune/hyperliquid-source/pull/459) binds
+  `0x15206e0` and `0x151f870` to chrono Locations (time shift with day carry,
+  date day shift), which matches their use in the 600 s check.
+
 ## Unresolved
 
 - What `0x226bb20` sends for request tag 2 and how it decodes the reply.
@@ -618,9 +634,9 @@ producer does not use either.
   the join.
 - What the non-validator bootstrap in `0x22b47c0` does with a `stale`
   peer list, what else `0x4741dc0` loads, which state map
-  `(&state+0x8f8)+0x150` is and what its tag values 0 and 1 mean, and what
-  `0x3751e80` builds.
+  `(&state+0x8f8)+0x150` is and what its tag values 0 and 1 mean, and which
+  fields of the `0x3751e80` result (see #363) hold the state time.
 - What `[rbx+0x740]+0x60` holds, and which orchestrator paths reach states
   0xa and 0xb.
-- The identities of `0x15206e0`, `0x151f870`, `0x151cba0` and `0x4ecdcf0`
-  (inferred above, not proven).
+- The identities of `0x15206e0`, `0x151f870` (see #459), `0x151cba0` and
+  `0x4ecdcf0` (inferred above, not proven here).
