@@ -9,6 +9,7 @@ import hashlib
 import json
 from pathlib import Path
 import struct
+import sys
 from elf_index import sections
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -161,12 +162,16 @@ def main():
     parser.add_argument('--binary', type=Path, default=TARGET)
     parser.add_argument('--check', type=Path, help='Compare with retained JSON; fail on drift')
     args = parser.parse_args()
-    result = inspect(args.binary)
-    if args.check:
-        require(result == load_check(args.check), 'Retained evidence differs')
-        print('Foundation hour evidence reproduces exactly.')
-    else:
-        print(json.dumps(result, indent=2))
+    try:
+        result = inspect(args.binary)
+        if args.check:
+            require(result == load_check(args.check), 'Retained evidence differs')
+            print('Foundation hour evidence reproduces exactly.')
+        else:
+            print(json.dumps(result, indent=2))
+    except (ValueError, OSError, struct.error) as error:
+        print(f'foundation_hour: {error}', file=sys.stderr)
+        raise SystemExit(1)
 
 
 if __name__ == '__main__':
