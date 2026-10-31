@@ -38,18 +38,18 @@ class SignatureAgentTests(unittest.TestCase):
         self.environment = patch.dict(os.environ, {'PATH': str(self.tools) + os.pathsep + os.environ.get('PATH', '')})
         self.environment.start()
         self.addCleanup(self.environment.stop)
-        self.fingerprint = json.loads((ROOT / 'provenance/artifacts.json').read_text())['signing_fingerprint']
+        self.manifest = artifacts.load_manifest(ROOT)
 
     def test_all_three_real_signatures_verify_without_an_agent(self):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            artifacts.verify_signatures(ROOT, self.fingerprint)
+            artifacts.verify_signatures(ROOT, self.manifest)
         self.assertEqual(output.getvalue().count('Valid signature:'), 3)
         self.assertFalse((self.root / 'no-agent').exists())
 
     def test_wrong_expected_fingerprint_is_rejected(self):
         with self.assertRaises(ValueError):
-            artifacts.verify_signatures(ROOT, '0' * 40)
+            artifacts.verify_signatures(ROOT, {**self.manifest, 'signing_fingerprint': '0' * 40})
 
     def test_actual_capture_corruption_is_rejected(self):
         # Copy the public key plus the first real capture/signature into a
@@ -68,8 +68,14 @@ class SignatureAgentTests(unittest.TestCase):
             value = stream.read(1)[0]
             stream.seek(32)
             stream.write(bytes([value ^ 1]))
+        # The manifest drives pair order; this disposable layout contains only
+        # node94, so verify its pair rather than unrelated absent captures.
+        retained = {'artifacts/keys/pub_key.asc', 'artifacts/node/94/hl-node',
+                    'artifacts/node/94/hl-node.asc'}
+        manifest = {**self.manifest, 'files': [item for item in self.manifest['files']
+                                            if item['path'] in retained]}
         with self.assertRaises(subprocess.CalledProcessError) as failure:
-            artifacts.verify_signatures(root, self.fingerprint)
+            artifacts.verify_signatures(root, manifest)
         self.assertIn('BADSIG', failure.exception.stdout)
 
 
