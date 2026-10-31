@@ -17,8 +17,9 @@ def norm(text, start=0x1000, end=0x1100):
     return normalize(text, start, end, STARTS, PLT)
 
 
-def row(start, raw, masked, size=16, callees=()):
-    return {'start': start, 'size': size, 'raw': raw, 'norm': masked, 'callees': list(callees)}
+def row(start, raw, masked, size=16, callees=(), masks=None):
+    return {'start': start, 'size': size, 'raw': raw, 'norm': masked, 'callees': list(callees),
+            'masks': {'rip': 1} if masks is None else masks}
 
 
 class MutationControls(unittest.TestCase):
@@ -32,11 +33,11 @@ class MutationControls(unittest.TestCase):
 
 class Normalize(unittest.TestCase):
     def test_masks_only_address_like_operands(self):
-        self.assertEqual(norm('call   2000 <foo>'), ('call @fde', ('branch_fde',), 0x2000))
-        self.assertEqual(norm('call   910 <x@plt>'), ('call @plt', ('branch_plt',), None))
+        self.assertEqual(norm('call   2000 <foo>'), ('call @fde', ('annot_symbol', 'branch_fde'), 0x2000))
+        self.assertEqual(norm('call   910 <x@plt>'), ('call @plt', ('annot_symbol', 'branch_plt'), None))
         self.assertEqual(norm('jmp    3000'), ('jmp @unknown', ('branch_unknown',), None))
-        self.assertEqual(norm('jne    1010'), ('jne +0x10', (), None))
-        self.assertEqual(norm('lea    0x1234(%rip),%rax        # 5678 <bar>'), ('lea RIP,%rax', ('rip',), None))
+        self.assertEqual(norm('jne    1010'), ('jne +0x10', ('branch_intra',), None))
+        self.assertEqual(norm('lea    0x1234(%rip),%rax        # 5678 <bar>'), ('lea RIP,%rax', ('annot_comment', 'rip'), None))
 
     def test_negative_control_immediates_and_displacements_are_never_masked(self):
         # PIE without text relocations: an immediate that falls inside the image range is still a constant.
@@ -52,6 +53,90 @@ class Normalize(unittest.TestCase):
         self.assertNotEqual(norm('jmp    1010')[0], norm('jmp    1020')[0])
 
 
+GNU_244 = {  # verbatim GNU objdump 2.44 `-d --no-show-raw-insn -w` text for each byte sequence
+    'ff e0': 'jmp    *%rax',
+    '3e ff e0': 'notrack jmp *%rax',
+    'f2 ff e0': 'bnd jmp *%rax',
+}
+
+
+def one_insn(hexbytes, text, start=0x1000):
+    code = bytes.fromhex(hexbytes.replace(' ', ''))
+    rows = fingerprint([(start, start + len(code))], lambda s, e: code, [f'    {start:x}:\t{text}\n'], PLT)
+    return rows[0]
+
+
+class PrefixesAreKept(unittest.TestCase):
+    """Closed #37: normalize stripped `notrack `/`bnd ` silently, so these three had one digest."""
+
+    def test_three_jmp_rax_encodings_have_distinct_masked_digests(self):
+        rows = {h: one_insn(h, t) for h, t in GNU_244.items()}
+        self.assertEqual(len({r['norm'] for r in rows.values()}), 3)
+        self.assertEqual(len({r['raw'] for r in rows.values()}), 3)
+        for r in rows.values():
+            self.assertEqual(dict(r['masks']), {})
+        for a in GNU_244:
+            for b in GNU_244:
+                if a != b:
+                    with self.subTest(a=a, b=b):
+                        self.assertEqual(sorted(r[0] for r in classify([dict(rows[a], start=0x10)],
+                                                                         [dict(rows[b], start=0x110)])),
+                                         ['unmatched_115', 'unmatched_94'])
+                        from release_drift import verdict
+                        self.assertEqual(verdict(rows[a], rows[b]), 'changed')
+
+    def test_negative_control_same_bytes_same_text_is_identical(self):
+        from release_drift import verdict
+        for h, t in GNU_244.items():
+            with self.subTest(h):
+                a, b = one_insn(h, t), one_insn(h, t, start=0x5000)
+                self.assertEqual((a['raw'], a['norm']), (b['raw'], b['norm']))
+                self.assertEqual(verdict(a, b), 'identical')
+
+    def test_prefix_mnemonics_stay_in_masked_text(self):
+        for text in ('notrack jmp *%rax', 'bnd jmp *%rax', 'repz ret', 'bnd ret', 'ds mov %eax,%ebx',
+                     'cs nopw 0x0(%rax,%rax,1)', 'lock add %eax,(%rbx)', 'rep movsb %ds:(%rsi),%es:(%rdi)',
+                     'repnz movsb %ds:(%rsi),%es:(%rdi)', 'data16 xchg %ax,%ax', 'rex mov %eax,%ebx',
+                     'rex.WRXB mov %r8,%r11', 'mov    %eax,(%ebx)'):
+            with self.subTest(text):
+                self.assertEqual(norm(text), (' '.join(text.split()), (), None))
+
+    def test_prefixed_direct_branches_keep_prefix_and_are_still_masked(self):
+        self.assertEqual(norm('bnd call 2000 <foo>'), ('bnd call @fde', ('annot_symbol', 'branch_fde'), 0x2000))
+        self.assertEqual(norm('ds call 2000'), ('ds call @fde', ('branch_fde',), 0x2000))
+        self.assertEqual(norm('bnd jmp 910 <x@plt>'), ('bnd jmp @plt', ('annot_symbol', 'branch_plt'), None))
+        self.assertEqual(norm('notrack bnd jmp 3000'), ('notrack bnd jmp @unknown', ('branch_unknown',), None))
+        self.assertEqual(norm('bnd jne 1010'), ('bnd jne +0x10', ('branch_intra',), None))
+        self.assertNotEqual(norm('bnd call 2000')[0], norm('call   2000')[0])
+        self.assertNotEqual(norm('ds call 2000')[0], norm('call   2000')[0])
+
+    def test_branch_hint_suffix_is_kept_and_target_masked(self):
+        # 3e 75 xx / 2e 75 xx print as jne,pt / jne,pn; #37 left these targets unmasked.
+        self.assertEqual(norm('jne,pt 3000'), ('jne,pt @unknown', ('branch_unknown',), None))
+        self.assertEqual(norm('jne,pn 1010'), ('jne,pn +0x10', ('branch_intra',), None))
+        self.assertNotEqual(norm('jne,pt 1010')[0], norm('jne    1010')[0])
+
+    def test_instruction_length_is_part_of_the_masked_digest(self):
+        # eb 00 and e9 00000000 both print `jmp <next>`; 66 90 and 90 differ only in length+text.
+        short = fingerprint([(0x1000, 0x1002)], lambda s, e: b'\xeb\x00', ['    1000:\tjmp    1002\n'], PLT)[0]
+        near = fingerprint([(0x1000, 0x1005)], lambda s, e: b'\xe9' + bytes(4), ['    1000:\tjmp    1005\n'], PLT)[0]
+        self.assertNotEqual(short['norm'], near['norm'])
+
+    def test_unlabelled_text_equality_is_not_a_move(self):
+        # 01 c3 and 03 d8 both print `add %eax,%ebx` at equal length: no address mask explains the
+        # byte difference, so verdict() says changed, not moved_only.
+        from release_drift import verdict
+        a = one_insn('01 c3', 'add    %eax,%ebx')
+        b = one_insn('03 d8', 'add    %eax,%ebx')
+        self.assertEqual(a['norm'], b['norm'])
+        self.assertNotEqual(a['raw'], b['raw'])
+        self.assertEqual(verdict(a, b), 'changed')
+
+    def test_every_rewrite_is_labelled(self):
+        self.assertEqual(norm('nop # comment')[1], ('annot_comment',))
+        self.assertEqual(norm('mov    %eax,%ebx')[1], ())
+
+
 class Fingerprint(unittest.TestCase):
     LINES = ['\n', '    1000:\tpush   %rbp\n', '    1001:\tcall   1010 <f>\n', '    1006:\tret\n',
              '    1010:\tret\n']
@@ -63,7 +148,7 @@ class Fingerprint(unittest.TestCase):
         rows = self.run_fp([(0x1000, 0x1007), (0x1010, 0x1011)])
         self.assertEqual([r['insns'] for r in rows], [3, 1])
         self.assertEqual(rows[0]['callees'], [0x1010])
-        self.assertEqual(dict(rows[0]['masks']), {'branch_fde': 1})
+        self.assertEqual(dict(rows[0]['masks']), {'annot_symbol': 1, 'branch_fde': 1})
 
     def test_fails_closed_on_an_extent_with_no_decoded_instructions(self):
         with self.assertRaisesRegex(ValueError, 'No instructions decoded inside extent 0x1020'):
