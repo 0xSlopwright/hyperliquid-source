@@ -803,6 +803,20 @@ def scan_head(insns):
             'direct_calls': [hex(c) for c in calls]}
 
 
+def find_recorder_call(insns, ok_store, relocs):
+    """The recorder call after the tail's ok store, or EvidenceError.
+
+    analyse() previously located this call through a bare next(), so a
+    listing whose tail pattern matched but which carried no recorder call
+    escaped main()'s EvidenceError-only handler as StopIteration.
+    """
+    for ins in insns:
+        if (ins[1] == 'call' and ins[2] and ins[2][0][0] == 'a'
+                and ins[0] > ok_store and relocs.get(ins[2][0][2]) == RECORDER_TARGET):
+            return ins
+    raise EvidenceError(f'no recorder call after {ok_store:#x}')
+
+
 # --------------------------------------------------------------------- analysis
 
 def analyse(binary_path, data):
@@ -832,8 +846,7 @@ def analyse(binary_path, data):
                 raise EvidenceError('reciprocal shift not extractable at a dex site')
             reciprocal_shifts.add(shift)
         drops = {DROP_A, DROP_B} & set(int(c, 16) for c in heads['direct_calls'])
-        rec_lea = next(ins for ins in insns if ins[1] == 'call' and ins[2][0][0] == 'a'
-                       and ins[0] > tail['ok_store'] and relocs.get(ins[2][0][2]) == RECORDER_TARGET)
+        rec_lea = find_recorder_call(insns, tail['ok_store'], relocs)
         recorder = rec_lea[2][0][2]
         machine = Machine(insns, img, drops, recorder)
         res = check_site(machine, tail, insns)
