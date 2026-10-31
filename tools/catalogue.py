@@ -66,12 +66,23 @@ def node94_binary(root):
     path = root / 'artifacts/node/94/hl-node'
     check(path, identity)
     return path.read_bytes()
+def _unique_object(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError(f'Duplicate key in catalogue input: {key}')
+        out[key] = value
+    return out
+
+
+def _load_input(path):
+    return json.loads(path.read_text(), object_pairs_hook=_unique_object)
 
 
 def generate(root=ROOT):
-    config = json.loads((root / 'research/components.json').read_text())
+    config = _load_input(root / 'research/components.json')
     components = config['components']
-    progress = json.loads((root / 'research/progress.json').read_text())
+    progress = _load_input(root / 'research/progress.json')
     validate_progress(components, progress, root)
     inventories = {v: json.loads((root / f'research/imported/hl-node-{v}.inventory.json').read_text()) for v in ['94', '115']}
     inventories['visor'] = json.loads((root / 'research/imported/hl-visor.inventory.json').read_text())
@@ -91,6 +102,8 @@ def generate(root=ROOT):
         _, entries = unwind_index((root / relative).read_bytes())
         if len(entries) != inventories[v]['fde_count_eh_frame_hdr']:
             raise ValueError(f'Inventory unwind count differs from the pinned binary: {relative}')
+    inventories = {v: _load_input(root / f'research/imported/hl-node-{v}.inventory.json') for v in ['94', '115']}
+    inventories['visor'] = _load_input(root / 'research/imported/hl-visor.inventory.json')
     paths = {}
     excluded = {}
     for v, inv in inventories.items():
@@ -104,7 +117,13 @@ def generate(root=ROOT):
     # Every known path must be owned once by the ordered taxonomy, including added #115 paths.
     for p in source_paths | paths['94'] | paths['115']:
         owner(p, components)
-    literal_items = json.loads((root / 'research/imported/can1357-literal-classes.json').read_text())['items']
+    literal_items = _load_input(root / 'research/imported/can1357-literal-classes.json')['items']
+    seen_literals = set()
+    for item in literal_items:
+        marker = json.dumps(item, sort_keys=True)
+        if marker in seen_literals:
+            raise ValueError(f'Duplicate literal-class entry: {item}')
+        seen_literals.add(marker)
     rows = []
     for c in components:
         source = sorted(p for p in source_paths if owner(p, components) == c['id'])
