@@ -86,6 +86,32 @@ WINDOWS = {
     'peer_record_init': (STARTUP_FDE, 0x2268c1c,
                          '48c783283c0000ffffffff48898b603c0000488d836a3c000048898424a0000000c6836a3c000000488d83c83b0000'
                          '488984249800000048c7c0ffffffff66c783683c0000000148898b303c0000488983383c0000'),
+    'state0_head': (STARTUP_FDE, 0x2268a53, 'c683f0490000004c8bbb80000000'),
+    'exhausted_r15': (STARTUP_FDE, 0x2268e95, 'e8563c62004989c7c683693c00000040b501e9991a0000'),
+    'linked_state': (STARTUP_FDE, 0x2268f3f,
+                     '488dbb880000004c8da42400770000488d8c24f000000048897c24184c89ee4c89e2ff1541ab5003c683f04900000148'
+                     '8b7424504885f649be00000000000000804d89fd740b4889ef31d2ff1580505003488b83e8000000488943608b83f000'
+                     '0000894368'),
+    'root_ips': (STARTUP_FDE, 0x22693ca,
+                 '4d85ed0f84080200004c89efff15e4a650034889c54989d5488984242001000048899424280100004c8dbc24200100004c'
+                 '89ffff15c5a650034883c0104c8da424007700004c89e74889c6e896532e004885ed751b48c7c0f0fffffff0490fc14500'
+                 '4883e0f24883f8120f84ae030000488d7c2420ff155b5450038b4424208984246c010000c784246001000001000000488b'
+                 '442424488984246401000048b800000000000000804889842420010000488d0581df16fe488984244001000048c7842448'
+                 '0100001600000048c78424500100000800000048c784245801000000000000ff15cd5f5003488944245048895424584c89'
+                 '6424084c89bc24103c0000488d050f1c710048898424183c0000488d44245048898424203c0000488d05a3def4ff488984'
+                 '24283c0000488d44240848898424303c0000488d05c719440048898424383c0000488d3d882cf9fd488db424103c0000ff'
+                 '1542545003488bb4242001000049bc0000000000000080e98b010000'),
+    'validator_ips': (STARTUP_FDE, 0x22695db,
+                      '488db3800900000fb6937a090000488dbc2400770000ff15d9a45003488d7c2420ff159e5250038b4424208984246c01'
+                      '0000c784246001000001000000488b44242448898424640100004c89a42420010000488d05cedd16fe48898424400100'
+                      '0048c78424480100001600000048c78424500100000800000048c784245801000000000000ff151a5e50034889442450'
+                      '4889542458488d84242001000048898424103c0000488d05591a710048898424183c0000488d44245048898424203c00'
+                      '00488d05eddcf4ff48898424283c0000488d3d20cff7fd488db424103c0000ff15a8525003488bb424200100004c39e6'
+                      '74154885f67410488bbc242801000031d2ff152e495003'),
+    'vec5_clone': (0x254e7b0, 0x254e7b0,
+                   '41574156415453504889fb4c8b7e084c8b66104f8d34a44d85e4741f4c89f7ff1503f821034889c74885c07513bf0100'
+                   '00004c89f6ff15cdf72103bf010000004c892348897b084c89fe4c89f2ff15ddf721034c8963104889d84883c4085b415c'
+                   '415e415fc3'),
     'add_secs_f64': (0x1459ca0, 0x1459ca0,
                      '534883ec304889fb8b460889442408488b0648890424f20f59056205dbfe66480f7ec148b8ffffffffffffff7f4821c1'
                      '660f57c948baffffffffffffef7f4839d17f2ef20f1015cd0fdbfe660f2ed07710660f2e05f70adbfe7706660f28c8eb10'
@@ -181,6 +207,16 @@ RECORD_REFS = {0x3b88: ['0x2268b7a', '0x22696fe'], 0x3b90: ['0x2268b81', '0x2268
                0x3c30: ['0x2268c65', '0x2269c65', '0x226a79d', '0x226a897'],
                0x49c8: ['0x2269574', '0x2269c6f', '0x226a559']}
 RECORD_DESC = b'gossip rpc height'
+NODE_IP_FLOW = {
+    'no_root_to_validator': (0x22693cd, 6, 0x22695db), 'clone_call': (0x2269415, 5, 0x254e7b0),
+    'unlock_wake': (0x2269434, 6, 0x22697e8), 'root_to_tail': (0x2269538, 5, 0x22696c8),
+    'exhausted_exit': (0x2268ea7, 5, 0x226a945),
+}
+# call VA -> (RELATIVE slot, target)
+NODE_IP_SLOTS = {0x22693d6: (0x5773ac0, 0x4742cc0), 0x22693fd: (0x5773ac8, 0x4779e30),
+                 0x22695f1: (0x5773ad0, 0x3994ea0), 0x2268f61: (0x5773aa8, 0x3751e80)}
+NODE_IP_TEMPLATES = {0x2269511: (0x1fc1a0, b' @@ using root node ips @@ [root_node_ips: '),
+                     0x22696ab: (0x1e65d2, b' @@ using validator node ips\n\n')}
 RSP_E0 = re.compile(rb'[\x84\x8c\x94\x9c\xa4\xac\xb4\xbc]\x24\xe0\x00\x00\x00')
 
 
@@ -525,6 +561,34 @@ def check_stale_gate(img, fresh_slots):
                 compare='local iff (date, secs, frac) of state_time + tolerance s >= now (lexicographic); else query peers')
 
 
+def check_node_ips(img):
+    for name, (va, n, want) in NODE_IP_FLOW.items():
+        got = flow_target(img, va, n)
+        require(got == want, f'{name} at {va:#x} goes to {got:#x}, not {want:#x}')
+    slots = {}
+    for va, (slot, target) in NODE_IP_SLOTS.items():
+        got = img.rip(va, 6)
+        require(got == slot and slot in img.relative, f'call at {va:#x} uses slot {got:#x}')
+        require(img.relative[slot] == target, f'slot {slot:#x} reaches {img.relative[slot]:#x}')
+        slots[hex(va)] = [hex(slot), hex(img.relative[slot])]
+    templates = {}
+    for va, (tpl, marker) in NODE_IP_TEMPLATES.items():
+        got = img.rip(va, 7)
+        pieces = template(img, got)
+        require(got == tpl and marker in pieces, f'node-ip template at {va:#x} is {got:#x} {pieces!r}')
+        templates[hex(va)] = dict(template=hex(tpl), placeholders=sum(p is None for p in pieces),
+                                  marker_index=pieces.index(marker))
+    root = bytes.fromhex(WINDOWS['root_ips'][2])
+    require(root.count(bytes.fromhex('488d442408' '48898424303c0000')) == 1, 'root_node_ips argument is not &[rsp+0x8]')
+    require(root.count(bytes.fromhex('4c896424 08'.replace(' ', ''))) == 1, '[rsp+0x8] is not the clone destination r12')
+    start, end = img.fde(0x254e7b0)
+    require(img.read(0x254e7c3, 4) == bytes.fromhex('4f8d34a4'), 'clone element size is not 5')
+    return dict(selector='r13 (r15 = [rbx+0x80] on the state-0 path)', flow={k: hex(v[2]) for k, v in NODE_IP_FLOW.items()},
+                slots=slots, templates=templates, clone=hex(start), clone_element_bytes=5,
+                validator_source='&[rbx+0x980], byte [rbx+0x97a]', linked_state='[rbx+0x88] (built via slot 0x5773aa8)',
+                state_time_copy={'[rbx+0x60]': '[rbx+0xe8]', '[rbx+0x68]': '[rbx+0xf0]'})
+
+
 def tolerance_nanos(x):
     """0x1459cb6..0x1459d28: f64 seconds * 1e9, clamped to +-2**63, truncated to i64 (NaN -> 0)."""
     v = x * 1e9
@@ -613,7 +677,7 @@ def analyse(data):
     fresh = check_freshness(img)
     return dict(target=TARGET, windows={k: hex(v) for k, v in wins.items()},
                 peer_queries=check_queries(img), height_selection=check_selection(img), status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=fresh,
-                stale_gate=check_stale_gate(img, fresh['slots']), callers=check_callers(img))
+                stale_gate=check_stale_gate(img, fresh['slots']), node_ips=check_node_ips(img), callers=check_callers(img))
 
 
 def main(argv=None):

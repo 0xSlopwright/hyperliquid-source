@@ -16,11 +16,11 @@ lead (`node/local_abci_state.rs`, `node/startup.rs`) differ?
   copied.
 - Claim status: observation for byte-level facts, inference where marked,
   unresolved where listed. Partial `node-runtime` research; no gate change.
-- Scope: thirty-two fixed windows in `0x22689f0` (the lead's
-  `local_abci_state.rs` seed), its date-time helper `0x1459ca0`, `0x2271d00`,
+- Scope: thirty-eight fixed windows in `0x22689f0` (the lead's
+  `local_abci_state.rs` seed), its helpers `0x1459ca0` and `0x254e7b0`, `0x2271d00`,
   its caller `0x22ae8a0` and the panic shim `0x157b810`.
   Excluded: what `0x226bb20` sends and decodes, how the timestamp is produced,
-  how root versus validator node IPs are chosen, the rest of the `0x22ae8a0`
+  what `0x3994ea0` collects for validator node IPs, the rest of the `0x22ae8a0`
   state machine, and release #115.
 
 ## Reproduce
@@ -37,9 +37,9 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 32
-windows (1192 instructions), one per checked byte window. All 54 `records.json`
-VAs that fall inside a window are instruction starts there, except `slot_refs`
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 38
+windows (1389 instructions), one per checked byte window. All 72 `records.json`
+VAs (values and keys) that fall inside a window are instruction starts there, except `slot_refs`
 and `record_refs` entries, which are ModRM-byte addresses inside instructions. The other code VAs
 are FDE starts, call targets and branch targets outside the windows.
 
@@ -228,7 +228,7 @@ The join continues into window `0x2269171..0x22691fd` with `rax = &[rbx+0x60]`:
    (`je 0x22697d3` on failure), copies them into the allocation, clears
    `[rbx+0x49f0]` and jumps to `0x226ad84` (`0x22693ac`).
 6. **Older:** `0x22693c3` sets `r14 = &[rbx+0x3b70]` and chooses root or
-   validator node IPs (not checked here). It copies the chosen 24-byte Vec
+   validator node IPs (next section). It copies the chosen 24-byte Vec
    from `[rsp+0x7700..0x7718]` to `[r14]` (`0x22696e2..0x22696f7`). It then
    stores `[rbx+0x3b88] = r14` (`0x22696fc`), clears `[rbx+0x49e8]` and jumps
    to `0x2268b7f` (`0x2269719`).
@@ -254,9 +254,52 @@ Inference: the tolerance is in seconds. The local abci_state is used as is
 (boxed and returned) iff `state_time + tolerance >= now`. Otherwise the node
 asks the root or validator node IPs for heights and applies the height gate. Equivalently, the local
 state is used directly iff it is at most 540 s old, or 840 s on the
-frozen-state hardfork path. `[rbx+0x60]` matches the date-time offset `+0x60`
-used by the 600 s check, but which struct the future holds there is not
-checked.
+frozen-state hardfork path. ### Which state and which peers (observation)
+
+- **The state:** window `0x2268f3f..0x2268fa4` sets `rdi = &[rbx+0x88]`,
+  stores it to `[rsp+0x18]` and calls slot `0x5773aa8` (`0x3751e80`). The
+  arguments are the 0x1fc8-byte linked result at `[rsp+0x120]`,
+  `&[rsp+0x7700]` and `&[rsp+0xf0]`. It then sets `[rbx+0x49f0] = 1` and,
+  straight-line, copies `[rbx+0xe8]` to `[rbx+0x60]` (8 bytes) and
+  `[rbx+0xf0]` to `[rbx+0x68]` (4 bytes). So the 12 bytes the gate adds the
+  tolerance to are bytes `+0x60..+0x6c` of the object at `[rbx+0x88]`. The
+  same `+0x60` is the date-time offset of the 600 s check (`[r15+0x60]`).
+  `[rsp+0x18]` is not written again before `0x226926e` loads it into `r14`,
+  the source of the fresh path's 0x3ae8-byte copy. That write census comes
+  from the objdump listing, not from the tool. So the boxed state is
+  `[rbx+0x88]`.
+- **Selector:** `r13` is set by `mov r13,r15` at `0x2268f80`. The state-0
+  arm loads `r15 = [rbx+0x80]` (`0x2268a5a`). In the objdump listing of
+  `0x22689f0..0x2268f80`, the only other `r15` write is `0x2268e9a`, on
+  the retries-exhausted path that jumps to `0x226a945` (`0x2268ea7`). No
+  `r13` write lies between `0x2268f80` and the `test r13,r13` at
+  `0x22693ca`.
+- **Root (`r13 != 0`):** the code calls slot `0x5773ac0` (`0x4742cc0`) on `r13`.
+  That function does a `lock cmpxchg` add of 0x10 on `[rdi+8]` and has a
+  contended slow path. It then calls slot `0x5773ac8` (`0x4779e30`) and
+  clones the Vec at the returned pointer `+0x10` with `0x254e7b0` into
+  `[rsp+0x7700]`. `0x254e7b0` allocates `len * 5` bytes with alignment 1
+  (`lea r14,[r12+r12*4]`) and `memcpy`s, so it is a 5-byte-element Vec
+  clone. A `lock xadd -0x10` on `[r13]` follows, with a wake path to
+  `0x22697e8`. The code then logs
+  `… @@ using root node ips @@ [root_node_ips: {}]` (template `0x1fc1a0`)
+  with argument 3 `&[rsp+0x8] = &[rsp+0x7700]`, the clone, and jumps to
+  the shared tail `0x22696c8`.
+- **Validator (`r13 == 0`, `je 0x22695db`):** the code calls slot `0x5773ad0`
+  (`0x3994ea0`) with `rdi = &[rsp+0x7700]`, `rsi = &[rbx+0x980]` and
+  `edx = [rbx+0x97a]` (a byte). Both offsets lie inside the 0x3ae8-byte
+  object at `[rbx+0x88]` (`+0x8f8`, `+0x8f2`). It then logs
+  `… @@ using validator node ips` (template `0x1e65d2`, no value argument)
+  and falls into the tail.
+- **Tail:** both paths copy `[rsp+0x7700..0x7718]` to `[rbx+0x3b70]`, the
+  peer list above.
+
+Inference: `[rbx+0x80]` is an optional read-lock-guarded config whose field at
+`+0x10` is the root node IP list (5-byte entries). When it is present, startup
+queries exactly that cloned list. Otherwise it derives "validator node IPs"
+from the local abci_state itself. No concatenation with a second list
+(such as reserved peers) occurs on either path inside the checked windows.
+What `0x3994ea0` collects is not decoded.
 
 ### Freshness check in `0x2271d00`: panic at `hl_node.rs:346:9` (observation)
 
@@ -352,13 +395,19 @@ states, 0xa and 0xb, and treats a set `al` as pending.
   `StateFileTooOld` at 0x4e20 s, which returns a stale reason. In the binary,
   the logged tolerance decides whether the local state is used without
   querying peers at all: 540 s, or 840 s after the hardfork branch.
+- **Who is queried:** the lead's `query_root_heights` iterates
+  `connect_candidates`, which is root plus reserved peer IPs. The binary
+  queries one cloned 5-byte-entry list: the root node IPs if `[rbx+0x80]`
+  is set (`using root node ips`), otherwise a list derived from the local
+  state (`using validator node ips`). The lead has no validator-node-IP
+  source.
 - **Stale hardfork:** the lead's stale-hardfork reason compares the local
   height with a peer initial height. That matches the operand order here
   (`local_height < initial_height`, tested only when not too far behind).
 
 ## Controls
 
-`tests/test_local_abci_gates_static.py` (46 tests) regenerates
+`tests/test_local_abci_gates_static.py` (49 tests) regenerates
 `records.json` and checks eight models: the peer-reply collection, the height selection, the height gate
 including saturation, the day division against exact truncating division,
 the lexicographic compare, the tolerance-to-nanoseconds conversion, the
@@ -391,6 +440,8 @@ nanosecond floor split against `divmod`, and the local-state gate. It refuses ea
 - A byte of the `NaiveDateTime + TimeDelta` overflow text changed.
 - The `0x576efb8` RELATIVE addend redirected.
 - An extra `[rbx+0x3b90]` store planted.
+- The root-node-ips template text changed.
+- The validator slot's RELATIVE addend redirected.
 
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
 producer does not use either.
@@ -401,8 +452,8 @@ producer does not use either.
   and whether the selected message is later extended with values.
 - The exact path from `0x2269034` to `0x226915c`, and any jump-table edge into
   the join.
-- Which struct holds the date-time at `[rbx+0x60]`, what `0x226ad84` returns,
-  and how `0x22693c3` chooses root or validator node IPs.
+- What `0x226ad84` returns, what object `[rbx+0x80]` points to, what
+  `0x3994ea0` collects from `[rbx+0x980]`, and what `0x3751e80` builds.
 - What `[rbx+0x740]+0x60` holds, and which orchestrator paths reach states
   0xa and 0xb.
 - The identities of `0x15206e0`, `0x151f870`, `0x151cba0` and `0x4ecdcf0`

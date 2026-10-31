@@ -107,6 +107,54 @@
       "+0x8": "latest_height (r14)"
     }
   },
+  "node_ips": {
+    "clone": "0x254e7b0",
+    "clone_element_bytes": 5,
+    "flow": {
+      "clone_call": "0x254e7b0",
+      "exhausted_exit": "0x226a945",
+      "no_root_to_validator": "0x22695db",
+      "root_to_tail": "0x22696c8",
+      "unlock_wake": "0x22697e8"
+    },
+    "linked_state": "[rbx+0x88] (built via slot 0x5773aa8)",
+    "selector": "r13 (r15 = [rbx+0x80] on the state-0 path)",
+    "slots": {
+      "0x2268f61": [
+        "0x5773aa8",
+        "0x3751e80"
+      ],
+      "0x22693d6": [
+        "0x5773ac0",
+        "0x4742cc0"
+      ],
+      "0x22693fd": [
+        "0x5773ac8",
+        "0x4779e30"
+      ],
+      "0x22695f1": [
+        "0x5773ad0",
+        "0x3994ea0"
+      ]
+    },
+    "state_time_copy": {
+      "[rbx+0x60]": "[rbx+0xe8]",
+      "[rbx+0x68]": "[rbx+0xf0]"
+    },
+    "templates": {
+      "0x2269511": {
+        "marker_index": 3,
+        "placeholders": 3,
+        "template": "0x1fc1a0"
+      },
+      "0x22696ab": {
+        "marker_index": 3,
+        "placeholders": 2,
+        "template": "0x1e65d2"
+      }
+    },
+    "validator_source": "&[rbx+0x980], byte [rbx+0x97a]"
+  },
   "peer_queries": {
     "current_peer": "[rbx+0x49d0] (4 bytes) and [rbx+0x49d4] (1 byte)",
     "flow": {
@@ -274,6 +322,7 @@
     "after_panic": "0x227283d",
     "call_a": "0x22aef54",
     "call_b": "0x22affbf",
+    "exhausted_r15": "0x2268e95",
     "fresh_exit": "0x2269339",
     "fresh_head": "0x22691fd",
     "freshness": "0x2271d52",
@@ -281,6 +330,7 @@
     "gate_branch": "0x22693b1",
     "got_heights_log": "0x226a4a2",
     "hardfork_log": "0x226911b",
+    "linked_state": "0x2268f3f",
     "no_heights_log": "0x226a04b",
     "once_init": "0x226977e",
     "panic_shim": "0x157b810",
@@ -292,6 +342,7 @@
     "query_error": "0x226a1ac",
     "query_log": "0x2269d00",
     "reply_dispatch": "0x2269f3d",
+    "root_ips": "0x22693ca",
     "select_540": "0x226900c",
     "select_840": "0x226915c",
     "select_error": "0x226a6d2",
@@ -300,7 +351,10 @@
     "select_retry": "0x226a753",
     "stale_exit": "0x22696e2",
     "stale_gate": "0x2269171",
+    "state0_head": "0x2268a53",
     "status_log": "0x226a974",
-    "tolerance_log": "0x226928a"
+    "tolerance_log": "0x226928a",
+    "validator_ips": "0x22695db",
+    "vec5_clone": "0x254e7b0"
   }
 }

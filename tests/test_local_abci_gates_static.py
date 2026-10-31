@@ -137,6 +137,16 @@ class Results(unittest.TestCase):
         self.assertEqual(s['record_refs']['0x3c30'], ['0x2268c65', '0x2269c65', '0x226a79d', '0x226a897'])
         self.assertEqual(s['record_refs']['0x3b90'], ['0x2268b81', '0x2268b88'])
 
+    def test_node_ips(self):
+        n = self.result['node_ips']
+        self.assertEqual(n['flow'], {'no_root_to_validator': '0x22695db', 'clone_call': '0x254e7b0',
+                                     'unlock_wake': '0x22697e8', 'root_to_tail': '0x22696c8',
+                                     'exhausted_exit': '0x226a945'})
+        self.assertEqual(n['slots']['0x22695f1'], ['0x5773ad0', '0x3994ea0'])
+        self.assertEqual({k: (v['template'], v['placeholders']) for k, v in n['templates'].items()},
+                         {'0x2269511': ('0x1fc1a0', 3), '0x22696ab': ('0x1e65d2', 2)})
+        self.assertEqual(n['clone_element_bytes'], 5)
+
     def test_status_log_fields(self):
         st = self.result['status_log']
         self.assertEqual(st['fields'], {'[rsp+0xd8]': 'local_height', '[rsp+0xc8]': 'initial_height',
@@ -279,6 +289,20 @@ class Corruptions(unittest.TestCase):
 
     def test_extra_record_pointer_store(self):
         self.refuses(patched((la.STARTUP_FDE + 0x100, bytes.fromhex('4c89b3903b0000'))), r'\[rbx\+0x3b90\] operands')
+
+    def test_root_template_text(self):
+        self.refuses(patched((0x1fc1a0 + 20, b'X')), 'node-ip template at 0x2269511')
+
+    def test_validator_slot_relocation(self):
+        c = load()
+        img = c['img']
+        rela = next(s for s in img.secs if s['name'] == '.rela.dyn')
+        data = bytearray(c['data'])
+        for pos in range(rela['offset'], rela['offset'] + rela['size'], 24):
+            where, info, _ = struct.unpack_from('<QQq', data, pos)
+            if where == 0x5773ad0 and info & 0xffffffff == 8:
+                struct.pack_into('<q', data, pos + 16, 0x3994eb0)
+        self.refuses(bytes(data), 'slot 0x5773ad0 reaches 0x3994eb0')
 
     def test_add_slot_relocation(self):
         c = load()
