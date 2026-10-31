@@ -16,8 +16,9 @@ lead (`node/local_abci_state.rs`, `node/startup.rs`) differ?
   copied.
 - Claim status: observation for byte-level facts, inference where marked,
   unresolved where listed. Partial `node-runtime` research; no gate change.
-- Scope: thirty-eight fixed windows in `0x22689f0` (the lead's
-  `local_abci_state.rs` seed), its helpers `0x1459ca0` and `0x254e7b0`, `0x2271d00`,
+- Scope: forty-eight fixed windows in `0x22689f0` (the lead's
+  `local_abci_state.rs` seed), its helpers `0x1459ca0`, `0x254e7b0` and
+  `0x144a710`, `0x2271d00`,
   its caller `0x22ae8a0` and the panic shim `0x157b810`.
   Excluded: what `0x226bb20` sends and decodes, how the timestamp is produced,
   what `0x3994ea0` collects for validator node IPs, the rest of the `0x22ae8a0`
@@ -37,8 +38,8 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 38
-windows (1389 instructions), one per checked byte window. All 72 `records.json`
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 48
+windows (1787 instructions), one per checked byte window. All 99 `records.json`
 VAs (values and keys) that fall inside a window are instruction starts there, except `slot_refs`
 and `record_refs` entries, which are ModRM-byte addresses inside instructions. The other code VAs
 are FDE starts, call targets and branch targets outside the windows.
@@ -301,6 +302,57 @@ from the local abci_state itself. No concatenation with a second list
 (such as reserved peers) occurs on either path inside the checked windows.
 What `0x3994ea0` collects is not decoded.
 
+### What the future returns (observation)
+
+The entry stores `rdi` to `[rsp+0xb8]` and sets `r12 = 0x8000000000000000`.
+The return block at `0x226ad84` writes three words
+`{r12, r14, r12}` to `[[rsp+0xb8]]`, sets `[rbx+0x49f1] = 1` and returns.
+A scan of every rel8/rel32 `jcc`/`jmp` in the FDE finds exactly two
+branches into it, `0x2268dd2` and `0x22693ac`; the stale path falls into it.
+`0x226ad80` is also entered from `0x226ad6b` and `0x226af31`, and `0x226ad6d`
+from `0x226af2b`, both on the gate-pass path. Indirect edges are not
+resolved. A pending poll writes `r12 + 3` and sets the state
+byte to 3 (`0x226a8bc..0x226a912`).
+
+| Path | Word 0 | Words 1–2 |
+| --- | --- | --- |
+| No usable file | `0x8000000000000002` | — |
+| Not older than the tolerance | `0x8000000000000000` | box of the 0x3ae8-byte state |
+| Height gate passes | `0x8000000000000000` | box of the 0x3ae8-byte state |
+| Height gate rejects | Vec capacity (= length) | pointer, length |
+| Pending | `r12 + 3` | — |
+
+- **File:** state 0 formats `{}/hyperliquid_data/{}.{}` (template
+  `0x1f2309`) with `abci_state` (`0x569db40`, a RELATIVE `&str` of length 10)
+  and `rmp` (3 bytes). It then calls slot `0x576e9e8` (`0x144a710`), which
+  tests `(st_mode & 0xf000) == 0x8000`, i.e. `is_file`. If it is not a file,
+  control goes to `0x2268db2`. A read result `[rsp+0x120] == 2` drops the
+  error and also goes there. A decode result whose first word is
+  `0x8000000000000000` falls into `0x2268da8`. All three paths add 2 to
+  `r12 = 0x8000000000000000` and jump to the return block.
+- **Gate pass (`0x226adb1`):** it copies the 0x3ae8 bytes at
+  `rsi = &[rbx+0x88]` (set in the gate window) and logs
+  `… @@ initializing with local abci_state` (template `0x1e97e3`, with no
+  tolerance field). It then boxes the state, frees the peer Vec if its
+  capacity is non-zero, and returns.
+- **Gate reject (`0x226ab88`):** it copies the state to `[rsp+0x7700]` and stores
+  the selected message `(rbp, r13)` to `[rsp+0x20..0x30]`. It then logs
+  `… @@ considering local abci state as stale @@ [stale_reason: {}] @ [node_ips: {}]`
+  (template `0x1f402c`). Argument 3 is `&[rsp+0xe8] = r12`, and
+  `r12 = &[rsp+0x20]` from `0x226aab4`; in the objdump listing there is no
+  other `r12` write before `0x226ac42`. Argument 4 is `&[rsp+0x48] = &[rbx+0x3b70]`.
+  The path then clones `[rbx+0x3b80] * 5` bytes from `[rbx+0x3b78]`, drops
+  the state copy (`0x225a3b0`), frees the original Vec and returns
+  `{len, ptr, len}`.
+
+Inference: the output is an enum whose niche lives in word 0. It is
+`Local(Box<AbciState>)` (fresh by age, or height accepted),
+`Bootstrap(Vec<NodeIp>)` (stale by height: the caller gets the peers that
+were queried), `None` (no usable `abci_state.rmp`), or `Pending`. The
+message chosen by the height gate is only logged as `stale_reason`; it is
+not returned. `startup_outcome` models the word-0 decoding.
+No checked path produces `0x8000000000000001`.
+
 ### Freshness check in `0x2271d00`: panic at `hl_node.rs:346:9` (observation)
 
 Window `0x2271d52..0x2271e8c`, with `r15 = [rbx+0x740]`:
@@ -401,17 +453,25 @@ states, 0xa and 0xb, and treats a set `al` as pending.
   is set (`using root node ips`), otherwise a list derived from the local
   state (`using validator node ips`). The lead has no validator-node-IP
   source.
+- **Outcome:** the lead's `run_startup` either keeps a linked state when
+  `is_linked_state_usable` holds (non-zero height, non-empty node_ips, and
+  overlap with the configured IPs, with no time check), or refreshes and
+  bootstraps from gossip itself. The binary future decides by age first,
+  then by the height gate. It returns the boxed local state, the queried
+  peer list (with the reason only logged), or `None` when
+  `/hyperliquid_data/abci_state.rmp` is not a readable, decodable file.
 - **Stale hardfork:** the lead's stale-hardfork reason compares the local
   height with a peer initial height. That matches the operand order here
   (`local_height < initial_height`, tested only when not too far behind).
 
 ## Controls
 
-`tests/test_local_abci_gates_static.py` (49 tests) regenerates
-`records.json` and checks eight models: the peer-reply collection, the height selection, the height gate
+`tests/test_local_abci_gates_static.py` (55 tests) regenerates
+`records.json` and checks nine models: the peer-reply collection, the height selection, the height gate
 including saturation, the day division against exact truncating division,
 the lexicographic compare, the tolerance-to-nanoseconds conversion, the
-nanosecond floor split against `divmod`, and the local-state gate. It refuses each of these corruptions:
+nanosecond floor split against `divmod`, the local-state gate, and the
+output word-0 decoding. It refuses each of these corruptions:
 
 - The gate constant changed to 200.
 - Either message's first byte changed.
@@ -442,17 +502,19 @@ nanosecond floor split against `divmod`, and the local-state gate. It refuses ea
 - An extra `[rbx+0x3b90]` store planted.
 - The root-node-ips template text changed.
 - The validator slot's RELATIVE addend redirected.
+- The `abci_state` file stem, the stale-log template or the `is_file` mode
+  test changed.
+- An extra branch into the return block planted.
 
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
 producer does not use either.
 
 ## Unresolved
 
-- What `0x226bb20` sends for request tag 2 and how it decodes the reply,
-  and whether the selected message is later extended with values.
+- What `0x226bb20` sends for request tag 2 and how it decodes the reply.
 - The exact path from `0x2269034` to `0x226915c`, and any jump-table edge into
   the join.
-- What `0x226ad84` returns, what object `[rbx+0x80]` points to, what
+- How the caller of `0x22689f0` uses each outcome, what object `[rbx+0x80]` points to, what
   `0x3994ea0` collects from `[rbx+0x980]`, and what `0x3751e80` builds.
 - What `[rbx+0x740]+0x60` holds, and which orchestrator paths reach states
   0xa and 0xb.

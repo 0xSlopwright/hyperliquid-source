@@ -86,7 +86,57 @@ WINDOWS = {
     'peer_record_init': (STARTUP_FDE, 0x2268c1c,
                          '48c783283c0000ffffffff48898b603c0000488d836a3c000048898424a0000000c6836a3c000000488d83c83b0000'
                          '488984249800000048c7c0ffffffff66c783683c0000000148898b303c0000488983383c0000'),
-    'state0_head': (STARTUP_FDE, 0x2268a53, 'c683f0490000004c8bbb80000000'),
+    'entry': (STARTUP_FDE, 0x2268a18,
+              '4881ece801000048899424c00000004889f34889bc24b800000049bc00000000000000800fb686f1490000488d0d2ad316fe'
+              '486304814801c8ffe0'),
+    'state0_file': (STARTUP_FDE, 0x2268a53,
+                    'c683f0490000004c8bbb80000000488d059c3718fe48898424103c000048c78424183c0000030000004c8b35a55e5003'
+                    '418b465085c00f858f0c00004983c6184c89b42420010000488d05fe2537004889842428010000488d058f5043034889'
+                    '842430010000488d0dd0e8f4ff48898c2438010000488d8424103c0000488984244001000048898c2448010000488d35'
+                    '2298f8fd488d7c2450488d942420010000ff1546555003488b6c24584c8b7424604889ef4c89f6ff15d85e500384c00f'
+                    '849a020000488d0de15a4303488dbc24200100004889ee4c89f2e87e0b680083bc2420010000020f85db010000488bbc'
+                    '2428010000488b07ff10e960020000'),
+    'decode': (STARTUP_FDE, 0x2268d1b,
+               '488dbc24103c0000488db42420010000bac81f0000ff15aa5250034c8bb424383c0000488dbc2400770000e845d231ff48'
+               '8dbc2420010000488db424007700004c89f2e8ed8866004c8ba4242001000048b800000000000000804939c40f852e010000'),
+    'no_state_return': (STARTUP_FDE, 0x2268da8,
+                        '49bc0000000000000080488b7424504885f6740b4889ef31d2ff15495250034983c402c683f049000000e9ad1f0000'),
+    'pending_return': (STARTUP_FDE, 0x226a8bc,
+                       '488b842480000000c60003488b8424a8000000c60003b003eb0641c60603b004488b8c24a00000008801488b8424880000'
+                       '00c60003488b842490000000c600034983c403488b8424b80000004c8920b003e987040000'),
+    'gate_reject': (STARTUP_FDE, 0x226ab88,
+                    'c683f049000000488dbc2400770000bae83a0000ff153e34500348896c24204c896c2428488d7c2408ff15e93c50038b44'
+                    '24088984246c010000c784246001000001000000488b44240c488984246401000048b800000000000000804889842420'
+                    '010000488d050fc816fe488984244001000048c78424480100001600000048c78424500100000800000048c784245801'
+                    '0000000000008b0543ff500385c00f859c0400004c8dab703b0000660f10051cff5003660f114424504c89a424e80000'
+                    '004c896c2448488d84242001000048898424103c00004c89b424183c00004c89bc24203c0000488d051ac7f4ff488984'
+                    '24283c0000488d8424e800000048898424303c0000488d05ab09440048898424383c0000488d44244848898424403c00'
+                    '00488d051f02440048898424483c0000488d3d6c93f8fd488db424103c0000ff159a3c5003488bb4242001000048b800'
+                    '000000000000804839c674154885f67410488bbc242801000031d2ff15163350034c8ba3783b0000488b83803b00004c'
+                    '8d3c804889c54885c074244c89ffff15bb3250034989c64885c07519bf010000004c89feff1585325003e992eeffff41'
+                    'be010000004c89f74c89e64c89faff1593325003488dbc2400770000e856f6feff4c8dbbf04900004989ec498b450048'
+                    '85c07413488bbb783b0000488d348031d2ff159032500341c60700'),
+    'return_block': (STARTUP_FDE, 0x226ad84,
+                     '488b8424b80000004c89204c8970084c896010b0018883f14900004881c4e8b100005b415c415d415e415f5dc3'),
+    'gate_pass': (STARTUP_FDE, 0x226adb1,
+                  'c683f049000000488dbc24007700004c8b2d19325003bae83a00004989f741ffd5488dbc24103c0000bae83a00004c89fe'
+                  '41ffd5488d7c2408ff15b03a50038b4424088984246c010000c784246001000001000000488b44240c488984246401000048'
+                  'b800000000000000804889842420010000488d05d6c516fe488984244001000048c78424480100001600000048c78424500100'
+                  '000800000048c7842458010000000000008b050afd500385c00f85a4020000660f1005eafc5003660f11442420488d842420'
+                  '010000488944245048896c24584c896424604c89742468488d3d4ce9f7fd488d742450ff15c63a5003488bb4242001000049'
+                  'bc00000000000000804c39e674154885f67410488bbc242801000031d2ff1542315003488dbc2420010000488db424007700'
+                  '00bae83a0000ff15f7305003bfe83a0000ff15e43050034885c00f844e0200004989c64c8dbbf04900004c8dab703b000048'
+                  '8db42400770000bae83a00004889c7ff15bc305003498b45004885c00f853cfeffffe94afeffff'),
+    'reject_once': (STARTUP_FDE, 0x226b0c9,
+                    '488d0580fa500348894424504c89bc24103c0000488d3d84fa5003488d0d7dee3f034c8d055eee3f03488d9424103c00'
+                    '00be01000000ff15b3375003e923fbffff'),
+    'pass_once': (STARTUP_FDE, 0x226b10a,
+                  '488d053ffa500348894424204d89e74c89642450488d3d43fa5003488d0d3cee3f034c8d051dee3f03488d542450be0100'
+                  '0000ff15753750034d89fce91bfdffff'),
+    'is_file': (0x144a710, 0x144a710,
+                '55415741564154534881ecc00000004889f34989feff15e54e320484c07436488d7c24104c89f64889daff15d84e3204837c'
+                '24100275224c8b6424188b054604330485c00f85900000004489e083e00383f801742831edeb12b800f00000234424483d00'
+                '800000400f94c589e84881c4c00000005b415c415e415f5dc3'),
     'exhausted_r15': (STARTUP_FDE, 0x2268e95, 'e8563c62004989c7c683693c00000040b501e9991a0000'),
     'linked_state': (STARTUP_FDE, 0x2268f3f,
                      '488dbb880000004c8da42400770000488d8c24f000000048897c24184c89ee4c89e2ff1541ab5003c683f04900000148'
@@ -207,6 +257,25 @@ RECORD_REFS = {0x3b88: ['0x2268b7a', '0x22696fe'], 0x3b90: ['0x2268b81', '0x2268
                0x3c30: ['0x2268c65', '0x2269c65', '0x226a79d', '0x226a897'],
                0x49c8: ['0x2269574', '0x2269c6f', '0x226a559']}
 RECORD_DESC = b'gossip rpc height'
+OUTCOME_FLOW = {
+    'not_file_to_none': (0x2268b12, 6, 0x2268db2), 'read_ok_to_decode': (0x2268b3a, 6, 0x2268d1b),
+    'read_err_to_none': (0x2268b4d, 5, 0x2268db2), 'decode_ok': (0x2268d78, 6, 0x2268eac),
+    'none_to_return': (0x2268dd2, 5, 0x226ad84), 'height_ok_to_pass': (0x226ab72, 6, 0x226adb1),
+    'reject_once': (0x226ac27, 6, 0x226b0c9), 'reject_once_back': (0x226b105, 5, 0x226ac2d),
+    'reject_alloc_failed': (0x226ad33, 5, 0x2269bca), 'reject_drop_state': (0x226ad55, 5, 0x225a3b0),
+    'pass_once': (0x226ae60, 6, 0x226b10a), 'pass_once_back': (0x226b146, 5, 0x226ae66),
+    'pass_alloc_failed': (0x226aef7, 6, 0x226b14b), 'pass_to_free': (0x226af2b, 6, 0x226ad6d),
+    'pass_to_clear': (0x226af31, 5, 0x226ad80), 'pending_to_epilogue': (0x226a90d, 5, 0x226ad99),
+}
+RETURN_ENTRIES = {0x226ad84: ['0x2268dd2', '0x22693ac'], 0x226ad80: ['0x226ad6b', '0x226af31'],
+                  0x226ad6d: ['0x226af2b']}
+# lea VA -> (template, exact pieces)
+OUTCOME_TEMPLATES = {
+    0x2268ae0: (0x1f2309, [None, b'/hyperliquid_data/', None, b'.', None]),
+    0x226acb9: (0x1f402c, [None, b' WARN >>> ', None, b' @@ considering local abci state as stale @@ [stale_reason: ',
+                           None, b'] @ [node_ips: ', None, b']\n\n']),
+    0x226ae90: (0x1e97e3, [None, b' WARN >>> ', None, b' @@ initializing with local abci_state\n\n']),
+}
 NODE_IP_FLOW = {
     'no_root_to_validator': (0x22693cd, 6, 0x22695db), 'clone_call': (0x2269415, 5, 0x254e7b0),
     'unlock_wake': (0x2269434, 6, 0x22697e8), 'root_to_tail': (0x2269538, 5, 0x22696c8),
@@ -431,6 +500,23 @@ def check_gate(img):
                 ok_branch=hex(img.rip(va + 0x68, 6)))
 
 
+def branches_into(img, target):
+    """Every jcc/jmp rel8 or rel32 encoding in the startup FDE whose target is `target`."""
+    start, end = img.fde(STARTUP_FDE)
+    body = img.read(start, end - start)
+    hits = []
+    for m in re.finditer(rb'\x0f[\x80-\x8f]|\xe9', body):
+        o = m.start()
+        n = 2 if body[o] == 0x0f else 1
+        if o + n + 4 <= len(body) and start + o + n + 4 + struct.unpack_from('<i', body, o + n)[0] == target:
+            hits.append(hex(start + o))
+    for m in re.finditer(rb'[\x70-\x7f\xeb]', body):
+        o = m.start()
+        if o + 2 <= len(body) and start + o + 2 + struct.unpack_from('<b', body, o + 1)[0] == target:
+            hits.append(hex(start + o))
+    return sorted(hits)
+
+
 def check_tolerance(img):
     start, end = img.fde(STARTUP_FDE)
     body = img.read(start, end - start)
@@ -440,16 +526,7 @@ def check_tolerance(img):
     require((img.f64(v540), img.f64(v840)) == TOLERANCES, f'tolerance constants are {img.f64(v540)}, {img.f64(v840)}')
     branches = [img.rip(WINDOWS['select_540'][1] + off, 6) for off in (0x0f, 0x22)]
     require(branches == [join, join], f'540 branches go to {[hex(b) for b in branches]}, not the join {join:#x}')
-    into_join = []
-    for m in re.finditer(rb'\x0f[\x80-\x8f]|\xe9', body):
-        o = m.start()
-        n = 2 if body[o] == 0x0f else 1
-        if o + n + 4 <= len(body) and start + o + n + 4 + struct.unpack_from('<i', body, o + n)[0] == join:
-            into_join.append(hex(start + o))
-    for m in re.finditer(rb'[\x70-\x7f\xeb]', body):
-        o = m.start()
-        if o + 2 <= len(body) and start + o + 2 + struct.unpack_from('<b', body, o + 1)[0] == join:
-            into_join.append(hex(start + o))
+    into_join = branches_into(img, join)
     want = [hex(WINDOWS['select_540'][1] + 0x0f), hex(WINDOWS['select_540'][1] + 0x22)]
     require(sorted(into_join) == want, f'branches into join {join:#x}: {sorted(into_join)}')
     slot_refs = [hex(start + m.start()) for m in RSP_E0.finditer(body)]
@@ -589,6 +666,48 @@ def check_node_ips(img):
                 state_time_copy={'[rbx+0x60]': '[rbx+0xe8]', '[rbx+0x68]': '[rbx+0xf0]'})
 
 
+def check_outcomes(img):
+    for name, (va, n, want) in OUTCOME_FLOW.items():
+        got = flow_target(img, va, n)
+        require(got == want, f'{name} at {va:#x} goes to {got:#x}, not {want:#x}')
+    templates = {}
+    for va, (tpl, pieces) in OUTCOME_TEMPLATES.items():
+        got = img.rip(va, 7)
+        dec = template(img, got)
+        require(got == tpl and dec == pieces, f'outcome template at {va:#x} is {got:#x} {dec!r}')
+        templates[hex(va)] = hex(tpl)
+    ext = img.rip(0x2268a61, 7)
+    require(img.read(ext, 3) == b'rmp' and img.read(0x2268a78, 4) == struct.pack('<I', 3), 'file extension is not "rmp"')
+    stem_ref = img.rip(0x2268aaa, 7)
+    stem_len = struct.unpack('<Q', img.read(stem_ref + 8, 8))[0]
+    require(stem_ref in img.relative and img.read(img.relative[stem_ref], stem_len) == b'abci_state',
+            f'file stem at {stem_ref:#x} is not "abci_state"')
+    slot = img.rip(0x2268b0a, 6)
+    require(img.relative.get(slot) == 0x144a710, f'file check slot {slot:#x} does not reach 0x144a710')
+    require(img.read(0x144a769, 18) == bytes.fromhex('b800f00000' '23442448' '3d00800000' '400f94c5'),
+            'is_file mode test is not (st_mode & 0xf000) == 0x8000')
+    niches = {'local_state': 0, 'no_local_state': img.read(0x2268dca, 1)[0], 'pending': img.read(0x226a8ff, 1)[0]}
+    require(img.read(0x2268a32, 10) == bytes.fromhex('49bc0000000000000080') and niches['no_local_state'] == 2
+            and niches['pending'] == 3, f'outcome niches are {niches}')
+    require(img.read(0x226aab4, 5) == bytes.fromhex('4c8d642420'), 'r12 is not &[rsp+0x20] before the gate')
+    entries = {hex(t): branches_into(img, t) for t in RETURN_ENTRIES}
+    require(entries == {hex(t): v for t, v in RETURN_ENTRIES.items()}, f'branches into the return block: {entries}')
+    return dict(output='[[rsp+0xb8]] (rdi at entry): 3 words, written at 0x226ad8c/0x226ad8f/0x226ad93',
+                file_template=templates['0x2268ae0'], file='{}/hyperliquid_data/abci_state.rmp',
+                file_check=hex(0x144a710), flow={k: hex(v[2]) for k, v in OUTCOME_FLOW.items()},
+                templates=templates, niches={k: hex(2 ** 63 + v) for k, v in niches.items()}, return_entries=entries,
+                stale_reason_arg='&[rsp+0xe8] = r12 = &[rsp+0x20] = (message ptr rbp, len r13)',
+                node_ips_arg='&[rsp+0x48] = &[rbx+0x3b70]',
+                stale_return='{len, ptr, len} clone of the 5-byte peer Vec; local state copy dropped via 0x225a3b0')
+
+
+def startup_outcome(word0):
+    """Decode word 0 of the 0x22689f0 output."""
+    if word0 < 2 ** 63:
+        return 'node_ips'
+    return {0: 'local_state', 2: 'no_local_state', 3: 'pending'}.get(word0 - 2 ** 63, 'unobserved')
+
+
 def tolerance_nanos(x):
     """0x1459cb6..0x1459d28: f64 seconds * 1e9, clamped to +-2**63, truncated to i64 (NaN -> 0)."""
     v = x * 1e9
@@ -677,7 +796,7 @@ def analyse(data):
     fresh = check_freshness(img)
     return dict(target=TARGET, windows={k: hex(v) for k, v in wins.items()},
                 peer_queries=check_queries(img), height_selection=check_selection(img), status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=fresh,
-                stale_gate=check_stale_gate(img, fresh['slots']), node_ips=check_node_ips(img), callers=check_callers(img))
+                stale_gate=check_stale_gate(img, fresh['slots']), node_ips=check_node_ips(img), outcomes=check_outcomes(img), callers=check_callers(img))
 
 
 def main(argv=None):

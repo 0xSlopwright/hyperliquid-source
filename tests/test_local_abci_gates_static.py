@@ -16,6 +16,7 @@ from artifacts import check  # noqa: E402
 BINARY = ROOT / la.TARGET
 PACKET = ROOT / 'research/work-items/local-abci-gates-94/records.json'
 CACHE = {}
+PLANT = 0x2268c80  # inside the startup FDE, outside every checked window
 
 
 def load():
@@ -80,6 +81,10 @@ class Models(unittest.TestCase):
         self.assertFalse(la.uses_local_state((1, 540, 0), (1, 540, 1)))
         self.assertTrue(la.uses_local_state((2, 0, 0), (1, 86399, 999)))
 
+    def test_startup_outcome(self):
+        self.assertEqual([la.startup_outcome(w) for w in (0, 7, 2 ** 63 - 1, 2 ** 63, 2 ** 63 + 1, 2 ** 63 + 2, 2 ** 63 + 3)],
+                         ['node_ips', 'node_ips', 'node_ips', 'local_state', 'unobserved', 'no_local_state', 'pending'])
+
     def test_collect_heights(self):
         replies = [('a', (2, (1, 5))), ('b', None), ('c', (3, (9, 9))), ('d', (2, None)), ('a', (2, (1, 7)))]
         self.assertEqual(la.collect_heights(replies), {'a': (1, 7)})
@@ -136,6 +141,15 @@ class Results(unittest.TestCase):
                          ('0x22693c3', '0x22691fd', '0x226ad84', '0x2268b7f'))
         self.assertEqual(s['record_refs']['0x3c30'], ['0x2268c65', '0x2269c65', '0x226a79d', '0x226a897'])
         self.assertEqual(s['record_refs']['0x3b90'], ['0x2268b81', '0x2268b88'])
+
+    def test_outcomes(self):
+        o = self.result['outcomes']
+        self.assertEqual(o['file'], '{}/hyperliquid_data/abci_state.rmp')
+        self.assertEqual(o['niches'], {'local_state': '0x8000000000000000', 'no_local_state': '0x8000000000000002',
+                                       'pending': '0x8000000000000003'})
+        self.assertEqual((o['flow']['not_file_to_none'], o['flow']['read_err_to_none'], o['flow']['height_ok_to_pass'],
+                          o['flow']['reject_drop_state']), ('0x2268db2', '0x2268db2', '0x226adb1', '0x225a3b0'))
+        self.assertEqual(o['templates'], {'0x2268ae0': '0x1f2309', '0x226acb9': '0x1f402c', '0x226ae90': '0x1e97e3'})
 
     def test_node_ips(self):
         n = self.result['node_ips']
@@ -210,12 +224,12 @@ class Corruptions(unittest.TestCase):
         self.refuses(patched((0x20a230, struct.pack('<d', 600.0))), 'tolerance constants are 540.0, 600.0')
 
     def test_extra_branch_into_join(self):
-        start = la.STARTUP_FDE + 0x100
+        start = PLANT
         rel = 0x2269164 - (start + 6)
         self.refuses(patched((start, b'\x0f\x84' + struct.pack('<i', rel))), 'branches into join 0x2269164')
 
     def test_extra_slot_reference(self):
-        self.refuses(patched((la.STARTUP_FDE + 0x100, b'\x48\x8b\x84\x24\xe0\x00\x00\x00')), r'\[rsp\+0xe0\] references')
+        self.refuses(patched((PLANT, b'\x48\x8b\x84\x24\xe0\x00\x00\x00')), r'\[rsp\+0xe0\] references')
 
     def test_log_template(self):
         self.refuses(patched((0x1f5428 + 20, b'X')), 'log template 0x1f5428 changed')
@@ -238,9 +252,9 @@ class Corruptions(unittest.TestCase):
         self.refuses(bytes(data), 'panic slot does not reach the panic shim')
 
     def test_extra_caller(self):
-        site = la.STARTUP_FDE + 0x100
+        site = PLANT
         self.refuses(patched((site, b'\xe8' + struct.pack('<i', la.FRESH_FDE - (site + 5)))),
-                     r"direct calls to 0x2271d00: \['0x2268af0', '0x22aef61', '0x22affe7'\]")
+                     r"direct calls to 0x2271d00: \['0x2268c80', '0x22aef61', '0x22affe7'\]")
 
     def test_state0_arm_moved(self):
         self.refuses(patched((la.POLL_TABLE, struct.pack('<i', 0x2272398 - la.POLL_TABLE))), 'state-0 arm is 0x2272398')
@@ -252,7 +266,7 @@ class Corruptions(unittest.TestCase):
         self.refuses(patched((0x226aa1e + 4, b'\xc8')), 'status_log at 0x226a974: bytes changed')
 
     def test_extra_height_slot_reference(self):
-        self.refuses(patched((la.STARTUP_FDE + 0x100, b'\x48\x8b\x84\x24\xd0\x00\x00\x00')), r'\[rsp\+0xd0\] references')
+        self.refuses(patched((PLANT, b'\x48\x8b\x84\x24\xd0\x00\x00\x00')), r'\[rsp\+0xd0\] references')
 
     def test_template_text(self):
         self.refuses(patched((0x1ed195, b'U')), 'freshness template 0x1ed194 changed')
@@ -288,7 +302,20 @@ class Corruptions(unittest.TestCase):
         self.refuses(patched((0x21a01f + 5, b'X')), 'helper panic text at 0x21a01f changed')
 
     def test_extra_record_pointer_store(self):
-        self.refuses(patched((la.STARTUP_FDE + 0x100, bytes.fromhex('4c89b3903b0000'))), r'\[rbx\+0x3b90\] operands')
+        self.refuses(patched((PLANT, bytes.fromhex('4c89b3903b0000'))), r'\[rbx\+0x3b90\] operands')
+
+    def test_extra_branch_into_return(self):
+        self.refuses(patched((PLANT, b'\xe9' + struct.pack('<i', 0x226ad84 - (PLANT + 5)))),
+                     'branches into the return block')
+
+    def test_file_stem(self):
+        self.refuses(patched((0x3d73f8 + 4, b'X')), 'file stem at 0x569db40')
+
+    def test_stale_template_text(self):
+        self.refuses(patched((0x1f402c + 30, b'X')), 'outcome template at 0x226acb9')
+
+    def test_is_file_mode(self):
+        self.refuses(patched((0x144a777 - 3, b'\x40')), 'is_file at 0x144a710: bytes changed')
 
     def test_root_template_text(self):
         self.refuses(patched((0x1fc1a0 + 20, b'X')), 'node-ip template at 0x2269511')

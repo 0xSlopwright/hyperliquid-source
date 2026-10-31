@@ -155,6 +155,56 @@
     },
     "validator_source": "&[rbx+0x980], byte [rbx+0x97a]"
   },
+  "outcomes": {
+    "file": "{}/hyperliquid_data/abci_state.rmp",
+    "file_check": "0x144a710",
+    "file_template": "0x1f2309",
+    "flow": {
+      "decode_ok": "0x2268eac",
+      "height_ok_to_pass": "0x226adb1",
+      "none_to_return": "0x226ad84",
+      "not_file_to_none": "0x2268db2",
+      "pass_alloc_failed": "0x226b14b",
+      "pass_once": "0x226b10a",
+      "pass_once_back": "0x226ae66",
+      "pass_to_clear": "0x226ad80",
+      "pass_to_free": "0x226ad6d",
+      "pending_to_epilogue": "0x226ad99",
+      "read_err_to_none": "0x2268db2",
+      "read_ok_to_decode": "0x2268d1b",
+      "reject_alloc_failed": "0x2269bca",
+      "reject_drop_state": "0x225a3b0",
+      "reject_once": "0x226b0c9",
+      "reject_once_back": "0x226ac2d"
+    },
+    "niches": {
+      "local_state": "0x8000000000000000",
+      "no_local_state": "0x8000000000000002",
+      "pending": "0x8000000000000003"
+    },
+    "node_ips_arg": "&[rsp+0x48] = &[rbx+0x3b70]",
+    "output": "[[rsp+0xb8]] (rdi at entry): 3 words, written at 0x226ad8c/0x226ad8f/0x226ad93",
+    "return_entries": {
+      "0x226ad6d": [
+        "0x226af2b"
+      ],
+      "0x226ad80": [
+        "0x226ad6b",
+        "0x226af31"
+      ],
+      "0x226ad84": [
+        "0x2268dd2",
+        "0x22693ac"
+      ]
+    },
+    "stale_reason_arg": "&[rsp+0xe8] = r12 = &[rsp+0x20] = (message ptr rbp, len r13)",
+    "stale_return": "{len, ptr, len} clone of the 5-byte peer Vec; local state copy dropped via 0x225a3b0",
+    "templates": {
+      "0x2268ae0": "0x1f2309",
+      "0x226acb9": "0x1f402c",
+      "0x226ae90": "0x1e97e3"
+    }
+  },
   "peer_queries": {
     "current_peer": "[rbx+0x49d0] (4 bytes) and [rbx+0x49d4] (1 byte)",
     "flow": {
@@ -322,26 +372,36 @@
     "after_panic": "0x227283d",
     "call_a": "0x22aef54",
     "call_b": "0x22affbf",
+    "decode": "0x2268d1b",
+    "entry": "0x2268a18",
     "exhausted_r15": "0x2268e95",
     "fresh_exit": "0x2269339",
     "fresh_head": "0x22691fd",
     "freshness": "0x2271d52",
     "gate": "0x226ab0a",
     "gate_branch": "0x22693b1",
+    "gate_pass": "0x226adb1",
+    "gate_reject": "0x226ab88",
     "got_heights_log": "0x226a4a2",
     "hardfork_log": "0x226911b",
+    "is_file": "0x144a710",
     "linked_state": "0x2268f3f",
     "no_heights_log": "0x226a04b",
+    "no_state_return": "0x2268da8",
     "once_init": "0x226977e",
     "panic_shim": "0x157b810",
+    "pass_once": "0x226b10a",
     "peer_loop_head": "0x2269c63",
     "peer_record": "0x2268b7f",
     "peer_record_init": "0x2268c1c",
+    "pending_return": "0x226a8bc",
     "poll_entry": "0x2271d17",
     "query_call": "0x2269e1a",
     "query_error": "0x226a1ac",
     "query_log": "0x2269d00",
+    "reject_once": "0x226b0c9",
     "reply_dispatch": "0x2269f3d",
+    "return_block": "0x226ad84",
     "root_ips": "0x22693ca",
     "select_540": "0x226900c",
     "select_840": "0x226915c",
@@ -351,7 +411,7 @@
     "select_retry": "0x226a753",
     "stale_exit": "0x22696e2",
     "stale_gate": "0x2269171",
-    "state0_head": "0x2268a53",
+    "state0_file": "0x2268a53",
     "status_log": "0x226a974",
     "tolerance_log": "0x226928a",
     "validator_ips": "0x22695db",
