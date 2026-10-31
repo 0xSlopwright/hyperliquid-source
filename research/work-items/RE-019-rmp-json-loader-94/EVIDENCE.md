@@ -27,7 +27,7 @@ All coordinates are virtual addresses (VAs) mapped through the PT_LOAD program h
 
 1. **Path ABI (bytes).** Callers load `rsi` = path pointer, `rdx` = path length, `rcx` = Location, `rdi` = out Result (e.g. at 0x22aefd1 / 0x22aefd6 / 0x22aefdb / 0x22aefe2). The callee saves `mov rbx,rdi` at 0x3c155cc and passes the untouched `rsi`/`rdx` into the first call. ABI: `(out, path_ptr, path_len, location)` = `(rdi, rsi, rdx, rcx)`.
 
-2. **~/ expander (bytes).** First call at 0x3c155d7 is `ff15 …` targeting GOT 0x576f628. `.rela.dyn` RELATIVE addend for that GOT is **0x144a600**. At 0x144a624: `cmpw $0x2f7e,(%rsi)` (bytes `66 81 3e 7e 2f` = little-endian `"~/"`), `je` home-expand at 0x144a629. This is **not** `current_dir`.
+2. **~/ expander (bytes).** First call at 0x3c155d7 is an indirect call through the GOT (opcode FF /2, encoded `ff 15` or `ff 25` for the jmp form); here the encoding is `ff 15 …` targeting GOT 0x576f628. `.rela.dyn` RELATIVE addend for that GOT is **0x144a600**. At 0x144a624: `cmpw $0x2f7e,(%rsi)` (bytes `66 81 3e 7e 2f` = little-endian `"~/"`), `je` home-expand at 0x144a629. This is **not** `current_dir`.
 
 3. **Absolute `/` and `..` re-check (bytes).** The old "rejects absolute `/` and `..`" claim does **not** hold as Err rejects:
    - At 0x3c155fc: `cmpb $0x2f,(%r15)` / `sete %al` (0x3c15600) / `movb %al,0x14a(%rsp)` (0x3c15670) — **detects** absolute `/` as an is_absolute flag for Path construction; no branch to Err.
@@ -62,6 +62,6 @@ Not yet implemented. No Rust re-implementation and no differential run; this is 
 - Pinned counts: 3/3 e8 callers; 1744-byte extent; 47/47 key instructions; 5/5 labels; 2/2 Locations; Ok length 0x1fc8; Err tag 2; path ABI + tilde expander pinned. independent_verify.py re-derives all of them without tools/.
 - Inferred, not proven: that tag 2 is a Rust `Err` discriminant; what the 0x1fc8-byte Ok payload means at each caller; which source function name 0x3c155a0 implements beyond the Location-bearing call sites.
 - Not claimed: rejection of absolute `/` or `..` to Err (bytes refute the prior wording); the body of 0x3273810 / 0x3273920 (RE-017); the GOT chain 0x5773aa8 → 0x3751e80 (RE-016); the five contested ABI windows (RE-018); exclusive ownership of the shared `serde_json::from_str:` diagnostic at 0x1fd0ce (#365).
-- Not covered by the caller pass: `ff15` / `jmp` indirect forms, and code outside the four scanned sections.
+- Not covered by the caller pass: indirect call/jmp through the GOT (opcode FF /2, encoded `ff 15` or `ff 25` for the jmp form), and code outside the four scanned sections.
 
 Next question: which on-disk filenames (beyond the `.rmp` gate) do the three callers pass, and does the 0x1fc8 Ok payload match the materializer block size RE-017 / RE-018 already pin at the [0x5773aa8] sites?
