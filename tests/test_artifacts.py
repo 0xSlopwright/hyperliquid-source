@@ -191,11 +191,16 @@ class ArtifactTests(unittest.TestCase):
         manifest_dir = self.root / 'provenance'
         manifest_dir.mkdir()
         (manifest_dir / 'artifacts.json').write_text('{}')
+    def test_main_missing_signing_fingerprint_rejected(self):
+        manifest_dir = self.root / 'provenance'
+        manifest_dir.mkdir()
+        (manifest_dir / 'artifacts.json').write_text('{"files": []}')
         with patch.object(a, 'ROOT', self.root), patch.object(sys, 'argv', ['artifacts.py', 'verify']):
             with self.assertRaises(ValueError):
                 a.main()
 
     def test_main_empty_files_list_passes_guard(self):
+    def test_main_files_and_fingerprint_pass_guard(self):
         manifest_dir = self.root / 'provenance'
         manifest_dir.mkdir()
         (manifest_dir / 'artifacts.json').write_text('{"files": [], "signing_fingerprint": "unused"}')
