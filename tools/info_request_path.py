@@ -85,6 +85,12 @@ class Elf:
                 raise EvidenceError('section name is not valid UTF-8')
             self.sections[name] = (s[3], s[4], s[5])
 
+    def section(self, name):
+        try:
+            return self.sections[name]
+        except KeyError:
+            raise EvidenceError(f"missing section {name}") from None
+
     def off(self, va):
         for v, o, s in self.loads:
             if v <= va < v + s:
@@ -99,7 +105,7 @@ class Elf:
 
 
 def fde_index(elf: Elf):
-    addr, off, size = elf.sections[".eh_frame_hdr"]
+    addr, off, size = elf.section(".eh_frame_hdr")
     d = elf.data
     ver, ep_enc, cnt_enc, tab_enc = d[off:off + 4]
     if (ver, ep_enc, cnt_enc, tab_enc) != (1, 0x1B, 0x03, 0x3B):
@@ -134,7 +140,7 @@ def is_fde_start(starts, va):
 
 
 def relative_relocs(elf: Elf) -> dict:
-    _a, off, size = elf.sections[".rela.dyn"]
+    _a, off, size = elf.section(".rela.dyn")
     out = {}
     for o in range(off, off + size, 24):
         r_off, info, add = struct.unpack_from("<QQq", elf.data, o)
@@ -144,8 +150,8 @@ def relative_relocs(elf: Elf) -> dict:
 
 
 def first_party_locations(elf, relocs):
-    ro_va, _o, ro_size = elf.sections[".rodata"]
-    drr_va, _o2, drr_size = elf.sections[".data.rel.ro"]
+    ro_va, _o, ro_size = elf.section(".rodata")
+    drr_va, _o2, drr_size = elf.section(".data.rel.ro")
     out = {}
     for slot, a in relocs.items():
         if not (drr_va <= slot < drr_va + drr_size and ro_va <= a < ro_va + ro_size):
@@ -160,7 +166,7 @@ def first_party_locations(elf, relocs):
 
 
 def lea_targets(elf):
-    t_va, t_off, t_size = elf.sections[".text"]
+    t_va, t_off, t_size = elf.section(".text")
     text = elf.data[t_off:t_off + t_size]
     out = {}
     for m in LEA_RE.finditer(text):
@@ -173,7 +179,7 @@ def lea_targets(elf):
 
 
 def literal_anchors(elf, kind, lit, leas, relocs):
-    ro_va, ro_off, ro_size = elf.sections[".rodata"]
+    ro_va, ro_off, ro_size = elf.section(".rodata")
     ro = elf.data[ro_off:ro_off + ro_size]
     rel_targets = set(relocs.values())
     out = []
@@ -209,7 +215,7 @@ def serde_rename_tags(ref_text: str):
 
 def tag_anchor(elf, tag, leas, relocs):
     """Prefer exact lea at occurrence; else length-prefixed (NUL..len byte)."""
-    ro_va, ro_off, ro_size = elf.sections[".rodata"]
+    ro_va, ro_off, ro_size = elf.section(".rodata")
     ro = elf.data[ro_off:ro_off + ro_size]
     b = tag.encode()
     rel_targets = set(relocs.values())
@@ -234,7 +240,7 @@ def tag_anchor(elf, tag, leas, relocs):
 
 def fde_edges(elf, starts, ends, relocs, fde_start):
     start_set = set(starts)
-    t_va, t_off, t_size = elf.sections[".text"]
+    t_va, t_off, t_size = elf.section(".text")
     text = elf.data[t_off:t_off + t_size]
     c = containing(starts, ends, fde_start)
     if c is None or c[0] != fde_start:
