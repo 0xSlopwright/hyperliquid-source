@@ -110,10 +110,11 @@ a shared default for NodePort listen, the gossip RPC connect, and the
 (`0x22689f0`).
 
 Note: whether a given loop actually stops after the stored 10 is not checked
-here. For the `gossip rpc height` instance, the open packet
-[#451](https://github.com/lalalune/hyperliquid-source/pull/451) reads the loop
-in `0x22689f0`. It finds that the 10 is never read there, and that the
-attempt bound is `max(-1, 1)` = `u64::MAX`.
+here. The open packet
+[#451](https://github.com/lalalune/hyperliquid-source/pull/451) reads the
+loops of all eight sites above. In each, the attempt bound is
+`max(-1, 1)` = `u64::MAX`, and no record-pointer load reads the 10 at `+0x18`.
+So the "try count 10" reading is not supported for any of them.
 
 For each of the other four sites, the tool takes the last call through
 `0x576e040` within 0x90 bytes before the count store. It then takes the last
