@@ -306,7 +306,7 @@ def native_metadata(binary, data, secs, record):
 
 
 def collect(binary, output):
-    binary = Path(binary).resolve(); output = Path(output)
+    binary = Path(binary); output = Path(output)
     if output.exists(): raise FileExistsError('Output must be a new directory: ' + str(output))
     exports = {}; versions = {tool: subprocess.check_output([tool, '--version'], text=True).splitlines()[0]
                               for tool in ('objdump', 'readelf')}

@@ -119,7 +119,15 @@ class CarrierEvidenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             first, second = Path(tmp) / 'first', Path(tmp) / 'second'
             supplied = Path(tmp) / 'supplied-node94'
-            supplied.hardlink_to(BINARY)
+            invalid = Path(tmp) / 'invalid-target'
+            invalid.write_bytes(b'not Node94')
+            supplied.symlink_to(invalid)
+            rejected_before = Path(tmp) / 'rejected-before'
+            with self.assertRaisesRegex(ValueError, 'identity mismatch'):
+                carrier.collect(supplied, rejected_before)
+            self.assertFalse(rejected_before.exists())
+            supplied.unlink()
+            supplied.symlink_to(BINARY)
             native_run = carrier.subprocess.check_output
             substituted = []
             def replace_supplied_path(argv, **kwargs):
@@ -139,6 +147,10 @@ class CarrierEvidenceTests(unittest.TestCase):
             with mock.patch.object(carrier.subprocess, 'check_output', side_effect=replace_supplied_path):
                 actual = carrier.collect(supplied, first)
             self.assertEqual(substituted, [True])
+            rejected_after = Path(tmp) / 'rejected-after'
+            with self.assertRaisesRegex(ValueError, 'identity mismatch'):
+                carrier.collect(supplied, rejected_after)
+            self.assertFalse(rejected_after.exists())
             carrier.collect(BINARY, second)
             for name in GENERATED:
                 self.assertEqual((first / name).read_bytes(), (second / name).read_bytes(), name)
