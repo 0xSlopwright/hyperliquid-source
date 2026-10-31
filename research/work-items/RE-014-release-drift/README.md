@@ -193,7 +193,7 @@ below.
   thunks), so they are counted, not paired.
 - **Catalogue paths agree with the binaries:** a path matches only as
   `<crate>/src/<file>` at a path boundary (#94 embeds absolute
-  `/home/ubuntu/hl/code_Mainnet/…` paths, #115 relative ones). All 28
+  home-directory build paths, #115 relative ones). All 28
   `absent115` paths occur in #94 and not #115; all 35 `added115` paths occur
   in #115 and not #94 (`node-94-115-paths.json`). A bare suffix match would
   have hit std's `/src/time.rs`; the boundary test is a unit-tested negative
