@@ -49,7 +49,10 @@ class ScanError(ValueError):
 def artifact(release):
     path = ROOT / f'artifacts/node/{release}/hl-node'
     data = path.read_bytes()
-    record = load_manifest(ROOT)
+    try:
+        record = load_manifest(ROOT)
+    except ValueError as exc:
+        raise ScanError(f'invalid provenance record: {exc}') from exc
     expected = next((f['sha256'] for f in record['files']
                      if f['path'] == f'artifacts/node/{release}/hl-node'), None)
     if expected is None:
