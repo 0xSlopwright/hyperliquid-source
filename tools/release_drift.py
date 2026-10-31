@@ -303,7 +303,9 @@ def classify(old, new):
         if b['start'] not in taken:
             rows.append(['equivalent_unpaired' if b['norm'] in twins else 'unmatched_115', '', '',
                          '', '', hex(b['start']), b['size'], f"masked-{b['norm'][:16]}"])
-    return sorted(rows, key=lambda r: (int(r[3] or '-1', 16), int(r[5] or '-1', 16)))
+    # Stable order by (#94 start, #115 start); the index keeps ties in insertion order.
+    order = [((int(r[3] or '-1', 16), int(r[5] or '-1', 16)), i) for i, r in enumerate(rows)]
+    return [rows[i] for _, i in sorted(order)]
 
 
 def path_strings(datas, paths):
