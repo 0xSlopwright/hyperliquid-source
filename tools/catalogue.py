@@ -147,6 +147,8 @@ def generate(root=ROOT):
         raise ValueError('Invalid inventory record')
     for inv in inventories.values():
         if any(not isinstance(files, list) for files in inv['first_party_files'].values()):
+    for inv in inventories.values():
+        if not isinstance(inv['first_party_files'], dict):
             raise ValueError('Invalid inventory record')
     paths = {}
     excluded = {}
