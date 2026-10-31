@@ -115,6 +115,9 @@ def _load_input(path):
 
 def generate(root=ROOT):
     config = _load_input(root / 'research/components.json')
+    config = json.loads((root / 'research/components.json').read_text())
+    if 'components' not in config:
+        raise ValueError('Invalid component configuration')
     components = config['components']
     progress = _load_input(root / 'research/progress.json')
     validate_progress(components, progress, root)
