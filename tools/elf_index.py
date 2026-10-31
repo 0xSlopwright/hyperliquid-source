@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import struct
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -142,8 +143,21 @@ def main():
     expected = load_inventory(ROOT / inventory)['fde_count_eh_frame_hdr']
     if summary['unwind_entries'] != expected:
         raise ValueError('Parsed unwind count differs from retained inventory')
+    try:
+        from artifacts import check
+        rel, inventory, prefix = target_for(args.release)
+        item = next(i for i in json.loads((ROOT / 'provenance/artifacts.json').read_text())['files'] if i['path'] == rel)
+        check(ROOT / rel, item)
+        summary = generate(ROOT / rel, args.output_dir / prefix)
+        expected = json.loads((ROOT / inventory).read_text())['fde_count_eh_frame_hdr']
+        if summary['unwind_entries'] != expected:
+            raise ValueError('Parsed unwind count differs from retained inventory')
+    except (ValueError, OSError) as e:
+        print(f'elf_index: {e}', file=sys.stderr)
+        return 1
     print(json.dumps(summary, indent=2))
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())
