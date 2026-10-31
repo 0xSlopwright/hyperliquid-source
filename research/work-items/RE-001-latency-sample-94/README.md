@@ -73,7 +73,7 @@ corruptions,five RELA retargets,decoded independent guard destinations,all tail
 stores,and an explicitly local MINSD architectural model including infinity
 and NaN. Models never invoke the target or prove live value reachability.
 
-Required checks pass:437tests,151.783seconds. Four producer exports match an
+Required checks passed: 437 tests in 151.783 seconds. Four producer exports match an
 author repeat byte-for-byte;not independent peer review. Eight identities,
 three signatures,37imports and seven pins verify unchanged. Analysis ready,
 exact rebuild unavailable. Logs mask local checkout/tool prefixes and normalize
