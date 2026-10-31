@@ -266,7 +266,7 @@ class PieGuard(unittest.TestCase):
 
 class PathStrings(unittest.TestCase):
     def test_matches_only_at_a_path_boundary(self):
-        datas = {'94': b'\0/home/u/code/l1/src/time.rs\0', '115': b'\0/rustc/x/library/std/src/time.rs\0xl1/src/time.rs'}
+        datas = {'94': b'\0/srv/u/code/l1/src/time.rs\0', '115': b'\0/rustc/x/library/std/src/time.rs\0xl1/src/time.rs'}
         out = path_strings(datas, {'absent115': ['l1/time.rs'], 'added115': []})
         self.assertEqual(out, [{'catalogue_list': 'absent115', 'path': 'l1/time.rs',
                                 'string_in_94': True, 'string_in_115': False}])
