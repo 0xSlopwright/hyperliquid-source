@@ -1,4 +1,4 @@
-12f687ce039ed512bf0001686114dca2dde4a7019d79043379e4c088f0a8005c  evidence/bridge-inventory.json
+34dc51dfd6fc35687ca64d9cdbe597ffc7442aa98909fbf86e7d33f5fe54cf61  evidence/bridge-inventory.json
 4c89da8aaa0564619e2d49dc754d06b8f809fe8e456852c6773ab07c04d498d2  evidence/chain-22af76e.bin
 eb40a85b78f71c8ea1af12b570eb7a5d36fde6dcc2cdf41fa9dd6060c738d1f7  evidence/chain-3341cb9.bin
 4c383bf6b0033229313d2007c35ff1ab49a67740ad77c56f83a532f8deac117f  evidence/chain-358ec6b.bin
@@ -11,6 +11,6 @@ f623b5102780863aefd706ca4f3cfe00bee836bd39347cb8e7d39916a2c39785  disasm/02-requ
 8ddc42b730a1a6594c0f8a410ce64e72584d2c7a282534871f1aea4ac08b040d  disasm/06-state-machine-withdrawal-b.txt
 e1cbcaebebbd3447cc1b867abe197071e1094dfa583c61cebaa96555b63b1a5a  disasm/07-helper-3341af0.txt
 f9ca4743fac141e68357d2fa34661ebfbfc49907b05675735f5517c5653e8aae  tables.txt
-f6e1e7dfb7301f830d5967379ebd4a2daa741356b7a8c9f49002601518f1e453  README.md
-4c0d5ee0b291f34c2c45763df69254a6d3c8c66787ce28ab67ec40182e327866  ../../../tools/bridge_inventory.py
-83f1c9dce3b97ca0e279d8306447c7057310bb8867c9956485066ed2a8341630  ../../../tests/test_bridge_inventory.py
+6f46b5d79a4416bfb9e6648875c8c016b5b665b3139285aae93c046b29b234c4  README.md
+f60ad33f90ac96483f30375d496f2b8f130e59b0993a5f86867055df9ff113a3  ../../../tools/bridge_inventory.py
+178713e6bfc07b0f3d9c25b89fd6ded1886e861cb3c7c7db884cef6ee606dfa4  ../../../tests/test_bridge_inventory.py
