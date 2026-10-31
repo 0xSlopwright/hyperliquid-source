@@ -25,6 +25,8 @@ def validate_progress(components, progress, root):
     ids = set(ids)
     if type(progress) is not dict or 'gates' not in progress:
         raise ValueError('Invalid progress record')
+    if any('id' not in c for c in components):
+        raise ValueError('Invalid component record')
     ids = {c['id'] for c in components}
     if 'components' not in progress:
         raise ValueError('Invalid progress record')
