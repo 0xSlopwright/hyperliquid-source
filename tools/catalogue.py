@@ -119,6 +119,8 @@ def generate(root=ROOT):
     if 'components' not in config:
     if 'known_first_party_crates' not in config:
     if not isinstance(config['known_first_party_crates'], list):
+    if isinstance(config['known_first_party_crates'], list) and not all(
+            isinstance(crate, str) for crate in config['known_first_party_crates']):
         raise ValueError('Invalid component configuration')
     components = config['components']
     progress = _load_input(root / 'research/progress.json')
