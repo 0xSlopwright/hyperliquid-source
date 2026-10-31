@@ -273,6 +273,9 @@ def record(release):
                  if isinstance(x, dict) and x.get('path') == rel), None)
     if item is None:
         raise ValueError('Invalid artifact manifest')
+    missing = [f for f in ('size', 'sha256') if f not in item]
+    if missing:
+        raise ValueError(f'provenance/artifacts.json entry for {rel} is missing ' + '/'.join(missing))
     check(ROOT / rel, item)
     facts = derive((ROOT / rel).read_bytes())
     return {'target': rel, 'sha256': item['sha256'], 'size': item['size'],
