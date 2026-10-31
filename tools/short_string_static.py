@@ -166,4 +166,3 @@ if __name__ == '__main__':
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         print(f'short_string_static: {error}', file=sys.stderr)
         raise SystemExit(1)
-

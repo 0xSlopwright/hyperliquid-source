@@ -60,4 +60,3 @@ if __name__=='__main__':
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         print(f'file_tracker_init_static: {error}', file=sys.stderr)
         raise SystemExit(1)
-
