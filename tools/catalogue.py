@@ -143,6 +143,7 @@ def generate(root=ROOT):
     inventories = {v: _load_input(root / f'research/imported/hl-node-{v}.inventory.json') for v in ['94', '115']}
     inventories['visor'] = _load_input(root / 'research/imported/hl-visor.inventory.json')
     if any('first_party_files' not in inv for inv in inventories.values()):
+    if any('fde_count_eh_frame_hdr' not in inv for inv in inventories.values()):
         raise ValueError('Invalid inventory record')
     paths = {}
     excluded = {}
