@@ -101,3 +101,9 @@ manifest-key validation (#115) and retained-import coverage (#190).
 ignored local backups. Both consumers now select committed Rust paths. The
 before/after JSON and reusable `ignored-inputs-probe.py --check` preserve this
 additional source-input failure and its correction in the same packet.
+
+The [legacy reproduction caller](legacy-inputs.md) is covered by the same
+membership rule. Its original imported classifier remains unchanged; an
+ignored editor history no longer causes a false canonical reproduction
+failure. The new probe preserves the actual 1452-to-1455 before result and
+checks the complete pipeline on all real pinned inputs.
