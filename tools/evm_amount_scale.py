@@ -169,8 +169,10 @@ class Image:
         _, off, size = self.section('.rela.dyn')
         if off + size > len(self.data) or size % 24:
             raise EvidenceError('.rela.dyn truncated')
-        _, sym_off, _ = self.section('.dynsym')
-        _, str_off, _ = self.section('.dynstr')
+        _, sym_off, sym_size = self.section('.dynsym')
+        _, str_off, str_size = self.section('.dynstr')
+        if (sym_off + sym_size > len(self.data) or str_off + str_size > len(self.data)):
+            raise EvidenceError('dynamic symbol table extends past end of file')
         got = self.section('.got')
         stubs = {b'memset': MEMSET_STUB, b'memcpy': MEMCPY_STUB}
         out = {}
@@ -181,8 +183,15 @@ class Image:
             if typ == 8:
                 out[where] = addend & MASK
             elif typ == 6:
+                if sym * 24 + 24 > sym_size:
+                    raise EvidenceError('dynamic symbol index outside .dynsym')
                 n = struct.unpack_from('<I', self.data, sym_off + sym * 24)[0]
-                name = self.data[str_off + n:self.data.index(b'\0', str_off + n)]
+                if n >= str_size:
+                    raise EvidenceError('dynamic symbol name outside .dynstr')
+                end = self.data.find(b'\0', str_off + n, str_off + str_size)
+                if end < 0:
+                    raise EvidenceError('unterminated dynamic symbol name')
+                name = self.data[str_off + n:end]
                 if name in stubs:
                     out[where] = stubs[name]
         return out
