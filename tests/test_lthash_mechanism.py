@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PACKET = ROOT / "research/work-items/RE-009-C-lthash-mechanism-94"
 BIN = ROOT / "artifacts/node/94/hl-node"
-OUTPUT_SHA256 = "ab89a443e8685ba6b20779e15eb08f65c1b30f8e5b2f4dea798aa638f0d5faaa"
+OUTPUT_SHA256 = "fd44957c759ec48f8499ac966e89cfab7c92a5405ab3087a1476df3897b9339e"
 
 
 def load(name, path):
@@ -60,8 +60,8 @@ class PinnedOutput(Base):
             for x in (a, b):
                 self.assertEqual((x["byte_order"], x["overflow"], x["bytes_covered"]),
                                  ("big-endian", "wrapping-mod-2^16", 0x800))
-            self.assertEqual(L["blake3_slots"], {"new": "0x57700c0", "update": "0x57700c8",
-                                                 "finalize_xof": "0x57700b0"})
+            self.assertEqual(L["blake3_slots"], {"platform_detect": "0x57700c0", "update": "0x57700c8",
+                                                 "xof_fill": "0x57700b0"})
             self.assertEqual(L["count_add"]["u64_adds"], 2)
             self.assertEqual(L["count_add"]["overflow"], "saturating-u64")
 
@@ -204,6 +204,62 @@ class ReferenceClosureTamper(Base):
                                              ["0x32fc267", "call", "0x32fc190"]])
         self.assertEqual(len(iv.REFS), 32)
         self.assertEqual(sum(len(v) for v in iv.REFS.values()), 53)
+
+
+class SlotLabels(Base):
+    """The corrected GOT slot labels are pinned exactly; the old labels are rejected."""
+    OLD = {0x57700c0: "blake3 new slot 0x57700c0", 0x57700b0: "blake3 finalize_xof slot 0x57700b0"}
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.vf = load("re009c_verify", PACKET / "verify.py")
+        cls.packet = json.loads((PACKET / "lthash-mechanism.json").read_text())
+
+    def _relabel(self, slot, role):
+        p = json.loads(json.dumps(self.packet))
+        for row in p["blake3_slots"]:
+            if row["slot"] == hex(slot):
+                row["role"] = role
+        return p
+
+    def test_pinned_labels_accepted(self):
+        self.assertEqual(self.vf.slot_errors(self.packet), [])
+        self.assertEqual(iv.check_slots(self.data, self.packet), [])
+
+    def test_old_labels_rejected(self):
+        for slot, old in self.OLD.items():
+            with self.subTest(slot=hex(slot)):
+                p = self._relabel(slot, old)
+                self.assertTrue(self.vf.slot_errors(p))
+                self.assertTrue(any("blake3 slot table" in e for e in iv.check_slots(self.data, p)))
+
+    def test_old_leaf_slot_keys_rejected(self):
+        p = json.loads(json.dumps(self.packet))
+        p["leaves"][0]["blake3_slots"] = {"new": "0x57700c0", "update": "0x57700c8",
+                                          "finalize_xof": "0x57700b0"}
+        self.assertTrue(any("slot keys" in e for e in self.vf.slot_errors(p)))
+
+    def test_slot_relocation_retarget_rejected(self):
+        secs = iv.section_table(self.data)
+        _ra, ro, rz = secs[".rela.dyn"]
+        buf = bytearray(self.data)
+        for j in range(ro, ro + rz - 23, 24):
+            if struct.unpack_from("<Q", buf, j)[0] == 0x57700c0:
+                struct.pack_into("<q", buf, j + 16, 0x14fa221)
+                break
+        else:
+            self.fail("slot relocation not found")
+        self.assertTrue(any("0x57700c0" in e for e in iv.check_slots(bytes(buf))))
+        with self.assertRaises(ValueError):
+            tool.slot_table(bytes(buf))
+
+    def test_slot_target_bytes_tamper_rejected(self):
+        for va, hx in iv.SLOT_TARGET_BYTES:
+            with self.subTest(va=hex(va)):
+                buf = bytearray(self.data)
+                buf[self.off(va)] ^= 0xFF
+                self.assertTrue(any(f"{va:#x}" in e for e in iv.check_slots(bytes(buf))))
 
 
 if __name__ == "__main__":

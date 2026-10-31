@@ -20,7 +20,7 @@ ROOT = HERE.parents[2]
 BINARY = ROOT / 'artifacts' / 'node' / '94' / 'hl-node'
 PACKET_JSON = HERE / 'lthash-mechanism.json'
 BINARY_SHA256 = '3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f'
-JSON_SHA256 = 'ab89a443e8685ba6b20779e15eb08f65c1b30f8e5b2f4dea798aa638f0d5faaa'
+JSON_SHA256 = 'fd44957c759ec48f8499ac966e89cfab7c92a5405ab3087a1476df3897b9339e'
 
 # (va, exact bytes, kind, decoded target or None, role)
 KEYS = (
@@ -30,10 +30,10 @@ KEYS = (
     (0x3bc47f4, 'e867e987ff', 'call', 0x3443160, 'leaf1 fold->rayon 0x3443160'),
     (0x344320e, 'e8ed0c3b00', 'call', 0x37f3f00, 'leaf1 rayon->leaf 0x37f3f00'),
     (0x37f3f59, 'e8320ea9ff', 'call', 0x3284d90, 'leaf1 leaf->preparer 0x3284d90'),
-    (0x37f3f96, 'ff1524c1f701', 'got', 0x57700c0, 'leaf1 blake3 new slot 0x57700c0'),
+    (0x37f3f96, 'ff1524c1f701', 'got', 0x57700c0, 'leaf1 blake3 platform-detect slot 0x57700c0'),
     (0x37f4045, 'ff157dc0f701', 'got', 0x57700c8, 'leaf1 blake3 update slot 0x57700c8'),
     (0x37f408a, 'ba00080000', 'bytes', None, 'leaf1 mov edx,0x800'),
-    (0x37f408f, 'ff151bc0f701', 'got', 0x57700b0, 'leaf1 blake3 finalize_xof slot 0x57700b0'),
+    (0x37f408f, 'ff151bc0f701', 'got', 0x57700b0, 'leaf1 blake3 XOF fill slot 0x57700b0'),
     (0x37f40c3, 'b8010000000f1f840000000000', 'bytes', None, 'leaf1 entry-loop index init'),
     (0x37f41ba, '31c00f1f4000', 'bytes', None, 'leaf1 merge-loop index init'),
     (0x3269ed9, 'e8f29c5600', 'call', 0x37d3bd0, 'leaf2 top->producer 0x37d3bd0'),
@@ -42,10 +42,10 @@ KEYS = (
     (0x3bc5174, 'e8d7b987ff', 'call', 0x3440b50, 'leaf2 fold->rayon 0x3440b50'),
     (0x3440bfe, 'e87d363b00', 'call', 0x37f4280, 'leaf2 rayon->leaf 0x37f4280'),
     (0x37f42e7, 'e8e407a9ff', 'call', 0x3284ad0, 'leaf2 leaf->preparer 0x3284ad0'),
-    (0x37f4324, 'ff1596bdf701', 'got', 0x57700c0, 'leaf2 blake3 new slot 0x57700c0'),
+    (0x37f4324, 'ff1596bdf701', 'got', 0x57700c0, 'leaf2 blake3 platform-detect slot 0x57700c0'),
     (0x37f43d6, 'ff15ecbcf701', 'got', 0x57700c8, 'leaf2 blake3 update slot 0x57700c8'),
     (0x37f441b, 'ba00080000', 'bytes', None, 'leaf2 mov edx,0x800'),
-    (0x37f4420, 'ff158abcf701', 'got', 0x57700b0, 'leaf2 blake3 finalize_xof slot 0x57700b0'),
+    (0x37f4420, 'ff158abcf701', 'got', 0x57700b0, 'leaf2 blake3 XOF fill slot 0x57700b0'),
     (0x37f4454, 'b8010000000f1f8000000000', 'bytes', None, 'leaf2 entry-loop index init'),
     (0x37f454a, '31c00f1f4000', 'bytes', None, 'leaf2 merge-loop index init'),
     (0x326a0e5, 'e866845600', 'call', 0x37d2550, 'leaf3 top->producer 0x37d2550'),
@@ -54,10 +54,10 @@ KEYS = (
     (0x3bc4ad4, 'e8b77887ff', 'call', 0x343c390, 'leaf3 fold->rayon 0x343c390'),
     (0x343c43e, 'e8cd813b00', 'call', 0x37f4610, 'leaf3 rayon->leaf 0x37f4610'),
     (0x37f4689, 'e8e205a9ff', 'call', 0x3284c70, 'leaf3 leaf->preparer 0x3284c70'),
-    (0x37f46c6, 'ff15f4b9f701', 'got', 0x57700c0, 'leaf3 blake3 new slot 0x57700c0'),
+    (0x37f46c6, 'ff15f4b9f701', 'got', 0x57700c0, 'leaf3 blake3 platform-detect slot 0x57700c0'),
     (0x37f477b, 'ff1547b9f701', 'got', 0x57700c8, 'leaf3 blake3 update slot 0x57700c8'),
     (0x37f47c0, 'ba00080000', 'bytes', None, 'leaf3 mov edx,0x800'),
-    (0x37f47c5, 'ff15e5b8f701', 'got', 0x57700b0, 'leaf3 blake3 finalize_xof slot 0x57700b0'),
+    (0x37f47c5, 'ff15e5b8f701', 'got', 0x57700b0, 'leaf3 blake3 XOF fill slot 0x57700b0'),
     (0x37f47f9, 'b8010000006690', 'bytes', None, 'leaf3 entry-loop index init'),
     (0x37f48ea, '31c00f1f4000', 'bytes', None, 'leaf3 merge-loop index init'),
     (0x326a2e0, 'e8dbf6ffff', 'call', 0x32699c0, 'top writer 0x32699c0'),
@@ -174,6 +174,47 @@ def scan_refs(data, secs, targets):
     return {x: sorted(v) for x, v in hits.items()}
 
 
+# GOT slot -> (R_X86_64_RELATIVE target, label). Labels come from the target bytes.
+SLOTS = {
+    0x57700b0: (0x14f7e40, 'blake3 XOF fill slot 0x57700b0 (target 0x14f7e40; ROOT flag 8, 64-byte output blocks)'),
+    0x57700c0: (0x14fa220, 'blake3 platform-detect slot 0x57700c0 (target 0x14fa220; constructor inlined)'),
+    0x57700c8: (0x14f93e0, 'blake3 update slot 0x57700c8 (target 0x14f93e0; 0x400-byte chunk buffer)'),
+}
+# Decisive bytes at each slot target (VA, hex), checked against the binary.
+SLOT_TARGET_BYTES = (
+    (0x14fa230, 'a900000800'),        # test eax,0x80000 (CPU feature word)
+    (0x14fa23f, 'b004'),              # mov al,0x4 (SIMD level)
+    (0x14f940d, '483d01040000'),      # cmp rax,0x401 (chunk buffer bound)
+    (0x14f9419, '41be00040000'),      # mov r14d,0x400 (chunk length)
+    (0x14f7eb6, '0c08'),              # or al,0x8 (ROOT flag)
+    (0x14f7e8f, '4883e0c0'),          # and rax,-0x40 (64-byte output blocks)
+)
+
+
+def check_slots(data, packet=None):
+    errors = []
+    secs = section_table(data)
+    _ra, ro, rz = secs['.rela.dyn']
+    found = {}
+    for j in range(ro, ro + rz - 23, 24):
+        off, info, add = struct.unpack_from('<QQq', data, j)
+        if off in SLOTS:
+            found.setdefault(off, []).append((info & 0xffffffff, add))
+    for s, (tgt, _role) in SLOTS.items():
+        if found.get(s) != [(8, tgt)]:
+            errors.append(f'{s:#x}: GOT slot relocation {found.get(s)} != RELATIVE {tgt:#x}')
+    ta, to, ts = secs['.text']
+    for va, hx in SLOT_TARGET_BYTES:
+        got = data[va - ta + to:va - ta + to + len(hx) // 2].hex()
+        if got != hx:
+            errors.append(f'{va:#x}: slot target bytes {got} != {hx}')
+    if packet is not None:
+        want = [{'slot': hex(s), 'target': hex(t), 'role': r} for s, (t, r) in sorted(SLOTS.items())]
+        if packet.get('blake3_slots') != want:
+            errors.append(f"packet blake3 slot table {packet.get('blake3_slots')} != pinned")
+    return errors
+
+
 def check_refs(data, packet=None):
     errors = []
     secs = section_table(data)
@@ -279,12 +320,14 @@ def main():
     data, packet = BINARY.read_bytes(), json.loads(raw)
     errors += check(data, packet)
     errors += check_refs(data, packet)
+    errors += check_slots(data, packet)
     for e in errors:
         print('FAIL', e)
     n = len(KEYS) + len(BLOBS)
     print(f'independent_verify: {n} pinned items checked, '
           f'{len(KEYS)} key VAs, {len(BLOBS)} blocks; '
           f'{len(REFS)} reference targets, {sum(len(v) for v in REFS.values())} pinned reference sites; '
+          f'{len(SLOTS)} GOT slots, {len(SLOT_TARGET_BYTES)} slot-target anchors; '
           f'errors={len(errors)}')
     return 1 if errors else 0
 

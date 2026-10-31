@@ -1,5 +1,22 @@
 {
   "binary_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",
+  "blake3_slots": [
+    {
+      "role": "blake3 XOF fill slot 0x57700b0 (target 0x14f7e40; ROOT flag 8, 64-byte output blocks)",
+      "slot": "0x57700b0",
+      "target": "0x14f7e40"
+    },
+    {
+      "role": "blake3 platform-detect slot 0x57700c0 (target 0x14fa220; constructor inlined)",
+      "slot": "0x57700c0",
+      "target": "0x14fa220"
+    },
+    {
+      "role": "blake3 update slot 0x57700c8 (target 0x14f93e0; 0x400-byte chunk buffer)",
+      "slot": "0x57700c8",
+      "target": "0x14f93e0"
+    }
+  ],
   "coordinates": "virtual addresses (VA), ELF64 x86-64",
   "counts": {
     "count_blocks": 3,
@@ -9,14 +26,14 @@
   "leaves": [
     {
       "blake3_calls": {
-        "finalize_xof": "0x37f408f",
-        "new": "0x37f3f96",
-        "update": "0x37f4045"
+        "platform_detect": "0x37f3f96",
+        "update": "0x37f4045",
+        "xof_fill": "0x37f408f"
       },
       "blake3_slots": {
-        "finalize_xof": "0x57700b0",
-        "new": "0x57700c0",
-        "update": "0x57700c8"
+        "platform_detect": "0x57700c0",
+        "update": "0x57700c8",
+        "xof_fill": "0x57700b0"
       },
       "chain": {
         "fold": "0x3bc4760",
@@ -120,14 +137,14 @@
     },
     {
       "blake3_calls": {
-        "finalize_xof": "0x37f4420",
-        "new": "0x37f4324",
-        "update": "0x37f43d6"
+        "platform_detect": "0x37f4324",
+        "update": "0x37f43d6",
+        "xof_fill": "0x37f4420"
       },
       "blake3_slots": {
-        "finalize_xof": "0x57700b0",
-        "new": "0x57700c0",
-        "update": "0x57700c8"
+        "platform_detect": "0x57700c0",
+        "update": "0x57700c8",
+        "xof_fill": "0x57700b0"
       },
       "chain": {
         "fold": "0x3bc50e0",
@@ -231,14 +248,14 @@
     },
     {
       "blake3_calls": {
-        "finalize_xof": "0x37f47c5",
-        "new": "0x37f46c6",
-        "update": "0x37f477b"
+        "platform_detect": "0x37f46c6",
+        "update": "0x37f477b",
+        "xof_fill": "0x37f47c5"
       },
       "blake3_slots": {
-        "finalize_xof": "0x57700b0",
-        "new": "0x57700c0",
-        "update": "0x57700c8"
+        "platform_detect": "0x57700c0",
+        "update": "0x57700c8",
+        "xof_fill": "0x57700b0"
       },
       "chain": {
         "fold": "0x3bc4a40",

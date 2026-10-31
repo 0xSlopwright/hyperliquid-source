@@ -22,7 +22,17 @@ from fde_extents import fde_extents  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT / 'artifacts' / 'node' / '94' / 'hl-node'
 BINARY_SHA256 = '3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f'
-SLOT_NEW, SLOT_UPDATE, SLOT_XOF = 0x57700c0, 0x57700c8, 0x57700b0
+SLOT_PLATFORM, SLOT_UPDATE, SLOT_XOF = 0x57700c0, 0x57700c8, 0x57700b0
+# Each GOT slot is filled by one R_X86_64_RELATIVE entry; the addend is the target.
+# Labels rest on the target bytes (names are stripped): 0x14fa220 reads the CPU
+# feature word and returns a SIMD level; 0x14f93e0 buffers a 0x400-byte chunk;
+# 0x14f7e40 ORs ROOT flag 8 and emits 64-byte output blocks for a caller length.
+SLOT_TARGETS = {SLOT_PLATFORM: 0x14fa220, SLOT_UPDATE: 0x14f93e0, SLOT_XOF: 0x14f7e40}
+SLOT_ROLES = {
+    SLOT_PLATFORM: 'blake3 platform-detect slot 0x57700c0 (target 0x14fa220; constructor inlined)',
+    SLOT_UPDATE: 'blake3 update slot 0x57700c8 (target 0x14f93e0; 0x400-byte chunk buffer)',
+    SLOT_XOF: 'blake3 XOF fill slot 0x57700b0 (target 0x14f7e40; ROOT flag 8, 64-byte output blocks)',
+}
 XOF_LEN = 0x800
 SAT_CONST = 0xffffffffffffffff
 # Canonical Intel multi-byte NOP encodings (SDM Vol. 2B, NOP), used as loop alignment.
@@ -84,6 +94,22 @@ class Image:
         if b[:2] != b'\xff\x15':
             raise ValueError(f'{va:#x}: not call [rip+disp32]')
         return va + 6 + struct.unpack('<i', b[2:])[0]
+
+
+def slot_table(data):
+    """Resolve each pinned GOT slot through its R_X86_64_RELATIVE entry."""
+    rd = next(s for s in sections(data) if s['name'] == '.rela.dyn')
+    found = {}
+    for j in range(rd['offset'], rd['offset'] + rd['size'] - 23, 24):
+        off, info, add = struct.unpack_from('<QQq', data, j)
+        if off in SLOT_TARGETS:
+            if info & 0xffffffff != 8 or off in found:
+                raise ValueError(f'{off:#x}: GOT slot relocation is not a single R_X86_64_RELATIVE')
+            found[off] = add
+    if found != SLOT_TARGETS:
+        raise ValueError(f'GOT slot targets {found} != pinned')
+    return [{'slot': hex(s), 'target': hex(SLOT_TARGETS[s]), 'role': SLOT_ROLES[s]}
+            for s in sorted(SLOT_TARGETS)]
 
 
 # --- reference closure (full .text) -------------------------------------
@@ -331,9 +357,9 @@ def analyse(data, require_sha=True, extents=None, check_refs=True):
         }
         if not all(chain.values()):
             raise ValueError(f"{L['leaf']:#x}: call chain mismatch {chain}")
-        slots = {'new': img.got_slot(L['call_new']), 'update': img.got_slot(L['call_update']),
-                 'finalize_xof': img.got_slot(L['call_xof'])}
-        if slots != {'new': SLOT_NEW, 'update': SLOT_UPDATE, 'finalize_xof': SLOT_XOF}:
+        slots = {'platform_detect': img.got_slot(L['call_new']), 'update': img.got_slot(L['call_update']),
+                 'xof_fill': img.got_slot(L['call_xof'])}
+        if slots != {'platform_detect': SLOT_PLATFORM, 'update': SLOT_UPDATE, 'xof_fill': SLOT_XOF}:
             raise ValueError(f"{L['leaf']:#x}: blake3 slot mismatch")
         if img.read(L['xof_len'], 5) != b'\xba' + struct.pack('<I', XOF_LEN):
             raise ValueError(f"{L['xof_len']:#x}: xof length is not 0x800")
@@ -353,8 +379,8 @@ def analyse(data, require_sha=True, extents=None, check_refs=True):
                             'rayon_leaf_call': hex(L['rayon_leaf_call']),
                             'leaf_preparer_call': hex(L['leaf_preparer_call'])},
             'blake3_slots': {k: hex(v) for k, v in slots.items()},
-            'blake3_calls': {'new': hex(L['call_new']), 'update': hex(L['call_update']),
-                             'finalize_xof': hex(L['call_xof'])},
+            'blake3_calls': {'platform_detect': hex(L['call_new']), 'update': hex(L['call_update']),
+                             'xof_fill': hex(L['call_xof'])},
             'xof_len': hex(XOF_LEN), 'xof_len_va': hex(L['xof_len']),
             'lattice_entry_add': decode_lattice(img, *L['loop_a']),
             'count_add': count,
@@ -370,6 +396,7 @@ def analyse(data, require_sha=True, extents=None, check_refs=True):
         'coordinates': 'virtual addresses (VA), ELF64 x86-64',
         'top_function': hex(TOP_FN), 'writer': hex(WRITER), 'writer_call': hex(WRITER_CALL),
         'leaves': out_leaves,
+        'blake3_slots': slot_table(data),
         'counts': {'leaves': len(out_leaves), 'lattice_loops': 2 * len(out_leaves),
                    'count_blocks': len(out_leaves)},
     }

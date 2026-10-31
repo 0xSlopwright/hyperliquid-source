@@ -10,10 +10,28 @@ sys.path.insert(0, str(ROOT / 'tools'))
 import lthash_mechanism as tool  # noqa: E402
 
 PACKET_JSON = HERE / 'lthash-mechanism.json'
-JSON_SHA256 = 'ab89a443e8685ba6b20779e15eb08f65c1b30f8e5b2f4dea798aa638f0d5faaa'
+JSON_SHA256 = 'fd44957c759ec48f8499ac966e89cfab7c92a5405ab3087a1476df3897b9339e'
 EXPECT = {'leaves': 3, 'lattice_loops': 6, 'count_blocks': 3}
 EXPECT_REFS = {'closure_functions_per_leaf': [11, 11, 11], 'closure_edges_per_leaf': [16, 16, 16],
                'writer_callers': 3, 'top_function_callers': 2}
+
+EXPECT_SLOTS = [
+    {'slot': '0x57700b0', 'target': '0x14f7e40', 'role': 'blake3 XOF fill slot 0x57700b0 (target 0x14f7e40; ROOT flag 8, 64-byte output blocks)'},
+    {'slot': '0x57700c0', 'target': '0x14fa220', 'role': 'blake3 platform-detect slot 0x57700c0 (target 0x14fa220; constructor inlined)'},
+    {'slot': '0x57700c8', 'target': '0x14f93e0', 'role': 'blake3 update slot 0x57700c8 (target 0x14f93e0; 0x400-byte chunk buffer)'},
+]
+EXPECT_SLOT_KEYS = {'platform_detect': '0x57700c0', 'update': '0x57700c8', 'xof_fill': '0x57700b0'}
+
+
+def slot_errors(result):
+    """Exact check of the GOT slot labels; any other label (e.g. 'blake3 new') fails."""
+    errors = []
+    if result.get('blake3_slots') != EXPECT_SLOTS:
+        errors.append(f"blake3 slot table {result.get('blake3_slots')} != pinned")
+    for L in result['leaves']:
+        if L['blake3_slots'] != EXPECT_SLOT_KEYS:
+            errors.append(f"{L['leaf']}: blake3 slot keys {L['blake3_slots']} != pinned")
+    return errors
 
 
 def main():
@@ -40,6 +58,7 @@ def main():
                 errors.append(f"{L['leaf']} {key}: mechanism fields")
         if L['count_add']['overflow'] != 'saturating-u64' or L['xof_len'] != '0x800':
             errors.append(f"{L['leaf']}: count/xof fields")
+    errors += slot_errors(result)
     for e in errors:
         print('FAIL', e)
     print(f'verify: leaves=3 loops=6 count_blocks=3 closure_functions=11/11/11 closure_edges=16/16/16 '
