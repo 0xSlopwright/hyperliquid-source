@@ -142,6 +142,8 @@ def generate(root=ROOT):
             raise ValueError(f'Inventory unwind count differs from the pinned binary: {relative}')
     inventories = {v: _load_input(root / f'research/imported/hl-node-{v}.inventory.json') for v in ['94', '115']}
     inventories['visor'] = _load_input(root / 'research/imported/hl-visor.inventory.json')
+    if any('first_party_files' not in inv for inv in inventories.values()):
+        raise ValueError('Invalid inventory record')
     paths = {}
     excluded = {}
     for v, inv in inventories.items():
