@@ -32,14 +32,14 @@ class ProfileDisabledAnalyzersConfigTests(unittest.TestCase):
             rea.main(['--profile', 'nope', '--help'])
 
     def test_present_disabled_analyzers_still_applied(self):
-        # The pinned package is absent on this environment, so main stops at
-        # the package check after the env assignment; the env dict proves the
-        # profile key was applied.
+        # Model an absent package explicitly, independently of installed REA.
+        # The env dict proves the profile key was applied before that check.
         env = {}
         rea.CONFIG = dict(self._config)
         rea.CONFIG['profiles'] = {'p': {'disabled_analyzers': ['A', 'B']}}
         with patch.object(rea, 'find_node', return_value=Path('/tmp/node')), \
-                patch.object(rea, 'environment', return_value=env):
+                patch.object(rea, 'environment', return_value=env), \
+                patch.object(Path, 'is_file', return_value=False):
             with self.assertRaisesRegex(ValueError, 'Pinned REA package is absent'):
                 rea.main(['--profile', 'p', '--help'])
         self.assertEqual(env['REA_GHIDRA_DISABLED_ANALYZERS'], 'A,B')

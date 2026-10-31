@@ -45,7 +45,7 @@ class JavaHomeDiscoveryTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.home = Path(self.temp.name) / 'jdk with spaces'
+        self.home = Path(self.temp.name).resolve() / 'jdk with spaces'
         (self.home / 'bin').mkdir(parents=True)
         # Filesystem-shape controls only; native tests above use installed Java.
         (self.home / 'bin/java').touch()

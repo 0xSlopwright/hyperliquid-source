@@ -105,9 +105,9 @@ class RuntimeSelectionTests(unittest.TestCase):
                 with self.assertRaises(SystemExit) as exited:
                     rea.main(['--version'])
                 self.assertEqual(exited.exception.code, exit_status)
-                if run.called:
-                    self.assertEqual(run.call_args.args[2][-1], '--version')
-                    self.assertEqual(run.call_args.args[3], {'PATH': 'fixture'})
+                run.assert_called_once()
+                self.assertEqual(run.call_args.args[2][-1], '--version')
+                self.assertEqual(run.call_args.args[3], {'PATH': 'fixture'})
 
     def test_exact_supported_version_boundaries(self):
         for version in ['22.23.4', '24.22.1', '26.12.1', '27.0.0']:

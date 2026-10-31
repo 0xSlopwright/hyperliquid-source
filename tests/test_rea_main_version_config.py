@@ -28,6 +28,7 @@ class MainVersionConfigTests(unittest.TestCase):
         rea.CONFIG = config
         with patch.object(rea, 'find_node', return_value=Path('/tmp/node/bin/node')), \
                 patch.object(rea, 'environment', return_value={}), \
+                patch.object(rea.sys, 'platform', 'linux'), \
                 patch.object(rea.os, 'chdir', lambda *args: None), \
                 patch.object(rea.os, 'execvpe') as execvpe:
             rea.main([])

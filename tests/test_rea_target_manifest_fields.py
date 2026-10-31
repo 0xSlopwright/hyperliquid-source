@@ -13,7 +13,9 @@ class TargetManifestFieldTests(unittest.TestCase):
     def setUp(self):
         self._root = rea.ROOT
         self._config = rea.CONFIG
-        self._tmp = Path(tempfile.mkdtemp())
+        self._temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary.cleanup)
+        self._tmp = Path(self._temporary.name)
         (self._tmp / 'provenance').mkdir()
         (self._tmp / 'artifacts/x').mkdir(parents=True)
         self._data = b'fake-node-bytes'

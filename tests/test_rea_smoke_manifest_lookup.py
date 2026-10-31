@@ -43,9 +43,12 @@ def stage(manifest):
 
 
 def run_smoke(tmp):
-    return subprocess.run(
-        [sys.executable, str(tmp / 'tools/rea_smoke.py')],
-        capture_output=True, text=True)
+    try:
+        return subprocess.run(
+            [sys.executable, str(tmp / 'tools/rea_smoke.py')],
+            capture_output=True, text=True)
+    finally:
+        shutil.rmtree(tmp)
 
 
 class ReaSmokeManifestLookupTests(unittest.TestCase):

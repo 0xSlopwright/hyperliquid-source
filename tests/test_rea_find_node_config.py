@@ -30,15 +30,17 @@ class FindNodeConfigTests(unittest.TestCase):
     def test_explicit_node_ignores_missing_preferred_node(self):
         rea.CONFIG = {k: v for k, v in self._config.items() if k != 'preferred_node'}
         with tempfile.TemporaryDirectory() as tmp:
-            stub = Path(tmp) / 'node'
-            stub.write_text('#!/bin/sh\necho v24.22.1\n')
+            stub = Path(tmp) / ('node.cmd' if os.name == 'nt' else 'node')
+            stub.write_text('@echo off\necho v24.22.1\n' if os.name == 'nt'
+                            else '#!/bin/sh\necho v24.22.1\n')
             stub.chmod(stub.stat().st_mode | stat.S_IXUSR)
             os.environ['REA_NODE'] = str(stub)
             self.assertEqual(rea.find_node(), stub.resolve())
 
     def test_present_preferred_node_still_fails_closed_without_node(self):
         with mock.patch('shutil.which', return_value=None), \
-                mock.patch.object(Path, 'glob', return_value=[]):
+                mock.patch.object(Path, 'glob', return_value=[]), \
+                mock.patch.object(rea.subprocess, 'run', side_effect=FileNotFoundError):
             with self.assertRaisesRegex(ValueError, 'needs Node'):
                 rea.find_node()
 
