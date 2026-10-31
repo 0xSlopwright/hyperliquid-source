@@ -337,6 +337,11 @@ class CatalogueTests(unittest.TestCase):
     def test_missing_component_depends_on_rejected(self):
         parts = copy.deepcopy(self.parts); del parts[0]['depends_on']
         with self.assertRaises(ValueError): validate_progress(parts, self.progress, self.root)
+    def test_non_dict_progress_row_rejected(self):
+        for bad in (None, 5, ['gates']):
+            d = copy.deepcopy(self.progress)
+            d['components']['orderbook'] = bad
+            with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
 
 
 class VisorIndexTests(unittest.TestCase):
