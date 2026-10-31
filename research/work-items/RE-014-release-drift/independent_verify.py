@@ -103,8 +103,8 @@ def main():
         failures.append(f"mutation_controls exit {proc.returncode}: {proc.stderr}")
     else:
         lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("ok\t") or ln.startswith("FAIL\t")]
-        if len(lines) != 8:
-            failures.append(f"expected 8 mutation cases, got {len(lines)}")
+        if len(lines) != 17:
+            failures.append(f"expected 17 mutation cases, got {len(lines)}")
         if any(ln.startswith("FAIL\t") for ln in lines):
             failures.append("mutation FAIL line present")
 
@@ -156,7 +156,7 @@ def main():
             print(" -", f)
         raise SystemExit(1)
     print("PASS")
-    print("independent_verify: retained digests, class counts, 8 mutations, -O/-I, hashseeds OK")
+    print("independent_verify: retained digests, class counts, 17 mutations, -O/-I, hashseeds OK")
 
 
 if __name__ == "__main__":

@@ -21,11 +21,11 @@ def call(at, target):
     return b"\xe8" + struct.pack("<i", target - (at + 5))
 
 
-def layout(b_at=0x1030, constant=0x2a, push=b"\x55", a_call=None, extra=False):
+def layout(b_at=0x1030, constant=0x2a, push=b"\x55", a_call=None, extra=False, b_tail=b"\xc3"):
     """C calls A, A calls B. Returns (code bytes, [(start, end)])."""
     c = call(0x1000, 0x1010) + b"\xc3"
     a = push + b"\xb8" + struct.pack("<I", constant) + call(0x1016, b_at if a_call is None else a_call) + b"\x5d\xc3"
-    b = b"\xb8\x07\x00\x00\x00\xc3"
+    b = b"\xb8\x07\x00\x00\x00" + b_tail
     code = bytearray(b"\xcc" * 0x80)
     for at, body in ((0x1000, c), (0x1010, a), (b_at, b)):
         code[at - BASE : at - BASE + len(body)] = body
@@ -45,7 +45,8 @@ def disassemble_att(code, base=BASE):
     """Linear-sweep AT&T lines matching GNU objdump for the RE-014 mutation opcode subset.
 
     Emits `    <va>:\\t<text>` lines. Covers: push/pop %rbp/%rbx, ret, int3,
-    mov $imm32,%eax, call rel32, xor %rax,%rax. Unknown bytes raise ValueError
+    mov $imm32,%eax, call rel32, xor %rax,%rax, and jmp *%rax as ff e0, 3e ff e0
+    (notrack) and f2 ff e0 (bnd), printed exactly as GNU objdump 2.44 prints them. Unknown bytes raise ValueError
     (fail closed) rather than silently skipping.
     """
     lines = []
@@ -71,6 +72,12 @@ def disassemble_att(code, base=BASE):
         elif b0 == 0xB8 and i + 5 <= n:
             imm = struct.unpack_from("<I", code, i + 1)[0]
             text, size = f"mov    ${_imm_hex(imm)},%eax", 5
+        elif b0 == 0xFF and i + 2 <= n and code[i + 1] == 0xE0:
+            text, size = "jmp    *%rax", 2
+        elif b0 == 0x3E and i + 3 <= n and code[i + 1 : i + 3] == b"\xff\xe0":
+            text, size = "notrack jmp *%rax", 3
+        elif b0 == 0xF2 and i + 3 <= n and code[i + 1 : i + 3] == b"\xff\xe0":
+            text, size = "bnd jmp *%rax", 3
         elif b0 == 0x48 and i + 3 <= n and code[i + 1] == 0x31 and code[i + 2] == 0xC0:
             text, size = "xor    %rax,%rax", 3
         else:
@@ -112,6 +119,50 @@ CASES = [
         "function added",
         {"extra": True},
         {"0x1000": "identical", "0x1010": "identical", "0x1030": "identical", "115:0x1070": "unmatched_115"},
+    ),    (
+        "negative control: B tail ff e0 unchanged",
+        {"old": {"b_tail": b"\xff\xe0"}, "b_tail": b"\xff\xe0"},
+        {"0x1000": "identical", "0x1010": "identical", "0x1030": "identical"},
+    ),
+    (
+        "B tail ff e0 -> 3e ff e0",
+        {"old": {"b_tail": b"\xff\xe0"}, "b_tail": b"\x3e\xff\xe0"},
+        {"0x1000": "identical", "0x1010": "identical", "0x1030": "changed"},
+    ),
+    (
+        "B tail ff e0 -> f2 ff e0",
+        {"old": {"b_tail": b"\xff\xe0"}, "b_tail": b"\xf2\xff\xe0"},
+        {"0x1000": "identical", "0x1010": "identical", "0x1030": "changed"},
+    ),
+    (
+        "B tail 3e ff e0 -> ff e0",
+        {"old": {"b_tail": b"\x3e\xff\xe0"}, "b_tail": b"\xff\xe0"},
+        {"0x1000": "identical", "0x1010": "identical", "0x1030": "changed"},
+    ),
+    (
+        "negative control: B tail 3e ff e0 unchanged",
+        {"old": {"b_tail": b"\x3e\xff\xe0"}, "b_tail": b"\x3e\xff\xe0"},
+        {"0x1000": "identical", "0x1010": "identical", "0x1030": "identical"},
+    ),
+    (
+        "B tail 3e ff e0 -> f2 ff e0",
+        {"old": {"b_tail": b"\x3e\xff\xe0"}, "b_tail": b"\xf2\xff\xe0"},
+        {"0x1000": "identical", "0x1010": "identical", "0x1030": "changed"},
+    ),
+    (
+        "B tail f2 ff e0 -> ff e0",
+        {"old": {"b_tail": b"\xf2\xff\xe0"}, "b_tail": b"\xff\xe0"},
+        {"0x1000": "identical", "0x1010": "identical", "0x1030": "changed"},
+    ),
+    (
+        "B tail f2 ff e0 -> 3e ff e0",
+        {"old": {"b_tail": b"\xf2\xff\xe0"}, "b_tail": b"\x3e\xff\xe0"},
+        {"0x1000": "identical", "0x1010": "identical", "0x1030": "changed"},
+    ),
+    (
+        "negative control: B tail f2 ff e0 unchanged",
+        {"old": {"b_tail": b"\xf2\xff\xe0"}, "b_tail": b"\xf2\xff\xe0"},
+        {"0x1000": "identical", "0x1010": "identical", "0x1030": "identical"},
     ),
 ]
 
