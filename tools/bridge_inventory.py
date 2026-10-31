@@ -499,6 +499,7 @@ def run(argv=None):
     report = {
         'release': f'node{args.release}',
         'artifact': artifact_name,
+
         'artifact_sha256': actual,
         'artifact_size': len(data),
         'coordinate_system': 'linked VA; file offset = VA - 0x1000 inside .text, '
