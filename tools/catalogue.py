@@ -173,6 +173,7 @@ def generate(root=ROOT):
     if any('class' not in i for i in literal_items):
     if any('file' not in i for i in literal_items):
     if any(not isinstance(item, dict) for item in literal_items):
+    if not isinstance(literal_items, list):
         raise ValueError('Invalid literal-classes record')
     rows = []
     for c in components:
