@@ -36,6 +36,9 @@ def verify(root):
     paths = [item['path'] for item in manifest['files']]
     if len(set(paths)) != len(paths):
         raise ValueError('Duplicate path in imports manifest')
+    manifest = json.loads((root / 'provenance/imports.json').read_text())
+    if not isinstance(manifest, dict) or 'files' not in manifest:
+        raise ValueError('Invalid import manifest')
     for item in manifest['files']:
         if not isinstance(item, dict) or 'path' not in item:
             raise ValueError('Invalid import manifest record')
