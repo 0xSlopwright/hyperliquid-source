@@ -107,6 +107,8 @@ class PrefixesAreKept(unittest.TestCase):
         self.assertEqual(norm('bnd jmp 910 <x@plt>'), ('bnd jmp @plt', ('annot_symbol', 'branch_plt'), None))
         self.assertEqual(norm('notrack bnd jmp 3000'), ('notrack bnd jmp @unknown', ('branch_unknown',), None))
         self.assertEqual(norm('bnd jne 1010'), ('bnd jne +0x10', ('branch_intra',), None))
+        self.assertEqual(norm('addr32 call 2000'), ('addr32 call @fde', ('branch_fde',), 0x2000))
+        self.assertEqual(norm('addr32 nop'), ('addr32 nop', (), None))
         self.assertNotEqual(norm('bnd call 2000')[0], norm('call   2000')[0])
         self.assertNotEqual(norm('ds call 2000')[0], norm('call   2000')[0])
 
