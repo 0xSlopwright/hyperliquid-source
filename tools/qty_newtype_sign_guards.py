@@ -64,17 +64,21 @@ def sections(data):
     if shentsize < 64 or shstrndx >= shnum or shoff + shentsize * shnum > len(data):
         raise EvidenceError('Invalid or unsupported ELF section table')
     raw = [struct.unpack_from('<IIQQQQIIQQ', data, shoff + i * shentsize) for i in range(shnum)]
-    stroff = raw[shstrndx][4]
+    stroff, strsize = raw[shstrndx][4], raw[shstrndx][5]
+    if stroff > len(data) or strsize > len(data) - stroff:
+        raise EvidenceError('section name table extends past end of file')
+    table = data[stroff:stroff + strsize]
     out = {}
     for name, typ, _flags, addr, off, size, *_ in raw:
         if typ == 8:  # SHT_NOBITS has no file bytes.
             continue
+        if name >= len(table):
+            raise EvidenceError('section name offset outside .shstrtab')
+        end = table.find(b'\0', name)
+        if end < 0:
+            raise EvidenceError('unterminated section name')
         try:
-            end = data.index(b'\0', stroff + name)
-        except ValueError:
-            raise EvidenceError('Invalid section name offset') from None
-        try:
-            decoded = data[stroff + name:end].decode()
+            decoded = table[name:end].decode()
         except UnicodeDecodeError:
             raise EvidenceError('Non-UTF8 section name') from None
         out[decoded] = (addr, off, size)
