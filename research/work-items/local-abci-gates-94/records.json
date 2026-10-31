@@ -16,6 +16,27 @@
     "poll_table": "0x3d5f10",
     "state0_arm": "0x2271d38"
   },
+  "chain_static": {
+    "accessor": "0x33de620",
+    "arms": [
+      "0x33de67e",
+      "0x33de639",
+      "0x33de667",
+      "0x33de650"
+    ],
+    "chain0_panic": "invalid chain",
+    "collect": "0x3bacce0",
+    "collect_args": "rdi = out, rsi = &{iterator over the static, &state+0x8f8}",
+    "location": "/home/ubuntu/hl/code_Mainnet/l1/src/chain_ext.rs:116:29",
+    "packed_len": "0x1b",
+    "slot": "0x57732e8",
+    "statics": {
+      "1": "0x57861d8",
+      "2": "0x57861f8",
+      "3": "0x5786218"
+    },
+    "table": "0x58a6b4"
+  },
   "consumers": {
     "callers": [
       "0x227a0e0",
@@ -417,6 +438,7 @@
     "caller_b_dispatch": "0x22b4a9e",
     "caller_b_once": "0x22b5b2e",
     "caller_b_stale": "0x22b4b83",
+    "chain_static": "0x33de620",
     "decode": "0x2268d1b",
     "entry": "0x2268a18",
     "exhausted_r15": "0x2268e95",
@@ -459,6 +481,7 @@
     "state0_file": "0x2268a53",
     "status_log": "0x226a974",
     "tolerance_log": "0x226928a",
+    "validator_collect": "0x3994ea0",
     "validator_ips": "0x22695db",
     "vec5_clone": "0x254e7b0"
   }

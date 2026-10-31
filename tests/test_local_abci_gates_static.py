@@ -159,6 +159,12 @@ class Results(unittest.TestCase):
                           c['flow']['b_stale_to_bootstrap']), ('0x227a457', '0x22b4b48', '0x22b5047', '0x22b5047'))
         self.assertEqual(c['templates'], {'0x227a3d9': '0x1fa1bc', '0x22b5119': '0x1f4129'})
 
+    def test_chain_static(self):
+        c = self.result['chain_static']
+        self.assertEqual(c['statics'], {1: '0x57861d8', 2: '0x57861f8', 3: '0x5786218'})
+        self.assertEqual((c['chain0_panic'], c['packed_len'], c['location']),
+                         ('invalid chain', '0x1b', '/home/ubuntu/hl/code_Mainnet/l1/src/chain_ext.rs:116:29'))
+
     def test_node_ips(self):
         n = self.result['node_ips']
         self.assertEqual(n['flow'], {'no_root_to_validator': '0x22695db', 'clone_call': '0x254e7b0',
@@ -315,6 +321,9 @@ class Corruptions(unittest.TestCase):
     def test_extra_branch_into_return(self):
         self.refuses(patched((PLANT, b'\xe9' + struct.pack('<i', 0x226ad84 - (PLANT + 5)))),
                      'branches into the return block')
+
+    def test_chain_panic_text(self):
+        self.refuses(patched((0x58c1ca + 8, b'X')), 'chain 0 panic text at 0x58c1ca changed')
 
     def test_variant_name(self):
         self.refuses(patched((0x3d7947, b'S')), 'variant names are')

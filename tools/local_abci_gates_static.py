@@ -160,6 +160,16 @@ WINDOWS = {
     'caller_b_once': (0x22b47c0, 0x22b5b2e,
                       '488d051b504c034889842418350100488d8424183501004889842450420000488d3d14504c03488d0d0d443b034c8d05ee'
                       '433b03488d942450420000be01000000ff15438d4b03e952f5ffff'),
+    'validator_collect': (0x3994ea0, 0x3994ea0,
+                          '4156534883ec584989f64889fb89d7ff1533e4dd01488b084885c9740b0f104008b801000000eb050f57c031c048'
+                          '8944240848c74424100000000048894c24180f13442420488944242848c74424300000000048894c24380f1144'
+                          '24404c89742450488d7424084889dfe8d17d21004889d84883c4585b415ec3'),
+    'chain_static': (0x33de620, 0x33de620,
+                     '534883ec10400fb6c7488d0d84c01afd486304814801c8ffe08b05b17b3a0285c07570488d058e7b3a024883c4105bc38b'
+                     '05da7b3a0285c0753d488d05b77b3a024883c4105bc38b05a37b3a0285c0755e488d05807b3a024883c4105bc3488d3d45'
+                     'db1afd488d15ecc23002be1b000000ff1501fa3802488d1d7a7b3a0248891c244889e04889442408488d3d7f7b3a02eb36'
+                     '488d1d1e7b3a0248891c244889e04889442408488d3d237b3a02eb1a488d1d227b3a0248891c244889e04889442408488d'
+                     '3d277b3a02488d0da8b630024c8d0539b63002488d542408be01000000ff15b10139024889d84883c4105bc3'),
     'is_file': (0x144a710, 0x144a710,
                 '55415741564154534881ecc00000004889f34989feff15e54e320484c07436488d7c24104c89f64889daff15d84e3204837c'
                 '24100275224c8b6424188b054604330485c00f85900000004489e083e00383f801742831edeb12b800f00000234424483d00'
@@ -778,6 +788,37 @@ def startup_outcome(word0):
     return {0: 'local_state', 2: 'no_local_state', 3: 'pending'}.get(word0 - 2 ** 63, 'unobserved')
 
 
+CHAIN_STATIC_FDE, CHAIN_TABLE = 0x33de620, 0x58a6b4
+# chain byte -> (arm, lea VA of the returned static, static)
+CHAIN_ARMS = {1: (0x33de639, 0x33de643, 0x57861d8), 2: (0x33de667, 0x33de671, 0x57861f8),
+              3: (0x33de650, 0x33de65a, 0x5786218)}
+CHAIN_LOCATION_FILE = b'/home/ubuntu/hl/code_Mainnet/l1/src/chain_ext.rs'
+
+
+def check_chain_static(img):
+    slot = img.rip(0x3994eaf, 6)
+    require(slot == 0x57732e8 and img.relative.get(slot) == CHAIN_STATIC_FDE,
+            f'validator helper slot {slot:#x} does not reach {CHAIN_STATIC_FDE:#x}')
+    require(flow_target(img, 0x3994f0a, 5) == 0x3bacce0, 'validator helper does not call 0x3bacce0')
+    require(img.rip(0x33de629, 7) == CHAIN_TABLE, 'chain jump table moved')
+    arms = [CHAIN_TABLE + img.i32(CHAIN_TABLE + 4 * i) for i in range(4)]
+    require(arms[1:] == [CHAIN_ARMS[i][0] for i in (1, 2, 3)] and arms[0] == 0x33de67e, f'chain arms are {arms}')
+    statics = {}
+    for chain, (_, lea, static) in CHAIN_ARMS.items():
+        require(img.rip(lea, 7) == static, f'chain {chain} arm returns {img.rip(lea, 7):#x}')
+        statics[chain] = hex(static)
+    msg, packed = img.rip(0x33de67e, 7), struct.unpack('<I', img.read(0x33de68d, 4))[0]
+    require(packed & 1 and img.read(msg, packed >> 1) == b'invalid chain', f'chain 0 panic text at {msg:#x} changed')
+    loc = img.rip(0x33de685, 7)
+    flen, line, col = struct.unpack('<QII', img.read(loc + 8, 16))
+    require(loc in img.relative and img.read(img.relative[loc], flen) == CHAIN_LOCATION_FILE,
+            f'chain Location {loc:#x} file changed')
+    return dict(slot=hex(slot), accessor=hex(CHAIN_STATIC_FDE), table=hex(CHAIN_TABLE), arms=[hex(a) for a in arms],
+                statics=statics, chain0_panic='invalid chain', packed_len=hex(packed),
+                location=f'{CHAIN_LOCATION_FILE.decode()}:{line}:{col}', collect=hex(0x3bacce0),
+                collect_args='rdi = out, rsi = &{iterator over the static, &state+0x8f8}')
+
+
 def tolerance_nanos(x):
     """0x1459cb6..0x1459d28: f64 seconds * 1e9, clamped to +-2**63, truncated to i64 (NaN -> 0)."""
     v = x * 1e9
@@ -872,7 +913,7 @@ def analyse(data):
     fresh = check_freshness(img)
     return dict(target=TARGET, windows={k: hex(v) for k, v in wins.items()},
                 peer_queries=check_queries(img), height_selection=check_selection(img), status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=fresh,
-                stale_gate=check_stale_gate(img, fresh['slots']), node_ips=check_node_ips(img), outcomes=check_outcomes(img), consumers=check_consumers(img), callers=check_callers(img))
+                stale_gate=check_stale_gate(img, fresh['slots']), node_ips=check_node_ips(img), outcomes=check_outcomes(img), consumers=check_consumers(img), chain_static=check_chain_static(img), callers=check_callers(img))
 
 
 def main(argv=None):
