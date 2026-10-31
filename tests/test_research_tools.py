@@ -182,6 +182,50 @@ class CatalogueTests(unittest.TestCase):
             self.assertTrue(mine[0]['inside_executable_section_94'])
 
 
+    def fde_root(self, claims):
+        import hashlib, tempfile
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        root = Path(temp.name)
+        (root / 'research/imported').mkdir(parents=True)
+        (root / 'references/can1357-hl').mkdir(parents=True)
+        comp = {"id": "foundation", "name": "Foundation", "patterns": ["base/*"],
+                "depends_on": [], "scope": "x", "first_task": "y", "artifact": "node94"}
+        (root / 'research/components.json').write_text(json.dumps(
+            {"components": [comp], "known_first_party_crates": ["base"]}))
+        (root / 'research/progress.json').write_text(json.dumps(
+            {"gates": {"mapped": "m"}, "components": {"foundation":
+             {"gates": {"mapped": False}, "evidence": [], "raw_equal_bodies": 0,
+              "normalized_only_bodies": 0, "total_function_windows": None}}}))
+        for name, claim in claims.items():
+            (root / f'research/imported/{name}.inventory.json').write_text(json.dumps(
+                {"first_party_files": {}, "fde_count_eh_frame_hdr": claim}))
+        (root / 'research/imported/can1357-literal-classes.json').write_text(
+            json.dumps({"items": []}))
+        data = bytes(fixture())
+        files = []
+        for relative in ('artifacts/node/94/hl-node', 'artifacts/node/115/hl-node',
+                         'artifacts/visor/captured/hl-visor'):
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+            files.append({'path': relative, 'size': len(data),
+                          'sha256': hashlib.sha256(data).hexdigest()})
+        (root / 'provenance').mkdir()
+        (root / 'provenance/artifacts.json').write_text(json.dumps({'files': files}))
+        return root
+
+    def test_inventory_unwind_counts_recounted(self):
+        root = self.fde_root({'hl-node-94': 1, 'hl-node-115': 1, 'hl-visor': 1})
+        out = generate(root)
+        self.assertIn('| Node #94 | 1 |', out['docs/PROGRESS.md'])
+
+    def test_inflated_unwind_count_rejected(self):
+        root = self.fde_root({'hl-node-94': 2, 'hl-node-115': 1, 'hl-visor': 1})
+        with self.assertRaises(ValueError):
+            generate(root)
+
+
 class VisorIndexTests(unittest.TestCase):
     def test_target_for_maps_nodes_and_visor(self):
         self.assertEqual(
