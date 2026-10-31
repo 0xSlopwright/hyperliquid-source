@@ -1,7 +1,9 @@
 """Target-byte controls for one compact-carrier consumer; no target execution."""
 import json
+import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -133,6 +135,66 @@ class RecordContractTests(unittest.TestCase):
             self.assertEqual({p.name for p in output.iterdir()},
                              {'records.json', 'consumer.objdump.txt', 'frames.txt', 'relocations.txt'})
             self.assertIn('<authenticated-node94>', (output / 'consumer.objdump.txt').read_text())
+
+
+class SnapshotBoundaryTests(unittest.TestCase):
+    """Real private-file changes; no mutation of any shared captured input."""
+
+    def test_metadata_only_source_link_change_keeps_snapshot_bound(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / 'source'
+            source.write_bytes(b'private metadata control')
+            data, before = source.read_bytes(), source.stat()
+
+            def reader(snapshot, admitted):
+                os.link(source, Path(folder) / 'source-alias')
+                self.assertNotEqual(source.stat().st_ctime_ns, before.st_ctime_ns)
+                self.assertEqual(source.stat().st_ino, before.st_ino)
+                self.assertEqual(stat.S_IMODE(snapshot.stat().st_mode), 0o600)
+                self.assertEqual(stat.S_IMODE(snapshot.parent.stat().st_mode), 0o700)
+                self.assertEqual(snapshot.read_bytes(), admitted)
+                self.assertNotEqual(snapshot, source)
+                return {'read': snapshot.read_bytes()}
+
+            self.assertEqual(record.snapshot_evidence(data, reader), {'read': data})
+            self.assertTrue(record.source_unchanged(source, before, record.hashlib.sha256(data).hexdigest()))
+
+    def test_source_path_replacement_cannot_retarget_snapshot_reader(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / 'source'
+            source.write_bytes(b'admitted private input')
+            data, before = source.read_bytes(), source.stat()
+            observed = []
+
+            def reader(snapshot, admitted):
+                source.rename(Path(folder) / 'original-source')
+                source.write_bytes(b'replacement private input')
+                observed.append(snapshot.read_bytes())
+                self.assertEqual(snapshot.read_bytes(), admitted)
+                return {}
+
+            record.snapshot_evidence(data, reader)
+            self.assertEqual(observed, [data])
+            self.assertFalse(record.source_unchanged(source, before, record.hashlib.sha256(data).hexdigest()))
+            self.assertEqual(source.read_bytes(), b'replacement private input')
+
+    def test_snapshot_byte_mutation_is_rejected_and_only_owned_copy_cleaned(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / 'source'
+            source.write_bytes(b'keep original input')
+            data = source.read_bytes()
+            seen = []
+
+            def reader(snapshot, admitted):
+                seen.append(snapshot)
+                snapshot.write_bytes(bytes([admitted[0] ^ 1]) + admitted[1:])
+                return {}
+
+            with self.assertRaisesRegex(ValueError, 'Owned snapshot changed'):
+                record.snapshot_evidence(data, reader)
+            self.assertEqual(source.read_bytes(), data)
+            self.assertFalse(seen[0].exists())
+            self.assertTrue(source.exists())
 
 
 if __name__ == '__main__':

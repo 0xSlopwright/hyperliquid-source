@@ -7,11 +7,14 @@ signature. The 20-byte result, input iterator and conversion helpers stay opaque
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import stat
 import struct
 import subprocess
 import sys
+import tempfile
 
 from artifacts import ROOT
 from elf_index import sections
@@ -312,15 +315,45 @@ def native_evidence(binary, data):
             'frames.txt': ''.join(frames), 'relocations.txt': '\n'.join(lines) + '\n'}
 
 
+def source_unchanged(binary, before, expected_digest):
+    """Bind source identity/bytes; unrelated hard-link ctime changes are harmless."""
+    after = binary.stat()
+    signature = lambda s: (s.st_dev, s.st_ino, s.st_mode, s.st_size, s.st_mtime_ns)
+    if signature(before) != signature(after):
+        return False
+    return hashlib.sha256(binary.read_bytes()).hexdigest() == expected_digest
+
+
+def snapshot_evidence(data, reader):
+    """Give a static reader only an owned, non-executable copy of admitted bytes."""
+    expected = hashlib.sha256(data).hexdigest()
+    with tempfile.TemporaryDirectory(prefix='short-string-record-') as folder:
+        directory = Path(folder)
+        require(stat.S_IMODE(directory.stat().st_mode) == 0o700, 'Snapshot directory is not private')
+        snapshot = directory / 'authenticated-input.elf'
+        descriptor = os.open(snapshot, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, 'wb') as stream:
+            os.fchmod(stream.fileno(), 0o600)
+            stream.write(data)
+        before = snapshot.lstat()
+        require(stat.S_ISREG(before.st_mode) and stat.S_IMODE(before.st_mode) == 0o600
+                and before.st_nlink == 1, 'Snapshot is not an owned non-executable regular file')
+        require(hashlib.sha256(snapshot.read_bytes()).hexdigest() == expected, 'Snapshot differs from admitted bytes')
+        exports = reader(snapshot, data)
+        after = snapshot.lstat()
+        signature = lambda s: (s.st_dev, s.st_ino, s.st_mode, s.st_size, s.st_mtime_ns, s.st_ctime_ns, s.st_nlink)
+        require(signature(before) == signature(after), 'Owned snapshot changed during static collection')
+        require(hashlib.sha256(snapshot.read_bytes()).hexdigest() == expected,
+                'Owned snapshot changed during static collection')
+        return exports
+
+
 def generate(binary, output):
     before = binary.stat()
     data = binary.read_bytes()
     records = analyze(data)
-    exports = native_evidence(binary, data)
-    after = binary.stat()
-    signature = lambda s: (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
-    require(signature(before) == signature(after) and hashlib.sha256(binary.read_bytes()).hexdigest() == SHA256,
-            'Input changed during static collection')
+    exports = snapshot_evidence(data, native_evidence)
+    require(source_unchanged(binary, before, SHA256), 'Input changed during static collection')
     output.mkdir(parents=True, exist_ok=False)
     exports['records.json'] = json.dumps(records, indent=2, sort_keys=True) + '\n'
     for name, text in exports.items():

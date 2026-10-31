@@ -24,8 +24,12 @@ The collector is independently authored Python using the existing MIT ELF/FDE
 readers, plus GNU `objdump` and `readelf`. It never launches the captured image.
 It authenticates node #94, reads its own FDE/RELA/LSDA bytes, verifies complete
 bounded native disassembly byte coverage and the exact call/branch/return set,
-checks one native FDE record and retains selected native relocation rows. It
-rechecks input identity before publishing to a **new** output directory.
+checks one native FDE record and retains selected native relocation rows. GNU
+tools receive only an owned mode-0600 snapshot of the authenticated bytes in
+a mode-0700 temporary directory, never the mutable source pathname. The collector
+checks that snapshot's identity and complete SHA-256 before and after collection,
+then rechecks the original input's identity and complete SHA-256 before publishing
+to a **new** output directory. Only the owned temporary snapshot is cleaned up.
 
 From the repository root, using a fresh output directory:
 
@@ -42,8 +46,9 @@ sha256sum -c MANIFEST.sha256
 ```
 
 `INPUTS-AND-TOOLS.json` records exact collector/test hashes, Python 3.12.14,
-Linux x86-64 and GNU binutils 2.44. Two complete current exports reproduced all
-four observed files byte for byte on those tools. Different native-tool versions
+Linux x86-64 and GNU binutils 2.44. Repeated complete exports, including the
+owned-snapshot collector, reproduced all four observed files byte for byte on
+those tools. Different native-tool versions
 can render disassembly/CFI text differently; preserve that raw difference and
 compare the target-bound records and bytes independently. Only the local input
 pathname in the objdump header is replaced with `<authenticated-node94>`; no
@@ -157,14 +162,25 @@ and instruction associations, not runtime replay or proof of valid exceptions.
 
 ## Validation and next question
 
-Ten focused tests pass. Below the global identity check, copied real-target
+Thirteen focused tests pass. Below the global identity check, copied real-target
 bytes are changed in **12 instruction controls, seven relocation/type controls,
 three source/literal controls and four LSDA controls**; all 26 subcases are
 rejected by their local obligations. Separate whole-input mutation/truncation
 controls reject wrong identity. Native regeneration independently covers all
 439 bytes, the exact six branches/10 calls/one return, and the FDE and selected
-relocations. No captured executable, emulator, chain, signer or networked node
-is run.
+relocations. Three private-file controls additionally exercise a metadata-only
+hard-link change, a source-path replacement after admission, and mutation of the
+owned snapshot. Unrelated source ctime changes do not reject unchanged bytes;
+source identity or byte changes and snapshot changes still reject publication.
+No control mutates a shared capture. No captured executable, emulator, chain,
+signer or networked node is run.
+
+The earlier candidate `51b463deca8f7643f2ff93c1f404de76bb563501` passed doctor
+and input verification but failed one of 441 tests: its original-input ctime
+guard rejected a concurrent hard-link creation during shared-worktree setup.
+The before/after audits retained the same input identities, modes and bytes.
+That failed run is preserved; the private-snapshot correction requires a fresh
+full validation run rather than treating the earlier aggregate as passing.
 
 Repository check outcomes and the exact final tested commit are recorded in
 the PR validation receipt; the required commands are listed above. Original
