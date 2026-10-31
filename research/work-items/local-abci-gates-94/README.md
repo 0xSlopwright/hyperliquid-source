@@ -16,7 +16,7 @@ lead (`node/local_abci_state.rs`, `node/startup.rs`) differ?
   copied.
 - Claim status: observation for byte-level facts, inference where marked,
   unresolved where listed. Partial `node-runtime` research; no gate change.
-- Scope: eleven fixed windows in `0x22689f0` (the lead's
+- Scope: twelve fixed windows in `0x22689f0` (the lead's
   `local_abci_state.rs` seed), `0x2271d00`, its caller `0x22ae8a0` and the
   panic shim `0x157b810`.
   Excluded: how the compared heights and the timestamp are produced, what the
@@ -37,9 +37,10 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 11
-windows (197 instructions), one per checked byte window. All 19 code VAs in
-`records.json` are instruction starts in those windows.
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 12
+windows (287 instructions), one per checked byte window. All 20 code VAs in
+`records.json` are instruction starts in those windows (`slot_refs` entries are ModRM-byte
+addresses inside instructions, not instruction starts).
 
 Format templates are decoded as rustc 1.94 packs them: a byte below 0x80 is a
 literal length, and `0xc0` is a placeholder followed by the length of the next
@@ -48,6 +49,26 @@ text that ends exactly at the next marker. Reading placeholder *k* as format
 argument *k* is an inference.
 
 ## Evidence
+
+### The three heights are named by the status log (observation)
+
+Window `0x226a974..0x226ab0a` runs straight up to the gate. It:
+
+- stores `r15` to `[rsp+0xc8]`, `r14` to `[rsp+0xd0]`, and `[rbx+0xb0]` to
+  `[rsp+0xd8]`;
+- passes pointers to those three slots as arguments 2, 3 and 4 of a log call
+  (`0x226aad8`, template `0x1ef6dd`);
+- then frees a buffer and reaches `0x226ab0a`.
+
+The template decodes to
+`{} WARN >>> {} @@ queried gossip status @@ [local_height: {}] @ [initial_height: {}] @ [latest_height: {}]`.
+Its placeholders 2, 3 and 4 are labelled `local_height`, `initial_height`
+and `latest_height`.
+
+A scan of the whole FDE for `[rsp+disp32]` operands with these three
+displacements finds only the three stores, the three LEAs and the gate's four
+reads. No other instruction names these slots. Aliasing through a different
+base register is not excluded.
 
 ### Height gate in `0x22689f0` (observation)
 
@@ -63,9 +84,10 @@ Window `0x226ab0a..0x226ab88`, with `x = [rsp+0xd8]`:
    `0x226ab81`).
 4. Otherwise control goes to `0x226adb1`.
 
-Inference: the messages suggest `x` is the local height, `[rsp+0xd0]` the
-target height and `[rsp+0xc8]` the peers' initial height. The rule is then:
-too far behind iff `local.saturating_add(20000) <= target`.
+With the status-log labels above (placeholder *k* read as argument *k*), the
+rule is: too far behind iff
+`local_height.saturating_add(20000) <= latest_height`; otherwise stale
+hardfork iff `local_height < initial_height`.
 
 ### Logged tolerance in `0x22689f0` (observation)
 
@@ -163,16 +185,17 @@ states, 0xa and 0xb, and treats a set `al` as pending.
 - **Height lag:** `MAX_LOCAL_HEIGHT_LAG` is 200 in `local_abci_state.rs` and
   1_000 in `startup.rs`; the binary uses 20000. `startup.rs:500` tests
   `target - local > LAG`. The binary rejects at
-  `local.saturating_add(20000) <= target`, which includes equality: for
-  example, local 0 and target 20000 is "too far behind".
+  `local_height.saturating_add(20000) <= latest_height`, which includes
+  equality: for example, local 0 and latest 20000 is "too far behind".
+  The binary logs the compared value as `latest_height`; the lead calls it
+  `target_height`.
 - **Stale hardfork:** the lead's stale-hardfork reason compares the local
   height with a peer initial height. That matches the operand order here
-  (`x < [rsp+0xc8]`, tested only when not too far behind), under the
-  naming inference above.
+  (`local_height < initial_height`, tested only when not too far behind).
 
 ## Controls
 
-`tests/test_local_abci_gates_static.py` (21 tests) regenerates
+`tests/test_local_abci_gates_static.py` (25 tests) regenerates
 `records.json` and checks three models: the height gate including
 saturation, the day division against exact truncating division, and the
 lexicographic compare. It refuses each of these corruptions:
@@ -188,6 +211,9 @@ lexicographic compare. It refuses each of these corruptions:
 - The panic slot's RELATIVE addend redirected.
 - The freshness template text changed.
 - An extra direct call to `0x2271d00` planted.
+- A status-log argument pointer swapped.
+- A status-log field label broken.
+- An extra height-slot operand planted.
 - Dispatch-table entry 0 moved.
 
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
@@ -195,8 +221,9 @@ producer does not use either.
 
 ## Unresolved
 
-- How `[rsp+0xd8]`, `[rsp+0xd0]` and `[rsp+0xc8]` are produced, and whether
-  the selected message is later extended with values.
+- How `r15` and `r14` (initial and latest height) are computed from the
+  queried gossip statuses, and whether the selected message is later extended
+  with values.
 - The exact path from `0x2269034` to `0x226915c`, and any jump-table edge into
   the join.
 - What the logged 540/840 tolerance controls.

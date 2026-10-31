@@ -39,6 +39,7 @@ WINDOWS = {
              '488db388000000' '483b8c24d0000000' '772a' '4989ee' '41bd1e000000' '488d2d62ce16fe' 'eb36'
              '488d88204e0000' '488db388000000' '483b8c24d0000000' '76d6' '483b8424c8000000' '0f8339020000'
              '4989ee' '41bd23000000' '488d2d07ce16fe'),
+    'status_log': (STARTUP_FDE, 0x226a974, '4c89bc24c80000004c89b424d0000000488b83b000000048898424d80000004c8d7c24504c89ffff15ff3e50038b4424508984245c3c0000c78424503c000001000000488b44245448898424543c00004c89a424103c0000488d052fca16fe48898424303c000048c78424383c00001600000048c78424403c00000800000048c78424483c0000000000008b056301510385c00f8576060000660f100543015103660f11842400770000488d8424d80000004889442448488d8424c80000004889442408488d8424d00000004889442420488d8424103c00004889842420010000488d2d840671004889ac2428010000488d84240077000048898424300100004c8d3515c9f4ff4c89b42438010000488d4424484889842440010000488d05790844004889842448010000488d4c240848898c245001000048898424580100004c8d6424204c89a424600100004889842468010000488d3d0d4cf8fd488db42420010000ff158a3e5003488bb424103c000048b800000000000000804839c674154885f67410488bbc24183c000031d2ff1506355003'),
     'select_540': (STARTUP_FDE, 0x226900c,
                    'f20f1005c413fafd' '83bb180c000001' '0f8543010000' '483983200c0000' '0f8232070000' '0f8530010000'),
     'hardfork_log': (STARTUP_FDE, 0x226911b, '488d3d1440f8fd' '488db424103c0000' 'ff1538585003'),
@@ -81,6 +82,15 @@ TEMPLATE_MARKERS = {
 }
 LOCATION_FILE = b'/home/ubuntu/hl/code_Mainnet/node/src/hl_node.rs'
 TOLERANCES = (540.0, 840.0)
+STATUS_TEMPLATE = 0x1ef6dd
+# argument k of the status log -> (slot, pointer-to-slot store, argument-array store)
+STATUS_ARGS = {
+    2: ('[rsp+0xd8]', '488d8424d8000000' '4889442448', '488d442448' '4889842440010000'),
+    3: ('[rsp+0xc8]', '488d8424c8000000' '4889442408', '488d4c2408' '48898c2450010000'),
+    4: ('[rsp+0xd0]', '488d8424d0000000' '4889442420', '4c8d642420' '4c89a42460010000'),
+}
+SLOT_REFS = {0xc8: ['0x226a976', '0x226aa2d', '0x226ab6c'], 0xd0: ['0x226a97e', '0x226aa3a', '0x226ab38', '0x226ab62'],
+             0xd8: ['0x226a98d', '0x226aa20', '0x226ab0c']}
 RSP_E0 = re.compile(rb'[\x84\x8c\x94\x9c\xa4\xac\xb4\xbc]\x24\xe0\x00\x00\x00')
 
 
@@ -180,6 +190,35 @@ def placeholder_before(pieces, literal):
             require(i > 0 and pieces[i - 1] is None, f'literal {literal!r} is not preceded by a placeholder')
             return idx - 1
     raise EvidenceError(f'literal {literal!r} not in template')
+
+
+def check_status_log(img):
+    va = WINDOWS['status_log'][1]
+    raw = bytes.fromhex(WINDOWS['status_log'][2])
+    require(va + len(raw) == WINDOWS['gate'][1], 'status log window does not end at the gate')
+    require(raw.count(bytes.fromhex('488d3d')) == 1, 'status log template LEA is not unique')
+    tpl = img.rip(va + raw.index(bytes.fromhex('488d3d')), 7)
+    require(tpl == STATUS_TEMPLATE, f'status template is {tpl:#x}')
+    pieces = template(img, tpl)
+    names = {}
+    for k, (slot, ptr, arg) in STATUS_ARGS.items():
+        require(raw.count(bytes.fromhex(ptr)) == 1 and raw.count(bytes.fromhex(arg)) == 1,
+                f'argument {k} is not a pointer to {slot}')
+        before = [i for i, p in enumerate(pieces) if p is None]
+        require(len(before) > k and before[k] > 0 and pieces[before[k] - 1] is not None, f'placeholder {k} has no label')
+        label = pieces[before[k] - 1].decode()
+        m = re.search(r'\[(\w+): $', label)
+        require(m is not None, f'placeholder {k} label {label!r} is not a [name: ] field')
+        names[slot] = m.group(1)
+    start, end = img.fde(STARTUP_FDE)
+    body = img.read(start, end - start)
+    refs = {}
+    for disp, want in SLOT_REFS.items():
+        got = [hex(start + m.start()) for m in re.finditer(rb'[\x84\x8c\x94\x9c\xa4\xac\xb4\xbc]\x24' + bytes([disp]) + rb'\x00\x00\x00', body)]
+        require(got == want, f'[rsp+{disp:#x}] references are {got}')
+        refs[f'[rsp+{disp:#x}]'] = got
+    return dict(window=hex(va), template=hex(tpl), fields=names, slot_refs=refs,
+                local_source='[rbx+0xb0]', initial_source='r15', latest_source='r14')
 
 
 def check_gate(img):
@@ -322,7 +361,7 @@ def freshness_panics(deadline, now):
 def analyse(data):
     img = Image(data)
     return dict(target=TARGET, windows={k: hex(v) for k, v in windows(img).items()},
-                height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=check_freshness(img),
+                status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=check_freshness(img),
                 callers=check_callers(img))
 
 
@@ -339,8 +378,9 @@ def main(argv=None):
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     g, t, f = result['height_gate'], result['tolerance_log'], result['freshness']
-    print(f"height gate: too far behind iff local.saturating_add({g['tolerance']}) <= target; "
-          f"else stale hardfork iff local < initial")
+    print('status log fields: ' + ', '.join(f'{k}={v}' for k, v in sorted(result['status_log']['fields'].items())))
+    print(f"height gate: too far behind iff local_height.saturating_add({g['tolerance']}) <= latest_height; "
+          f"else stale hardfork iff local_height < initial_height")
     print(f"logged tolerance: {t['default']} (default) / {t['hardfork']} (after hardfork branch)")
     print(f"freshness: panic at {f['location_file']}:{f['location_line']}:{f['location_column']} "
           f"iff state_time + {f['added_seconds']} s < now")

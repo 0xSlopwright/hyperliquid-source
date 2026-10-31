@@ -88,6 +88,12 @@ class Results(unittest.TestCase):
                          ('/home/ubuntu/hl/code_Mainnet/node/src/hl_node.rs', 346, 9))
         self.assertEqual(f['slots']['panic'], ['0x576e098', '0x157b810'])
 
+    def test_status_log_fields(self):
+        st = self.result['status_log']
+        self.assertEqual(st['fields'], {'[rsp+0xd8]': 'local_height', '[rsp+0xc8]': 'initial_height',
+                                        '[rsp+0xd0]': 'latest_height'})
+        self.assertEqual(st['template'], '0x1ef6dd')
+
     def test_callers(self):
         c = self.result['callers']
         self.assertEqual((c['direct_calls'], c['caller_fde'], c['caller_states_when_al_set']),
@@ -104,7 +110,7 @@ class Results(unittest.TestCase):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             self.assertEqual(la.main([]), 0)
-        self.assertIn('saturating_add(20000)', out.getvalue())
+        self.assertIn('local_height.saturating_add(20000) <= latest_height', out.getvalue())
 
 
 @unittest.skipUnless(BINARY.exists(), 'pinned node #94 binary not present')
@@ -159,6 +165,15 @@ class Corruptions(unittest.TestCase):
 
     def test_state0_arm_moved(self):
         self.refuses(patched((la.POLL_TABLE, struct.pack('<i', 0x2272398 - la.POLL_TABLE))), 'state-0 arm is 0x2272398')
+
+    def test_status_label_changed(self):
+        self.refuses(patched((0x1ef6dd + 14 + 29, b'X')), r'placeholder 2 label .* is not a \[name: \] field')
+
+    def test_status_argument_swapped(self):
+        self.refuses(patched((0x226aa1e + 4, b'\xc8')), 'status_log at 0x226a974: bytes changed')
+
+    def test_extra_height_slot_reference(self):
+        self.refuses(patched((la.STARTUP_FDE + 0x100, b'\x48\x8b\x84\x24\xd0\x00\x00\x00')), r'\[rsp\+0xd0\] references')
 
     def test_template_text(self):
         self.refuses(patched((0x1ed195, b'U')), 'freshness template 0x1ed194 changed')

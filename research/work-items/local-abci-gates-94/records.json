@@ -76,6 +76,36 @@
     "tolerance": 20000,
     "window": "0x226ab0a"
   },
+  "status_log": {
+    "fields": {
+      "[rsp+0xc8]": "initial_height",
+      "[rsp+0xd0]": "latest_height",
+      "[rsp+0xd8]": "local_height"
+    },
+    "initial_source": "r15",
+    "latest_source": "r14",
+    "local_source": "[rbx+0xb0]",
+    "slot_refs": {
+      "[rsp+0xc8]": [
+        "0x226a976",
+        "0x226aa2d",
+        "0x226ab6c"
+      ],
+      "[rsp+0xd0]": [
+        "0x226a97e",
+        "0x226aa3a",
+        "0x226ab38",
+        "0x226ab62"
+      ],
+      "[rsp+0xd8]": [
+        "0x226a98d",
+        "0x226aa20",
+        "0x226ab0c"
+      ]
+    },
+    "template": "0x1ef6dd",
+    "window": "0x226a974"
+  },
   "target": "artifacts/node/94/hl-node",
   "target_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",
   "tolerance_log": {
@@ -111,6 +141,7 @@
     "poll_entry": "0x2271d17",
     "select_540": "0x226900c",
     "select_840": "0x226915c",
+    "status_log": "0x226a974",
     "tolerance_log": "0x226928a"
   }
 }
