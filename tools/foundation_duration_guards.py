@@ -98,7 +98,7 @@ def decode_export(output,start,end,body):
     return dict(rows)
 
 
-def analyze(data,records,objdump=None):
+def analyze(data,records,objdump=None,binary=TARGET):
     secs = sections(data); named = {s['name']:s for s in secs}
     # The dict above keeps only the last section of a given name, so a
     # duplicate would silently decide which bytes the pinned checks below
@@ -133,7 +133,7 @@ def analyze(data,records,objdump=None):
     require((pc,pc+struct.unpack_from('<I',fde,12)[0])==(start,end),'FDE range disagrees')
     if objdump:
         output = subprocess.check_output([objdump,'-d',f'--start-address={start:#x}',
-                                          f'--stop-address={end:#x}','artifacts/node/94/hl-node'],cwd=ROOT,text=True)
+                                          f'--stop-address={end:#x}',str(binary)],cwd=ROOT,text=True)
     else:
         output = (PACKET/'function.objdump.txt').read_text()
     instructions = decode_export(output,start,end,body)
@@ -226,9 +226,11 @@ def load_records(path):
 
 
 def inspect(path,objdump=None):
-    data = Path(path).read_bytes()
+    path = Path(path).resolve()
+    data = path.read_bytes()
     require(len(data)==91774280 and hashlib.sha256(data).hexdigest()==SHA256,'Expected exact node #94 size/SHA-256')
     return analyze(data,load_records(PACKET/'records.json'),objdump)
+    return analyze(data,json.loads((PACKET/'records.json').read_text()),objdump,binary=path)
 
 
 def main():
