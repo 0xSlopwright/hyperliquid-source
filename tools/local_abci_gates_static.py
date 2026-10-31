@@ -169,6 +169,33 @@ WINDOWS = {
                       '0000'),
     'gossip_assert': (0x4741dc0, 0x4742a75,
                       '488d3d188afbfb488d1555c1fe00be36000000ff157ab60201'),
+    'caller_a_entry': (0x227a0e0, 0x227a12f,
+                       '0fb7835c4a00006689835f4a00000fb783584a00006689835a4a0000c683614a000001660f1003660f114318488b43104889'
+                       '43288b052f0a500385c00f859a130000488d43188bb3604a0000c683614a000000488b481048898c24c0b40000660f100066'
+                       '0f298424b0b40000488dbc24f8030000488d9424b0b40000'),
+    'bootstrap_handoff': (0x22b47c0, 0x22b512e,
+                          '488bb424b00000004c39f674154885f67410488bbc24b800000031d2ff15c08e4b030fb6831a3b00000fb78b183b0000c683'
+                          '1c3b000000488b542408488993283b00004889ab303b00004c89ab383b000066898b80850000c68384850000008883858500'
+                          '00c68386850000004c8b7424184c8dab283b0000488dbc24b00000004c89ee4c89f2e8274ffcff'),
+    'other_override_none': (0x226c2d0, 0x226c819,
+                            '48ba0000000000000080488993280b0000888380550000888b81550000c68384550000014088ab85550000c6838655000000'
+                            '4c8da3280b0000488dbc24601700004c89e64c89fae87bd80000'),
+    'loader_entry': (0x4741dc0, 0x4741dc0,
+                     '554157415641554154534881eca802000089f54989fe40886c240f488b1a4889d848f7d84c8dbc242801000048899424f800'
+                     '00000f819a030000bf1b000000ff15d3c102014885c00f843f0c00004989c40f10055298fbfb0f11400b0f10053c98fbfb0f'
+                     '1100be1b0000004889c7ff15b4cb02014189c5be1b0000004c89e731d2ff15c9c102014584ed0f84eb030000'),
+    'loader_some': (0x4741dc0, 0x4742194,
+                    '488b421048898424480100000f10020f1184243801000048c7842428010000000000004531ed48c784245001000000000000'
+                    '48c78424600100000000000066c784246801000001004088ac246a01000048c78424200100000100000080bc242001000000'
+                    '74144883bc2448010000000f8551010000e967080000'),
+    'loader_no_file': (0x4741dc0, 0x474223b,
+                       '400fb6c5488d0d6e78fbfb486304814801c8ffe0bf1b000000ff157ebd02014885c00f84ea0700000f10050094fbfb0f1140'
+                       '0b0f1005ea93fbfb0f110048b900000000000000804883c13b49890e49c746081b0000004989461049c746181b000000e9d6'
+                       '030000'),
+    'loader_defaults': (0x4741dc0, 0x47427e4,
+                        '41bc05000000bf05000000ff15e3b702014885c00f84b1010000c60000c74001365feb7eb901000000eb3441bc0a000000bf'
+                        '0a000000ff15b8b702014885c00f8486010000c60000c740010de785cac6400500c7400636f9a0a5b90200000048c7842428'
+                        '0100000000000048898c2438010000488984244001000048898c244801000041b501e94bf9ffff'),
     'validator_collect': (0x3994ea0, 0x3994ea0,
                           '4156534883ec584989f64889fb89d7ff1533e4dd01488b084885c9740b0f104008b801000000eb050f57c031c048'
                           '8944240848c74424100000000048894c24180f13442420488944242848c74424300000000048894c24380f1144'
@@ -856,6 +883,88 @@ def check_root_source(img):
                 loader_assert=GOSSIP_ASSERT.decode(), loader_location=f'{GOSSIP_LOCATION_FILE.decode()}:{line}:{col}')
 
 
+OVERRIDE_FILE = b'override_gossip_config.json'
+LOADER_FLOW = {
+    'some_override': (0x4741df4, 6, 0x4742194), 'not_a_file': (0x4741e4a, 6, 0x474223b),
+    'override_nonempty': (0x4742203, 6, 0x474235a), 'override_empty': (0x4742209, 5, 0x4742a75),
+    'default_1_join': (0x474280d, 2, 0x4742843), 'default_join': (0x474286a, 5, 0x47421ba),
+    'bootstrap_call': (0x22b51b4, 5, 0x227a0e0), 'other_call': (0x226c860, 5, 0x227a0e0),
+}
+LOADER_TABLE = 0x6f9ab4
+LOADER_ARMS = {0: 0x474224f, 1: 0x47427e4, 2: 0x474280f, 3: 0x474224f}
+# chain byte -> (allocation size VA, count VA, [(tag store VA, bytes), (address store VA, bytes)] per 5-byte root)
+DEFAULT_ROOTS = {
+    1: (0x47427ea, 0x4742808, [((0x47427fe, 'c60000'), (0x4742801, 'c74001365feb7e'))]),
+    2: (0x4742815, 0x474283e, [((0x4742829, 'c60000'), (0x474282c, 'c740010de785ca')),
+                               ((0x4742833, 'c6400500'), (0x4742837, 'c7400636f9a0a5'))]),
+}
+
+
+def check_gossip_override(img):
+    for name, (va, n, want) in LOADER_FLOW.items():
+        got = flow_target(img, va, n)
+        require(got == want, f'{name} at {va:#x} goes to {got:#x}, not {want:#x}')
+    require(img.read(0x4741ddb, 9) == bytes.fromhex('488b1a' '4889d8' '48f7d8'), 'loader does not negate word 0 of [rdx]')
+    lo, hi = img.rip(0x4741e1c, 7), img.rip(0x4741e11, 7)
+    require(hi == lo + 0xb and img.read(lo, 16) + img.read(hi + 5, 11) == OVERRIDE_FILE
+            and img.read(0x4741e26, 5) == bytes.fromhex('be1b000000'), 'override file name changed')
+    slot = img.rip(0x4741e2e, 6)
+    require(img.relative.get(slot) == 0x144a710, f'override file test slot {slot:#x} is not is_file')
+    some = bytes.fromhex(WINDOWS['loader_some'][2])
+    require(some.startswith(bytes.fromhex('488b4210')) and some.count(bytes.fromhex('0f1002' '0f11842438010000')) == 1
+            and some.count(bytes.fromhex('4883bc244801000000')) == 1,
+            'Some(override) is not copied to the root_node_ips slot [rsp+0x138]')
+    require(img.rip(0x474223f, 7) == LOADER_TABLE and img.read(0x474223b, 4) == bytes.fromhex('400fb6c5'),
+            'no-file table is not indexed by the chain byte')
+    start, end = img.fde(0x4741dc0)
+    arms = {i: LOADER_TABLE + img.i32(LOADER_TABLE + 4 * i) for i in range(6)}
+    require({i: arms[i] for i in range(4)} == LOADER_ARMS and not any(start <= arms[i] < end for i in (4, 5)),
+            f'no-file arms are {arms}')
+    require(img.read(0x4742278, 17) == bytes.fromhex('48b90000000000000080' '4883c13b' '49890e'), 'missing-file Err niche changed')
+    roots = {}
+    for chain, (size_va, count_va, entries) in DEFAULT_ROOTS.items():
+        n = len(entries)
+        require(img.read(size_va, 5) == b'\xbf' + struct.pack('<I', 5 * n)
+                and img.read(count_va, 5) == b'\xb9' + struct.pack('<I', n), f'chain {chain} root count changed')
+        ips = []
+        for i, ((tag_va, tag), (ip_va, ip)) in enumerate(entries):
+            t, a = bytes.fromhex(tag), bytes.fromhex(ip)
+            require(img.read(tag_va, len(t)) == t and img.read(ip_va, len(a)) == a and a[2] == 5 * i + 1
+                    and (len(t) == 3 or t[2] == 5 * i), f'chain {chain} default root {i} changed')
+            ips.append(dict(tag=t[-1], ip='.'.join(str(b) for b in a[3:])))
+        roots[chain] = ips
+    defaults = bytes.fromhex(WINDOWS['loader_defaults'][2])
+    require(defaults.count(bytes.fromhex('48898c2438010000' '4889842440010000' '48898c2448010000')) == 1,
+            'default roots are not stored to the root_node_ips slot [rsp+0x138]')
+    entry = bytes.fromhex(WINDOWS['caller_a_entry'][2])
+    require(entry.count(bytes.fromhex('660f1003' '660f114318' '488b4310' '48894328')) == 1
+            and entry.count(bytes.fromhex('8bb3604a0000')) == 1 and entry.endswith(bytes.fromhex('488d9424b0b40000')),
+            'caller_a does not pass future[0..0x18] and byte +0x4a60 to the loader')
+    hand = bytes.fromhex(WINDOWS['bootstrap_handoff'][2])
+    require(hand.count(bytes.fromhex('488b542408' '488993283b0000' '4889ab303b0000' '4c89ab383b0000')) == 1
+            and hand.count(bytes.fromhex('4c8dab283b0000')) == 1, 'bootstrap does not hand the result words to 0x227a0e0')
+    require(bytes.fromhex(WINDOWS['caller_b_dispatch'][2]).count(bytes.fromhex('4c89742408')) == 1,
+            'missing does not replace word 0 with 2**63')
+    other = bytes.fromhex(WINDOWS['other_override_none'][2])
+    require(other.startswith(bytes.fromhex('48ba0000000000000080' '488993280b0000')), '0x226c860 override is not None')
+    calls = direct_calls(img, 0x227a0e0)
+    require(calls == ['0x226c860', '0x22b51b4'], f'direct calls to 0x227a0e0: {calls}')
+    return dict(loader=hex(0x4741dc0), override_arg='rdx = &Option<Vec<5-byte>> (None iff word 0 == 2**63)',
+                flow={k: hex(v[2]) for k, v in LOADER_FLOW.items()}, file=OVERRIDE_FILE.decode(), file_check=hex(0x144a710),
+                no_file_table=hex(LOADER_TABLE), no_file_arms={k: hex(v) for k, v in LOADER_ARMS.items()},
+                missing_file_err=hex(2 ** 63 + 0x3b), default_roots=roots, callers_of_0x227a0e0=calls,
+                bootstrap_override='startup words {w0, w1, w2}; missing sets w0 = 2**63', other_override='None (0x226c823)')
+
+
+def gossip_roots(override, chain, file_exists):
+    """0x4741dc0 root_node_ips source: 'override', 'file', a default list, or None for the missing-file error."""
+    if override is not None:
+        return 'override' if override else 'assert'
+    if file_exists:
+        return 'file'
+    return {1: ['54.95.235.126'], 2: ['13.231.133.202', '54.249.160.165']}.get(chain)
+
+
 def startup_outcome(word0):
     """Decode word 0 of the 0x22689f0 output."""
     if word0 < 2 ** 63:
@@ -1072,7 +1181,7 @@ def analyse(data):
     fresh = check_freshness(img)
     return dict(target=TARGET, windows={k: hex(v) for k, v in wins.items()},
                 peer_queries=check_queries(img), height_selection=check_selection(img), status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=fresh,
-                stale_gate=check_stale_gate(img, fresh['slots']), node_ips=check_node_ips(img), outcomes=check_outcomes(img), consumers=check_consumers(img), chain_static=check_chain_static(img), validator_ips=check_validator_ips(img), root_source=check_root_source(img), callers=check_callers(img))
+                stale_gate=check_stale_gate(img, fresh['slots']), node_ips=check_node_ips(img), outcomes=check_outcomes(img), consumers=check_consumers(img), chain_static=check_chain_static(img), gossip_override=check_gossip_override(img), validator_ips=check_validator_ips(img), root_source=check_root_source(img), callers=check_callers(img))
 
 
 def main(argv=None):

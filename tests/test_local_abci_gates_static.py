@@ -93,6 +93,13 @@ class Models(unittest.TestCase):
                          [(0, b'\x0a\x00\x00\x01'), (1, b'\x0a\x00\x00\x03')])
         self.assertEqual(la.validator_node_ips(set(), profiles), [])
 
+    def test_gossip_roots(self):
+        five = [(0, b'\x0a\x00\x00\x01')]
+        self.assertEqual([la.gossip_roots(five, 3, False), la.gossip_roots([], 3, True), la.gossip_roots(None, 3, True)],
+                         ['override', 'assert', 'file'])
+        self.assertEqual([la.gossip_roots(None, c, False) for c in range(4)],
+                         [None, ['54.95.235.126'], ['13.231.133.202', '54.249.160.165'], None])
+
     def test_collect_heights(self):
         replies = [('a', (2, (1, 5))), ('b', None), ('c', (3, (9, 9))), ('d', (2, None)), ('a', (2, (1, 7)))]
         self.assertEqual(la.collect_heights(replies), {'a': (1, 7)})
@@ -178,6 +185,14 @@ class Results(unittest.TestCase):
         self.assertEqual((v['collect'], v['value_field'], v['skipped_tag'], v['element_bytes'], v['initial_capacity']),
                          ('0x3bacce0', '+0x4c (tag byte), +0x4d (4 bytes)', 2, 5, 4))
         self.assertEqual(len(v['facts']), len(la.LOOKUP_FACTS))
+
+    def test_gossip_override(self):
+        g = self.result['gossip_override']
+        self.assertEqual(g['file'], 'override_gossip_config.json')
+        self.assertEqual({k: [r['ip'] for r in v] for k, v in g['default_roots'].items()},
+                         {1: ['54.95.235.126'], 2: ['13.231.133.202', '54.249.160.165']})
+        self.assertEqual((g['no_file_arms'][0], g['no_file_arms'][3], g['callers_of_0x227a0e0']),
+                         ('0x474224f', '0x474224f', ['0x226c860', '0x22b51b4']))
 
     def test_root_source(self):
         r = self.result['root_source']
@@ -361,6 +376,15 @@ class Corruptions(unittest.TestCase):
             if where == 0x5773b80 and info & 0xffffffff == 8:
                 struct.pack_into('<q', data, pos + 16, 0x4741dd0)
         self.refuses(bytes(data), 'caller_a loader slot 0x5773b80 changed')
+
+    def test_override_test_flipped(self):
+        self.refuses(patched((0x4741df5, b'\x80')), 'loader_entry at 0x4741dc0: bytes changed')
+
+    def test_default_root_changed(self):
+        self.refuses(patched((0x4742804, b'\xec')), 'loader_defaults at 0x47427e4: bytes changed')
+
+    def test_override_file_name(self):
+        self.refuses(patched((0x6fb65f, b'O')), 'override file name changed')
 
     def test_chain_panic_text(self):
         self.refuses(patched((0x58c1ca + 8, b'X')), 'chain 0 panic text at 0x58c1ca changed')

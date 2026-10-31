@@ -110,6 +110,54 @@
     "template": "0x1ed194",
     "template_placeholders": 2
   },
+  "gossip_override": {
+    "bootstrap_override": "startup words {w0, w1, w2}; missing sets w0 = 2**63",
+    "callers_of_0x227a0e0": [
+      "0x226c860",
+      "0x22b51b4"
+    ],
+    "default_roots": {
+      "1": [
+        {
+          "ip": "54.95.235.126",
+          "tag": 0
+        }
+      ],
+      "2": [
+        {
+          "ip": "13.231.133.202",
+          "tag": 0
+        },
+        {
+          "ip": "54.249.160.165",
+          "tag": 0
+        }
+      ]
+    },
+    "file": "override_gossip_config.json",
+    "file_check": "0x144a710",
+    "flow": {
+      "bootstrap_call": "0x227a0e0",
+      "default_1_join": "0x4742843",
+      "default_join": "0x47421ba",
+      "not_a_file": "0x474223b",
+      "other_call": "0x227a0e0",
+      "override_empty": "0x4742a75",
+      "override_nonempty": "0x474235a",
+      "some_override": "0x4742194"
+    },
+    "loader": "0x4741dc0",
+    "missing_file_err": "0x800000000000003b",
+    "no_file_arms": {
+      "0": "0x474224f",
+      "1": "0x47427e4",
+      "2": "0x474280f",
+      "3": "0x474224f"
+    },
+    "no_file_table": "0x6f9ab4",
+    "other_override": "None (0x226c823)",
+    "override_arg": "rdx = &Option<Vec<5-byte>> (None iff word 0 == 2**63)"
+  },
   "height_gate": {
     "fde": "0x22689f0",
     "initial": "[rsp+0xc8]",
@@ -490,10 +538,12 @@
   "windows": {
     "add_secs_f64": "0x1459ca0",
     "after_panic": "0x227283d",
+    "bootstrap_handoff": "0x22b512e",
     "call_a": "0x22aef54",
     "call_b": "0x22affbf",
     "caller_a_call": "0x227a23e",
     "caller_a_config": "0x227a1ab",
+    "caller_a_entry": "0x227a12f",
     "caller_a_fresh": "0x227a410",
     "caller_a_log": "0x227a330",
     "caller_b_bootstrap": "0x22b5047",
@@ -518,9 +568,14 @@
     "hardfork_log": "0x226911b",
     "is_file": "0x144a710",
     "linked_state": "0x2268f3f",
+    "loader_defaults": "0x47427e4",
+    "loader_entry": "0x4741dc0",
+    "loader_no_file": "0x474223b",
+    "loader_some": "0x4742194",
     "no_heights_log": "0x226a04b",
     "no_state_return": "0x2268da8",
     "once_init": "0x226977e",
+    "other_override_none": "0x226c819",
     "panic_shim": "0x157b810",
     "pass_once": "0x226b10a",
     "peer_loop_head": "0x2269c63",

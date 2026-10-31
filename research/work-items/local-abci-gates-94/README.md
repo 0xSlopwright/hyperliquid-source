@@ -16,10 +16,10 @@ lead (`node/local_abci_state.rs`, `node/startup.rs`) differ?
   copied.
 - Claim status: observation for byte-level facts, inference where marked,
   unresolved where listed. Partial `node-runtime` research; no gate change.
-- Scope: sixty-two fixed windows in `0x22689f0` (the lead's
+- Scope: sixty-nine fixed windows in `0x22689f0` (the lead's
   `local_abci_state.rs` seed), its helpers `0x1459ca0`, `0x254e7b0`,
-  `0x144a710`, `0x3994ea0`, `0x33de620` and `0x3bacce0`, the assertion in
-  `0x4741dc0`, its two callers `0x227a0e0` and `0x22b47c0`, `0x2271d00`,
+  `0x144a710`, `0x3994ea0`, `0x33de620` and `0x3bacce0`, five windows of the gossip loader
+  `0x4741dc0`, the other `0x227a0e0` caller `0x226c2d0`, its two callers `0x227a0e0` and `0x22b47c0`, `0x2271d00`,
   its caller `0x22ae8a0` and the panic shim `0x157b810`.
   Excluded: what `0x226bb20` sends and decodes, how the timestamp is produced,
   what the 0x58-byte map values hold besides `+0x4c`, the rest of the `0x22ae8a0`
@@ -39,8 +39,8 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 62
-windows (2447 instructions), one per checked byte window. All 155 `records.json`
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 69
+windows (2629 instructions), one per checked byte window. All 169 `records.json`
 VAs (values and keys) that fall inside a window are instruction starts there, except `slot_refs`
 and `record_refs` entries, which are ModRM-byte addresses inside instructions. The other code VAs
 are FDE starts, call targets and branch targets outside the windows.
@@ -435,12 +435,46 @@ Both first test word 0 against `0x8000000000000000 + 3` (pending).
   (template `0x1f4129`), with an optional once-style detour (`0x22b50c6`
   to `0x22b5b2e`, back to `0x22b50cc`).
 
-Inference: in `0x22b47c0`, a `fresh` local state skips the non-validator
-bootstrap. A `stale` or `missing` state runs it. Words 1 and 2 are loaded
-into `[rsp+0x28]` and `r13` (`0x22b4a9e`). Word 0 stays in `[rsp+0x8]` for
-`stale`, and is replaced by `0x8000000000000000` for `missing` (`0x22b4ae8`). Deciding what the bootstrap
-does with that `Vec` would need the rest of `0x22b47c0`, which is not checked.
+In `0x22b47c0`, a `fresh` local state skips the non-validator bootstrap and a
+`stale` or `missing` state runs it. Words 1 and 2 are loaded into
+`[rsp+0x28]` and `r13` (`0x22b4a9e`). Word 0 stays in `[rsp+0x8]` for
+`stale`, and is replaced by `0x8000000000000000` for `missing` (`0x22b4ae8`).
 No checked path produces `0x8000000000000001`.
+
+### What `stale` and `missing` feed (observation)
+
+- **Handoff (`0x22b512e..0x22b51b9`):** after the log, the bootstrap stores
+  `[rsp+0x8]`, `rbp = [rsp+0x28]` and `r13` to `[rbx+0x3b28..0x3b40]`. It
+  then calls `0x227a0e0` with `rsi = &[rbx+0x3b28]`. So for `stale` the
+  first three words of that future are the stale peer `Vec`
+  `{len, ptr, len}`, and for `missing` word 0 is `2^63`.
+- **`0x227a0e0` entry (`0x227a12f..0x227a1ab`):** it copies future
+  `[+0..+0x18]` to `[+0x18]` and then to `[rsp+0xb4b0]`. It calls slot
+  `0x5773b80` (`0x4741dc0`) with `rdx = &[rsp+0xb4b0]` and `esi = [+0x4a60]`
+  (only the low byte is used). Its only other direct caller, `0x226c860`,
+  stores `2^63` to word 0 of its future first (`0x226c823`).
+- **Loader (`0x4741dc0`):** `rbx = [rdx]` is negated, and `jno` goes to
+  `0x4742194` unless word 0 is `2^63`.
+  - **`Some(vec)`:** it copies the three words to `[rsp+0x138]` and skips
+    the file. If the length `[rsp+0x148]` is zero it panics with the
+    `root_node_ips` assertion below.
+  - **`None`:** it builds the 27-byte `override_gossip_config.json` and tests
+    it with `is_file` (`0x144a710`) as given, with no directory joined. If it
+    is a file, the `FileModTimeTracker` path loads it. Otherwise
+    `0x474223b` jumps through `0x6f9ab4` on the low byte of `esi`.
+  - **The jump table:** arms 0 and 3 share `0x474224f`, which returns the
+    file name as an error (word 0 `2^63 + 0x3b`; the caller's Ok is
+    `2^63 + 0x40`). Arm 1 allocates one 5-byte root (tag 0,
+    `54.95.235.126`). Arm 2 allocates two (tag 0, `13.231.133.202` and
+    `54.249.160.165`). Both store `{n, ptr, n}` to `[rsp+0x138]`, the same
+    slot as `Some`. Table entries 4 and 5 land outside the FDE.
+
+Since `0x22b47c0` always takes the validator path, a `stale` result here
+carries the validator node IPs that were queried when the height gate
+rejected the local state.
+The next `0x227a0e0` run then uses those same IPs as its root node IPs, and
+never reads `override_gossip_config.json`. Only `missing`, and the other
+caller, fall back to the file or to the compiled roots.
 
 ### Freshness check in `0x2271d00`: panic at `hl_node.rs:346:9` (observation)
 
@@ -507,7 +541,8 @@ states, 0xa and 0xb, and treats a set `al` as pending.
   entries. It accepts a single entry when exactly one peer was queried. Its
   error path retries through `AsyncSleepRetry` instead of returning. For
   example, entries `(1, 100), (2, 3), (1, 200)` give the median `(1, 100)` in
-  the lead's model but `(2, 3)` in the binary. - **Height collection:** the lead's `query_root_heights` returns an error from
+  the lead's model but `(2, 3)` in the binary.
+- **Height collection:** the lead's `query_root_heights` returns an error from
   the whole startup on any RPC error. It records a `None` reply as Missing and
   classifies a status as Stale when `latest_height + MAX_LOCAL_HEIGHT_LAG <
   local_height`. The binary logs `unable to query height` and skips the peer
@@ -542,6 +577,12 @@ states, 0xa and 0xb, and treats a set `al` as pending.
   is set (`using root node ips`), otherwise a list derived from the local
   state (`using validator node ips`). The lead has no validator-node-IP
   source.
+- **Gossip override:** the lead's `gossip_config.rs` types `0x4741DC0` as
+  `(out, uint8 expected_chain, const void *data_dir_path)` and joins the
+  file name to the data directory. It has the same fallback roots, and the
+  same Local/Mainnet error. In the binary the third argument is an optional
+  root list, which replaces the file entirely when present. The file name is
+  tested as the bare relative `override_gossip_config.json`.
 - **Outcome:** the lead's `run_startup` either keeps a linked state when
   `is_linked_state_usable` holds (non-zero height, non-empty node_ips, and
   overlap with the configured IPs, with no time check), or refreshes and
@@ -562,8 +603,8 @@ states, 0xa and 0xb, and treats a set `al` as pending.
 
 ## Controls
 
-`tests/test_local_abci_gates_static.py` (67 tests) regenerates
-`records.json` and checks ten models: the validator node-IP filter, the peer-reply collection, the height selection, the height gate
+`tests/test_local_abci_gates_static.py` (72 tests) regenerates
+`records.json` and checks eleven models: the gossip root source, the validator node-IP filter, the peer-reply collection, the height selection, the height gate
 including saturation, the day division against exact truncating division,
 the lexicographic compare, the tolerance-to-nanoseconds conversion, the
 nanosecond floor split against `divmod`, the local-state gate, and the
@@ -607,6 +648,8 @@ output word-0 decoding. It refuses each of these corruptions:
 - The map value stride (0x58) or the skipped tag (2) changed.
 - Caller B's `[rbx+0x3ba8] = 0` store changed, or the gossip loader slot's
   RELATIVE addend redirected.
+- The loader's `jno` flipped, a default root byte changed, or the override
+  file name changed.
 
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
 producer does not use either.
@@ -632,8 +675,8 @@ claims can be compared.
 - What `0x226bb20` sends for request tag 2 and how it decodes the reply.
 - The exact path from `0x2269034` to `0x226915c`, and any jump-table edge into
   the join.
-- What the non-validator bootstrap in `0x22b47c0` does with a `stale`
-  peer list, what else `0x4741dc0` loads, which state map
+- What the `FileModTimeTracker` path of `0x4741dc0` validates, and what
+  the rest of `0x227a0e0` does with the config. Which state map
   `(&state+0x8f8)+0x150` is and what its tag values 0 and 1 mean, and which
   fields of the `0x3751e80` result (see #363) hold the state time.
 - What `[rbx+0x740]+0x60` holds, and which orchestrator paths reach states
