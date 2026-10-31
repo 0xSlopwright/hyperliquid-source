@@ -39,6 +39,15 @@ def verify(root):
     manifest = json.loads((root / 'provenance/imports.json').read_text())
     if not isinstance(manifest, dict) or 'files' not in manifest:
         raise ValueError('Invalid import manifest')
+def load_manifest(root, name):
+    path = root / 'provenance' / name
+    if not path.is_file():
+        raise ValueError(f'Missing manifest: provenance/{name}')
+    return json.loads(path.read_text())
+
+
+def verify(root):
+    manifest = load_manifest(root, 'imports.json')
     for item in manifest['files']:
         if not isinstance(item, dict) or 'path' not in item:
             raise ValueError('Invalid import manifest record')
@@ -51,6 +60,7 @@ def verify(root):
     if not isinstance(sources, dict) or 'repositories' not in sources:
         raise ValueError('Invalid sources manifest')
     for repo in sources['repositories']:
+    for repo in load_manifest(root, 'sources.json')['repositories']:
         if not (root / repo['path'] / '.git').exists():
             raise ValueError(f'Missing pinned source: {repo["path"]}; {SETUP}')
         if git(root, repo['path'], 'rev-parse', 'HEAD') != repo['commit']:
