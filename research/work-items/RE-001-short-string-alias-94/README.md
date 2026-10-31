@@ -17,7 +17,8 @@ its feed helper unresolved. It could not justify an input/output alias. This
 packet adds the missing feed body, its actual three-call composition, final
 rounds and byte reduction, with a reproducible finite static comparison. It
 does **not** complete the constructor, allocation, cache, locking or consumer
-contracts, and supplies no Rust implementation or runtime equivalence claim.
+contracts. The same packet now includes the bounded, independently authored Rust
+contract below, without a captured-runtime equivalence claim.
 
 ## Reproduce
 
@@ -34,6 +35,7 @@ make verify test catalogue-check reproduce
 python3 tools/short_string_alias.py --output work/short-string-alias-94
 diff -ru research/work-items/RE-001-short-string-alias-94/observed work/short-string-alias-94
 python3 -m unittest discover -s tests -p test_short_string_alias.py -v
+make alias-rust
 shasum -a 256 -c research/work-items/RE-001-short-string-alias-94/MANIFEST.sha256
 ```
 
@@ -193,6 +195,44 @@ retained for review.
 The source/tests and retained exports are hashed in `MANIFEST.sha256`.
 No generated catalogue, progress record, imported evidence or submodule changed.
 
+## Bounded Rust implementation and build comparison
+
+The same PR adds [`components/node94-alias`](../../../components/node94-alias/README.md).
+This is a real standalone library with its own `Cargo.toml` and `Cargo.lock`, no
+registry dependencies or build script. It does not create a root workspace or
+pretend that the inferred source tree builds. `AliasFeed::write` preserves the
+partial little-endian word across arbitrary chunks. `finish` implements the
+observed length-byte/final-round contract without consuming the state.
+`alias10` returns a fixed ten-byte array. It copies the state after input for
+each counter; the target re-feeds input. Output and complete counter hashes are
+compared, rather than assuming that reuse is equivalent.
+
+`tools/short_string_alias_rust.py` authenticates the complete node #94 artifact,
+dual-decodes the two whole FDEs, and regenerates every committed Rust expectation
+directly with `alias_transfers` and `feed_transfers`. It does not use the second
+word model or Rust to make its expectations. The 78 alias/full-hash rows must
+also equal the unchanged original observations. Streaming rows retain all four
+states per sequence, including empty writes. A changed fixture stops the check.
+
+The Rust tests compare **78 aliases, 780 full counter hashes, and 1,056 states
+over 264 split-feed sequences per profile**, in both debug and release. Eight
+valid, compiling Rust-source changes must make the same comparisons fail:
+initial word, delimiter, counter byte order, mixing rotation, word byte order,
+length byte, finalization domain and output offset. Original seven actual ELF
+byte controls and the growth-call refusal remain in the unchanged Python tests.
+No captured instruction is copied into executable memory or linked into Rust.
+
+The comparison command uses `cargo test/build --locked --offline` with the
+recorded existing toolchain. It creates two new target directories on each run.
+Their release `.rlib` files must be raw byte-equal; no bytes are normalized. This
+is a repeated build of this host library, not an x86-64 target build or a
+comparison with captured node machine code. The release profile explicitly
+enables overflow checks; every observed wrap uses `wrapping_add`.
+`rust/comparison.json` records source/fixture hashes, tool versions, commands,
+denominators, corruption outcomes and the two artifact hashes.
+`rust-validation.txt` records the actual checks and the initial format correction.
+Paths in Cargo logs alone are replaced with placeholders; test results are not.
+
 ## Results and remaining questions
 
 The previous missing feed body is now tied to exact FDE/bytes, calls, state
@@ -200,8 +240,11 @@ offsets, streaming updates and producer finalization. Static vectors distinguish
 delimiter/counter/byte-order mistakes and the target's actual output-byte
 arithmetic. Applicable checks and before/after counts are in `validation.txt`.
 
-**No gate is requested.** Rust implementation/build/two-build comparison,
-native runtime comparison, whole-ELF identity and hosted CI are not measured.
+**No gate is requested.** A bounded host Rust implementation, builds, repeated
+library-build identity and finite static comparison are measured. The whole
+foundation component is not built or recovered. Captured native runtime
+comparison, x86-64 target-build identity, whole-ELF identity and hosted CI remain
+unmeasured. The observed memory offsets are not exposed as a Rust or FFI ABI.
 No #115 or visor result transfers from this target. No allocation, panic,
 unwind, cache-table equality/hash, lock, accepted-input, serialization or
 consumer contract is closed by these finite preallocated-path evaluations.

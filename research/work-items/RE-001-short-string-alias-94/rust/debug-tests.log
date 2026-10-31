@@ -1,0 +1,16 @@
+   Compiling node94-alias v0.1.0 (<repo>/components/node94-alias)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.49s
+     Running unittests src/lib.rs (work/short-string-alias-rust-final/build-a-i5kpocil/debug/deps/node94_alias-7e6578368f150f43)
+
+running 2 tests
+test tests::alias_and_full_counter_hashes_match_instruction_transfers ... ok
+test tests::every_streaming_state_matches_instruction_transfers ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests node94_alias
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
