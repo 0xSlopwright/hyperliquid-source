@@ -20,6 +20,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bincode_varint as bv  # noqa: E402
+import elf_index  # noqa: E402
 
 # (start, expected end, anchors, operands)
 # anchor: (va, exact bytes, meaning)
@@ -84,6 +85,16 @@ def scan(data, expected_sha256=bv.SHA256):
     if digest != expected_sha256:
         raise bv.EvidenceError(f'input SHA-256 {digest} is not node #94 {bv.SHA256}')
     secs = bv.sections(data)
+    all_sections = elf_index.sections(data)
+
+    def describe(va):
+        for section in all_sections:
+            if section['address'] <= va < section['address'] + section['size']:
+                return {'name': section['name'], 'type': section['type'],
+                        'file_backed': section['type'] != 8 and
+                        section['offset'] + (va - section['address']) < len(data)}
+        return None
+
     text = secs['.text']
     text_bytes = data[text['offset']:text['offset'] + text['size']]
     fdes = bv.fde_extents(data, secs)
@@ -116,18 +127,22 @@ def scan(data, expected_sha256=bv.SHA256):
                 if value != expected:
                     raise bv.EvidenceError(f'{site:#x}: call target {value:#x} != {expected:#x}')
                 row['target_va'] = f'{value:#x}'
+                row['target_section'] = describe(value)
             elif kind == 'target':
                 if value != expected:
                     raise bv.EvidenceError(f'{site:#x}: rip target {value:#x} != {expected:#x}')
                 row['target_va'] = f'{value:#x}'
+                row['target_section'] = describe(value)
             else:
                 if value != expected:
                     raise bv.EvidenceError(f'{site:#x}: rip operand {value:#x} != slot {expected:#x}')
                 if relocs.get(value) != addend:
                     raise bv.EvidenceError(f'{value:#x}: RELATIVE addend is not {addend:#x}')
                 row['slot_va'] = f'{value:#x}'
+                row['slot_section'] = describe(value)
                 row['relocation'] = {'kind': 'relative', 'type': 8, 'addend': f'{addend:#x}',
                                      'target_va': f'{addend:#x}'}
+                row['target_section'] = describe(addend)
             row['target_is_fde_start'] = value in fdes or (addend is not None and addend in fdes)
             resolved.append(row)
         e8 = []

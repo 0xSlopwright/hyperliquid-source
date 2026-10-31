@@ -1,4 +1,4 @@
-# RE-001: bound the five callee addends reached from node #94 0x1455c00
+﻿# RE-001: bound the five callee addends reached from node #94 0x1455c00
 
 - Component ID: none (binary-wide function-map input; no component ownership)
 - Target release and full SHA-256: node #94
@@ -23,7 +23,7 @@ python -m unittest discover -s tests -p test_consumer_callees.py -v
 ```
 
 `records.json` SHA-256 is
-`0aa437524adc76b596b2ff78f216328556156a4acd9dba891e166584338be33f`.
+`5ecba323d4bad1cb3d61c113c51b5de89db2f7b41a3ff3c6ee649d38c570f406`.
 The tool writes canonical JSON as bytes, so output is host-newline independent.
 Static only; no captured byte is executed.
 
@@ -42,23 +42,24 @@ Coordinates are linked VAs; `.text` file offset is `va - 0x1000`.
 All five are FDE starts. Pinned observations:
 
 - **`0x54c8cb0`** (`endbr64`): `cmp rsi,0x1000` then `ja` to a slow tail; `test
-  edx,edx` + `jne`; `test edi,0xfff`; two RIP LEAs to `.data.rel.ro` tables
-  `0x59afd00` and `0x59aff40`; TLS reads through `fs:[-0x10a0 + ...]`. This is
+  edx,edx` + `jne`; `test edi,0xfff`; two RIP LEAs into `.bss`
+  `0x59afd00` and `0x59aff40` (SHT_NOBITS, type 8, not file-backed; operand rows
+  record the target section name/type/file-backed flag and no table contents are
+  read here); TLS reads through `fs:[-0x10a0 + ...]`. This is
   **inferred** to be an allocator deallocate-shaped entry (pointer in `rdi`, size
   in `rsi`, alignment in `edx`); the allocation API name is not proven.
 - **`0x54c06b0`** (`endbr64`): `cmp rdi,0x1000` then `ja`; the same two table
   LEAs and TLS reads, with size in `rdi`. Inferred allocator allocate-shaped
   entry; name not proven.
 - **`0x1346068`** (21 bytes): `test rdi,rdi`; `jne +6` skips the first call when
-  the pointer is nonzero. A zero pointer falls through to `call [0x576e0c0]` →
-  `0x1346080` and then `call [0x576e020]` → `0x1345e2a`; a nonzero pointer jumps
+  the pointer is nonzero. A zero pointer falls through to `call [0x576e0c0]` ??  `0x1346080` and then `call [0x576e020]` ??`0x1345e2a`; a nonzero pointer jumps
   straight to the second. Both slots are `R_X86_64_RELATIVE` and both targets are
   FDE starts.
 - **`0x13460a0`** (91 bytes): computes `max(2*x, 8)` (`cmp rax,9`; `cmovae`), then
   calls `0x1346100` with `rdi=&stack`, `rsi=[arg]`, `rdx=[arg+8]`, `rcx=max`.
   It tests `dword [rbp-0x28] == 1` after the call.
 - **`0x157b480`** (25 bytes): `lea rdi,[0x252cf8]`, `mov esi,0x39`, tail call
-  `[0x576e098]` → `0x157b810`. Bytes at `0x252cf8` begin
+  `[0x576e098]` ??`0x157b810`. Bytes at `0x252cf8` begin
   `attempt to add with overflow`; the immediate `0x39` covers the start of that
   contiguous message blob. The call's exact message/length semantics are unknown.
 
@@ -82,10 +83,11 @@ hash-seed determinism.
   reproduce byte-for-byte; `--check` passes.
 - No decoded instruction coverage, allocator/panic API naming, callee closure of
   `0x1345e2a`/`0x1346080`/`0x1346100`/`0x157b810`, runtime reachability or
-  component gate is claimed. The `.data.rel.ro` tables `0x59afd00`/`0x59aff40`
-  contents are unread here.
+  component gate is claimed. The `.bss` targets `0x59afd00`/`0x59aff40` (NOBITS)
+  have unread contents.
 - The `E8` rows are byte-pattern evidence and include known non-instructions.
 
 Next question: decode `0x1346100` and `0x157b810`, and read the
 `0x59afd00`/`0x59aff40` table contents, before assigning allocator or panic
 names.
+

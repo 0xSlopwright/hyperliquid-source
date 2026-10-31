@@ -13,7 +13,7 @@ import bincode_varint as bv  # noqa: E402
 import consumer_callees as cc  # noqa: E402
 
 PACKET = ROOT / 'research/work-items/RE-001-consumer-callees-94'
-OUTPUT_SHA256 = '0aa437524adc76b596b2ff78f216328556156a4acd9dba891e166584338be33f'
+OUTPUT_SHA256 = '5ecba323d4bad1cb3d61c113c51b5de89db2f7b41a3ff3c6ee649d38c570f406'
 _DATA = None
 
 
@@ -63,7 +63,11 @@ class Pinned(unittest.TestCase):
                           for o in by_start['0x1346068']['operands']],
                          ['0x1346080', '0x1345e2a'])
         self.assertEqual(by_start['0x13460a0']['operands'][0]['target_va'], '0x1346100')
+        self.assertEqual(by_start['0x1346068']['operands'][0]['target_section']['name'], '.text')
+        self.assertEqual(by_start['0x54c8cb0']['operands'][0]['target_section'],
+                         {'name': '.bss', 'type': 8, 'file_backed': False})
         self.assertEqual(by_start['0x157b480']['operands'][0]['target_va'], '0x252cf8')
+        self.assertEqual(by_start['0x157b480']['operands'][0]['target_section']['name'], '.rodata')
         self.assertEqual(by_start['0x157b480']['operands'][1]['slot_va'], '0x576e098')
 
     def test_cli_check(self):
@@ -117,4 +121,5 @@ class Determinism(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
 

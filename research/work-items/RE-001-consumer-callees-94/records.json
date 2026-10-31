@@ -50,6 +50,11 @@
      "kind": "target",
      "site_va": "0x54c8cd1",
      "target_is_fde_start": false,
+     "target_section": {
+      "file_backed": false,
+      "name": ".bss",
+      "type": 8
+     },
      "target_va": "0x59afd00"
     },
     {
@@ -57,6 +62,11 @@
      "kind": "target",
      "site_va": "0x54c8ce7",
      "target_is_fde_start": false,
+     "target_section": {
+      "file_backed": false,
+      "name": ".bss",
+      "type": 8
+     },
      "target_va": "0x59aff40"
     }
    ],
@@ -96,8 +106,18 @@
       "type": 8
      },
      "site_va": "0x1346071",
+     "slot_section": {
+      "file_backed": true,
+      "name": ".got",
+      "type": 1
+     },
      "slot_va": "0x576e0c0",
-     "target_is_fde_start": true
+     "target_is_fde_start": true,
+     "target_section": {
+      "file_backed": true,
+      "name": ".text",
+      "type": 1
+     }
     },
     {
      "instruction_bytes": "ff15a37f4204",
@@ -109,8 +129,18 @@
       "type": 8
      },
      "site_va": "0x1346077",
+     "slot_section": {
+      "file_backed": true,
+      "name": ".got",
+      "type": 1
+     },
      "slot_va": "0x576e020",
-     "target_is_fde_start": true
+     "target_is_fde_start": true,
+     "target_section": {
+      "file_backed": true,
+      "name": ".text",
+      "type": 1
+     }
     }
    ],
    "size": 21,
@@ -149,6 +179,11 @@
      "kind": "target",
      "site_va": "0x54c06c1",
      "target_is_fde_start": false,
+     "target_section": {
+      "file_backed": false,
+      "name": ".bss",
+      "type": 8
+     },
      "target_va": "0x59afd00"
     },
     {
@@ -156,6 +191,11 @@
      "kind": "target",
      "site_va": "0x54c06d7",
      "target_is_fde_start": false,
+     "target_section": {
+      "file_backed": false,
+      "name": ".bss",
+      "type": 8
+     },
      "target_va": "0x59aff40"
     }
    ],
@@ -199,6 +239,11 @@
      "kind": "direct",
      "site_va": "0x13460ce",
      "target_is_fde_start": true,
+     "target_section": {
+      "file_backed": true,
+      "name": ".text",
+      "type": 1
+     },
      "target_va": "0x1346100"
     }
    ],
@@ -228,6 +273,11 @@
      "kind": "target",
      "site_va": "0x157b487",
      "target_is_fde_start": false,
+     "target_section": {
+      "file_backed": true,
+      "name": ".rodata",
+      "type": 1
+     },
      "target_va": "0x252cf8"
     },
     {
@@ -240,8 +290,18 @@
       "type": 8
      },
      "site_va": "0x157b493",
+     "slot_section": {
+      "file_backed": true,
+      "name": ".got",
+      "type": 1
+     },
      "slot_va": "0x576e098",
-     "target_is_fde_start": true
+     "target_is_fde_start": true,
+     "target_section": {
+      "file_backed": true,
+      "name": ".text",
+      "type": 1
+     }
     }
    ],
    "size": 25,
