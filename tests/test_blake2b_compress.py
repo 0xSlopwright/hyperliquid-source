@@ -13,7 +13,7 @@ PACKET = ROOT / "research" / "work-items" / "RE-021-blake2b-compress-94"
 sys.path.insert(0, str(ROOT / "tools"))
 import blake2b_compress as tool  # noqa: E402
 
-OUTPUT_SHA256 = "8b977ba014e10bb78c6aa73ac046c3cf5b73f196fb6a1f655977c2dadb0bbfcd"
+OUTPUT_SHA256 = "dc2420392ce8f7ad5f63dbc313b8ddb8095143a91a25eef1e9a2a7663ad78f92"
 
 
 def load(name, path):
@@ -77,8 +77,8 @@ class Blake2bCompressTests(unittest.TestCase):
 
     def test_exact_counts(self):
         r = tool.analyse(bytes(DATA))
-        self.assertEqual(r["key_insns_count"], 26)
-        self.assertEqual(len(tool.KEY_INSNS), 26)
+        self.assertEqual(r["key_insns_count"], 37)
+        self.assertEqual(len(tool.KEY_INSNS), 37)
         self.assertEqual(r["carved_len"], 1932)
         self.assertEqual(r["carved_sha256"], tool.CARVED_SHA256)
         self.assertEqual(r["rol_counts"], {"0x20": 8, "0x28": 8, "0x30": 8, "1": 8})
@@ -88,7 +88,12 @@ class Blake2bCompressTests(unittest.TestCase):
         self.assertEqual(r["eip152_vectors"]["vector_4_rounds0"]["rounds"], 0)
         self.assertEqual(r["eip152_vectors"]["vector_5_rounds12"]["rounds"], 12)
         self.assertEqual(r["behavioural_proof"], "unicorn_emulation_of_carved_function_bytes")
-        self.assertEqual(r["hyperevm_precompile_wiring"]["status"], "not_statically_shown")
+        self.assertEqual(r["hyperevm_precompile_wiring"]["status"], "statically_shown")
+        self.assertTrue(r["hyperevm_precompile_wiring"]["address_0x09_match"])
+        self.assertEqual(r["hyperevm_precompile_wiring"]["gas_per_round"], 1)
+        self.assertEqual(r["hyperevm_precompile_wiring"]["input_len_imm"], "0xd5")
+        self.assertIsNotNone(r["hyperevm_precompile_wiring"]["wrap_rela"])
+        self.assertIsNotNone(r["hyperevm_precompile_wiring"]["f_rela"])
         self.assertEqual(r["location_path_len"], 102)
         self.assertTrue(r["location_path_match"])
 
@@ -138,6 +143,27 @@ class Blake2bCompressTests(unittest.TestCase):
             r = tool.analyse(bytes(DATA), check_sha=False, run_emu=True)
             v = r["eip152_vectors"]["vector_5_rounds12"]
             self.assertFalse(v["byte_identical"])
+
+
+    def test_tamper_wiring_len_check_fails(self):
+        with flip(0x4E9D2AA):
+            self.assertTrue(tool_rejects(DATA))
+
+    def test_tamper_wiring_final_flag_fails(self):
+        with flip(0x4E9D2F9):
+            self.assertTrue(tool_rejects(DATA))
+
+    def test_tamper_wiring_bswap_fails(self):
+        with flip(0x4E9D2BA):
+            self.assertTrue(tool_rejects(DATA))
+
+    def test_tamper_wiring_call_fails(self):
+        with flip(0x4E9D3BD):
+            self.assertTrue(tool_rejects(DATA))
+
+    def test_tamper_address_0x09_fails(self):
+        with flip(tool.ADDR09_VA, at=19):
+            self.assertTrue(tool_rejects(DATA))
 
     def test_token_rule_no_secret_equals(self):
         text = tool.render(tool.analyse(bytes(DATA)))

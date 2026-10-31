@@ -16,7 +16,7 @@ ROOT = HERE.parents[2]
 BINARY = ROOT / "artifacts" / "node" / "94" / "hl-node"
 SHA256 = "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
 PACKET_JSON = HERE / "blake2b-compress.json"
-JSON_SHA256 = "8b977ba014e10bb78c6aa73ac046c3cf5b73f196fb6a1f655977c2dadb0bbfcd"
+JSON_SHA256 = "dc2420392ce8f7ad5f63dbc313b8ddb8095143a91a25eef1e9a2a7663ad78f92"
 FN = 0x4E9A8A0
 FN_END = 0x4E9B02C
 CARVED_SHA256 = "df9b7ff03af68d61cb6e574cadb5fc0081e4a38a7fd35cefd030fbebea1a8788"
@@ -28,6 +28,12 @@ LOCATION_PATH = (
     b"/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/"
     b"revm-precompile-16.0.0/src/blake2.rs"
 )
+WRAP = 0x4E9D2A0
+ADDR09_VA = 0x574F0C0
+ADDR09_BYTES = b"\x00" * 19 + b"\x09"
+PRECOMPILE_SLOT = 0x574F0B0
+F_GOT_SLOT = 0x5776F28
+R_X86_64_RELATIVE = 8
 
 KEYS = [
     (0x4E9A8A0, "554157415641554154534881ec38010000"),
@@ -56,6 +62,17 @@ KEYS = [
     (0x4E9AC59, "49c1c730"),
     (0x4E9AC68, "48d1c5"),
     (0x4E9AEAF, "c3"),
+    (0x4E9D2A0, "4156534881ec18010000"),
+    (0x4E9D2AA, "48817e10d5000000"),
+    (0x4E9D2B2, "7519"),
+    (0x4E9D2B8, "8b18"),
+    (0x4E9D2BA, "0fcb"),
+    (0x4E9D2BC, "4839da"),
+    (0x4E9D2F2, "0fb688d4000000"),
+    (0x4E9D2F9, "80f902"),
+    (0x4E9D2FC, "0f8356010000"),
+    (0x4E9D3BA, "4889df"),
+    (0x4E9D3BD, "ff15659b8d00"),
 ]
 
 ROL_COUNTS = {"0x20": 8, "0x28": 8, "0x30": 8, "1": 8}
@@ -223,6 +240,51 @@ def check_keys(data):
         out = blake2b_f(rounds, h, m, t, bool(f))
         if out.hex() != spec["output_hex"]:
             failures.append(f"{name} ref mismatch")
+    # HyperEVM 0x09 wiring pins
+    if read_va(data, segs, ADDR09_VA, 20) != ADDR09_BYTES:
+        failures.append("address_0x09")
+    call = read_va(data, segs, 0x4E9D3BD, 6)
+    if call.hex() != "ff15659b8d00":
+        failures.append("call_indirect")
+    disp = struct.unpack_from("<i", call, 2)[0]
+    if 0x4E9D3BD + 6 + disp != F_GOT_SLOT:
+        failures.append("call_indirect_slot")
+    if read_va(data, segs, 0x4E9D2AA, 8).hex() != "48817e10d5000000":
+        failures.append("input_len_0xd5")
+    if read_va(data, segs, 0x4E9D2BA, 2).hex() != "0fcb":
+        failures.append("rounds_bswap")
+    if read_va(data, segs, 0x4E9D2F9, 3).hex() != "80f902":
+        failures.append("final_flag_cmp")
+    if read_va(data, segs, 0x4E9D2BC, 3).hex() != "4839da":
+        failures.append("gas_cmp")
+    # RELA pins
+    e_shoff = struct.unpack_from("<Q", data, 40)[0]
+    e_shentsize, e_shnum, e_shstrndx = struct.unpack_from("<HHH", data, 58)
+    shstr_hdr = e_shoff + e_shstrndx * e_shentsize
+    shstr_off = struct.unpack_from("<Q", data, shstr_hdr + 24)[0]
+    shstr_sz = struct.unpack_from("<Q", data, shstr_hdr + 32)[0]
+    shstr = data[shstr_off:shstr_off + shstr_sz]
+    found_wrap = found_f = False
+    for i in range(e_shnum):
+        o = e_shoff + i * e_shentsize
+        name_off = struct.unpack_from("<I", data, o)[0]
+        name = shstr[name_off:shstr.find(b"\x00", name_off)]
+        if name != b".rela.dyn":
+            continue
+        off = struct.unpack_from("<Q", data, o + 24)[0]
+        size = struct.unpack_from("<Q", data, o + 32)[0]
+        for k in range(size // 24):
+            r_offset, r_info, r_addend = struct.unpack_from("<QQq", data, off + k * 24)
+            if (r_offset == PRECOMPILE_SLOT and r_addend == WRAP
+                    and (r_info & 0xFFFFFFFF) == R_X86_64_RELATIVE):
+                found_wrap = True
+            if (r_offset == F_GOT_SLOT and r_addend == FN
+                    and (r_info & 0xFFFFFFFF) == R_X86_64_RELATIVE):
+                found_f = True
+    if not found_wrap:
+        failures.append("wrap_rela")
+    if not found_f:
+        failures.append("f_rela")
     return failures
 
 
@@ -243,6 +305,13 @@ def check_packet():
         failures.append("json carved")
     if obj.get("behavioural_proof") != "unicorn_emulation_of_carved_function_bytes":
         failures.append("behavioural_proof field")
+    w = obj.get("hyperevm_precompile_wiring") or {}
+    if w.get("status") != "statically_shown":
+        failures.append("wiring_status")
+    if w.get("gas_per_round") != 1:
+        failures.append("wiring_gas")
+    if w.get("address_0x09_bytes") != ADDR09_BYTES.hex():
+        failures.append("wiring_addr09_json")
     for name, spec in VECTORS.items():
         v = obj.get("eip152_vectors", {}).get(name)
         if not v or v.get("expected_output_hex") != spec["output_hex"]:

@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import blake2b_compress as tool  # noqa: E402
 
 PACKET_JSON = HERE / "blake2b-compress.json"
-JSON_SHA256 = "8b977ba014e10bb78c6aa73ac046c3cf5b73f196fb6a1f655977c2dadb0bbfcd"
+JSON_SHA256 = "dc2420392ce8f7ad5f63dbc313b8ddb8095143a91a25eef1e9a2a7663ad78f92"
 
 
 def main():

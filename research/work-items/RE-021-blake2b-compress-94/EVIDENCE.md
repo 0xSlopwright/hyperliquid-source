@@ -60,6 +60,33 @@ Exactly 8× each: `rol imm 0x20`, `0x28`, `0x30`, `1` (= RFC 7693 ror 32/24/16/6
 
 All four: `byte_identical=true` under Unicorn emulation of the carved bytes.
 
-## Wiring limitations
+## HyperEVM precompile 0x09 wiring (statically shown)
 
-See README "What this does not claim": 0x09 dispatch, 213-byte check, f∈{0,1} reject, gas/round not statically pinned.
+### Dispatch table entry
+
+- Precompile object VA `0x574f0b0` (0x30-byte stride alongside neighbouring Address 0x01..0x0a objects).
+- `Address(0x09)` at VA `0x574f0c0` = 20 bytes `00…09` (file-backed).
+- `.rela.dyn` `R_X86_64_RELATIVE` (`r_info=0x8`): `r_offset=0x574f0b0`, `r_addend=0x4e9d2a0` installs the `run()` wrapper as the object's function pointer (file contents of the slot are zero before reloc).
+
+### `run()` wrapper `0x4e9d2a0 .. 0x4e9d480`
+
+| VA | Bytes | Meaning |
+|----|-------|---------|
+| 0x4e9d2a0 | `4156534881ec18010000` | prologue |
+| 0x4e9d2aa | `48817e10d5000000` | `cmpq $0xd5, 0x10(%rsi)` — EIP-152 input length 213 |
+| 0x4e9d2b2 | `7519` | `jne` reject |
+| 0x4e9d2b8 | `8b18` | `mov ebx, (%rax)` load rounds |
+| 0x4e9d2ba | `0fcb` | `bswap ebx` — big-endian rounds |
+| 0x4e9d2bc | `4839da` | `cmp %rbx, %rdx` — require gas ≥ rounds → **1 gas/round** |
+| 0x4e9d2f2 | `0fb688d4000000` | `movzbl 0xd4(%rax), %ecx` — load `f` at offset 212 |
+| 0x4e9d2f9 | `80f902` | `cmp $2, %cl` |
+| 0x4e9d2fc | `0f8356010000` | `jae` reject if `f ≥ 2` |
+| 0x4e9d3ba | `4889df` | `mov %rbx, %rdi` — rounds → F |
+| 0x4e9d3bd | `ff15659b8d00` | `call qword ptr [0x5776f28]` |
+
+### Compress F GOT slot
+
+- `.rela.dyn` `R_X86_64_RELATIVE`: `r_offset=0x5776f28`, `r_addend=0x4e9a8a0` installs compress F.
+- Sole static code reference: the `ff 15` at `0x4e9d3bd` inside the wrapper.
+
+**37** key instructions pinned byte-for-byte (26 compress-F + 11 wiring).

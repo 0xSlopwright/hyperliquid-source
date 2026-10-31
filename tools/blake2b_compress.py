@@ -10,7 +10,11 @@ Standalone. From the pinned node #94 binary only, it recovers:
   * revm-precompile-16.0.0/src/blake2.rs Location path pin in .rodata;
   * behavioural proof: Unicorn emulation of the carved function bytes on the
     official EIP-152 test vectors (incl. vector 4 rounds=0 and vector 5 rounds=12),
-    outputs byte-identical to the EIP.
+    outputs byte-identical to the EIP;
+  * HyperEVM precompile address 0x09 wiring: static precompile object at
+    0x574f0b0 (Address(0x09) at 0x574f0c0; R_X86_64_RELATIVE installs run()
+    wrapper 0x4e9d2a0); wrapper cmp [rsi+0x10],0xd5 length check; bswap rounds;
+    cmp cl,2 / jae final-flag reject; call [0x5776f28] -> F; gas-per-round = 1.
 
 Output is sorted, deterministic JSON. Every expected value is pinned exactly.
 Imports only the Python standard library plus optional unicorn for emulation
@@ -44,6 +48,16 @@ LOCATION_PATH = (
 )
 LOCATION_PATH_LEN = 102
 
+# HyperEVM precompile 0x09 wiring (statically recovered)
+WRAP = 0x4E9D2A0
+WRAP_END = 0x4E9D480
+ADDR09_VA = 0x574F0C0
+ADDR09_BYTES = bytes.fromhex("00" * 19 + "09")
+PRECOMPILE_SLOT = 0x574F0B0  # RELA R_X86_64_RELATIVE addend=WRAP
+F_GOT_SLOT = 0x5776F28       # RELA R_X86_64_RELATIVE addend=FN; wrapper call [slot]
+GAS_PER_ROUND = 1
+R_X86_64_RELATIVE = 8
+
 # (va, exact hex bytes, note) — TOKEN rule: printed as key_insns, never keys=
 KEY_INSNS = [
     (0x4E9A8A0, "554157415641554154534881ec38010000", "prologue push+sub rsp,0x138"),
@@ -72,6 +86,17 @@ KEY_INSNS = [
     (0x4E9AC59, "49c1c730", "rol r15,0x30  (ror 16)"),
     (0x4E9AC68, "48d1c5", "rol rbp,1     (ror 63)"),
     (0x4E9AEAF, "c3", "ret"),
+    (0x4E9D2A0, "4156534881ec18010000", "blake2 run() wrapper prologue push r14/rbx; sub rsp,0x118"),
+    (0x4E9D2AA, "48817e10d5000000", "cmp qword [rsi+0x10],0xd5 EIP-152 input len 213"),
+    (0x4E9D2B2, "7519", "jne reject when len!=213"),
+    (0x4E9D2B8, "8b18", "mov ebx,[rax] load rounds big-endian word"),
+    (0x4E9D2BA, "0fcb", "bswap ebx big-endian rounds"),
+    (0x4E9D2BC, "4839da", "cmp rdx,rbx gas>=rounds (1 gas/round)"),
+    (0x4E9D2F2, "0fb688d4000000", "movzx ecx,byte [rax+0xd4] load final-flag f"),
+    (0x4E9D2F9, "80f902", "cmp cl,2 reject f not in {0,1}"),
+    (0x4E9D2FC, "0f8356010000", "jae reject if f>=2"),
+    (0x4E9D3BA, "4889df", "mov rdi,rbx rounds -> rdi for F"),
+    (0x4E9D3BD, "ff15659b8d00", "call [0x5776f28] indirect to compress F"),
 ]
 
 IV_VALUES = [
@@ -265,6 +290,83 @@ def emulate_carved(data: bytes, segs, rounds: int, h: bytes, m: bytes, t: bytes,
     return bytes(mu.mem_read(H_ADDR, 64))
 
 
+def find_rela_dyn(data: bytes):
+    """Return list of (r_offset, r_info, r_addend) from .rela.dyn. Stdlib only."""
+    e_shoff = struct.unpack_from("<Q", data, 40)[0]
+    e_shentsize, e_shnum, e_shstrndx = struct.unpack_from("<HHH", data, 58)
+    shstr_hdr = e_shoff + e_shstrndx * e_shentsize
+    shstr_off = struct.unpack_from("<Q", data, shstr_hdr + 24)[0]
+    shstr_sz = struct.unpack_from("<Q", data, shstr_hdr + 32)[0]
+    shstr = data[shstr_off:shstr_off + shstr_sz]
+    for i in range(e_shnum):
+        o = e_shoff + i * e_shentsize
+        name_off = struct.unpack_from("<I", data, o)[0]
+        end = shstr.find(b"\x00", name_off)
+        name = shstr[name_off:end]
+        if name == b".rela.dyn":
+            off = struct.unpack_from("<Q", data, o + 24)[0]
+            size = struct.unpack_from("<Q", data, o + 32)[0]
+            out = []
+            for k in range(size // 24):
+                r_offset, r_info, r_addend = struct.unpack_from("<QQq", data, off + k * 24)
+                out.append((r_offset, r_info, r_addend))
+            return out
+    raise KeyError(".rela.dyn")
+
+
+def wiring_pins(data: bytes, segs) -> dict:
+    """Static HyperEVM 0x09 / EIP-152 run() wrapper pins from bytes."""
+    addr09 = read_va(data, segs, ADDR09_VA, 20)
+    call = read_va(data, segs, 0x4E9D3BD, 6)
+    call_disp = struct.unpack_from("<i", call, 2)[0]
+    call_slot = 0x4E9D3BD + 6 + call_disp
+    relas = find_rela_dyn(data)
+    wrap_rela = None
+    f_rela = None
+    for r_offset, r_info, r_addend in relas:
+        if r_offset == PRECOMPILE_SLOT and r_addend == WRAP and (r_info & 0xFFFFFFFF) == R_X86_64_RELATIVE:
+            wrap_rela = {"r_offset": hex(r_offset), "r_info": hex(r_info), "r_addend": hex(r_addend)}
+        if r_offset == F_GOT_SLOT and r_addend == FN and (r_info & 0xFFFFFFFF) == R_X86_64_RELATIVE:
+            f_rela = {"r_offset": hex(r_offset), "r_info": hex(r_info), "r_addend": hex(r_addend)}
+    return {
+        "status": "statically_shown",
+        "wrapper_va": hex(WRAP),
+        "wrapper_end": hex(WRAP_END),
+        "precompile_slot": hex(PRECOMPILE_SLOT),
+        "address_0x09_va": hex(ADDR09_VA),
+        "address_0x09_bytes": addr09.hex(),
+        "address_0x09_match": addr09 == ADDR09_BYTES,
+        "wrap_rela": wrap_rela,
+        "f_got_slot": hex(F_GOT_SLOT),
+        "f_rela": f_rela,
+        "call_indirect_va": "0x4e9d3bd",
+        "call_indirect_bytes": call.hex(),
+        "call_indirect_slot": hex(call_slot),
+        "call_indirect_slot_match": call_slot == F_GOT_SLOT,
+        "input_len_check_va": "0x4e9d2aa",
+        "input_len_check_bytes": "48817e10d5000000",
+        "input_len_imm": "0xd5",
+        "rounds_bswap_va": "0x4e9d2ba",
+        "rounds_bswap_bytes": "0fcb",
+        "final_flag_load_va": "0x4e9d2f2",
+        "final_flag_load_bytes": "0fb688d4000000",
+        "final_flag_cmp_va": "0x4e9d2f9",
+        "final_flag_cmp_bytes": "80f902",
+        "final_flag_jae_va": "0x4e9d2fc",
+        "final_flag_jae_bytes": "0f8356010000",
+        "gas_cmp_va": "0x4e9d2bc",
+        "gas_cmp_bytes": "4839da",
+        "gas_per_round": GAS_PER_ROUND,
+        "note": (
+            "Precompile object at 0x574f0b0 carries Address(0x09) at +0x10 "
+            "(VA 0x574f0c0) and receives run() wrapper 0x4e9d2a0 via "
+            "R_X86_64_RELATIVE. Wrapper enforces input len==0xd5, bswap "
+            "BE rounds into rdi, rejects f>=2, requires gas>=rounds "
+            "(1 gas/round), then call [0x5776f28] (RELA -> compress F)."
+        ),
+    }
+
+
 def analyse(data: bytes, check_sha: bool = True, run_emu: bool = True) -> dict:
     if check_sha:
         got = hashlib.sha256(data).hexdigest()
@@ -350,16 +452,7 @@ def analyse(data: bytes, check_sha: bool = True, run_emu: bool = True) -> dict:
         "key_bytes": key_bytes,
         "eip152_vectors": vectors,
         "behavioural_proof": "unicorn_emulation_of_carved_function_bytes",
-        "hyperevm_precompile_wiring": {
-            "status": "not_statically_shown",
-            "note": (
-                "Compress F body, IV/SIGMA/G-rotates, f/rounds ABI, and blake2.rs "
-                "Location are shown from bytes. The HyperEVM precompile address "
-                "0x09 dispatch site, the 213-byte EIP-152 length check, the "
-                "f in {0,1} reject path in run(), and gas-per-round were NOT "
-                "recovered as static byte pins in this packet."
-            ),
-        },
+        "hyperevm_precompile_wiring": wiring_pins(data, segs),
         "overlap_nonclaim": {
             "pr_154": (
                 "#154 inventory mentions 0x4e9a8a0 only as a count of sha512/"
@@ -414,8 +507,23 @@ def expectation_errors(result: dict) -> list:
                 errs.append(f"{name} proof kind")
     if result.get("behavioural_proof") != "unicorn_emulation_of_carved_function_bytes":
         errs.append("behavioural_proof")
-    if result["hyperevm_precompile_wiring"]["status"] != "not_statically_shown":
+    w = result["hyperevm_precompile_wiring"]
+    if w.get("status") != "statically_shown":
         errs.append("wiring_status")
+    if not w.get("address_0x09_match"):
+        errs.append("address_0x09")
+    if w.get("address_0x09_bytes") != ADDR09_BYTES.hex():
+        errs.append("address_0x09_bytes")
+    if not w.get("wrap_rela"):
+        errs.append("wrap_rela")
+    if not w.get("f_rela"):
+        errs.append("f_rela")
+    if not w.get("call_indirect_slot_match"):
+        errs.append("call_indirect_slot")
+    if w.get("gas_per_round") != GAS_PER_ROUND:
+        errs.append("gas_per_round")
+    if w.get("input_len_imm") != "0xd5":
+        errs.append("input_len_imm")
     return errs
 
 

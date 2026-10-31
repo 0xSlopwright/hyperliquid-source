@@ -60,8 +60,43 @@
   "fn_end": "0x4e9b02c",
   "fn_ret": "0x4e9aeaf",
   "hyperevm_precompile_wiring": {
-    "note": "Compress F body, IV/SIGMA/G-rotates, f/rounds ABI, and blake2.rs Location are shown from bytes. The HyperEVM precompile address 0x09 dispatch site, the 213-byte EIP-152 length check, the f in {0,1} reject path in run(), and gas-per-round were NOT recovered as static byte pins in this packet.",
-    "status": "not_statically_shown"
+    "address_0x09_bytes": "0000000000000000000000000000000000000009",
+    "address_0x09_match": true,
+    "address_0x09_va": "0x574f0c0",
+    "call_indirect_bytes": "ff15659b8d00",
+    "call_indirect_slot": "0x5776f28",
+    "call_indirect_slot_match": true,
+    "call_indirect_va": "0x4e9d3bd",
+    "f_got_slot": "0x5776f28",
+    "f_rela": {
+      "r_addend": "0x4e9a8a0",
+      "r_info": "0x8",
+      "r_offset": "0x5776f28"
+    },
+    "final_flag_cmp_bytes": "80f902",
+    "final_flag_cmp_va": "0x4e9d2f9",
+    "final_flag_jae_bytes": "0f8356010000",
+    "final_flag_jae_va": "0x4e9d2fc",
+    "final_flag_load_bytes": "0fb688d4000000",
+    "final_flag_load_va": "0x4e9d2f2",
+    "gas_cmp_bytes": "4839da",
+    "gas_cmp_va": "0x4e9d2bc",
+    "gas_per_round": 1,
+    "input_len_check_bytes": "48817e10d5000000",
+    "input_len_check_va": "0x4e9d2aa",
+    "input_len_imm": "0xd5",
+    "note": "Precompile object at 0x574f0b0 carries Address(0x09) at +0x10 (VA 0x574f0c0) and receives run() wrapper 0x4e9d2a0 via R_X86_64_RELATIVE. Wrapper enforces input len==0xd5, bswap BE rounds into rdi, rejects f>=2, requires gas>=rounds (1 gas/round), then call [0x5776f28] (RELA -> compress F).",
+    "precompile_slot": "0x574f0b0",
+    "rounds_bswap_bytes": "0fcb",
+    "rounds_bswap_va": "0x4e9d2ba",
+    "status": "statically_shown",
+    "wrap_rela": {
+      "r_addend": "0x4e9d2a0",
+      "r_info": "0x8",
+      "r_offset": "0x574f0b0"
+    },
+    "wrapper_end": "0x4e9d480",
+    "wrapper_va": "0x4e9d2a0"
   },
   "iv": [
     "0x6a09e667f3bcc908",
@@ -256,9 +291,86 @@
       "match": true,
       "note": "ret",
       "va": "0x4e9aeaf"
+    },
+    {
+      "bytes": "4156534881ec18010000",
+      "expected": "4156534881ec18010000",
+      "match": true,
+      "note": "blake2 run() wrapper prologue push r14/rbx; sub rsp,0x118",
+      "va": "0x4e9d2a0"
+    },
+    {
+      "bytes": "48817e10d5000000",
+      "expected": "48817e10d5000000",
+      "match": true,
+      "note": "cmp qword [rsi+0x10],0xd5 EIP-152 input len 213",
+      "va": "0x4e9d2aa"
+    },
+    {
+      "bytes": "7519",
+      "expected": "7519",
+      "match": true,
+      "note": "jne reject when len!=213",
+      "va": "0x4e9d2b2"
+    },
+    {
+      "bytes": "8b18",
+      "expected": "8b18",
+      "match": true,
+      "note": "mov ebx,[rax] load rounds big-endian word",
+      "va": "0x4e9d2b8"
+    },
+    {
+      "bytes": "0fcb",
+      "expected": "0fcb",
+      "match": true,
+      "note": "bswap ebx big-endian rounds",
+      "va": "0x4e9d2ba"
+    },
+    {
+      "bytes": "4839da",
+      "expected": "4839da",
+      "match": true,
+      "note": "cmp rdx,rbx gas>=rounds (1 gas/round)",
+      "va": "0x4e9d2bc"
+    },
+    {
+      "bytes": "0fb688d4000000",
+      "expected": "0fb688d4000000",
+      "match": true,
+      "note": "movzx ecx,byte [rax+0xd4] load final-flag f",
+      "va": "0x4e9d2f2"
+    },
+    {
+      "bytes": "80f902",
+      "expected": "80f902",
+      "match": true,
+      "note": "cmp cl,2 reject f not in {0,1}",
+      "va": "0x4e9d2f9"
+    },
+    {
+      "bytes": "0f8356010000",
+      "expected": "0f8356010000",
+      "match": true,
+      "note": "jae reject if f>=2",
+      "va": "0x4e9d2fc"
+    },
+    {
+      "bytes": "4889df",
+      "expected": "4889df",
+      "match": true,
+      "note": "mov rdi,rbx rounds -> rdi for F",
+      "va": "0x4e9d3ba"
+    },
+    {
+      "bytes": "ff15659b8d00",
+      "expected": "ff15659b8d00",
+      "match": true,
+      "note": "call [0x5776f28] indirect to compress F",
+      "va": "0x4e9d3bd"
     }
   ],
-  "key_insns_count": 26,
+  "key_insns_count": 37,
   "location_path": "/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/revm-precompile-16.0.0/src/blake2.rs",
   "location_path_len": 102,
   "location_path_match": true,
