@@ -1,0 +1,34 @@
+Pre-commit focused evidence; final required aggregate is recorded separately on its frozen commit.
+
+Source base: 1f8c67c63ca4794c9689235471c60297f8a5c985
+Target: artifacts/node/94/hl-node
+Target bytes: 91774280
+Target SHA256: 3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f
+Reference revision: 999556f6e0a474b8312db96ec3149e1c44e97c23
+Python: 3.12.14
+GNU objdump (GNU Binutils for Debian) 2.44
+
+Command (repository root, RAM TMPDIR owned by this worker):
+PYTHONDONTWRITEBYTECODE=1 TMPDIR=<owned-RAM-temp> python3 -B tools/rate_delegated_nosplit_static.py --output <new-owned-output>
+Observed exit0; 4354 admitted bytes,866 native rows,73 selected graph instructions.
+Raw exports retained under observed/. Native stderr empty.
+
+Command:
+PYTHONDONTWRITEBYTECODE=1 TMPDIR=<owned-RAM-temp> python3 -B -m unittest discover -s tests -p test_rate_delegated_nosplit_static.py -v
+Observed exit0; all10 tests PASS without skips in2.597s.
+The final run includes direct equality against the retained packet and symbolic direct-store/frame alias controls.
+Raw stderr is focused-tests.txt.
+
+Two normal collections produced identical native and JSON exports; only tool version text is permitted to differ in semantic-record packet comparison.
+Actual symlink replacement changes only an owned private link, not canonical input bytes.
+Native reads a distinct4354B mode0600 slice in0700 directory; source change refuses publication.
+
+Checks: full target SHA unchanged; seven submodule HEAD/status identities retained in separate handoff; git diff --check PASS.
+Base full suite431PASS was established by the coordinator on unchanged main and genuine pinned inputs.
+Final required commands after peer review/freeze:
+make PYTHON='python3 -B' doctor verify test catalogue-check reproduce
+No pre-commit result is substituted for those final required checks.
+
+The used-output claim additionally requires ALL direct/import memory effects to preserve listed live frame values. Import preservation alone is insufficient. Actual operand-based symbolic counterexamples target saved-output and saved-index slots; they are proof-domain gaps, not a target defect.
+
+No target/emulator execution, live network/node operation, Rust build, runtime comparator, source transplant or completed component gate.
