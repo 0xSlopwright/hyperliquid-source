@@ -179,6 +179,8 @@ def generate(root=ROOT):
     if not isinstance(literal_record, dict):
         raise ValueError('Invalid literal-classes record')
     literal_items = literal_record['items']
+    if any(isinstance(i, dict) and 'file' in i and not isinstance(i['file'], str) for i in literal_items):
+        raise ValueError('Invalid literal-classes record')
     rows = []
     for c in components:
         source = sorted(p for p in source_paths if owner(p, components) == c['id'])
