@@ -99,12 +99,55 @@
     "iterator_next": "0x27df4f0",
     "keep": "lexicographic max of (initial_height, latest_height); a later equal pair replaces",
     "map": "[rbx+0x49b0] (root, height, len at +0x10)",
-    "proceed_when": "len > 1, or len == 1 and [[[rbx+0x49c8]]+0x10] == 1",
+    "proceed_when": "len > 1, or len == 1 and the queried peer list length [[[rbx+0x49c8]]+0x10] == 1",
     "retry_template": "0x1f2256",
     "retry_template_lea": "0x226a7eb",
     "value_fields": {
       "+0x0": "initial_height (r15)",
       "+0x8": "latest_height (r14)"
+    }
+  },
+  "peer_queries": {
+    "current_peer": "[rbx+0x49d0] (4 bytes) and [rbx+0x49d4] (1 byte)",
+    "flow": {
+      "empty_list_to_got_heights": "0x226a41a",
+      "insert_call": "0x28523b0",
+      "insert_to_next": "0x226a403",
+      "next_peer": "0x2269cd8",
+      "no_heights_to_next": "0x226a403",
+      "none_to_no_heights": "0x226a04b",
+      "not_ok_to_error": "0x226a1fa",
+      "pending_to_yield": "0x226a8bc",
+      "request_call": "0x226bb20",
+      "variant_error_to_log": "0x226a231",
+      "variant_not_2_to_error": "0x2269ff1"
+    },
+    "insert": "[rsp+0x138], [rsp+0x140] into [rbx+0x49b0] keyed by the current peer, when [rsp+0x130] bit 0 is set",
+    "local_height_operands_in_loop": 0,
+    "ok_reply_variant": 2,
+    "peer_list": "[[rbx+0x3c30]] stored to [rbx+0x49c8]; data [+0x8], length [+0x10], 5-byte entries",
+    "r12_reset_on_back_edges": [
+      "0x2269fe2",
+      "0x226a079",
+      "0x226a2dc"
+    ],
+    "request_fde": [
+      "0x226bb20",
+      "0x226c2c8"
+    ],
+    "request_tag": 2,
+    "templates": {
+      "0x2269de3": "0x1dd96c",
+      "0x226a143": "0x1ebdb6",
+      "0x226a3bf": "0x1ee557",
+      "0x226a508": "0x1e7641"
+    },
+    "variant_error": {
+      "pieces": {
+        "0x0": "0x3d79ef",
+        "0xe": "0x3d79fd"
+      },
+      "text": "incorrect rpc response variant"
     }
   },
   "status_log": {
@@ -167,9 +210,16 @@
     "call_b": "0x22affbf",
     "freshness": "0x2271d52",
     "gate": "0x226ab0a",
+    "got_heights_log": "0x226a4a2",
     "hardfork_log": "0x226911b",
+    "no_heights_log": "0x226a04b",
     "panic_shim": "0x157b810",
+    "peer_loop_head": "0x2269c63",
     "poll_entry": "0x2271d17",
+    "query_call": "0x2269e1a",
+    "query_error": "0x226a1ac",
+    "query_log": "0x2269d00",
+    "reply_dispatch": "0x2269f3d",
     "select_540": "0x226900c",
     "select_840": "0x226915c",
     "select_error": "0x226a6d2",

@@ -16,10 +16,10 @@ lead (`node/local_abci_state.rs`, `node/startup.rs`) differ?
   copied.
 - Claim status: observation for byte-level facts, inference where marked,
   unresolved where listed. Partial `node-runtime` research; no gate change.
-- Scope: sixteen fixed windows in `0x22689f0` (the lead's
+- Scope: twenty-three fixed windows in `0x22689f0` (the lead's
   `local_abci_state.rs` seed), `0x2271d00`, its caller `0x22ae8a0` and the
   panic shim `0x157b810`.
-  Excluded: how the per-peer heights in `ip_to_heights` and the timestamp are produced, what the
+  Excluded: what `0x226bb20` sends and decodes, how the timestamp is produced, what the
   logged tolerance is used for, the rest of the `0x22ae8a0` state machine, and
   release #115.
 
@@ -37,8 +37,8 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 16
-windows (510 instructions), one per checked byte window. All 28 `records.json`
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 23
+windows (950 instructions), one per checked byte window. All 47 `records.json`
 VAs that fall inside a window are instruction starts there, except `slot_refs`
 entries, which are ModRM-byte addresses inside instructions. The other code VAs
 are FDE starts, call targets and branch targets outside the windows.
@@ -50,6 +50,47 @@ text that ends exactly at the next marker. Reading placeholder *k* as format
 argument *k* is an inference.
 
 ## Evidence
+
+### How `ip_to_heights` is filled (observation)
+
+The peer loop `0x2269cd8..0x226a41a` runs before the selection below.
+
+1. **Peer list:** `0x2269c63` stores `[[rbx+0x3c30]]` to `[rbx+0x49c8]` and
+   clears the map root and length (`[rbx+0x49b0]`, `[rbx+0x49c0]`). The list's
+   data pointer is `[+0x8]` and its length `[+0x10]`; entries are 5 bytes
+   (`lea rcx,[rcx+rcx*4]`, stride `lea rcx,[rax+0x5]`). An empty list goes
+   straight to the `got heights` log (`0x2269cd2 → 0x226a41a`). Each entry's
+   first 4 bytes and fifth byte are copied to `[rbx+0x49d0]` and
+   `[rbx+0x49d4]`.
+2. **Query:** the code logs `… @@ querying height @@ [rpc_ip: {}]` (template
+   `0x1dd96c`, argument `&[rbx+0x49d0]`). It then stores 2 to `[rbx+0x3c88]`
+   and calls `0x226bb20` (`0x2269e87`). That FDE, `0x226bb20..0x226c2c8`,
+   contains the `gossip_rpc_request` 10.0 s timeout window `0x226bb82` checked
+   by [#211](https://github.com/lalalune/hyperliquid-source/pull/211). A
+   result word equal to `r12 + 0x41` goes to `0x226a8bc` (pending). All
+   three paths back to the next peer set `r12 = 0x8000000000000000`
+   (`0x2269fe2`, `0x226a079`, `0x226a2dc`). Its value on the first entry is
+   not checked.
+3. **Reply:** a result word other than `0x8000000000000040` goes to the error
+   log (`0x2269f4e → 0x226a1fa`). Otherwise `[rsp+0x128]` must be 2, else the
+   30-byte `incorrect rpc response variant` (rebuilt from `0x3d79ef` and
+   `0x3d79fd`) goes to the same log. If bit 0 of `[rsp+0x130]` is set,
+   `0x28523b0` is called with `&[rbx+0x49b0]`, the current peer and the
+   values `[rsp+0x138]`, `[rsp+0x140]` (`0x2269fdd`), then the next peer
+   (`0x226a403`). If clear, the code logs
+   `… ERROR >>> … @@ no heights from node @@ [rpc_ip: {}]` (template `0x1ebdb6`)
+   and moves on to the next peer.
+4. **Errors:** both error cases log
+   `… ERROR >>> … @@ unable to query height: {} @@ [rpc_ip: {}]` (template
+   `0x1ee557`) and continue with the next peer (`0x226a414 → 0x2269cd8`).
+5. **No local-height filter:** no `[rbx+0xb0]` (local height) operand appears
+   anywhere in `0x2269cd8..0x226a41a`.
+
+So `[[[rbx+0x49c8]]+0x10]`, used by the single-entry exception below, is the
+number of peers queried. Inference: `0x28523b0` is a `BTreeMap` insert keyed
+by peer IP, the reply is `Option<(initial_height, latest_height)>`, and
+request tag 2 asks for heights. Model `collect_heights` checks the
+skip/insert rules.
 
 ### Where `initial_height` and `latest_height` come from (observation)
 
@@ -89,7 +130,7 @@ Model (`select_heights`): with `values` in iteration order, the pair used is
 the lexicographic maximum of `(initial_height, latest_height)`. It is
 checked against Python `max` on 500 random lists. Inference: the map is a
 `BTreeMap` keyed by peer, from the `{root, height, length}` layout and the
-`ip_to_heights` label. The meaning of `[[[rbx+0x49c8]]+0x10]` is unresolved.
+`ip_to_heights` label. `[[[rbx+0x49c8]]+0x10]` is the queried peer count (see above).
 
 ### The three heights are named by the status log (observation)
 
@@ -216,12 +257,16 @@ states, 0xa and 0xb, and treats a set `al` as pending.
   statuses, errors if fewer than `MIN_VALID_RPC_HEIGHTS = 2`, sorts by
   `latest_height` and takes the median `fresh[len / 2]`. The binary takes the
   lexicographic maximum of `(initial_height, latest_height)` over all map
-  entries. It accepts a single entry when `[[[rbx+0x49c8]]+0x10] == 1`. Its
+  entries. It accepts a single entry when exactly one peer was queried. Its
   error path retries through `AsyncSleepRetry` instead of returning. For
   example, entries `(1, 100), (2, 3), (1, 200)` give the median `(1, 100)` in
-  the lead's model but `(2, 3)` in the binary. The lead's per-entry freshness
-  filter is not visible in this window. Whether the map is filtered
-  earlier is not checked.
+  the lead's model but `(2, 3)` in the binary. - **Height collection:** the lead's `query_root_heights` returns an error from
+  the whole startup on any RPC error. It records a `None` reply as Missing and
+  classifies a status as Stale when `latest_height + MAX_LOCAL_HEIGHT_LAG <
+  local_height`. The binary logs `unable to query height` and skips the peer
+  on an error or a wrong reply variant. It logs `no heights from node` and
+  skips the peer on an empty reply. It does not read the local height in the
+  loop, so it has no stale filter there.
 - **0x4e20:** `NODE_IP_FRESHNESS_TOLERANCE = Duration::from_secs(0x4e20)`
   cites "`add 0x4e20` in the stale-time branch at `0x226ab1d`". That `add` is
   the height gate above: its saturating sum is compared with `[rsp+0xd0]` and
@@ -246,8 +291,8 @@ states, 0xa and 0xb, and treats a set `al` as pending.
 
 ## Controls
 
-`tests/test_local_abci_gates_static.py` (31 tests) regenerates
-`records.json` and checks four models: the height selection, the height gate
+`tests/test_local_abci_gates_static.py` (37 tests) regenerates
+`records.json` and checks five models: the peer-reply collection, the height selection, the height gate
 including saturation, the day division against exact truncating division,
 and the lexicographic compare. It refuses each of these corruptions:
 
@@ -269,14 +314,19 @@ and the lexicographic compare. It refuses each of these corruptions:
 - The selection loop's `seta` changed to `setb`.
 - A byte of the 43-byte heights error changed.
 - The `AsyncSleepRetry::retry` or `got heights` template changed.
+- A byte of `incorrect rpc response variant` changed.
+- The `no heights from node` template changed.
+- A `[rbx+0xb0]` operand planted in the peer loop.
+- The request tag changed to 3.
 
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
 producer does not use either.
 
 ## Unresolved
 
-- How each `ip_to_heights` value is produced, what `[[[rbx+0x49c8]]+0x10]`
-  counts, and whether the selected message is later extended with values.
+- What `0x226bb20` sends for request tag 2 and how it decodes the reply,
+  where `[rbx+0x3c30]`'s peer list comes from, and whether the selected
+  message is later extended with values.
 - The exact path from `0x2269034` to `0x226915c`, and any jump-table edge into
   the join.
 - What the logged 540/840 tolerance controls.

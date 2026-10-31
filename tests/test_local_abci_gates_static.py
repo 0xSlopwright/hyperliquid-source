@@ -61,6 +61,13 @@ class Models(unittest.TestCase):
         self.assertFalse(la.freshness_panics((1, 2, 3), (1, 2, 3)))
         self.assertFalse(la.freshness_panics((2, 0, 0), (1, 86399, 999)))
 
+    def test_collect_heights(self):
+        replies = [('a', (2, (1, 5))), ('b', None), ('c', (3, (9, 9))), ('d', (2, None)), ('a', (2, (1, 7)))]
+        self.assertEqual(la.collect_heights(replies), {'a': (1, 7)})
+        got = la.collect_heights([('a', (2, (1, 5))), ('b', None)])
+        self.assertIsNone(la.select_heights(list(got.values()), other_len=2))
+        self.assertEqual(la.select_heights(list(got.values()), other_len=1), (1, 5))
+
     def test_select_heights(self):
         self.assertIsNone(la.select_heights([]))
         self.assertIsNone(la.select_heights([(5, 9)]))
@@ -104,6 +111,15 @@ class Results(unittest.TestCase):
         self.assertEqual(st['fields'], {'[rsp+0xd8]': 'local_height', '[rsp+0xc8]': 'initial_height',
                                         '[rsp+0xd0]': 'latest_height'})
         self.assertEqual(st['template'], '0x1ef6dd')
+
+    def test_peer_queries(self):
+        q = self.result['peer_queries']
+        self.assertEqual((q['request_tag'], q['ok_reply_variant'], q['request_fde']), (2, 2, ['0x226bb20', '0x226c2c8']))
+        self.assertEqual(q['variant_error']['text'], 'incorrect rpc response variant')
+        self.assertEqual(q['templates'], {'0x2269de3': '0x1dd96c', '0x226a143': '0x1ebdb6',
+                                          '0x226a3bf': '0x1ee557', '0x226a508': '0x1e7641'})
+        self.assertEqual((q['flow']['insert_call'], q['flow']['next_peer'], q['flow']['insert_to_next']),
+                         ('0x28523b0', '0x2269cd8', '0x226a403'))
 
     def test_height_selection(self):
         h = self.result['height_selection']
@@ -210,7 +226,19 @@ class Corruptions(unittest.TestCase):
         self.refuses(patched((0x1f2256 + 5, b'X')), 'retry template at 0x1f2256 changed')
 
     def test_got_heights_template(self):
-        self.refuses(patched((0x1e7641 + 20, b'X')), 'got-heights template changed')
+        self.refuses(patched((0x1e7641 + 20, b'X')), 'template at LEA 0x226a508 changed')
+
+    def test_variant_error_text(self):
+        self.refuses(patched((0x3d79f5, b'X')), 'variant error rebuilt as')
+
+    def test_no_heights_template(self):
+        self.refuses(patched((0x1ebdb6 + 20, b'X')), 'template at LEA 0x226a143 changed')
+
+    def test_local_height_read_in_loop(self):
+        self.refuses(patched((0x2269df8, bytes.fromhex('488b83b0000000'))), r'\[rbx\+0xb0\] operands in the query loop')
+
+    def test_request_tag(self):
+        self.refuses(patched((0x2269e57 + 7, b'\x03')), 'query_call at 0x2269e1a: bytes changed')
 
 
 if __name__ == '__main__':

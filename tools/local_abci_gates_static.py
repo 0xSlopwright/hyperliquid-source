@@ -39,6 +39,13 @@ WINDOWS = {
              '488db388000000' '483b8c24d0000000' '772a' '4989ee' '41bd1e000000' '488d2d62ce16fe' 'eb36'
              '488d88204e0000' '488db388000000' '483b8c24d0000000' '76d6' '483b8424c8000000' '0f8339020000'
              '4989ee' '41bd23000000' '488d2d07ce16fe'),
+    'peer_loop_head': (STARTUP_FDE, 0x2269c63, '488b83303c0000488b00488983c8490000488d8bda49000048898c24a8000000c683da49000000488d8b703c000048898c24b000000048c783b04900000000000048c783c049000000000000488b08488b4108488b4910488d0c894801c1488983703c000048898b783c00004839c80f8442070000488d480548898b703c00008b08898bd04900000fb640048883d4490000488d7c2420ff15a04b5003'),
+    'query_log': (STARTUP_FDE, 0x2269d00, '4c8db3d04900008b4424208984246c010000c784246001000001000000488b44242448898424640100004c89a42420010000488d05c9d616fe488984244001000048c78424480100001600000048c78424500100000800000048c7842458010000000000008b05fd0d510385c00f8509120000660f1005dd0d5103660f118424007700004c89742408488d84242001000048898424103c0000488d054013710048898424183c0000488d84240077000048898424203c0000488d05d1d5f4ff48898424283c0000488d44240848898424303c0000488d058509440048898424383c0000488d3d823bf7fd488db424103c0000ff15704b5003'),
+    'query_call': (STARTUP_FDE, 0x2269e1a, '8b8bd04900000fb693d4490000488d83d54900008893d9490000898bd5490000488983803c0000488d8ba849000048898c2480000000c683a84900000048c783883c000002000000488983a03c0000c683a049000000488db3883c0000488dbc2420010000488b9424c0000000e8941c00004c8bbc2420010000498d4424414939c70f841a0a0000488bac24280100004c8bac2430010000488b84243801000048894424184c8ba424400100000f108424480100000f298424103c0000660f10842458010000660f298424203c0000488b84246801000048898424303c000080bba049000003753b0fb68398490000bf0801000085c0741e83f80375260fb6839249000083f8030f849a020000bf1005000085c0750d4803bc2498000000e8134bfdff'),
+    'reply_dispatch': (STARTUP_FDE, 0x2269f3d, '48b800000000000000804883c0404939c70f85a602000048896c24204c896c2428488b44241848894424304c896424384883fd02757e488b842480000000c60001660f28842400770000660f288c2410770000660f29442450660f294c2460488b842420770000488944247041f6c5010f8498000000488db3b04900008b83d04900008b93d449000048c1e2204809c2488dbc2420010000488b4c24184d89e0e8ce835e0049bc0000000000000080e912040000bf1e000000ff15dc3f50034885c00f846d1100004989c6488d7c24280f1005e9d916fe0f11400e660f1005cfd916fe660f11004885ed49bf00000000000000800f84500100004883fd010f8556010000e8aa976400e961010000'),
+    'no_heights_log': (STARTUP_FDE, 0x226a04b, '488d7c2420ff154a4850038b4424208984246c010000c784246001000001000000488b442424488984246401000049bc00000000000000804c89a42420010000488d0570d316fe488984244001000048c78424480100001600000048c78424500100000800000048c7842458010000000000008b05a40a510385c04c8db424200100000f85340f0000660f10057c0a5103660f11842400770000488d83d049000048894424084c89b424103c0000488d05e00f710048898424183c0000488d84240077000048898424203c0000488d0571d2f4ff48898424283c0000488d44240848898424303c0000488d052506440048898424383c0000488d3d6c1cf8fd488db424103c0000ff1510485003488bb424200100004c39e60f849a0200004885f60f8491020000488bbc242801000031d2ff158e3e5003e97c020000'),
+    'query_error': (STARTUP_FDE, 0x226a1ac, '4983c72bb81e0000004889442418bd1e000000eb704c8db318450000488dbb90450000e87c48fdff4c89f7e8743afeffc683914900000048b800000000000000804883c0404939c70f845afdffff660f288424103c0000660f288c24203c0000660f29842400770000660f298c2410770000488b8424303c000048898424207700004d89ee488b842480000000c60001660f28842400770000660f288c2410770000660f29442450660f294c2460488b84242077000048894424704c89bc24103c00004889ac24183c00004c89b424203c0000488b4c241848898c24283c00004c89a424303c0000660f118424383c0000660f118c24483c000048898424583c0000488d7c2408ff15e74550038b4424088984246c010000c784246001000001000000488b44240c488984246401000049bc00000000000000804c89a42420010000488d050dd116fe488984244001000048c78424480100001600000048c78424500100000800000048c7842458010000000000008b054108510385c04c8db424200100000f85ff0b0000660f100519085103660f11442420488d83d049000048894424484c89b42400770000488d05800d71004889842408770000488d4424204889842410770000488d0514d0f4ff4889842418770000488d8424103c00004889842420770000488b05659250034889842428770000488d4424484889842430770000488d05a90344004889842438770000488d3d9141f8fd488db42400770000ff1594455003488bb424200100004c39e674154885f67410488bbc242801000031d2ff151a3c5003488dbc24103c0000e86d0bfeff488b83703c0000488b8b783c00004839c80f85bef8ffff'),
+    'got_heights_log': (STARTUP_FDE, 0x226a4a2, '4c8dabb04900004c896c2408488d84242001000048898424103c0000488d051b0c710048898424183c0000488d84240077000048898424203c0000488d2daccef4ff4889ac24283c0000488d44240848898424303c0000488d05f00b440048898424383c0000488d3d32d1f7fd488db424103c0000ff154b445003488bb424200100004c39e674154885f67410488bbc242801000031d2ff15d13a5003'),
     'select_guard_loop': (STARTUP_FDE, 0x226a53f, '488b83c04900004883f8014c896c2418771b0f857b010000488b8bc8490000488b0948837910010f8566010000488b8bb0490000488b93b849000031f64885c9400f95c6480f44c14889b424103c000048c78424183c00000000000048898c24203c000048899424283c00004889b424303c000048c78424383c00000000000048898c24403c000048899424483c000048898424503c0000488dbc24103c0000e80c4f57004885c00f84730b00004885d20f846a0b00004c8b3a4c8b7208488b8424503c00004889842460010000660f108424103c0000660f108c24203c00000f109424303c00000f109c24403c00000f299c24500100000f29942440010000660f298c2430010000660f29842420010000488dbc2420010000e8924e57004885c00f94c04885d20f94c108c1754a4c8da42420010000662e0f1f840000000000488b2a4c8b6a084c89e7e8614e570031c94d39ee0f97c131f64939ef400f97c60f44f14084f64c0f44fd4d0f44f54885c074054885d275c848b800000000000000804c8d684041b401488d2dc0ccf4ffeb47'),
     'select_error': (STARTUP_FDE, 0x226a6d2, '41bf2b000000bf2b000000ff15f53850034885c00f849b0a00004989c60f100589d216fe0f11401b0f100573d216fe0f114010660f100557d216fe660f11004d8d6c242b4531e4488b7c2418e8cd906400c683da490000014c89abd83b00004c89bbe03b00004c89b3e83b000048c783f03b00002b0000004584e40f85bf010000'),
     'select_retry': (STARTUP_FDE, 0x226a753, '488d83d83b0000488d8b883c00000f1040400f1183c83c0000660f1000660f1048100f1050200f1058300f119bb83c00000f1193a83c0000660f118b983c0000660f1183883c0000488b83303c00004883c008488d93583c000048898424200100004889ac24280100004889942430010000488b05c4385003488984243801000048898c2440010000488b051d8e50034889842448010000488d35647af8fd488dbc24103c0000488d942420010000ff153838500349bc0000000000000080488b8424203c0000488b8c24b0000000488941100f108424103c00000f1101c683683c0000000f1001488b411048898424300100000f298424200100004c8db3403c0000488bb3403c00004c39e674144885f6740f488bbb483c000031d2ff159a375003c683693c000001488b842430010000498946100f28842420010000410f1106488b83303c0000f20f104020f20f1183d83c00004c8db3703d0000c683703d000000e910f3ffff'),
@@ -96,6 +103,23 @@ SELECT_BRANCHES = {
     'error_retry_back': (0x226a8b7, 5, 0x2269bcc),
 }
 ITER_NEXT = 0x27df4f0
+# (branch or call VA, instruction length, expected target)
+QUERY_FLOW = {
+    'empty_list_to_got_heights': (0x2269cd2, 6, 0x226a41a), 'request_call': (0x2269e87, 5, 0x226bb20),
+    'pending_to_yield': (0x2269e9c, 6, 0x226a8bc), 'not_ok_to_error': (0x2269f4e, 6, 0x226a1fa),
+    'variant_not_2_to_error': (0x2269f71, 2, 0x2269ff1), 'none_to_no_heights': (0x2269fad, 6, 0x226a04b),
+    'insert_call': (0x2269fdd, 5, 0x28523b0), 'insert_to_next': (0x2269fec, 5, 0x226a403),
+    'no_heights_to_next': (0x226a182, 5, 0x226a403), 'variant_error_to_log': (0x226a1bf, 2, 0x226a231),
+    'next_peer': (0x226a414, 6, 0x2269cd8),
+}
+QUERY_TEMPLATES = {0x2269de3: (0x1dd96c, b' @@ querying height @@ [rpc_ip: '),
+                   0x226a143: (0x1ebdb6, b' @@ no heights from node @@ [rpc_ip: '),
+                   0x226a3bf: (0x1ee557, b' @@ unable to query height: '),
+                   0x226a508: (GOT_HEIGHTS_TEMPLATE, b' @@ got heights @@ [ip_to_heights: ')}
+REQUEST_FDE, RPC_TIMEOUT_WINDOW = 0x226bb20, 0x226bb82
+VARIANT_ERROR = b'incorrect rpc response variant'
+LOOP_RANGE = (0x2269cd8, 0x226a41a)
+BACK_EDGE_R12 = (0x2269fe2, 0x226a079, 0x226a2dc)
 ITER_CALLS = (0x226a5df, 0x226a659, 0x226a68a)
 SELECT_ERROR = b'unable to find at least 2 valid rpc heights'
 RETRY_TEMPLATE = 0x1f2256
@@ -208,6 +232,42 @@ def placeholder_before(pieces, literal):
     raise EvidenceError(f'literal {literal!r} not in template')
 
 
+def flow_target(img, va, n):
+    return va + 2 + struct.unpack('<b', img.read(va + 1, 1))[0] if n == 2 else img.rip(va, n)
+
+
+def check_queries(img):
+    for name, (va, n, want) in QUERY_FLOW.items():
+        got = flow_target(img, va, n)
+        require(got == want, f'{name} at {va:#x} goes to {got:#x}')
+    for lea, (want, literal) in QUERY_TEMPLATES.items():
+        tpl = img.rip(lea, 7)
+        require(tpl == want and literal in template(img, tpl), f'template at LEA {lea:#x} changed')
+    require(img.i32(0x2269e57 + 7) == 2, 'request tag is not 2')
+    start, end = img.fde(REQUEST_FDE)
+    require(start < RPC_TIMEOUT_WINDOW < end, f'0x226bb82 is not inside FDE {REQUEST_FDE:#x}')
+    pieces = {0x0e: img.rip(0x226a00d, 7), 0x00: img.rip(0x226a018, 8)}
+    buf = bytearray(30)
+    for off, src in sorted(pieces.items(), reverse=True):
+        buf[off:off + 16] = img.read(src, 16)
+    require(bytes(buf) == VARIANT_ERROR and img.i32(0x2269ff1 + 1) == 30, f'variant error rebuilt as {bytes(buf)!r}')
+    for va in BACK_EDGE_R12:
+        require(img.read(va, 10) == bytes.fromhex('49bc0000000000000080'), f'r12 reset at {va:#x} changed')
+    lo, hi = LOOP_RANGE
+    code = img.read(lo, hi - lo)
+    local = [hex(lo + i - 1) for i in range(1, len(code) - 4)
+             if code[i] & 0xc7 == 0x83 and code[i + 1:i + 5] == b'\xb0\x00\x00\x00']
+    require(not local, f'[rbx+0xb0] operands in the query loop: {local}')
+    return dict(peer_list='[[rbx+0x3c30]] stored to [rbx+0x49c8]; data [+0x8], length [+0x10], 5-byte entries',
+                current_peer='[rbx+0x49d0] (4 bytes) and [rbx+0x49d4] (1 byte)', request_tag=2,
+                request_fde=[hex(start), hex(end)], ok_reply_variant=2,
+                insert='[rsp+0x138], [rsp+0x140] into [rbx+0x49b0] keyed by the current peer, when [rsp+0x130] bit 0 is set',
+                variant_error=dict(text=VARIANT_ERROR.decode(), pieces={hex(k): hex(v) for k, v in pieces.items()}),
+                templates={hex(k): hex(v[0]) for k, v in QUERY_TEMPLATES.items()},
+                flow={k: hex(v[2]) for k, v in QUERY_FLOW.items()},
+                local_height_operands_in_loop=0, r12_reset_on_back_edges=[hex(v) for v in BACK_EDGE_R12])
+
+
 def check_selection(img):
     for name, (va, n, want) in SELECT_BRANCHES.items():
         got = img.rip(va, n) if n != 2 else va + 2 + struct.unpack('<b', img.read(va + 1, 1))[0]
@@ -230,7 +290,7 @@ def check_selection(img):
     require(tpl == RETRY_TEMPLATE and img.read(tpl + 1, 29) == b'AsyncSleepRetry::retry desc=[',
             f'retry template at {tpl:#x} changed')
     return dict(map='[rbx+0x49b0] (root, height, len at +0x10)', got_heights_template=hex(GOT_HEIGHTS_TEMPLATE),
-                proceed_when='len > 1, or len == 1 and [[[rbx+0x49c8]]+0x10] == 1',
+                proceed_when='len > 1, or len == 1 and the queried peer list length [[[rbx+0x49c8]]+0x10] == 1',
                 iterator_next=hex(ITER_NEXT), value_fields={'+0x0': 'initial_height (r15)', '+0x8': 'latest_height (r14)'},
                 keep='lexicographic max of (initial_height, latest_height); a later equal pair replaces',
                 error=dict(text=SELECT_ERROR.decode(), len=len(SELECT_ERROR), pieces={hex(k): hex(v) for k, v in loads.items()}),
@@ -396,6 +456,16 @@ def check_callers(img):
                 caller_states_when_al_set=states, future_strings=strings)
 
 
+def collect_heights(replies):
+    """The 0x2269cd8 loop: replies is [(peer, reply)], reply None for an RPC error, else (variant, heights or None)."""
+    out = {}
+    for peer, reply in replies:
+        if reply is None or reply[0] != 2 or reply[1] is None:
+            continue
+        out[peer] = reply[1]
+    return out
+
+
 def select_heights(values, other_len=0):
     """The 0x226a53f loop: None for the error path, else the kept (initial, latest)."""
     if not (len(values) > 1 or (len(values) == 1 and other_len == 1)):
@@ -419,7 +489,7 @@ def freshness_panics(deadline, now):
 def analyse(data):
     img = Image(data)
     return dict(target=TARGET, windows={k: hex(v) for k, v in windows(img).items()},
-                height_selection=check_selection(img), status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=check_freshness(img),
+                peer_queries=check_queries(img), height_selection=check_selection(img), status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=check_freshness(img),
                 callers=check_callers(img))
 
 
