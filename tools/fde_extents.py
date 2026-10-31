@@ -68,6 +68,8 @@ def pcrel(data, pos, end, base_va, offset_base):
 
 
 def parse_cie(data, start, body, end, va, base):
+    if body >= end:
+        raise ValueError(f'Truncated CIE record at {va + start - base:#x}')
     version = data[body]
     if version != 1:
         raise ValueError(f'Unsupported CIE version {version} at {va + start - base:#x}')
