@@ -366,5 +366,43 @@ class FdeTableBounds(unittest.TestCase):
         with self.assertRaisesRegex(bv.EvidenceError, 'malformed'):
             bv.fde_extents(data, bv.sections(data))
 
+
+
+def elf_with_names(inside, outside=b''):
+    """ELF64 whose .shstrtab is `inside` and whose next file bytes are `outside`."""
+    shstr_off = 64
+    labels = [b'', b'.text', b'.eh_frame', b'.eh_frame_hdr', b'.rela.dyn',
+              b'.data.rel.ro', b'.rodata', b'.shstrtab', b'.extra']
+    shoff = shstr_off + len(inside) + len(outside)
+
+    def name_off(label):
+        if label == b'':
+            return 0
+        return inside.index(label)
+
+    headers = b''
+    for label in labels:
+        off, size = (shstr_off, len(inside)) if label == b'.shstrtab' else (0, 0)
+        headers += struct.pack('<IIQQQQIIQQ', name_off(label), 3 if label == b'.shstrtab' else 1,
+                               0, 0, off, size, 0, 0, 1, 0)
+    header = bytearray(64)
+    header[0:6] = b'\x7fELF\x02\x01'
+    struct.pack_into('<Q', header, 40, shoff)
+    struct.pack_into('<HHH', header, 58, 64, len(labels), labels.index(b'.shstrtab'))
+    return bytes(header) + inside + outside + headers
+
+NAMES = (b'\0.text\0.eh_frame\0.eh_frame_hdr\0.rela.dyn\0.data.rel.ro\0'
+         b'.rodata\0.shstrtab\0')
+
+class SectionNameBounds(unittest.TestCase):
+    def test_name_terminated_inside_shstrtab_is_kept(self):
+        data = elf_with_names(NAMES + b'.extra\0')
+        self.assertIn('.extra', bv.sections(data))
+
+    def test_name_finished_outside_shstrtab_is_rejected(self):
+        data = elf_with_names(NAMES + b'.extra', b'_name\0')
+        with self.assertRaisesRegex(bv.EvidenceError, 'unterminated section name'):
+            bv.sections(data)
+
 if __name__ == '__main__':
     unittest.main()

@@ -132,17 +132,22 @@ def sections(data):
     if shstrndx >= shnum:
         raise EvidenceError('section name string table index out of range')
     raw = [struct.unpack_from('<IIQQQQIIQQ', data, shoff + i * 64) for i in range(shnum)]
-    stro = raw[shstrndx][4]
+    stro, strsize = raw[shstrndx][4], raw[shstrndx][5]
+    if stro > len(data) or strsize > len(data) - stro:
+        raise EvidenceError('section name table extends past end of file')
+    table = data[stro:stro + strsize]
     out = {}
     for h in raw:
-        if h[1] == 8:  # SHT_NOBITS occupies no file bytes; mapping its VAs would
-            continue  # return unrelated file bytes as if they lived there.
+        if h[1] == 8:  # NOBITS has no bytes to map.
+            continue
+        name_off = h[0]
+        if name_off >= len(table):
+            raise EvidenceError('section name offset outside .shstrtab')
+        end = table.find(b'\0', name_off)
+        if end < 0:
+            raise EvidenceError('unterminated section name; section name is not NUL-terminated')
         try:
-            end = data.index(b'\0', stro + h[0])
-        except ValueError:
-            raise EvidenceError('section name is not NUL-terminated')
-        try:
-            name = data[stro + h[0]:end].decode()
+            name = table[name_off:end].decode()
         except UnicodeDecodeError:
             raise EvidenceError('section name is not valid UTF-8')
         if name in out:
