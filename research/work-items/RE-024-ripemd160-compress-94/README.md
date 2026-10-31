@@ -33,10 +33,10 @@ unicorn, everything is static.
 ```bash
 # static only (no unicorn required)
 PYTHONHASHSEED=0 python3 -B tools/ripemd160_compress.py --no-emu \
-  -o /tmp/out.json
+  -o out.json
 
 # with Unicorn behavioural proof (optional)
-python3 -B tools/ripemd160_compress.py -o /tmp/out.json
+python3 -B tools/ripemd160_compress.py -o out.json
 
 # packet verify (emu soft-skipped when unicorn missing)
 python3 -I -B research/work-items/RE-024-ripemd160-compress-94/verify.py
