@@ -88,6 +88,13 @@ class Results(unittest.TestCase):
                          ('/home/ubuntu/hl/code_Mainnet/node/src/hl_node.rs', 346, 9))
         self.assertEqual(f['slots']['panic'], ['0x576e098', '0x157b810'])
 
+    def test_callers(self):
+        c = self.result['callers']
+        self.assertEqual((c['direct_calls'], c['caller_fde'], c['caller_states_when_al_set']),
+                         (['0x22aef61', '0x22affe7'], '0x22ae8a0', [10, 11]))
+        self.assertEqual(c['state0_arm'], '0x2271d38')
+        self.assertEqual(sorted(c['future_strings'].values()), ['check_reachability_firewall_ips', 'failed to load firewall ips'])
+
     def test_packet_matches_regeneration(self):
         expected = json.loads(PACKET.read_text())
         got = dict(self.result, target_sha256=load()['sha256'])
@@ -144,6 +151,14 @@ class Corruptions(unittest.TestCase):
             if where == 0x576e098 and info & 0xffffffff == 8:
                 struct.pack_into('<q', data, pos + 16, 0x157b840)
         self.refuses(bytes(data), 'panic slot does not reach the panic shim')
+
+    def test_extra_caller(self):
+        site = la.STARTUP_FDE + 0x100
+        self.refuses(patched((site, b'\xe8' + struct.pack('<i', la.FRESH_FDE - (site + 5)))),
+                     r"direct calls to 0x2271d00: \['0x2268af0', '0x22aef61', '0x22affe7'\]")
+
+    def test_state0_arm_moved(self):
+        self.refuses(patched((la.POLL_TABLE, struct.pack('<i', 0x2272398 - la.POLL_TABLE))), 'state-0 arm is 0x2272398')
 
     def test_template_text(self):
         self.refuses(patched((0x1ed195, b'U')), 'freshness template 0x1ed194 changed')

@@ -166,8 +166,48 @@
  2271e88:	84 c0                	test   al,al
  2271e8a:	74 ac                	je     2271e38 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d35fc8>
 
+## 0x2271d00 poll dispatch on [rdi+0x756] and state-0 arm head [0x2271d17, 0x2271d52)
+ 2271d17:	49 bd 00 00 00 00 00 	movabs r13,0x8000000000000000
+ 2271d1e:	00 00 80
+ 2271d21:	0f b6 87 56 07 00 00 	movzx  eax,BYTE PTR [rdi+0x756]
+ 2271d28:	48 8d 0d e1 41 16 fe 	lea    rcx,[rip+0xfffffffffe1641e1]        # 3d5f10 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4bd1ef0>
+ 2271d2f:	48 63 04 81          	movsxd rax,DWORD PTR [rcx+rax*4]
+ 2271d33:	48 01 c8             	add    rax,rcx
+ 2271d36:	ff e0                	jmp    rax
+ 2271d38:	48 89 ac 24 30 01 00 	mov    QWORD PTR [rsp+0x130],rbp
+ 2271d3f:	00
+ 2271d40:	c6 83 54 07 00 00 00 	mov    BYTE PTR [rbx+0x754],0x0
+ 2271d47:	0f b6 83 55 07 00 00 	movzx  eax,BYTE PTR [rbx+0x755]
+ 2271d4e:	88 44 24 0f          	mov    BYTE PTR [rsp+0xf],al
+
 ## 0x2271d00 ud2 after the panic call [0x227283d, 0x227283f)
  227283d:	0f 0b                	ud2
+
+## 0x22ae8a0 first call of 0x2271d00 (state 0xa when al set) [0x22aef54, 0x22aef73)
+ 22aef54:	4c 89 ee             	mov    rsi,r13
+ 22aef57:	4c 8d b5 f8 21 00 00 	lea    r14,[rbp+0x21f8]
+ 22aef5e:	4c 89 f7             	mov    rdi,r14
+ 22aef61:	e8 9a 2d fc ff       	call   2271d00 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d36100>
+ 22aef66:	84 c0                	test   al,al
+ 22aef68:	74 09                	je     22aef73 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2cf8e8d>
+ 22aef6a:	b0 01                	mov    al,0x1
+ 22aef6c:	b1 0a                	mov    cl,0xa
+ 22aef6e:	e9 6a 13 00 00       	jmp    22b02dd <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2cf7b23>
+
+## 0x22ae8a0 second call of 0x2271d00 (state 0xb when al set) [0x22affbf, 0x22afff9)
+ 22affbf:	0f b6 85 e8 01 00 00 	movzx  eax,BYTE PTR [rbp+0x1e8]
+ 22affc6:	48 89 9d 70 29 00 00 	mov    QWORD PTR [rbp+0x2970],rbx
+ 22affcd:	88 85 85 29 00 00    	mov    BYTE PTR [rbp+0x2985],al
+ 22affd3:	c6 85 86 29 00 00 00 	mov    BYTE PTR [rbp+0x2986],0x0
+ 22affda:	4c 8d b5 30 22 00 00 	lea    r14,[rbp+0x2230]
+ 22affe1:	4c 89 f7             	mov    rdi,r14
+ 22affe4:	49 89 f5             	mov    r13,rsi
+ 22affe7:	e8 14 1d fc ff       	call   2271d00 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d36100>
+ 22affec:	84 c0                	test   al,al
+ 22affee:	74 09                	je     22afff9 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2cf7e07>
+ 22afff0:	b0 01                	mov    al,0x1
+ 22afff2:	b1 0b                	mov    cl,0xb
+ 22afff4:	e9 e4 02 00 00       	jmp    22b02dd <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2cf7b23>
 
 ## 0x157b810 panic shim (whole FDE) [0x157b810, 0x157b83c)
  157b810:	55                   	push   rbp

@@ -16,10 +16,12 @@ lead (`node/local_abci_state.rs`, `node/startup.rs`) differ?
   copied.
 - Claim status: observation for byte-level facts, inference where marked,
   unresolved where listed. Partial `node-runtime` research; no gate change.
-- Scope: eight fixed windows in `0x22689f0` (the lead's
-  `local_abci_state.rs` seed), `0x2271d00` and the panic shim `0x157b810`.
+- Scope: eleven fixed windows in `0x22689f0` (the lead's
+  `local_abci_state.rs` seed), `0x2271d00`, its caller `0x22ae8a0` and the
+  panic shim `0x157b810`.
   Excluded: how the compared heights and the timestamp are produced, what the
-  logged tolerance is used for, the callers of `0x2271d00`, and release #115.
+  logged tolerance is used for, the rest of the `0x22ae8a0` state machine, and
+  release #115.
 
 ## Reproduce
 
@@ -35,8 +37,8 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 8
-windows (163 instructions), one per checked byte window. All 13 code VAs in
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 11
+windows (197 instructions), one per checked byte window. All 19 code VAs in
 `records.json` are instruction starts in those windows.
 
 Format templates are decoded as rustc 1.94 packs them: a byte below 0x80 is a
@@ -124,6 +126,27 @@ Inference: the 12 bytes are a date-time {date, seconds of day, fraction}. The
 check panics iff `abci_state_time + 600 s < now`, and the same 600 is printed
 as the f64 `600.0` in the message.
 
+### Where the freshness check runs (observation)
+
+- **Dispatch:** `0x2271d00` dispatches on the byte `[rdi+0x756]` through the
+  table at `0x3d5f10`. Entry 0 is `0x2271d38`, which runs straight-line into
+  the freshness window.
+- **Strings:** the same FDE LEAs `check_reachability_firewall_ips`
+  (`0x2271f1e`) and `failed to load firewall ips` (`0x22722c1`).
+- **Callers:** a scan of every `e8`/`e9` in `.text` finds exactly two direct
+  calls to `0x2271d00`, both in `0x22ae8a0`, at `0x22aef61` and `0x22affe7`.
+  The lead calls `0x22ae8a0` the hl-node startup orchestrator. After each
+  call, a set `al` leads to `mov cl,0xa` or `mov cl,0xb` and a jump to
+  `0x22b02dd`.
+- **Second call site:** the second call follows a log call whose template
+  (LEA at `0x22aff7c`, outside the checked windows and not checked by the tool)
+  reads `@@ checking reachability first before changing validator ip from {} to {}`.
+
+Inference: following rustc's async layout, state 0 is the first poll. So the
+600 s freshness panic is the first step of the future the lead names
+`poll_check_reachability_firewall_ips`. The orchestrator polls it from two
+states, 0xa and 0xb, and treats a set `al` as pending.
+
 ## Comparison with the lead
 
 - **0x4e20:** `NODE_IP_FRESHNESS_TOLERANCE = Duration::from_secs(0x4e20)`
@@ -134,7 +157,9 @@ as the f64 `600.0` in the message.
 - **Freshness check:** the lead's `StateFileTooOld` (age > 0x4e20 s,
   returned as a stale reason) does not match the binary. In the binary the
   `use an abci state within … seconds` message belongs to a 600 s check that
-  panics at `hl_node.rs:346:9`. The lead places it in `local_abci_state.rs`.
+  panics at `hl_node.rs:346:9`, at the start of the future the lead itself
+  names `poll_check_reachability_firewall_ips` (in `hl_node.rs`). The lead
+  places the message in `local_abci_state.rs`.
 - **Height lag:** `MAX_LOCAL_HEIGHT_LAG` is 200 in `local_abci_state.rs` and
   1_000 in `startup.rs`; the binary uses 20000. `startup.rs:500` tests
   `target - local > LAG`. The binary rejects at
@@ -147,7 +172,7 @@ as the f64 `600.0` in the message.
 
 ## Controls
 
-`tests/test_local_abci_gates_static.py` (18 tests) regenerates
+`tests/test_local_abci_gates_static.py` (21 tests) regenerates
 `records.json` and checks three models: the height gate including
 saturation, the day division against exact truncating division, and the
 lexicographic compare. It refuses each of these corruptions:
@@ -162,6 +187,8 @@ lexicographic compare. It refuses each of these corruptions:
 - The Location file changed.
 - The panic slot's RELATIVE addend redirected.
 - The freshness template text changed.
+- An extra direct call to `0x2271d00` planted.
+- Dispatch-table entry 0 moved.
 
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
 producer does not use either.
@@ -173,6 +200,7 @@ producer does not use either.
 - The exact path from `0x2269034` to `0x226915c`, and any jump-table edge into
   the join.
 - What the logged 540/840 tolerance controls.
-- Who calls `0x2271d00` and what `[rbx+0x740]+0x60` holds.
+- What `[rbx+0x740]+0x60` holds, and which orchestrator paths reach states
+  0xa and 0xb.
 - The identities of `0x15206e0`, `0x151f870`, `0x151cba0` and `0x4ecdcf0`
   (inferred above, not proven).

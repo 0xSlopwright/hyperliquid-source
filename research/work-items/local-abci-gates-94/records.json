@@ -1,4 +1,21 @@
 {
+  "callers": {
+    "caller_fde": "0x22ae8a0",
+    "caller_states_when_al_set": [
+      10,
+      11
+    ],
+    "direct_calls": [
+      "0x22aef61",
+      "0x22affe7"
+    ],
+    "future_strings": {
+      "0x2271f1e": "check_reachability_firewall_ips",
+      "0x22722c1": "failed to load firewall ips"
+    },
+    "poll_table": "0x3d5f10",
+    "state0_arm": "0x2271d38"
+  },
   "freshness": {
     "added_seconds": 600,
     "after_panic": "0x227283d",
@@ -85,10 +102,13 @@
   },
   "windows": {
     "after_panic": "0x227283d",
+    "call_a": "0x22aef54",
+    "call_b": "0x22affbf",
     "freshness": "0x2271d52",
     "gate": "0x226ab0a",
     "hardfork_log": "0x226911b",
     "panic_shim": "0x157b810",
+    "poll_entry": "0x2271d17",
     "select_540": "0x226900c",
     "select_840": "0x226915c",
     "tolerance_log": "0x226928a"

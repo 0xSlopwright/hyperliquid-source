@@ -29,6 +29,9 @@ TARGET = 'artifacts/node/94/hl-node'
 STARTUP_FDE = 0x22689f0
 FRESH_FDE = 0x2271d00
 PANIC_SHIM = 0x157b810
+ORCHESTRATOR_FDE = 0x22ae8a0
+POLL_TABLE = 0x3d5f10
+FUTURE_STRINGS = {0x2271f1e: b'check_reachability_firewall_ips', 0x22722c1: b'failed to load firewall ips'}
 
 WINDOWS = {
     'gate': (STARTUP_FDE, 0x226ab0a,
@@ -58,7 +61,14 @@ WINDOWS = {
                   '488d842438010000' '4889442410' '488b05cccb4f03' '4889442418' '488d842440010000'
                   '4889442420' '488b05c3d64f03' '4889442428' '488d3d23b3f7fd' '488d15d0ca4203' '488d742410'
                   'ff1515c24f03' 'e9b5090000' '84c0' '74ac'),
+    'poll_entry': (FRESH_FDE, 0x2271d17,
+                   '49bd0000000000000080' '0fb68756070000' '488d0de14116fe' '48630481' '4801c8' 'ffe0'
+                   '4889ac2430010000' 'c6835407000000' '0fb68355070000' '8844240f'),
     'after_panic': (FRESH_FDE, 0x227283d, '0f0b'),
+    'call_a': (ORCHESTRATOR_FDE, 0x22aef54, '4c89ee' '4c8db5f8210000' '4c89f7' 'e89a2dfcff' '84c0' '7409' 'b001' 'b10a' 'e96a130000'),
+    'call_b': (ORCHESTRATOR_FDE, 0x22affbf,
+               '0fb685e8010000' '48899d70290000' '888585290000' 'c6858629000000' '4c8db530220000' '4c89f7' '4989f5'
+               'e8141dfcff' '84c0' '7409' 'b001' 'b10b' 'e9e4020000'),
     'panic_shim': (PANIC_SHIM, PANIC_SHIM,
                    '55' '4889e5' '4883ec30' '48897df0' '488975f8' '488d45f0' '488945d8' '488955e0'
                    '66c745e80100' '488d7dd8' 'ff15a44e1f04'),
@@ -273,6 +283,34 @@ def check_freshness(img):
                 compare='panic iff (date, secs, frac) of state_time + 600 s < now (lexicographic)')
 
 
+def check_callers(img):
+    entry = WINDOWS['poll_entry'][1]
+    require(img.rip(entry + 0x11, 7) == POLL_TABLE, 'poll dispatch table moved')
+    arm0 = POLL_TABLE + img.i32(POLL_TABLE)
+    require(arm0 == entry + 0x21, f'state-0 arm is {arm0:#x}')
+    require(entry + len(bytes.fromhex(WINDOWS['poll_entry'][2])) == WINDOWS['freshness'][1],
+            'state-0 arm does not run straight into the freshness window')
+    text = next(x for x in img.secs if x['name'] == '.text' and x['type'] != 8)
+    body = img.data[text['offset']:text['offset'] + text['size']]
+    calls = []
+    for m in re.finditer(rb'[\xe8\xe9]', body):
+        o = m.start()
+        if o + 5 <= len(body) and text['address'] + o + 5 + struct.unpack_from('<i', body, o + 1)[0] == FRESH_FDE:
+            calls.append(hex(text['address'] + o))
+    want = [hex(WINDOWS['call_a'][1] + 0x0d), hex(WINDOWS['call_b'][1] + 0x28)]
+    require(calls == want, f'direct calls to {FRESH_FDE:#x}: {calls}')
+    states = [img.read(WINDOWS['call_a'][1] + 0x19, 1)[0], img.read(WINDOWS['call_b'][1] + 0x34, 1)[0]]
+    strings = {}
+    for lea, text_ in FUTURE_STRINGS.items():
+        start, end = img.fde(FRESH_FDE)
+        require(start <= lea < end, f'LEA {lea:#x} outside {FRESH_FDE:#x}')
+        target = img.rip(lea, 7)
+        require(img.read(target, len(text_)) == text_, f'string at {target:#x} is not {text_!r}')
+        strings[hex(lea)] = text_.decode()
+    return dict(poll_table=hex(POLL_TABLE), state0_arm=hex(arm0), direct_calls=calls, caller_fde=hex(ORCHESTRATOR_FDE),
+                caller_states_when_al_set=states, future_strings=strings)
+
+
 def too_far_behind(local, target):
     return min(local + 0x4e20, 2 ** 64 - 1) <= target
 
@@ -284,7 +322,8 @@ def freshness_panics(deadline, now):
 def analyse(data):
     img = Image(data)
     return dict(target=TARGET, windows={k: hex(v) for k, v in windows(img).items()},
-                height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=check_freshness(img))
+                height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=check_freshness(img),
+                callers=check_callers(img))
 
 
 def main(argv=None):
