@@ -8,8 +8,8 @@
       "got": "0x576e890",
       "target": "0x151f6f0"
     },
-    "observed": "zeroes a 48-byte result, calls the lookup with the constant index, copies the result on success; the error path reaches ud2 through the display panic",
-    "reachability": "cell slot +0x28 only; zero code references",
+    "observed": "initializes stack fields, calls the lookup with the constant index, writes an output through +0x5b on success; the error path reaches ud2 through the display panic",
+    "reachability": "cell slot +0x28 observed; no matching e8/ff15/48-8d encodings",
     "sha256": "83d6b569d6ed016b1ad8a480d37c6bab2d05fe672e883dae52c02409dbdc3423",
     "start_va": "0x3790fc0"
   },
@@ -84,8 +84,8 @@
     "bytes": 18,
     "end_va_exclusive": "0x35ab632",
     "fde_va": "0xe3586c",
-    "observed": "returns rdi after zeroing 24 bytes at [rdi]",
-    "reachability": "cell slot +0x00 only; zero code references",
+    "observed": "returns rdi after zeroing [rdi, rdi+0x10) and [rdi+0x18, rdi+0x20)",
+    "reachability": "cell slot +0x00 observed; no matching e8/ff15/48-8d encodings",
     "sha256": "14804541fc8c70e8b8dabe8dcd16229e36718efdf6a211d253314f012b2354cb",
     "start_va": "0x35ab620"
   }

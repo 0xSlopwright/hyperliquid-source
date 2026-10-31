@@ -211,7 +211,7 @@ def analyze(data):
                      '0x10624dd3 magic with shift 38, the sums convert to double '
                      'and divide by the shared 1e6 double; the result is masked '
                      'with the absolute-value constant pair',
-            overflow_guards='two seto/jne pairs skip the conversion on overflow',
+            overflow_guards='jo after multiplication and seto/test/jne after addition skip conversion on overflow',
             immediates=dict(micros_per_second=1000000, nanos_per_second=1000000000,
                             div1000_magic='0x10624dd3', div1000_shift=38)),
         shared_anchors=dict(one_e6_double='0x20ae60', abs_mask='0x202ed0',

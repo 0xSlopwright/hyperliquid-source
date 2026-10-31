@@ -13,9 +13,9 @@
   sentinel, the exhaustive 146097-day cycle identity, the epoch identity
   resolving the lock-cell accessor's constant, and the whole-`.text` census.
 - Scope excluded: the NaiveDate day-shift body `0x151f870` (bound in
-  `RE-001-chrono-callees-94`), the datediff core (`RE-001-datediff-chrono-94`),
-  the lock cell and accessor (`RE-001-lock-descriptor-94`), the 324 caller
-  families, #115, visor.
+  `RE-001-chrono-shift-helpers-94`), the datediff core (`RE-001-datediff-chrono-94`),
+  the lock cell and accessor (`RE-001-lock-descriptor-94`), the 324 matching
+  call-site encodings, #115, visor.
 
 ## Question
 
@@ -66,8 +66,7 @@ independently confirmed by Python's calendar. The cell the read-lock guards
 publish therefore materializes 1970-01-01 lazily.
 
 Census over the complete `.text`: GOT slot `0x576e890` receives 324 `ff 15`
-call sites with zero direct `e8` and zero `lea` references — by site count
-the most-shared helper measured in this series (the read-lock helper has
+call sites with zero direct `e8` and zero `lea` references — one shared helper measured in this series (the read-lock helper has
 952, this constructor 324, the NaiveTime/NaiveDate pair 133/150). The
 accessor's call site `0x3790ff0` is among them.
 
@@ -93,3 +92,14 @@ calendar oracles, not target equivalence.
 
 Next question: the once machinery `0x4ee3b20` shared by both read-lock
 guards, and a census-driven sample of the 324 constructor callers.
+
+## Independent review scope
+
+The 2026-10-31 review re-authenticated the node #94 digest above and used
+GNU objdump 2.47.20260726 for independent instruction decoding. FDE extents
+are unwind-described ranges; they do not establish complete CFG ownership.
+The whole-`.text` census covers the stated byte encodings, which can also
+occur inside instructions; it is not a complete graph of callable targets
+and does not exclude computed references or other instruction encodings.
+Original retained disassembly and author validation logs remain unchanged.
+See `REVIEW.md` for corrections made during independent review.

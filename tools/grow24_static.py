@@ -3,10 +3,10 @@
 
 Binds the next-stage callee of the argument processor (RE-001-init-entrypoints-94)
 to the node #94 digest: the 103-byte body 0x4f04bb0..0x4f04c17 selects
-max(2 * current, 4) capacities for 8-byte elements on a 0x18 stride, calls its
+max(2 * current, 4) capacities for 24-byte elements with alignment 8, calls its
 own allocator variant 0x4f04fc0 directly, and routes failures through the
-shared error entry — reachable through three distinct GOT slots (64 sites
-total), mirroring the 8-byte growth helper bound in RE-001-crossroads-
+shared error entry — reachable through three distinct GOT slots (63 sites
+total), sharing the capacity-selection shape of the helper in RE-001-crossroads-
 callees-94. Static byte/record checks only; the captured binary is never
 executed.
 """
@@ -26,7 +26,8 @@ FDE_VA = 0xf636f0
 GOT_SLOTS = [0x576ea38, 0x57705a8, 0x5776410]
 ALLOC_FN = 0x4f04fc0
 GOT_ERR, ERR_FN = 0x576dfb8, 0x1346068
-ELEMENT_SIZE = 8
+ALIGNMENT = 8
+ELEMENT_SIZE = 24
 STRIDE = 0x18
 MIN_CAPACITY = 4
 
@@ -36,10 +37,10 @@ ANCHORS = [
     (0x15, '4883f805', 'minimum threshold compare'),
     (0x19, '41be04000000', 'minimum capacity 4'),
     (0x1f, '4c0f43f0', 'cmovae selection'),
-    (0x2b, '41b808000000', 'element size 8'),
+    (0x2b, '41b808000000', 'alignment 8'),
     (0x31, '41b918000000', 'stride 0x18'),
     (0x3a, 'e8d1030000', 'direct allocator call'),
-    (0x3f, '837dd801', 'success tag compare'),
+    (0x3f, '837dd801', 'error tag 1 compare'),
     (0x61, 'ff15', 'error path call'),
 ]
 
@@ -121,9 +122,9 @@ def analyze(data):
         expected = doubled if doubled >= 5 else MIN_CAPACITY
         require(expected == max(doubled, MIN_CAPACITY),
                 f'Capacity identity failed for {current}')
-    require(STRIDE == ELEMENT_SIZE * 3, 'stride must be three elements')
+    require(STRIDE == ELEMENT_SIZE == 3 * 8, 'element stride must be three qwords')
 
-    # Census: three GOT slots, 64 sites total, no direct or lea references.
+    # Census: three GOT slots, 63 sites total, no direct or lea references.
     text = reader.by_name['.text']
     code = reader.read(text['address'], text['size'])
     direct, indirect, lea = [], [], []
@@ -158,12 +159,12 @@ def analyze(data):
         growth24=dict(start_va=hex(START), end_va_exclusive=hex(END),
                       bytes=len(body), sha256=hashlib.sha256(body).hexdigest(),
                       fde_va=hex(FDE_VA), got_slots=[hex(s) for s in GOT_SLOTS],
-                      allocator=hex(ALLOC_FN), element_size=ELEMENT_SIZE,
+                      allocator=hex(ALLOC_FN), element_size=ELEMENT_SIZE, alignment=ALIGNMENT,
                       stride=STRIDE,
                       inferred_label='capacity growth for 24-byte elements, '
-                                     'sibling of the 8-byte helper'),
+                                     'sharing the capacity-selection shape of 0x454e5b0'),
         identities=dict(capacity_selection='max(2 * current, 4) on a grid',
-                        stride='0x18 == 3 elements of 8 bytes'),
+                        stride='0x18 == 3 qwords; alignment is 8'),
         call_census=dict(got_slots=len(GOT_SLOTS), got_indirect_sites=CALLER_COUNT,
                          direct_e8=0, lea_refs=0,
                          entrypoint_site=hex(ENTRYPOINT_SITE),

@@ -6,7 +6,7 @@
     "cell": "0x577ab80",
     "end_va_exclusive": "0x143f4e7",
     "fde_va": "0xfcef20",
-    "inferred_label": "build-mode argument normalizer behind the ship-complete lazy cell",
+    "inferred_label": "build-mode argument normalizer behind the lazy cell whose nonzero state enters Once",
     "sha256": "35744d99bdfa9937839e55ef17390c8138467f81205f9622eb188f13b1b93f33",
     "start_va": "0x143ef30"
   },
@@ -47,7 +47,7 @@
     "prefix_va": "0x2194aa",
     "source_file": "hl/code_Mainnet/base/src/build_mode.rs"
   },
-  "reachability": "cell initializer slot only; zero code references",
+  "reachability": "cell initializer relocation observed; no matching e8/ff15/48-8d encodings",
   "target_release": "94",
   "target_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
 }

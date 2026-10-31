@@ -53,7 +53,7 @@
       "va": "0x7cb390"
     },
     "mask": 3,
-    "observed": "two-bit state with a waiter bit; two lock cmpxchg sites and one xchg completion store",
+    "observed": "two-bit state with a waiter bit; four lock cmpxchg sites, one xchg completion store and one xchg unwind store",
     "waiter_flag": 4
   },
   "target_release": "94",

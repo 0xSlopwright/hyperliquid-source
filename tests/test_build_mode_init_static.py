@@ -46,7 +46,7 @@ class BuildModeInitEvidenceTests(unittest.TestCase):
 
     def test_reachability_cell_only(self):
         self.assertEqual(self.result['reachability'],
-                         'cell initializer slot only; zero code references')
+                         'cell initializer relocation observed; no matching e8/ff15/48-8d encodings')
         self.assertEqual(self.result['initializer']['cell'], '0x577ab80')
 
     def test_mutation_control_body(self):

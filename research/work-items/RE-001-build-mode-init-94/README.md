@@ -32,7 +32,7 @@ python3 -m unittest discover -s tests -p test_build_mode_init_static.py -v
 ```
 
 The tool authenticates size and SHA-256, then checks the exact body and FDE,
-fifteen anchors, the five lea targets, both string constants, all five
+fifteen anchors, the five lea targets, both string constants, all four
 Location structs (paths, lines, columns), the seven call sites against
 relocations, the assert length operand, the memchr identity, and the
 reachability census. Disassembly text in `observed/` was rendered with
@@ -41,7 +41,7 @@ Platform: Windows 10 22H2, Python 3.11.9.
 
 ## Observations
 
-The body is the project-source function behind the ship-complete cell: its
+The body is the project-source function behind the lazy cell (the getter enters Once when its state is nonzero): its
 panic Locations are `hl/code_Mainnet/base/src/build_mode.rs:29:17` (the
 assertion `assertion failed: !arg.ends_with('/')`) and `:32:26` (an error
 path through the str-error callee). It compares the six-byte prefix
@@ -53,8 +53,9 @@ guards a UTF-8 boundary with `0xc0`, reverses over `-` (`0x2d`) through the
 scan callee, allocates through the entry point shared with the allocator
 shim packet, formats through `0x1344760`, and terminates its panic block
 with `ud2`. The memchr word predicate is validated as no-false-negative:
-every needle placement flags. Reachable only through the cell's initializer
-slot: zero direct, GOT-mediated or `lea` code references.
+the sampled needle placements flag. The initializer slot is an observed
+data reference; the bounded `e8`/`ff 15`/`48 8d` census finds no matching
+code encodings. Other computed references remain unknown.
 
 ## Implementation and comparison
 
@@ -62,7 +63,7 @@ Not implemented: no reconstructed Rust, no two-build comparison.
 
 ## Results and limitations
 
-- 1 body (1463 bytes) + FDE, 15 anchors, 5 lea targets, 2 strings, 5
+- 1 body (1463 bytes) + FDE, 15 anchors, 5 lea targets, 2 strings, 4
   Location structs, 7 call sites against relocations, 1 identity;
   census denominator is the complete `.text` for `e8` / `ff 15` / `lea`
   encodings.
@@ -75,3 +76,14 @@ Not implemented: no reconstructed Rust, no two-build comparison.
 
 Next question: the entry points `0x4edce70` and `0x4f100b0`, and the two
 large crossroads callees `0x143d010` and `0x4b31e70`.
+
+## Independent review scope
+
+The 2026-10-31 review re-authenticated the node #94 digest above and used
+GNU objdump 2.47.20260726 for independent instruction decoding. FDE extents
+are unwind-described ranges; they do not establish complete CFG ownership.
+The whole-`.text` census covers the stated byte encodings, which can also
+occur inside instructions; it is not a complete graph of callable targets
+and does not exclude computed references or other instruction encodings.
+Original retained disassembly and author validation logs remain unchanged.
+See `REVIEW.md` for corrections made during independent review.

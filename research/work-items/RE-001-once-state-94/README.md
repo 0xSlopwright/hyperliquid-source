@@ -13,7 +13,7 @@
   site with its message bytes and callee, and the whole-`.text` census.
 - Scope excluded: the read-lock guards and their cell (bound in
   `RE-001-lock-descriptor-94`), the futex wrapper behind slot `0x576ea40`, the
-  TLS slot getter behind `0x576e8d8`, the 1252 caller families, #115, visor.
+  TLS slot getter behind `0x576e8d8`, the 1252 matching call-site encodings, #115, visor.
 
 ## Question
 
@@ -31,8 +31,8 @@ python3 -m unittest discover -s tests -p test_once_state_static.py -v
 ```
 
 The tool authenticates size and SHA-256, then checks the exact body and FDE,
-twelve anchors (the state load, both state masks, both `lock cmpxchg`
-dword sites, four futex selector sites, the wait/wake operations, both
+twelve anchors (the state load, both state masks, selected `lock cmpxchg`
+dword anchors, four futex selector sites, the wait/wake operations, both
 wake-all counts, the poison operand), the jump table lea and all four
 displacement targets with both indexed-dispatch sites, the poison panic lea,
 message bytes, callee and unwind resume, and the census. Disassembly text in
@@ -46,12 +46,15 @@ waiter flag at bit 2), entered with a force flag in `esi` and a closure
 context dispatched through `[rax + 0x20]`. The non-force path dispatches
 through a four-entry jump table at `0x7cb390` whose computed targets are
 `0x4ee3c3a`, `0x4ee3c76`, `0x4ee3cf7` and `0x4ee3c52`; the index-2 target is
-the poison block. Two `lock cmpxchg` dword sites claim the state and one
-`xchg` publishes the completion value. Blocked paths call an indirectly
+the poison block. Four `lock cmpxchg` dword sites occur across the force and non-force
+paths (0x4ee3b63, 0x4ee3b98, 0x4ee3c5a, 0x4ee3c83). An `xchg` at
+0x4ee3c1a publishes the completion value; another at 0x4ee3d14 publishes
+state 2 on the unwind path. Blocked paths call an indirectly
 loaded futex wrapper with the selector `0xca` (SYS_futex on x86-64) — the
 wait operation `0x89` with the expected state and the wake operation `0x81`
 with the count `0x7fffffff` (wake all) — through slots `0x576ea40`/`0x576e8d8`
-that carry no static relocations. The poison block loads the message at
+that have GLOB_DAT relocations for `syscall` and `__errno_location`,
+respectively; they have no RELATIVE relocation. The poison block loads the message at
 `0x7cd78c` (beginning `Once instance has previously been poisoned`), passes
 the operand `0x55`, and calls `0x157b810` through GOT slot `0x576e098` before
 resuming the unwind at `0x5660110`.
@@ -76,9 +79,20 @@ Not implemented: no reconstructed Rust, no two-build comparison.
   census, body and jump-table mutation controls). Author rerun, not
   independent peer review.
 - Unknowns: the futex wrapper internals, the TLS slot getter, and what the
-  1252 caller families guard. The std Once label stays inferred (the state
+  callers at the 1252 matching sites guard. The std Once label stays inferred (the state
   values and exact std semantics are not reconstructed). No execution, Rust
   build, hosted CI, or gate.
 
 Next question: the futex wrapper behind `0x576ea40` and a census-driven
 sample of the 1252 call sites.
+
+## Independent review scope
+
+The 2026-10-31 review re-authenticated the node #94 digest above and used
+GNU objdump 2.47.20260726 for independent instruction decoding. FDE extents
+are unwind-described ranges; they do not establish complete CFG ownership.
+The whole-`.text` census covers the stated byte encodings, which can also
+occur inside instructions; it is not a complete graph of callable targets
+and does not exclude computed references or other instruction encodings.
+Original retained disassembly and author validation logs remain unchanged.
+See `REVIEW.md` for corrections made during independent review.

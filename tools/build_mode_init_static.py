@@ -9,7 +9,7 @@ the '/cham/' six-byte prefix compare, an inlined memchr for '/' built on the
 0x2f2f2f2f2f2f2f2f / 0x0101010101010100 / 0x8080808080808080 constant triple
 (with core/src/slice/memchr.rs Locations 132:30 and 160:9), the '--' prefix
 and UTF-8 0xc0 boundary checks, and the shared alloc/dealloc entry points —
-reachable only through the cell's initializer slot. Static byte/record checks
+referenced by the cell initializer slot, with a bounded encoding census. Static byte/record checks
 only; the captured binary is never executed.
 """
 import argparse
@@ -249,7 +249,7 @@ def analyze(data):
         require(memchr_flag(word) or contains_byte(word),
                 f'memchr identity changed for clean word {word:#x}')
 
-    # Reachability: only the cell's initializer slot references this body.
+    # Bounded encoding census plus the known cell initializer relocation.
     require(rels.get(CELL_VA) == START, 'cell initializer relocation changed')
     text = reader.by_name['.text']
     code = reader.read(text['address'], text['size'])
@@ -283,7 +283,7 @@ def analyze(data):
                          bytes=len(body), sha256=hashlib.sha256(body).hexdigest(),
                          fde_va=hex(FDE_VA), cell=hex(CELL_VA),
                          inferred_label='build-mode argument normalizer behind the '
-                                        'ship-complete lazy cell'),
+                                        'lazy cell whose nonzero state enters Once'),
         project_anchors=dict(
             assertion=dict(message=ASSERT_MSG.decode(), message_va=hex(ASSERT_MSG_VA),
                            location='build_mode.rs:29:17', location_va=hex(ASSERT_LOC)),
@@ -301,7 +301,7 @@ def analyze(data):
                            entry_one=hex(ENTRY1_FN), entry_two=hex(ENTRY2_FN),
                            alloc_shared_with='RE-001-alloc-shim-94',
                            format=hex(FMT_FN)),
-        reachability='cell initializer slot only; zero code references',
+        reachability='cell initializer relocation observed; no matching e8/ff15/48-8d encodings',
         captured_binary_executed=False, progress_gate_requested=False)
 
 

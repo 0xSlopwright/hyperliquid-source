@@ -93,3 +93,14 @@ semantic claim about what the body computes.
 
 Next question: the eleven unbound GOT targets, starting with the
 `0x576e010` slot (×10, the body's most-used helper).
+
+## Independent review scope
+
+The 2026-10-31 review re-authenticated the node #94 digest above and used
+GNU objdump 2.47.20260726 for independent instruction decoding. FDE extents
+are unwind-described ranges; they do not establish complete CFG ownership.
+The whole-`.text` census covers the stated byte encodings, which can also
+occur inside instructions; it is not a complete graph of callable targets
+and does not exclude computed references or other instruction encodings.
+Original retained disassembly and author validation logs remain unchanged.
+See `REVIEW.md` for corrections made during independent review.

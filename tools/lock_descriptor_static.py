@@ -4,8 +4,8 @@
 Binds the .data cell the shared read-lock helper consults (bound separately in
 RE-001-readlock-helper-94) to the node #94 digest: the 0x40-byte cell at
 0x5786278 with its two relocation-bound code pointers, the 18-byte zeroing
-glue 0x35ab620 reachable only through the cell's first slot, the 180-byte
-accessor 0x3790fc0 that builds a 48-byte value through the chrono-adjacent
+glue 0x35ab620 referenced by the cell first slot, the 180-byte
+accessor 0x3790fc0 that writes output fields through +0x5b through the chrono-adjacent
 callee 0x151f6f0 with the constant index 0xaf93b, and the 353-byte sibling
 guard 0x358db60 (GOT slot 0x5773e18, three call sites) whose six descriptor
 lea references, lock cmpxchg sequences and 1e9-nanosecond timeout mirror the
@@ -163,7 +163,7 @@ def analyze(data):
     require((pc, pc + extent) == (DROP_START, DROP_END), 'glue FDE PC range changed')
     require(drop[:3] == bytes.fromhex('4889f8'), 'glue must return its argument')
     require(drop[3:11] == bytes.fromhex('48c7471800000000'),
-            'glue must zero the third qword')
+            'glue must zero the qword at +0x18')
     require(drop[11:] == bytes.fromhex('0f57c00f1107c3'),
             'glue must zero the first 16 bytes and return')
 
@@ -290,17 +290,17 @@ def analyze(data):
         zeroing_glue=dict(start_va=hex(DROP_START), end_va_exclusive=hex(DROP_END),
                           bytes=len(drop), sha256=hashlib.sha256(drop).hexdigest(),
                           fde_va=hex(DROP_FDE_VA),
-                          observed='returns rdi after zeroing 24 bytes at [rdi]',
-                          reachability='cell slot +0x00 only; zero code references'),
+                          observed='returns rdi after zeroing [rdi, rdi+0x10) and [rdi+0x18, rdi+0x20)',
+                          reachability='cell slot +0x00 observed; no matching e8/ff15/48-8d encodings'),
         accessor=dict(start_va=hex(ACC_START), end_va_exclusive=hex(ACC_END),
                       bytes=len(acc), sha256=hashlib.sha256(acc).hexdigest(),
                       fde_va=hex(ACC_FDE_VA),
                       constant_index=hex(ACC_INDEX),
                       lookup=dict(got=hex(GOT_LOOKUP), target=hex(LOOKUP_FN)),
-                      observed='zeroes a 48-byte result, calls the lookup with the '
-                               'constant index, copies the result on success; the '
+                      observed='initializes stack fields, calls the lookup with the '
+                               'constant index, writes an output through +0x5b on success; the '
                                'error path reaches ud2 through the display panic',
-                      reachability='cell slot +0x28 only; zero code references'),
+                      reachability='cell slot +0x28 observed; no matching e8/ff15/48-8d encodings'),
         sibling_guard=dict(start_va=hex(SIB_START), end_va_exclusive=hex(SIB_END),
                            bytes=len(sib), sha256=hashlib.sha256(sib).hexdigest(),
                            fde_va=hex(SIB_FDE_VA), got_slot=hex(SIB_GOT),

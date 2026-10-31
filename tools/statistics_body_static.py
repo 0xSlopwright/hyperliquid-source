@@ -707,6 +707,17 @@ def analyze(data):
                 direct.append(text['address'] + pos)
         pos += 1
     require(direct == CALLERS, f'Direct caller census changed: {[hex(x) for x in direct]}')
+    # The retained zero is an observed scan result, not a hardcoded default.
+    lea_sites = []
+    pos = 0
+    while (pos := code.find(b'\x48\x8d', pos)) >= 0:
+        if pos + 7 <= len(code) and (code[pos + 2] & 0xC7) == 0x05:
+            destination = text['address'] + pos + 7 + struct.unpack_from('<i', code, pos + 3)[0]
+            if destination == START:
+                lea_sites.append(text['address'] + pos)
+        pos += 1
+    require(not lea_sites, 'lea reference census changed')
+    require(START not in rels.values(), 'statistics body gained a relative relocation')
     require(CALLER_FN[0] <= CALLERS[0] < CALLER_FN[1]
             and CALLER_FN[0] <= CALLERS[1] < CALLER_FN[1],
             'Caller outside the wrapper body')

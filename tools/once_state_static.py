@@ -27,8 +27,8 @@ START, END = 0x4ee3b20, 0x4ee3d3c
 FDE_VA = 0x12f68c0
 GOT_SELF = 0x576e8b8
 GOT_PANIC, PANIC_FN = 0x576e098, 0x157b810
-FUTEX_GOT = 0x576ea40          # indirect futex wrapper slot (no static relocation)
-TLS_GOT = 0x576e8d8            # indirect TLS/park slot getter
+FUTEX_GOT = 0x576ea40          # GLOB_DAT syscall slot, no RELATIVE relocation
+TLS_GOT = 0x576e8d8            # GLOB_DAT __errno_location slot
 RESUME_UNWIND = 0x5660110
 JUMP_TABLE_VA = 0x7cb390
 JUMP_TARGETS = [0x4ee3c3a, 0x4ee3c76, 0x4ee3cf7, 0x4ee3c52]
@@ -37,7 +37,7 @@ POISON_MSG = b'Once instance has previously been poisoned'
 POISON_ESI = 0x55
 FUTEX_NR = 0xca                # SYS_futex, x86-64 Linux ABI
 FUTEX_WAKE_PRIVATE = 0x81
-FUTEX_WAIT_PRIVATE = 0x89
+FUTEX_WAIT_BITSET_PRIVATE = 0x89
 
 # The lock-cell sibling guard's call site (RE-001-lock-descriptor-94) and the
 # 952-site helper's own call are both inside the census.
@@ -155,7 +155,7 @@ def analyze(data):
         require(body[offset:offset + 4] == bytes.fromhex(hexstr),
                 f'dispatch movsxd at +0x{offset:x} changed')
 
-    # Futex wrapper slots are loaded indirectly (no static relocation); the
+    # Futex wrapper slots are loaded indirectly (GLOB_DAT relocations, not RELATIVE); the
     # calls carry the selector and operations as immediates.
     require(body.count(bytes.fromhex('bfca000000')) == 4,
             'futex selector count changed')
@@ -213,8 +213,8 @@ def analyze(data):
                            fde_va=hex(FDE_VA), got_slot=hex(GOT_SELF),
                            inferred_label='std sync Once call_once_force state machine'),
         states=dict(mask=3, waiter_flag=4,
-                    observed='two-bit state with a waiter bit; two lock cmpxchg '
-                             'sites and one xchg completion store',
+                    observed='two-bit state with a waiter bit; four lock cmpxchg '
+                             'sites, one xchg completion store and one xchg unwind store',
                     jump_table=dict(va=hex(JUMP_TABLE_VA), entries=4,
                                     targets=[hex(t) for t in JUMP_TARGETS],
                                     dispatch_sites=[hex(START + o) for o in DISPATCH_SITES])),

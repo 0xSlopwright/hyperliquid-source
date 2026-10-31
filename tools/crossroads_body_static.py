@@ -4,7 +4,7 @@
 Binds the 4027-byte body 0x44aa5a0..0x44ab55b — the only caller of the
 date-difference float-seconds wrapper (RE-001-datediff-callers-94) and a
 crossroads of the series: it also calls the NaiveTime addition 0x15206e0 and
-the NaiveDate day shift 0x151f870 (RE-001-chrono-callees-94 anchors), the std
+the NaiveDate day shift 0x151f870 (RE-001-chrono-shift-helpers-94 anchors), the std
 Once state machine 0x4ee3b20 (RE-001-once-state-94), and three panic callees,
 carrying the std sync/once.rs:219:20 and chrono naive/datetime/mod.rs:1631:38
 panic Locations. Static byte/record checks only; the captured binary is never
@@ -31,7 +31,7 @@ STD_ONCE_PATH = (b'/rustc/e408947bfd200af42db322daf0fadfe7e26d3bd1/library/'
 CHRONO_DT_PATH = (b'/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/'
                   b'chrono-0.4.38/src/naive/datetime/mod.rs')
 
-# (body offset, GOT slot, relocation target) — all thirteen call sites.
+# (body offset, GOT slot, relocation target) — thirteen RELATIVE-bound call sites; imported sites follow.
 CALL_SITES = [
     (0xc6, 0x576e978, 0x143d010),
     (0x253, 0x576e8a8, 0x15206e0),   # NaiveTime addition
@@ -191,6 +191,16 @@ FDE = bytes.fromhex(
 '0e28420e20420e18420e10410e08410ee0080000')
 
 
+# Imported calls omitted from the original RELATIVE-only inventory.
+# offset, GOT slot, dynamic symbol index, dynamic symbol name
+IMPORTED_CALL_SITES = [
+    (0x191, 0x576e488, 12, 'memcmp'),
+    (0x771, 0x576e488, 12, 'memcmp'),
+    (0x873, 0x576e488, 12, 'memcmp'),
+    (0xe96, 0x576dfe0, 6, 'memcpy'),
+]
+
+
 def require(condition, message):
     if not condition:
         raise ValueError(message)
@@ -245,6 +255,29 @@ def analyze(data):
         disp = struct.unpack_from('<i', body, offset + 2)[0]
         require(START + offset + 6 + disp == got, f'call GOT at +0x{offset:x} changed')
         require(rels.get(got) == target, f'call target for GOT {got:#x} changed')
+
+    # Bind imported sites to GLOB_DAT metadata without claiming runtime
+    # resolution. The complete authenticated body was decoded independently.
+    rela_section = reader.by_name['.rela.dyn']
+    rela = reader.read(rela_section['address'], rela_section['size'])
+    all_rela = {address: (info, addend)
+                for address, info, addend in struct.iter_unpack('<QQq', rela)}
+    dynsym, dynstr = reader.by_name['.dynsym'], reader.by_name['.dynstr']
+    for offset, slot, symbol_index, symbol in IMPORTED_CALL_SITES:
+        require(body[offset:offset + 2] == bytes.fromhex('ff15'),
+                'imported call opcode changed')
+        displacement = struct.unpack_from('<i', body, offset + 2)[0]
+        require(START + offset + 6 + displacement == slot, 'imported call slot changed')
+        require(all_rela.get(slot) == ((symbol_index << 32) | 6, 0),
+                'imported GLOB_DAT relocation changed')
+        symbol_record = reader.read(dynsym['address'] + symbol_index * 24, 24)
+        name_offset = struct.unpack_from('<I', symbol_record)[0]
+        require(reader.read(dynstr['address'] + name_offset, len(symbol) + 1)
+                == symbol.encode('ascii') + b'\0', 'imported symbol name changed')
+    table_offsets = sorted([o for o, _, _ in CALL_SITES]
+                           + [o for o, _, _, _ in IMPORTED_CALL_SITES])
+    encoding_offsets = [i for i in range(len(body) - 5) if body[i:i + 2] == b'\xff\x15']
+    require(table_offsets == encoding_offsets, 'GOT call inventory is incomplete')
 
     for offset, loc_va, path, line, column in LOCATION_SITES:
         require(body[offset:offset + 2] == bytes.fromhex('488d')
@@ -303,6 +336,9 @@ def analyze(data):
                                        'callees'),
         call_sites=[dict(offset=hex(o), got=hex(g), target=hex(t))
                     for o, g, t in CALL_SITES],
+        imported_call_sites=[dict(offset=hex(o), got=hex(g), symbol=s,
+                                  relocation='R_X86_64_GLOB_DAT', runtime_target=None)
+                             for o, g, _, s in IMPORTED_CALL_SITES],
         panic_locations=[
             dict(va=hex(STD_ONCE_LOC), file='std/src/sync/once.rs', line=219, column=20,
                  note='shared with the read-lock helper packet (PR#112 family)'),
@@ -312,8 +348,8 @@ def analyze(data):
                       'the ema window guard packet (PR#95)')],
         cross_links=dict(
             datediff_wrapper='0x1450a60 at +0xc12 (RE-001-datediff-callers-94)',
-            naive_time='0x15206e0 at +0x253 (RE-001-chrono-callees-94)',
-            naive_date='0x151f870 at +0x2b0 (RE-001-chrono-callees-94)',
+            naive_time='0x15206e0 at +0x253 (RE-001-chrono-shift-helpers-94)',
+            naive_date='0x151f870 at +0x2b0 (RE-001-chrono-shift-helpers-94)',
             once_state_machine='0x4ee3b20 at +0xeec (RE-001-once-state-94)'),
         call_census=dict(direct_callers=[hex(x) for x in CALLERS],
                          direct_e8=3, got_indirect=0, lea_refs=0,

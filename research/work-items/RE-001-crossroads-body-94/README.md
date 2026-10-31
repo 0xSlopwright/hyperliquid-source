@@ -7,8 +7,8 @@
 - Claim status: byte/record observations; the crossroads label is inferred
   from the callee set; no reconstruction, no gate request.
 - Scope included: the 4027-byte body `0x44aa5a0..0x44ab55b` (FDE
-  `0x124c0b8`), all thirteen GOT-mediated call sites with their relocation
-  targets, both panic Locations (std `sync/once.rs:219:20` under the rustc
+  `0x124c0b8`), all seventeen GOT-mediated call sites: thirteen RELATIVE targets
+  and four imported sites with GLOB_DAT bindings, both panic Locations (std `sync/once.rs:219:20` under the rustc
   hash `e408947bfd200af42db322daf0fadfe7e26d3bd1` and chrono
   `naive/datetime/mod.rs:1631:38`), and the whole-`.text` census.
 - Scope excluded: the four crossroads callees and their packets, the parent
@@ -30,15 +30,15 @@ python3 -m unittest discover -s tests -p test_crossroads_body_static.py -v
 ```
 
 The tool authenticates size and SHA-256, then checks the exact 4027-byte body
-and FDE, the thirteen call sites (opcode, GOT displacement, relocation
-target), both Location structs (path bytes, line, column), and the census.
+and FDE, the seventeen call sites (opcode, GOT displacement, and
+RELATIVE target or GLOB_DAT symbol), both Location structs (path bytes, line, column), and the census.
 Disassembly text in `observed/` was rendered with capstone 5.0.7 and labeled
 as such; byte records are authoritative. Platform: Windows 10 22H2,
 Python 3.11.9.
 
 ## Observations
 
-The body's thirteen GOT-mediated calls span the series: the NaiveTime
+Thirteen RELATIVE-bound GOT calls span the series: the NaiveTime
 addition `0x15206e0` (+0x253) and the NaiveDate day shift `0x151f870`
 (+0x2b0) from the chrono-callees packet, the datediff float-seconds wrapper
 `0x1450a60` (+0xc12), the std Once state machine `0x4ee3b20` (+0xeec), five
@@ -48,6 +48,10 @@ facts. Two panic Locations anchor the body to the toolchain and chrono: std
 `sync/once.rs:219:20` — the same Location family the read-lock helper packet
 recorded — and chrono `naive/datetime/mod.rs:1631:38`, the
 `NaiveDateTime + TimeDelta` overflow Location the ema window guard carries.
+
+Four additional GOT sites call imported symbols: `memcmp` at
+0x44aa731, 0x44aad11 and 0x44aae13, and `memcpy` at 0x44ab436.
+These are dynamic-symbol declarations; runtime resolution is unobserved.
 
 Census over the complete `.text`: exactly three direct `e8` call sites
 (`0x44ae32a`, `0x44ae350`, `0x44b180c`), all inside the single parent FDE
@@ -60,7 +64,7 @@ Not implemented: no reconstructed Rust, no two-build comparison.
 
 ## Results and limitations
 
-- 1 body (4027 bytes) + FDE, 13 call sites with relocation targets, 2 panic
+- 1 body (4027 bytes) + FDE, 17 GOT call sites with RELATIVE targets or GLOB_DAT symbols, 2 panic
   Locations; census denominator is the complete `.text` for `e8` / `ff 15` /
   `lea` encodings.
 - 7 tests pass (record match, call-site targets, shared Locations, census
@@ -72,3 +76,14 @@ Not implemented: no reconstructed Rust, no two-build comparison.
 
 Next question: the parent body `0x44adfa0..0x44b303a` and the four
 non-series callees (`0x14385c0`, `0x143d010`, `0x454e5b0`, `0x4b31e70`).
+
+## Independent review scope
+
+The 2026-10-31 review re-authenticated the node #94 digest above and used
+GNU objdump 2.47.20260726 for independent instruction decoding. FDE extents
+are unwind-described ranges; they do not establish complete CFG ownership.
+The whole-`.text` census covers the stated byte encodings, which can also
+occur inside instructions; it is not a complete graph of callable targets
+and does not exclude computed references or other instruction encodings.
+Original retained disassembly and author validation logs remain unchanged.
+See `REVIEW.md` for corrections made during independent review.

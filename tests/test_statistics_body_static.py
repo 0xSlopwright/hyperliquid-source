@@ -146,5 +146,16 @@ class StatisticsBodyEvidenceTests(unittest.TestCase):
                          {'start': '0x474f8a0', 'end': '0x474fa44'})
 
 
+    def test_new_lea_reference_outside_body_is_rejected(self):
+        # A new reference must invalidate a zero census even when the bound
+        # body and FDE themselves are unchanged.
+        text = next(s for s in self.sections if s['name'] == '.text')
+        data = bytearray(self.data)
+        displacement = sb.START - (text['address'] + 7)
+        data[text['offset']:text['offset'] + 7] = b'\x48\x8d\x05' + struct.pack('<i', displacement)
+        with self.assertRaisesRegex(ValueError, 'lea reference census changed'):
+            sb.analyze(bytes(data))
+
+
 if __name__ == '__main__':
     unittest.main()

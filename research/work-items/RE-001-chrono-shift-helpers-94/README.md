@@ -19,7 +19,7 @@
   `0x250354 + 401`), the packed-date field masks (`0x1ff`, `0xffffe00f`,
   `0x1ff8`, bound `0x16e1`), the three panic GOT slots, and the
   GOT-mediated call census. Scope excluded: the containing statistics
-  function `0x4898810..0x489a550`, the ema update body, the ema window
+  function `0x4898810..0x489a544`, the ema update body, the ema window
   guard (bound separately), #115, visor.
 
 ## Question
@@ -48,7 +48,7 @@ records are authoritative. Platform: Windows 10 22H2, Python 3.11.9.
 
 ## Observations
 
-Both bodies are chrono-0.4.38 helpers reached only through GOT slots
+The observed encoding matches to both chrono-0.4.38 helpers use GOT slots
 `0x576e8a8` / `0x576e8b0` — 133 and 150 `ff 15` sites across the complete
 `.text`, zero direct `e8` calls, zero `lea` references.
 
@@ -56,8 +56,9 @@ Both bodies are chrono-0.4.38 helpers reached only through GOT slots
 1e9 (compare bound 1e9-1, pair limit 2e9, three ±1e9 renormalization
 adds, sign-corrected second carry), splits whole seconds through the same
 86400 magic multiplier as the window guard (`0x1845c8a0ce512957`, shifts
-13 + sign, correction multiplier 86400), and stores a 12-byte result
-(fraction, seconds-within-day, day count). Six overflow panics whose
+13 + sign, correction multiplier 86400), and stores a 16-byte result
+(seconds-within-day at +0, nanoseconds at +4, and an i64 carry in
+whole-day seconds at +8). Six overflow panics whose
 Locations all resolve to `chrono-0.4.38/src/naive/time/mod.rs` lines
 623, 627, 628, 632, 635 and 639 — the `NaiveTime` shift arithmetic. The
 label "NaiveTime shift with nanosecond normalization and day carry" is
@@ -109,4 +110,15 @@ unsigned variant for 365), not target equivalence.
   build, hosted CI, or gate.
 
 Next question: bind the containing statistics body
-`0x4898810..0x489a550`, which consumes both helpers bound here.
+`0x4898810..0x489a544`, which consumes both helpers bound here.
+
+## Independent review scope
+
+The 2026-10-31 review re-authenticated the node #94 digest above and used
+GNU objdump 2.47.20260726 for independent instruction decoding. FDE extents
+are unwind-described ranges; they do not establish complete CFG ownership.
+The whole-`.text` census covers the stated byte encodings, which can also
+occur inside instructions; it is not a complete graph of callable targets
+and does not exclude computed references or other instruction encodings.
+Original retained disassembly and author validation logs remain unchanged.
+See `REVIEW.md` for corrections made during independent review.

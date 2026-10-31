@@ -48,7 +48,7 @@
       "nanos_per_second": 1000000000
     },
     "observed": "datediff returns (i64 seconds, i32 nanos); a borrow flag (seconds < 0 and nanos > 0) adjusts both parts; the seconds scale by 1e6, the nanos divide by 1000 through the 0x10624dd3 magic with shift 38, the sums convert to double and divide by the shared 1e6 double; the result is masked with the absolute-value constant pair",
-    "overflow_guards": "two seto/jne pairs skip the conversion on overflow"
+    "overflow_guards": "jo after multiplication and seto/test/jne after addition skip conversion on overflow"
   },
   "target_release": "94",
   "target_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",

@@ -342,9 +342,9 @@ def analyze(data):
             oracle='Python datetime.date(1970, 1, 1) agrees on year and ordinal'),
         shared_machinery=dict(
             leap_table=dict(va=hex(TABLE1_VA), entries=TABLE_LEN, sentinel_400=97,
-                            shared_with='RE-001-datediff-chrono-94, RE-001-chrono-callees-94'),
+                            shared_with='RE-001-datediff-chrono-94, RE-001-chrono-shift-helpers-94'),
             year_flags=dict(va=hex(TABLE2_VA), entries=TABLE_LEN,
-                            shared_with='RE-001-chrono-callees-94'),
+                            shared_with='RE-001-chrono-shift-helpers-94'),
             magics=dict(div146097='0x396b06bd', year_estimate='0x6719f361'),
             panic_locations=['date/mod.rs:2325:9', 'date/mod.rs:2326:27',
                              'date/mod.rs:2326:9', 'internals.rs:80:9'],

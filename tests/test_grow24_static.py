@@ -24,7 +24,9 @@ class Grow24EvidenceTests(unittest.TestCase):
         for current in (0, 1, 2, 3, 4, 5, 100):
             self.assertEqual(max(current * 2, 4),
                              current * 2 if current * 2 >= 5 else 4)
-        self.assertEqual(g24.STRIDE, g24.ELEMENT_SIZE * 3)
+        self.assertEqual(g24.STRIDE, g24.ELEMENT_SIZE)
+        self.assertEqual(g24.STRIDE, 3 * 8)
+        self.assertEqual(g24.ALIGNMENT, 8)
 
     def test_three_got_slots(self):
         self.assertEqual(g24.GOT_SLOTS, [0x576ea38, 0x57705a8, 0x5776410])

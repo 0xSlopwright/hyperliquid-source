@@ -82,8 +82,8 @@
   "coordinate_system": "ELF virtual addresses, no runtime rebase",
   "cross_links": {
     "datediff_wrapper": "0x1450a60 at +0xc12 (RE-001-datediff-callers-94)",
-    "naive_date": "0x151f870 at +0x2b0 (RE-001-chrono-callees-94)",
-    "naive_time": "0x15206e0 at +0x253 (RE-001-chrono-callees-94)",
+    "naive_date": "0x151f870 at +0x2b0 (RE-001-chrono-shift-helpers-94)",
+    "naive_time": "0x15206e0 at +0x253 (RE-001-chrono-shift-helpers-94)",
     "once_state_machine": "0x4ee3b20 at +0xeec (RE-001-once-state-94)"
   },
   "crossroads": {
@@ -94,6 +94,36 @@
     "sha256": "07d66fee94415b9c97b56af056b3369003ce5a56b13efc5dd1432a944f1e0677",
     "start_va": "0x44aa5a0"
   },
+  "imported_call_sites": [
+    {
+      "got": "0x576e488",
+      "offset": "0x191",
+      "relocation": "R_X86_64_GLOB_DAT",
+      "runtime_target": null,
+      "symbol": "memcmp"
+    },
+    {
+      "got": "0x576e488",
+      "offset": "0x771",
+      "relocation": "R_X86_64_GLOB_DAT",
+      "runtime_target": null,
+      "symbol": "memcmp"
+    },
+    {
+      "got": "0x576e488",
+      "offset": "0x873",
+      "relocation": "R_X86_64_GLOB_DAT",
+      "runtime_target": null,
+      "symbol": "memcmp"
+    },
+    {
+      "got": "0x576dfe0",
+      "offset": "0xe96",
+      "relocation": "R_X86_64_GLOB_DAT",
+      "runtime_target": null,
+      "symbol": "memcpy"
+    }
+  ],
   "panic_locations": [
     {
       "column": 20,

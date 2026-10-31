@@ -15,7 +15,7 @@
   and the whole-`.text` census of both callers.
 - Scope excluded: the datediff core `0x151d1b0` and its leap table (bound in
   `RE-001-datediff-chrono-94`), the shared Time Sub helper (bound in #63),
-  the remaining 7185 bytes of the giant body, the two caller families, #115,
+  the remaining bytes of the giant body outside the six-byte call site, the two caller families, #115,
   visor.
 
 ## Question
@@ -50,7 +50,8 @@ borrow flag (seconds < 0 and nanos > 0), adjusts both parts — seconds gain
 the borrow, nanos lose `0x3b9aca00` — scales seconds by `0xf4240` (1e6),
 divides the adjusted nanos by 1000 through the `0x10624dd3` magic with shift
 38 plus a sign fix (proved a truncating division on the signed nanosecond
-domain), sums the parts under two `seto`/`jne` overflow guards that skip the
+domain), sums the parts under a `jo` overflow guard after multiplication and a
+`seto`/`test`/`jne` guard after addition that skip the
 conversion, converts to double, divides by the shared 1e6 double at
 `0x20ae60`, and masks with the absolute-value constant pair at `0x202ed0`.
 Inferred label: a date difference rendered as absolute float seconds. Called
@@ -83,3 +84,14 @@ target equivalence.
 
 Next question: the wrapper's caller family inside `0x44aa5a0..0x44ab55b` and
 the giant body `0x13cec80..0x13d0892` itself.
+
+## Independent review scope
+
+The 2026-10-31 review re-authenticated the node #94 digest above and used
+GNU objdump 2.47.20260726 for independent instruction decoding. FDE extents
+are unwind-described ranges; they do not establish complete CFG ownership.
+The whole-`.text` census covers the stated byte encodings, which can also
+occur inside instructions; it is not a complete graph of callable targets
+and does not exclude computed references or other instruction encodings.
+Original retained disassembly and author validation logs remain unchanged.
+See `REVIEW.md` for corrections made during independent review.

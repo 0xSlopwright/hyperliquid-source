@@ -45,7 +45,7 @@ class DayCountDateEvidenceTests(unittest.TestCase):
         self.assertEqual(shared['leap_table']['entries'], 400)
         self.assertEqual(shared['leap_table']['sentinel_400'], 97)
         self.assertEqual(shared['year_flags']['entries'], 400)
-        self.assertIn('RE-001-chrono-callees-94', shared['year_flags']['shared_with'])
+        self.assertIn('RE-001-chrono-shift-helpers-94', shared['year_flags']['shared_with'])
 
     def test_day_cycle_exhaustive(self):
         table = dd.leap_table_model() + [97]
@@ -60,7 +60,7 @@ class DayCountDateEvidenceTests(unittest.TestCase):
                          ['date/mod.rs:2325:9', 'date/mod.rs:2326:27',
                           'date/mod.rs:2326:9', 'internals.rs:80:9'])
 
-    def test_census_is_largest_shared_helper(self):
+    def test_census_matches_shared_helper_sites(self):
         census = self.result['call_census']
         self.assertEqual(census['got_indirect_sites'], 324)
         self.assertEqual(census['direct_e8'], 0)

@@ -4,6 +4,7 @@ import struct
 import sys
 import unittest
 import unittest.mock
+import unittest.mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
@@ -70,6 +71,12 @@ class CrossroadsBodyEvidenceTests(unittest.TestCase):
         data[off + 5] ^= 0x01
         with self.assertRaises(ValueError):
             cb.analyze(bytes(data))
+
+    def test_imported_got_sites_cannot_be_omitted(self):
+        self.assertEqual(len(self.result['imported_call_sites']), 4)
+        with unittest.mock.patch.object(cb, 'IMPORTED_CALL_SITES', cb.IMPORTED_CALL_SITES[:-1]):
+            with self.assertRaisesRegex(ValueError, 'GOT call inventory is incomplete'):
+                cb.analyze(cb.TARGET.read_bytes())
 
 
 if __name__ == '__main__':

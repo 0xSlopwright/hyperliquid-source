@@ -52,17 +52,17 @@ Platform: Windows 10 22H2, Python 3.11.9.
 The cell `0x5786278` (`.data`, 0x40 bytes bound) carries exactly two
 relocation-bound code pointers — the glue `0x35ab620` at +0x00 and the
 accessor `0x3790fc0` at +0x28 — plus the state word 3 at +0x20 and zero
-padding elsewhere. Both pointers are unreachable from code: across the
-complete `.text` census the glue and accessor receive zero `e8` direct calls,
-zero `ff 15` GOT-mediated calls and zero `lea` references; the only paths to
-them run through the cell's slots. Exactly twelve `lea` instructions target
+padding elsewhere. The complete `.text` byte-pattern census finds zero `e8`, `ff 15` and
+`48 8d` references to either pointer. The cell slots are observed references;
+other computed-pointer or instruction encodings remain unexamined. Exactly twelve `lea` instructions target
 the cell: six inside the sibling guard and six inside the 952-site helper
 (`0x358dcd0..0x358de41`, separate packet).
 
-The glue returns its argument after zeroing 24 bytes at `[rdi]` — an
-observed clear-on-drop shape. The accessor zeroes a 48-byte stack result,
+The glue returns its argument after zeroing `[rdi, rdi+0x10)` and
+`[rdi+0x18, rdi+0x20)`; the intervening qword is untouched. A drop role
+remains inferred. The accessor initializes selected stack fields,
 calls the chrono-adjacent lookup `0x151f6f0` through GOT slot `0x576e890`
-with the constant index `0xaf93b` (719163), copies the result on success and
+with the constant index `0xaf93b` (719163), writes fields through output offset +0x5b on success and
 otherwise reaches `ud2` through the display panic `0x157a9f0`.
 
 The sibling guard mirrors the 952-site helper at a different scale: it claims
@@ -89,9 +89,20 @@ Not implemented: no reconstructed Rust, no two-build comparison.
   and lookup, sibling census and caller FDEs, lea partition, body/cell/
   relocation mutation controls). Author rerun, not independent peer review.
 - Unknowns: what the constant index 719163 selects in the lookup, what the
-  48-byte value represents, and which of the three sibling caller families
+  output layout represents, and which of the three sibling caller families
   guards what. The once-style label stays inferred. No execution, Rust build,
   hosted CI, or gate.
 
 Next question: the lookup callee `0x151f6f0` behind the accessor's constant
 index, and the once machinery `0x4ee3b20` shared by both guards.
+
+## Independent review scope
+
+The 2026-10-31 review re-authenticated the node #94 digest above and used
+GNU objdump 2.47.20260726 for independent instruction decoding. FDE extents
+are unwind-described ranges; they do not establish complete CFG ownership.
+The whole-`.text` census covers the stated byte encodings, which can also
+occur inside instructions; it is not a complete graph of callable targets
+and does not exclude computed references or other instruction encodings.
+Original retained disassembly and author validation logs remain unchanged.
+See `REVIEW.md` for corrections made during independent review.

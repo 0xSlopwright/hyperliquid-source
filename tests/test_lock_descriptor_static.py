@@ -53,13 +53,13 @@ class LockDescriptorEvidenceTests(unittest.TestCase):
         self.assertEqual(glue[3:11], bytes.fromhex('48c7471800000000'))  # [rdi+0x18] = 0
         self.assertEqual(glue[11:], bytes.fromhex('0f57c00f1107c3'))   # xmm0=0; [rdi]=0; ret
         self.assertEqual(self.result['zeroing_glue']['reachability'],
-                         'cell slot +0x00 only; zero code references')
+                         'cell slot +0x00 observed; no matching e8/ff15/48-8d encodings')
 
     def test_accessor_constant_and_lookup(self):
         acc = self.result['accessor']
         self.assertEqual(acc['constant_index'], '0xaf93b')
         self.assertEqual(acc['lookup'], {'got': '0x576e890', 'target': '0x151f6f0'})
-        self.assertEqual(acc['reachability'], 'cell slot +0x28 only; zero code references')
+        self.assertEqual(acc['reachability'], 'cell slot +0x28 observed; no matching e8/ff15/48-8d encodings')
         # 0xaf93b = 719163, a plain 32-bit constant selector.
         self.assertEqual(ld.ACC_INDEX, 719163)
 

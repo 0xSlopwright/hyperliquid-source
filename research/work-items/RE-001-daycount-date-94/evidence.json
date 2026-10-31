@@ -41,7 +41,7 @@
     "leap_table": {
       "entries": 400,
       "sentinel_400": 97,
-      "shared_with": "RE-001-datediff-chrono-94, RE-001-chrono-callees-94",
+      "shared_with": "RE-001-datediff-chrono-94, RE-001-chrono-shift-helpers-94",
       "va": "0x250354"
     },
     "magics": {
@@ -56,7 +56,7 @@
     ],
     "year_flags": {
       "entries": 400,
-      "shared_with": "RE-001-chrono-callees-94",
+      "shared_with": "RE-001-chrono-shift-helpers-94",
       "va": "0x2504e5"
     },
     "year_gate": "[-262143, 262142]"
