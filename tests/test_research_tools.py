@@ -81,6 +81,11 @@ class CatalogueTests(unittest.TestCase):
         for bad in (123, None, 'patterns', ['patterns']):
             with self.assertRaises(ValueError): owner('l1/exchange/impl_trading.rs', [bad])
         self.assertEqual(owner('l1/exchange/impl_trading.rs', self.parts), 'exchange')
+    def test_non_list_depends_on_rejected(self):
+        for bad in (123, None):
+            parts = copy.deepcopy(self.parts); parts[0]['depends_on'] = bad
+            with self.assertRaises(ValueError): validate_progress(parts, self.progress, self.root)
+        validate_progress(self.parts, self.progress, self.root)
 
     def test_complete_gate_without_evidence_rejected(self):
         d = copy.deepcopy(self.progress)

@@ -45,6 +45,7 @@ def validate_progress(components, progress, root):
         raise ValueError('Progress components differ from scope')
     for c in components:
         if 'depends_on' not in c:
+        if type(c['depends_on']) is not list:
             raise ValueError('Invalid component record')
         if not set(c['depends_on']) <= ids:
             raise ValueError('Unknown dependency')
