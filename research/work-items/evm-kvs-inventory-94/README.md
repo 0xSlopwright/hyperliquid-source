@@ -92,3 +92,13 @@ See [RESULT.md](RESULT.md) for observations, caveats and non-claims. No gate
 is requested. Independent Rust build/comparison and target runtime tests are
 not available. Next investigate indirect calls and control-flow reachability
 within a smaller anchored path, before attributing any behavior.
+
+## Integration review (2026-10-31)
+
+The original inventory is preserved byte for byte in `inventory.original.json`.
+Fresh generation with the reviewed shared ELF/FDE tools changes only their two
+`producer_sources_sha256` entries in `inventory.json`; all target facts, raw
+records, negative findings and metrics reproduce unchanged. The historical
+source hashes were first validated against the exact original PR head.
+The updated manifest includes the historical inventory. This refresh does not
+change the target digest, scope, original environment results or progress gates.

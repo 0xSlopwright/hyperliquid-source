@@ -56,9 +56,28 @@ class SpotInventoryTests(unittest.TestCase):
         self.assertEqual(self.evidence['metrics']['location_leas'], 27)
         self.assertEqual(self.evidence['metrics']['unique_path_line_column'], 16)
 
-    def test_packet_byte_identical(self):
+    def test_packet_identical_except_explicit_tool_version_mask(self):
         for name in tool.OUTPUTS:
-            self.assertEqual(tool.render(self.results[name]), (PACKET / name).read_bytes())
+            retained = json.loads((PACKET / name).read_bytes())
+            self.assertEqual(verifier.comparison_bytes(tool, name, self.results[name]),
+                             verifier.comparison_bytes(tool, name, retained))
+
+    def test_version_mask_preserves_decode_and_source_changes(self):
+        original = self.results['disassembly.json']
+        changed = copy.deepcopy(original)
+        changed['tool_version'] = 'GNU objdump (review control) 999'
+        comparison = lambda value: verifier.comparison_bytes(tool, 'disassembly.json', value)
+        self.assertEqual(comparison(original), comparison(changed))
+        changed['runs'][0]['stdout_lines'].append('corrupt instruction output')
+        self.assertNotEqual(comparison(original), comparison(changed))
+        changed = copy.deepcopy(original)
+        del changed['tool_version']
+        with self.assertRaises(ValueError):
+            comparison(changed)
+        changed = copy.deepcopy(self.evidence)
+        changed['producer_sources_sha256']['tools/elf_index.py'] = '0' * 64
+        self.assertNotEqual(verifier.comparison_bytes(tool, 'inventory.json', self.evidence),
+                            verifier.comparison_bytes(tool, 'inventory.json', changed))
 
     def test_cli_hashseeds_and_optimized_regeneration(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -68,7 +87,8 @@ class SpotInventoryTests(unittest.TestCase):
                                         capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 for name in tool.OUTPUTS:
-                    self.assertEqual((Path(temp) / name).read_bytes(), (PACKET / name).read_bytes())
+                    self.assertEqual(verifier.comparison_bytes(tool, name, json.loads((Path(temp) / name).read_bytes())),
+                                     verifier.comparison_bytes(tool, name, json.loads((PACKET / name).read_bytes())))
 
     def test_wrong_digest_rejected_before_disassembly(self):
         for bad in (b'', self.data[:-1], self.data[:-1] + bytes([self.data[-1] ^ 1])):

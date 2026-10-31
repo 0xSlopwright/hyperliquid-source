@@ -2,13 +2,14 @@
 """Fail-closed packet whitelist, manifest, regeneration and target fact checks."""
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import re
 import sys
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-MANIFEST = frozenset({'README.md', 'RESULT.md', 'inventory.json', 'disassembly.json', 'verify.py'})
+MANIFEST = frozenset({'README.md', 'RESULT.md', 'inventory.json', 'inventory.original.json', 'disassembly.json', 'verify.py'})
 EXPECTED_METRICS = {
     'constants_bound': 1, 'constants_unresolved': 1,
     'counted_prefix_anchors': 1, 'diagnostics_bound': 2, 'diagnostics_unresolved': 12,
@@ -85,14 +86,27 @@ def verify_facts(evidence):
           and len(evidence['constants'][1]['occurrences']) == 11, 'nonunique constant promoted')
 
 
+def comparison_bytes(tool, name, value):
+    """Mask only provider version text; retain every raw decode record."""
+    if name == 'disassembly.json':
+        version = value.get('tool_version')
+        check(isinstance(version, str) and version.startswith('GNU objdump ')
+              and '\n' not in version and '\r' not in version,
+              'missing or malformed GNU objdump version')
+        value = {key: item for key, item in value.items() if key != 'tool_version'}
+    return tool.render(value)
+
+
 def main():
     verify_manifest(HERE)
     tool = load_tool()
     results = tool.build((ROOT / tool.TARGET).read_bytes())
     for name in tool.OUTPUTS:
-        check(tool.render(results[name]) == (HERE / name).read_bytes(), f'regeneration differs: {name}')
+        retained = json.loads((HERE / name).read_bytes())
+        check(comparison_bytes(tool, name, results[name]) == comparison_bytes(tool, name, retained),
+              f'regeneration differs: {name}')
     verify_facts(results['inventory.json'])
-    print('PASS: manifest whitelist, node #94 digest, byte-identical regeneration, pinned census/anchors/edges')
+    print('PASS: manifest whitelist, node #94 digest, regeneration (only tool_version masked), pinned census/anchors/edges')
 
 
 if __name__ == '__main__':

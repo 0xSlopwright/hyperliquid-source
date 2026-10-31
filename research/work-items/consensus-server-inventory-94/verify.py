@@ -10,7 +10,7 @@ import sys
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-MANIFEST = frozenset({'README.md', 'RESULT.md', 'inventory.json', 'instructions.json', 'verify.py'})
+MANIFEST = frozenset({'README.md', 'RESULT.md', 'inventory.json', 'inventory.original.json', 'instructions.json', 'verify.py'})
 EXPECTED_LOCATIONS = (('0x5692de8', 535, 18),
  ('0x5692e00', 543, 50),
  ('0x5692e18', 220, 48),

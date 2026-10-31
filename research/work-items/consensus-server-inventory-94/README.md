@@ -119,3 +119,13 @@ Prior [RE-008](../RE-008-consensus-wire-state/README.md) covers wire/state, not 
 ## Gaps and next question
 
 No implementation, Rust build, comparison, normalization masks, helper closure, vtable/data closure or full relocation comparison exists here. Location co-location permits inlining and shared code; it does not establish exclusive file ownership. Decode more indirect call slots and validate control flow around one specific diagnostic before inferring semantics. [RESULT.md](RESULT.md) separates bindings, rejected candidates, calls and non-claims.
+
+## Integration review (2026-10-31)
+
+The original inventory is preserved byte for byte in `inventory.original.json`.
+Fresh generation with the reviewed shared ELF/FDE tools changes only their two
+`producer_sources_sha256` entries in `inventory.json`; all target facts, raw
+records, negative findings and metrics reproduce unchanged. The historical
+source hashes were first validated against the exact original PR head.
+The updated manifest includes the historical inventory. This refresh does not
+change the target digest, scope, original environment results or progress gates.

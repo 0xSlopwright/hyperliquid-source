@@ -10,7 +10,7 @@ import sys
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-MANIFEST = frozenset({'README.md', 'RESULT.md', 'inventory.json', 'instructions.json', 'verify.py'})
+MANIFEST = frozenset({'README.md', 'RESULT.md', 'inventory.json', 'inventory.original.json', 'instructions.json', 'verify.py'})
 EXPECTED_LOCATIONS = (('0x5692d40', 16, 17), ('0x5692d58', 96, 9), ('0x5692d70', 60, 25), ('0x5692d88', 102, 89), ('0x569e7f8', 168, 88), ('0x569e810', 118, 9), ('0x569e828', 115, 17), ('0x569e840', 134, 17), ('0x569e858', 151, 13), ('0x571d018', 168, 88), ('0x571d030', 118, 9), ('0x571d048', 115, 17), ('0x571d060', 134, 17), ('0x571d078', 151, 13), ('0x572ee48', 168, 88), ('0x572ee60', 118, 9), ('0x572ee78', 115, 17), ('0x572ee90', 134, 17), ('0x572eea8', 151, 13), ('0x57385d8', 168, 88), ('0x57385f0', 118, 9), ('0x5738608', 115, 17), ('0x5738620', 134, 17), ('0x5738638', 151, 13))
 EXPECTED_EDGES = (('0x1fd6300', '0x1fd64d8', 'e833130000', '0x1fd7810'), ('0x1fd6300', '0x1fd70a9', 'e862070000', '0x1fd7810'))
 

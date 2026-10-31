@@ -1989,14 +1989,14 @@
       "exact_scope_path_present": false,
       "path": "research/work-items/RE-009-storage-state-roots/hashers.json",
       "relationship": "The retained local RE-009 has no rpc.rs co-location or scoped hasher caller row. No hasher semantics or closure is imported; this differs from the supplied prior-work description.",
-      "sha256": "6411981c8f0953dc152e432a3c9abeb8512f703599e36df675d39dfb9f6a77f0",
+      "sha256": "1e7fbe921766315fb37f5c72227b24ba8ceb07822ad950de570b4553480855fa",
       "shared_hasher_caller_rows": []
     }
   ],
   "producer_sources_sha256": {
     "tools/consensus_rpc_inventory.py": "9d58e5ef21f72913ccf6038e729efb00c4021e5b0f000556baaeea20d56d58bd",
-    "tools/elf_index.py": "6664354c8af5240d0b1fa76c3c9956c6fdded00e0efe283620745d3d566a2d11",
-    "tools/fde_extents.py": "c7c23b9f8e19821e37af127e9eb1dabbf4b0d0577b26c1ce4814ead220133b7e"
+    "tools/elf_index.py": "b1dac3e12f468d1416839be620573904d55b2f6c4a0dcddb907eedc7c2db014d",
+    "tools/fde_extents.py": "cb9f9fe8d97d4dd85a8df361a8c3615abe23a9bd7fc40f7c4f1a7b6c27778f0c"
   },
   "reference_commit_leads_only": "999556f6e0a474b8312db96ec3149e1c44e97c23",
   "reference_leads": {

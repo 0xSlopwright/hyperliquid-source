@@ -44,21 +44,22 @@ is connected in this session; Ghidra/Java are unavailable. No provider was insta
 
 The generator checks the full input digest **before parsing or invoking objdump**.
 There is no digest override. The optional `--binary` must still contain this exact
-artifact. Both JSON outputs regenerate byte for byte, including under Python `-O`
+artifact. The inventory and raw decode records regenerate byte for byte, including under Python `-O`
 and `PYTHONHASHSEED=0/97`. No absolute checkout path or timestamp enters the JSON.
-The disassembly transcript includes the objdump version; a different provider
-version can require review rather than being silently normalized.
+The disassembly transcript preserves the original objdump version. Verification
+masks only its top-level `tool_version` string, as documented below; all raw
+output, commands, status and byte records must still match.
 
 The generator writes only `inventory.json` and `disassembly.json`; it never rewrites
 the prose, verifier or manifest. After an intentional, reviewed packet edit, update
-the manifest using exactly the verifier's five whitelisted members:
+the manifest using exactly the verifier's six whitelisted members:
 
 ```sh
 python3 - <<'PY'
 import hashlib
 from pathlib import Path
 p = Path('research/work-items/spot-clearinghouse-inventory-94')
-names = ('README.md', 'RESULT.md', 'disassembly.json', 'inventory.json', 'verify.py')
+names = ('README.md', 'RESULT.md', 'disassembly.json', 'inventory.json', 'inventory.original.json', 'verify.py')
 (p / 'MANIFEST.sha256').write_text(''.join(
     f'{hashlib.sha256((p / n).read_bytes()).hexdigest()}  {n}\n' for n in names))
 PY
@@ -165,3 +166,21 @@ length/content/marker corruption; nonunique/changed constants; unresolved litera
 controls; manifest omissions, duplicates, traversal, symlinks, extra files and
 modified prose; and verifier fact corruption. Lower-level mutation tests exercise
 parsers directly. The public generator never accepts a changed digest.
+
+## Integration review (2026-10-31)
+
+The original inventory is preserved byte for byte in `inventory.original.json`.
+Fresh generation with the reviewed shared ELF/FDE tools changes only their two
+`producer_sources_sha256` entries in `inventory.json`; all target facts, raw
+records, negative findings and metrics reproduce unchanged. The historical
+source hashes were first validated against the exact original PR head.
+The updated manifest includes the historical inventory. This refresh does not
+change the target digest, scope, original environment results or progress gates.
+
+The original GNU 2.44 `disassembly.json` is unchanged. Independent GNU 2.47
+decoding reproduced every stdout row, command, status, target pin and byte.
+The sole comparison mask is `/tool_version` in that JSON; both versions must
+remain identified as GNU objdump. All other output is compared exactly, including
+source hashes. Controls reject changed raw output, missing versions and changed
+producer hashes. The generator still records the actual installed version;
+this is no claim of equivalence across arbitrary disassembler versions.

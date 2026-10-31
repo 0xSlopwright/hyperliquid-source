@@ -111,3 +111,13 @@ fields, path and relocations, digest, ELF sections, FDE, shifted LEAs, instructi
 lengths, literals and call bytes. See [RESULT.md](RESULT.md) for the verdict,
 negative results, remaining gaps and next question. No Rust implementation,
 compiler/build comparison, normalizations, or progress gate are claimed.
+
+## Integration review (2026-10-31)
+
+The original inventory is preserved byte for byte in `inventory.original.json`.
+Fresh generation with the reviewed shared ELF/FDE tools changes only their two
+`producer_sources_sha256` entries in `inventory.json`; all target facts, raw
+records, negative findings and metrics reproduce unchanged. The historical
+source hashes were first validated against the exact original PR head.
+The updated manifest includes the historical inventory. This refresh does not
+change the target digest, scope, original environment results or progress gates.

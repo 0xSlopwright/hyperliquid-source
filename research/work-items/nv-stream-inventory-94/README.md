@@ -159,3 +159,13 @@ The next question is to follow the direct edge from `0x439baf0` through
 `0x435fca0` with a bounded CFG and argument/return analysis. That would test
 whether the nearby verified diagnostic reflects a particular error branch;
 this packet does not yet establish that behavior.
+
+## Integration review (2026-10-31)
+
+The original inventory is preserved byte for byte in `inventory.original.json`.
+Fresh generation with the reviewed shared ELF/FDE tools changes only their two
+`producer_sources_sha256` entries in `inventory.json`; all target facts, raw
+records, negative findings and metrics reproduce unchanged. The historical
+source hashes were first validated against the exact original PR head.
+The updated manifest includes the historical inventory. This refresh does not
+change the target digest, scope, original environment results or progress gates.
