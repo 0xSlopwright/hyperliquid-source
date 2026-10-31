@@ -106,6 +106,36 @@ class CheckedSubtractEvidenceTests(unittest.TestCase):
         self.assertEqual(retained['incoming_pattern_scan']['e8_candidates'],
                          [hex(c) for c in self.result['direct_callers']])
 
+    def test_high_word_and_extra_borrow_checks_are_both_necessary(self):
+        # Ground the arithmetic derivation in the complete retained sequence:
+        # SUB high words; ADD al,255 replaces CF; SBB applies the low borrow;
+        # SETB captures only that extra borrow. CMP/JB checks high words anew.
+        start = self.offset(0x2760a34)
+        self.assertEqual(self.data[start:start + 14],
+                         bytes.fromhex('4929f104ff4983d9000f92c131c0'))
+        start = self.offset(0x2760a46)
+        self.assertEqual(self.data[start:start + 9],
+                         bytes.fromhex('4939f0721884c97514'))
+        limb_mask = (1 << 64) - 1
+        low_mask = (1 << 192) - 1
+        cases = [
+            (0, 1 << 192, True, False),
+            (1 << 192, (1 << 192) + 1, False, True),
+            (1 << 192, 1, False, False),
+        ]
+        for minuend, subtrahend, expected_high, expected_extra in cases:
+            with self.subTest(minuend=minuend, subtrahend=subtrahend):
+                high_m, high_s = minuend >> 192, subtrahend >> 192
+                low_borrow = int((minuend & low_mask) < (subtrahend & low_mask))
+                carry_after_add = int(low_borrow + 255 > 255)
+                high_difference = (high_m - high_s) & limb_mask
+                extra_borrow = high_difference < carry_after_add
+                self.assertEqual(high_m < high_s, expected_high)
+                self.assertEqual(extra_borrow, expected_extra)
+                flag, _, _ = checked_subtract.build(
+                    minuend.to_bytes(32, 'little'), subtrahend.to_bytes(32, 'little'))
+                self.assertEqual(flag, int(not (expected_high or expected_extra)))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -51,6 +51,13 @@ class DeallocSizeEvidenceTests(unittest.TestCase):
         self.assertTrue(self.result['arithmetic']['flag_always_zero_nonwrapping'])
         self.assertEqual(self.result['arithmetic']['checked_nonwrapping_counts'], 10000)
 
+    def test_floored_intermediate_wraps_at_64_bits(self):
+        # IMUL by 88 wraps to zero for 2**61. Adding 103 and clearing
+        # the low nibble leaves 96. For UINT64_MAX the sum wraps to 15.
+        self.assertEqual(dealloc.aligned(1 << 61), 96)
+        self.assertEqual(dealloc.aligned((1 << 64) - 1), 0)
+        self.assertEqual(dealloc.size_of((1 << 64) - 1), 16)
+
     def test_identity_rejects_truncation_and_mutation(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'input'

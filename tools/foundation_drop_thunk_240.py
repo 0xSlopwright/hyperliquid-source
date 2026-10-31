@@ -147,7 +147,7 @@ def analyze(data):
                               per_element_call_target=hex(ELEMENT_CALL),
                               per_element_call_claimed_here=False,
                               landing_pad='reload length, null guard, same multiply and tail slot, '
-                                          'else restore saved pointer and call resume PLT entry 0x5660110',
+                                          'then restore saved pointer and call resume PLT entry 0x5660110',
                               resume_call_target=hex(RESUME_CALL),
                               resume_call_claimed_here=False),
                 tail_call=dict(slot=hex(TAIL_SLOT), target=hex(TAIL_TARGET),

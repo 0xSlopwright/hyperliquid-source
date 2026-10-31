@@ -127,3 +127,10 @@ The repository's required verification, catalogue, and test recipes are run for 
 Structural mutations deliberately bypass only the digest gate in the test helper, so they exercise downstream checks instead of all failing at SHA-256. The command-line tool always authenticates the complete target first.
 
 **No progress gate requested.** Foundation's four gates and generated progress files stay unchanged. The denominator here is one bounded window / one call site, not all dealloc helpers. Next question: attribute the shared callee at `0x54c8cb0` from its own window before reconstructing Rust, and establish the caller's struct provenance for the field+8 count.
+
+## Review correction
+
+The Python `aligned` helper now truncates to 64 bits, matching RAX after the
+IMUL, ADD, and AND. Previously only the final size was truncated. The retained
+small-count examples are unchanged; new controls cover count `2^61` (floored
+value 96) and `2^64-1` (floored value 0, size 16).

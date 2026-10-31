@@ -70,7 +70,7 @@ Decoded from the FDE start, the window is:
 | `0x2760a34` | `sub %rsi,%r9` | Top difference before borrow-in |
 | `0x2760a37` | `add $0xff,%al` | Carry flag set to the low-word borrow (al 1 + 0xff wraps with CF 1; al 0 + 0xff leaves CF 0) |
 | `0x2760a39` | `sbb $0x0,%r9` | Top difference minus exactly the borrow-in |
-| `0x2760a3d` | `setb %cl` | Overall borrow-out captured |
+| `0x2760a3d` | `setb %cl` | Extra borrow from subtracting the low-word borrow from the wrapped high difference captured |
 | `0x2760a40` | `xor %eax,%eax` | Default flag 0 |
 | `0x2760a42` | `mov %r9,0x18(%rdx)` | Top-word result stored, before any borrow check |
 | `0x2760a46` | `cmp %rsi,%r8` | Top words compared |
@@ -83,9 +83,9 @@ Decoded from the FDE start, the window is:
 | `0x2760a5a` | `movups %xmm0,0x8(%rdi)` | Success: result low half stored at out+8 |
 | `0x2760a5e` | `mov $0x1,%eax` | Success flag |
 | `0x2760a63` | `mov %rax,(%rdi)` | Flag stored at out |
-| `0x2760a66` | `ret` | Return; no value in rax beyond the flag store |
+| `0x2760a66` | `ret` | Return; RAX still holds the flag; its source-level return type is unknown |
 
-In words, with all values little-endian and unsigned: flag = 1 if minuend >= subtrahend as 256-bit integers, else 0. On success, out+8 holds the 32-byte difference. On failure, out+8 is untouched. Both failure branches land on the same flag store at `0x2760a63`; the `jb` condition (top minuend below top subtrahend) already implies borrow-out, so the `cl` test alone would reach the same store — the duplication is observed, its reason is not claimed.
+In words, with all values little-endian and unsigned: flag = 1 if minuend >= subtrahend as 256-bit integers, else 0. On success, out+8 holds the 32-byte difference. On failure, out+8 is untouched. Both failure branches land on the same flag store at `0x2760a63`, and both checks are necessary. ADD at `0x2760a37` replaces CF from the high-word SUB. Consequently CL records only an extra borrow while applying the lower-word borrow to the wrapped high difference. CMP/JB separately detects an original high-word borrow. For minuend 0 and subtrahend `2^192`, the low borrow is 0, the high difference wraps to `2^64-1`, CL is 0, and JB must reject. For equal high words with a lower-word borrow, JB is false and CL must reject.
 
 ### The minuend is rewritten regardless of success
 
@@ -101,7 +101,7 @@ This is the packet's sharpest edge and must not be softened: words 0–2 of the 
 
 - The label "checked 256-bit subtract" is an inference from the observed rule: four 64-bit words, a borrow chain, and a success flag that is exactly the no-borrow condition. It is kept separate from the observed bytes.
 - The three call sites sharing one caller FDE suggests one caller routine uses this helper three times, but the caller's identity, purpose, and argument setup are not analyzed here and no claim is made about them.
-- The `jb`/`jne` duplication may reflect compiler output shape, but no compiler or source-level claim is made.
+- The two failure conditions implement separate high-word and extra-borrow checks; neither branch is redundant. No compiler or source-level claim is made.
 
 ## Unknowns
 
@@ -115,3 +115,13 @@ This is the packet's sharpest edge and must not be softened: words 0–2 of the 
 - The byte-pattern scan is not a complete xref census, and the relocation absence covers `.rela.dyn` records only as locked by the checker (the full-section grep is reported separately above).
 - No progress gate is requested or claimed. Foundation's gates and generated progress files are unchanged.
 - The reference tree was a search lead only; no inferred implementation was copied, and every claim is grounded in target bytes for node #94 (SHA-256 `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`).
+
+## Review correction
+
+The original packet incorrectly called CL the overall borrow and described
+CMP/JB as redundant. The separate borrow conditions and counterexample above
+correct that claim; the final 256-bit subtraction formula was already correct.
+The arithmetic model assumes nonoverlapping operand/output storage; partial
+aliasing and caller guarantees have not been established. New static controls
+cover high-word borrow alone, extra borrow alone, and a covered lower borrow.
+Raw disassembly and FDE exports are preserved without changes.

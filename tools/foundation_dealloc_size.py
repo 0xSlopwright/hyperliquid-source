@@ -40,7 +40,8 @@ def require(condition, message):
 
 
 def aligned(count):
-    return (count * 0x58 + 0x67) & ~0xF
+    # IMUL/ADD/AND operate on RAX, so discard overflow before returning it.
+    return (count * 0x58 + 0x67) & 0xfffffffffffffff0
 
 
 def size_of(count):

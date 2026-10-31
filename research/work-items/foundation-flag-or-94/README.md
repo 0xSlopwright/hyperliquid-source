@@ -61,7 +61,7 @@ Decoded from the FDE start, the window is:
 | `0x15625e4` | `lea -0x1310eff(%rip),%rcx` | Table base `0x2516ec` |
 | `0x15625eb` | `mov (%rcx,%rax,4),%eax` | u32 table entry at the index |
 | `0x15625ee` | `or %eax,0x1a0(%rdi)` | Entry ORed into field+0x1a0 |
-| `0x15625f4` | `ret` | No return value; the field is updated in place |
+| `0x15625f4` | `ret` | The field is updated in place; RAX retains the zero-extended u32 table entry |
 
 The formula is `field+0x1a0 |= table[byte_index]`, where the index is the zero-extended byte in `sil` and the table is the u32 table at `0x2516ec` in `.rodata`.
 
@@ -116,3 +116,10 @@ The repository's required verification, catalogue, and test recipes are run for 
 - Table entries at index 20 and above are not characterized as flags; the window's behavior for those indices is not claimed beyond the raw read the instructions perform.
 - No progress gate is requested or claimed. Foundation's gates and generated progress files are unchanged.
 - The reference tree was a search lead only; no inferred implementation was copied, and every claim is grounded in target bytes for node #94 (SHA-256 3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f).
+
+## Review correction
+
+The final OR writes memory and leaves EAX unchanged. RAX therefore contains
+the selected u32 table entry, zero-extended by the preceding EAX load. The
+source-level return type and whether callers consume RAX remain unknown; a
+void-return claim cannot be established from this window.
