@@ -113,6 +113,7 @@ class ArtifactTests(unittest.TestCase):
             bi.main(['--release', '94'])
         report = json.loads(out.getvalue())
         self.assertEqual(report['artifact_sha256'], bi.TARGET_SHA256[94])
+        self.assertEqual(report['artifact'], 'artifacts/node/94/hl-node')
         self.assertEqual(report['literal']['va'], bi.SEED_LITERAL_OFFSET)
         self.assertEqual(len(report['chain_id_sites']), 3)
         seeded = bi.Mapping(bi.load_segments(ARTIFACT.read_bytes())).offset_to_va(bi.SEED_CHAIN_OFFSET)
