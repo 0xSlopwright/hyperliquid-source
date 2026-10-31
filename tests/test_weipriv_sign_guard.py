@@ -1,4 +1,6 @@
+import contextlib
 import hashlib
+import io
 from pathlib import Path
 import struct
 import sys
@@ -237,6 +239,16 @@ class SectionNameBoundsTests(unittest.TestCase):
         inside = NAMES + b'.extra\0'
         with self.assertRaisesRegex(wsg.EvidenceError, 'section name offset outside .shstrtab'):
             wsg.sections(elf_with_names(inside, b'bogus\0', extra_name_off=len(inside)))
+class MainErrorHandlingTests(unittest.TestCase):
+    def test_missing_binary_is_one_line_error(self):
+        err = io.StringIO()
+        with tempfile.TemporaryDirectory() as d:
+            with contextlib.redirect_stderr(err):
+                rc = wsg.main(['--binary', '/nonexistent.bin', '--out', str(Path(d) / 'out.json')])
+        self.assertEqual(rc, 1)
+        self.assertTrue(err.getvalue().startswith('error: '))
+        self.assertEqual(len(err.getvalue().strip().splitlines()), 1)
+        self.assertNotIn('Traceback', err.getvalue())
 
 
 if __name__ == '__main__':
