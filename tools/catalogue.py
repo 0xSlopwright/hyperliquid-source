@@ -23,6 +23,9 @@ def validate_progress(components, progress, root):
     if len(set(ids)) != len(ids):
         raise ValueError('Duplicate component id')
     ids = set(ids)
+    if type(progress) is not dict or 'gates' not in progress:
+        raise ValueError('Invalid progress record')
+    ids = {c['id'] for c in components}
     if set(progress['components']) != ids:
         raise ValueError('Progress components differ from scope')
     for c in components:

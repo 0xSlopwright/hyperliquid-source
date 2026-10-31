@@ -319,6 +319,11 @@ class CatalogueTests(unittest.TestCase):
         # TypeError from iterating the evidence value.
         d = copy.deepcopy(self.progress)
         d['components']['orderbook']['evidence'] = None
+    def test_missing_progress_gates_rejected(self):
+        # A progress record without its top-level gates key must fail closed
+        # as a ValueError — on base it escaped as KeyError from the gate
+        # comparison in the component loop.
+        d = copy.deepcopy(self.progress); del d['gates']
         with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
 
 
