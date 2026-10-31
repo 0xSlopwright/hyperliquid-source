@@ -140,6 +140,14 @@ def main():
     from artifacts import check, manifest_item
     rel, inventory, prefix = target_for(args.release)
     item = manifest_item(ROOT, rel)
+    manifest = json.loads((ROOT / 'provenance/artifacts.json').read_text())
+    if not isinstance(manifest, dict) or not isinstance(manifest.get('files'), list):
+        raise ValueError('Invalid artifact manifest')
+    if any(type(item) is not dict or 'path' not in item for item in manifest['files']):
+        raise ValueError('Invalid artifact record')
+    item = next((i for i in manifest['files'] if i['path'] == rel), None)
+    if item is None:
+        raise ValueError(f'No provenance/artifacts.json entry for {rel}')
     check(ROOT / rel, item)
     summary = generate(ROOT / rel, args.output_dir / prefix)
     expected = load_inventory(ROOT / inventory)['fde_count_eh_frame_hdr']
