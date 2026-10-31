@@ -165,6 +165,10 @@ def generate(root=ROOT):
         if marker in seen_literals:
             raise ValueError(f'Duplicate literal-class entry: {item}')
         seen_literals.add(marker)
+    literal_data = json.loads((root / 'research/imported/can1357-literal-classes.json').read_text())
+    if 'items' not in literal_data:
+        raise ValueError('Invalid literal-classes record')
+    literal_items = literal_data['items']
     rows = []
     for c in components:
         source = sorted(p for p in source_paths if owner(p, components) == c['id'])
