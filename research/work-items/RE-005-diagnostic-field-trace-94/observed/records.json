@@ -1,0 +1,1116 @@
+{
+  "call_arguments": {
+    "colon": {
+      "destination": "fresh load64(F+0)",
+      "site": "0x1571ff3",
+      "slice": "colon operand fact",
+      "target": "fresh load64(load64(F+8)+0x18)"
+    },
+    "name": {
+      "destination": "fresh load64(F+0)",
+      "site": "0x1571fd9",
+      "slice": "incoming rsi/rdx preserved in r14/r13",
+      "target": "fresh load64(load64(F+8)+0x18)"
+    },
+    "prefix": {
+      "destination": "fresh load64(F+0)",
+      "site": "0x1571fc5",
+      "slice": "H-dependent prefix_choices",
+      "target": "fresh load64(load64(F+8)+0x18)"
+    },
+    "value": {
+      "data": "incoming rcx via rbp-0x40",
+      "formatter": "original F pointer in r15",
+      "site": "0x1572009",
+      "target": "load64(saved incoming r8 via rbp-0x38 +0x18)"
+    }
+  },
+  "callback_alias_frame_preservation_conditions_required": true,
+  "cfg": {
+    "blocks": {
+      "22486864": {
+        "calls": [],
+        "edges": [
+          {
+            "taken": true,
+            "to": 22486919
+          },
+          {
+            "taken": false,
+            "to": 22486893
+          }
+        ],
+        "end": 22486893,
+        "last": 22486891,
+        "rows": [
+          22486864,
+          22486865,
+          22486868,
+          22486870,
+          22486872,
+          22486874,
+          22486876,
+          22486877,
+          22486881,
+          22486884,
+          22486887,
+          22486891
+        ]
+      },
+      "22486893": {
+        "calls": [],
+        "edges": [],
+        "end": 22486919,
+        "last": 22486918,
+        "rows": [
+          22486893,
+          22486897,
+          22486901,
+          22486904,
+          22486908,
+          22486909,
+          22486911,
+          22486913,
+          22486915,
+          22486917,
+          22486918
+        ]
+      },
+      "22486919": {
+        "calls": [],
+        "edges": [
+          {
+            "taken": true,
+            "to": 22487057
+          },
+          {
+            "taken": false,
+            "to": 22486941
+          }
+        ],
+        "end": 22486941,
+        "last": 22486939,
+        "rows": [
+          22486919,
+          22486923,
+          22486927,
+          22486930,
+          22486935,
+          22486939
+        ]
+      },
+      "22486941": {
+        "calls": [
+          22486981
+        ],
+        "edges": [
+          {
+            "taken": true,
+            "to": 22486893
+          },
+          {
+            "taken": false,
+            "to": 22486988
+          }
+        ],
+        "end": 22486988,
+        "last": 22486986,
+        "rows": [
+          22486941,
+          22486944,
+          22486947,
+          22486950,
+          22486954,
+          22486961,
+          22486968,
+          22486970,
+          22486974,
+          22486977,
+          22486981,
+          22486984,
+          22486986
+        ]
+      },
+      "22486988": {
+        "calls": [
+          22487001
+        ],
+        "edges": [
+          {
+            "taken": true,
+            "to": 22486893
+          },
+          {
+            "taken": false,
+            "to": 22487008
+          }
+        ],
+        "end": 22487008,
+        "last": 22487006,
+        "rows": [
+          22486988,
+          22486991,
+          22486995,
+          22486998,
+          22487001,
+          22487004,
+          22487006
+        ]
+      },
+      "22487008": {
+        "calls": [
+          22487027
+        ],
+        "edges": [
+          {
+            "taken": true,
+            "to": 22486893
+          },
+          {
+            "taken": false,
+            "to": 22487038
+          }
+        ],
+        "end": 22487038,
+        "last": 22487032,
+        "rows": [
+          22487008,
+          22487011,
+          22487015,
+          22487022,
+          22487027,
+          22487030,
+          22487032
+        ]
+      },
+      "22487038": {
+        "calls": [
+          22487049
+        ],
+        "edges": [
+          {
+            "taken": true,
+            "to": 22487246
+          }
+        ],
+        "end": 22487057,
+        "last": 22487052,
+        "rows": [
+          22487038,
+          22487042,
+          22487045,
+          22487049,
+          22487052
+        ]
+      },
+      "22487057": {
+        "calls": [],
+        "edges": [
+          {
+            "taken": true,
+            "to": 22487109
+          },
+          {
+            "taken": false,
+            "to": 22487061
+          }
+        ],
+        "end": 22487061,
+        "last": 22487059,
+        "rows": [
+          22487057,
+          22487059
+        ]
+      },
+      "22487061": {
+        "calls": [
+          22487089
+        ],
+        "edges": [
+          {
+            "taken": true,
+            "to": 22486893
+          },
+          {
+            "taken": false,
+            "to": 22487109
+          }
+        ],
+        "end": 22487109,
+        "last": 22487103,
+        "rows": [
+          22487061,
+          22487064,
+          22487068,
+          22487075,
+          22487078,
+          22487083,
+          22487086,
+          22487089,
+          22487092,
+          22487095,
+          22487098,
+          22487101,
+          22487103
+        ]
+      },
+      "22487109": {
+        "calls": [
+          22487156
+        ],
+        "edges": [
+          {
+            "taken": true,
+            "to": 22486893
+          },
+          {
+            "taken": false,
+            "to": 22487170
+          }
+        ],
+        "end": 22487170,
+        "last": 22487164,
+        "rows": [
+          22487109,
+          22487113,
+          22487117,
+          22487121,
+          22487125,
+          22487129,
+          22487133,
+          22487137,
+          22487141,
+          22487145,
+          22487152,
+          22487156,
+          22487162,
+          22487164
+        ]
+      },
+      "22487170": {
+        "calls": [
+          22487186
+        ],
+        "edges": [
+          {
+            "taken": true,
+            "to": 22486893
+          },
+          {
+            "taken": false,
+            "to": 22487200
+          }
+        ],
+        "end": 22487200,
+        "last": 22487194,
+        "rows": [
+          22487170,
+          22487177,
+          22487181,
+          22487186,
+          22487192,
+          22487194
+        ]
+      },
+      "22487200": {
+        "calls": [
+          22487212
+        ],
+        "edges": [
+          {
+            "taken": true,
+            "to": 22486893
+          },
+          {
+            "taken": false,
+            "to": 22487223
+          }
+        ],
+        "end": 22487223,
+        "last": 22487217,
+        "rows": [
+          22487200,
+          22487204,
+          22487208,
+          22487212,
+          22487215,
+          22487217
+        ]
+      },
+      "22487223": {
+        "calls": [
+          22487243
+        ],
+        "edges": [
+          {
+            "taken": null,
+            "to": 22487246
+          }
+        ],
+        "end": 22487246,
+        "last": 22487243,
+        "rows": [
+          22487223,
+          22487227,
+          22487231,
+          22487238,
+          22487243
+        ]
+      },
+      "22487246": {
+        "calls": [],
+        "edges": [
+          {
+            "taken": true,
+            "to": 22486893
+          }
+        ],
+        "end": 22487254,
+        "last": 22487249,
+        "rows": [
+          22487246,
+          22487249
+        ]
+      }
+    },
+    "branches": {
+      "22486891": {
+        "fallthrough": 22486893,
+        "opcode": "je",
+        "target": 22486919
+      },
+      "22486939": {
+        "fallthrough": 22486941,
+        "opcode": "jne",
+        "target": 22487057
+      },
+      "22486986": {
+        "fallthrough": 22486988,
+        "opcode": "jne",
+        "target": 22486893
+      },
+      "22487006": {
+        "fallthrough": 22487008,
+        "opcode": "jne",
+        "target": 22486893
+      },
+      "22487032": {
+        "fallthrough": 22487038,
+        "opcode": "jne",
+        "target": 22486893
+      },
+      "22487052": {
+        "fallthrough": null,
+        "opcode": "jmp",
+        "target": 22487246
+      },
+      "22487059": {
+        "fallthrough": 22487061,
+        "opcode": "jne",
+        "target": 22487109
+      },
+      "22487103": {
+        "fallthrough": 22487109,
+        "opcode": "jne",
+        "target": 22486893
+      },
+      "22487164": {
+        "fallthrough": 22487170,
+        "opcode": "jne",
+        "target": 22486893
+      },
+      "22487194": {
+        "fallthrough": 22487200,
+        "opcode": "jne",
+        "target": 22486893
+      },
+      "22487217": {
+        "fallthrough": 22487223,
+        "opcode": "jne",
+        "target": 22486893
+      },
+      "22487249": {
+        "fallthrough": null,
+        "opcode": "jmp",
+        "target": 22486893
+      }
+    },
+    "calls": {
+      "22486981": {
+        "bytes": "ff5018",
+        "role": "prefix"
+      },
+      "22487001": {
+        "bytes": "ff5018",
+        "role": "name"
+      },
+      "22487027": {
+        "bytes": "ff5018",
+        "role": "colon"
+      },
+      "22487049": {
+        "bytes": "ff5018",
+        "role": "value"
+      },
+      "22487089": {
+        "bytes": "ff5118",
+        "role": "opaque-pretty-route"
+      },
+      "22487156": {
+        "bytes": "ff15b6c21f04",
+        "role": "opaque-pretty-route"
+      },
+      "22487186": {
+        "bytes": "ff1598c21f04",
+        "role": "opaque-pretty-route"
+      },
+      "22487212": {
+        "bytes": "ff5018",
+        "role": "opaque-pretty-route"
+      },
+      "22487243": {
+        "bytes": "ff5018",
+        "role": "opaque-pretty-route"
+      }
+    },
+    "returns": [
+      22486918
+    ]
+  },
+  "concrete_instruction_execution": false,
+  "conditions": [
+    "Normal callback returns only; unwinding, faults, nonreturn and concurrent mutation excluded.",
+    "Observed memory must remain valid; state writes must not corrupt helper frame/control slots.",
+    "Callbacks preserve rbp/rbx/r12/r13/r14/r15, stack and saved value-argument slots.",
+    "Primitive destination facts use fresh loads; a same-writer specialization additionally requires formatter/method-slot and value-descriptor preservation.",
+    "Field-present byte0/1 is an explicit local domain, not an original Rust bool/layout claim.",
+    "Pretty route, arbitrary callback aliases/clobbers and physical output remain unqualified."
+  ],
+  "domain": {
+    "entry_error": "zero/nonzero raw byte, not a recovered bool type",
+    "field_present": [
+      0,
+      1
+    ],
+    "formatter_mode_bit": "byte(F+0x12)&0x80 clear"
+  },
+  "file_offset": "0x1570f50",
+  "flat_paths": [
+    {
+      "blocks": [
+        22486864,
+        22486919,
+        22486941,
+        22486893
+      ],
+      "calls": [
+        22486981
+      ],
+      "error_origin": {
+        "kind": "constant",
+        "value": 1
+      },
+      "guards": [
+        {
+          "site": 22486891,
+          "value": "entry_error",
+          "zero": true
+        },
+        {
+          "site": 22486939,
+          "value": "mode_bit",
+          "zero": true
+        },
+        {
+          "site": 22486986,
+          "value": "prefix_AL",
+          "zero": false
+        }
+      ],
+      "ordered_state_stores": [
+        {
+          "offset": 8,
+          "source": {
+            "kind": "constant",
+            "value": 1
+          }
+        },
+        {
+          "constant": 1,
+          "offset": 9
+        }
+      ],
+      "output_witness_pcs": [
+        22486884,
+        22486893,
+        22486897,
+        22486901
+      ],
+      "path_rows": [
+        22486864,
+        22486865,
+        22486868,
+        22486870,
+        22486872,
+        22486874,
+        22486876,
+        22486877,
+        22486881,
+        22486884,
+        22486887,
+        22486891,
+        22486919,
+        22486923,
+        22486927,
+        22486930,
+        22486935,
+        22486939,
+        22486941,
+        22486944,
+        22486947,
+        22486950,
+        22486954,
+        22486961,
+        22486968,
+        22486970,
+        22486974,
+        22486977,
+        22486981,
+        22486984,
+        22486986,
+        22486893,
+        22486897,
+        22486901,
+        22486904,
+        22486908,
+        22486909,
+        22486911,
+        22486913,
+        22486915,
+        22486917,
+        22486918
+      ],
+      "return": "original state pointer"
+    },
+    {
+      "blocks": [
+        22486864,
+        22486919,
+        22486941,
+        22486988,
+        22486893
+      ],
+      "calls": [
+        22486981,
+        22487001
+      ],
+      "error_origin": {
+        "kind": "constant",
+        "value": 1
+      },
+      "guards": [
+        {
+          "site": 22486891,
+          "value": "entry_error",
+          "zero": true
+        },
+        {
+          "site": 22486939,
+          "value": "mode_bit",
+          "zero": true
+        },
+        {
+          "site": 22486986,
+          "value": "prefix_AL",
+          "zero": true
+        },
+        {
+          "site": 22487006,
+          "value": "name_AL",
+          "zero": false
+        }
+      ],
+      "ordered_state_stores": [
+        {
+          "offset": 8,
+          "source": {
+            "kind": "constant",
+            "value": 1
+          }
+        },
+        {
+          "constant": 1,
+          "offset": 9
+        }
+      ],
+      "output_witness_pcs": [
+        22486884,
+        22486893,
+        22486897,
+        22486901
+      ],
+      "path_rows": [
+        22486864,
+        22486865,
+        22486868,
+        22486870,
+        22486872,
+        22486874,
+        22486876,
+        22486877,
+        22486881,
+        22486884,
+        22486887,
+        22486891,
+        22486919,
+        22486923,
+        22486927,
+        22486930,
+        22486935,
+        22486939,
+        22486941,
+        22486944,
+        22486947,
+        22486950,
+        22486954,
+        22486961,
+        22486968,
+        22486970,
+        22486974,
+        22486977,
+        22486981,
+        22486984,
+        22486986,
+        22486988,
+        22486991,
+        22486995,
+        22486998,
+        22487001,
+        22487004,
+        22487006,
+        22486893,
+        22486897,
+        22486901,
+        22486904,
+        22486908,
+        22486909,
+        22486911,
+        22486913,
+        22486915,
+        22486917,
+        22486918
+      ],
+      "return": "original state pointer"
+    },
+    {
+      "blocks": [
+        22486864,
+        22486919,
+        22486941,
+        22486988,
+        22487008,
+        22486893
+      ],
+      "calls": [
+        22486981,
+        22487001,
+        22487027
+      ],
+      "error_origin": {
+        "kind": "constant",
+        "value": 1
+      },
+      "guards": [
+        {
+          "site": 22486891,
+          "value": "entry_error",
+          "zero": true
+        },
+        {
+          "site": 22486939,
+          "value": "mode_bit",
+          "zero": true
+        },
+        {
+          "site": 22486986,
+          "value": "prefix_AL",
+          "zero": true
+        },
+        {
+          "site": 22487006,
+          "value": "name_AL",
+          "zero": true
+        },
+        {
+          "site": 22487032,
+          "value": "colon_AL",
+          "zero": false
+        }
+      ],
+      "ordered_state_stores": [
+        {
+          "offset": 8,
+          "source": {
+            "kind": "constant",
+            "value": 1
+          }
+        },
+        {
+          "constant": 1,
+          "offset": 9
+        }
+      ],
+      "output_witness_pcs": [
+        22486884,
+        22486893,
+        22486897,
+        22486901
+      ],
+      "path_rows": [
+        22486864,
+        22486865,
+        22486868,
+        22486870,
+        22486872,
+        22486874,
+        22486876,
+        22486877,
+        22486881,
+        22486884,
+        22486887,
+        22486891,
+        22486919,
+        22486923,
+        22486927,
+        22486930,
+        22486935,
+        22486939,
+        22486941,
+        22486944,
+        22486947,
+        22486950,
+        22486954,
+        22486961,
+        22486968,
+        22486970,
+        22486974,
+        22486977,
+        22486981,
+        22486984,
+        22486986,
+        22486988,
+        22486991,
+        22486995,
+        22486998,
+        22487001,
+        22487004,
+        22487006,
+        22487008,
+        22487011,
+        22487015,
+        22487022,
+        22487027,
+        22487030,
+        22487032,
+        22486893,
+        22486897,
+        22486901,
+        22486904,
+        22486908,
+        22486909,
+        22486911,
+        22486913,
+        22486915,
+        22486917,
+        22486918
+      ],
+      "return": "original state pointer"
+    },
+    {
+      "blocks": [
+        22486864,
+        22486919,
+        22486941,
+        22486988,
+        22487008,
+        22487038,
+        22487246,
+        22486893
+      ],
+      "calls": [
+        22486981,
+        22487001,
+        22487027,
+        22487049
+      ],
+      "error_origin": {
+        "call_site": 22487049,
+        "kind": "last_callback_AL"
+      },
+      "guards": [
+        {
+          "site": 22486891,
+          "value": "entry_error",
+          "zero": true
+        },
+        {
+          "site": 22486939,
+          "value": "mode_bit",
+          "zero": true
+        },
+        {
+          "site": 22486986,
+          "value": "prefix_AL",
+          "zero": true
+        },
+        {
+          "site": 22487006,
+          "value": "name_AL",
+          "zero": true
+        },
+        {
+          "site": 22487032,
+          "value": "colon_AL",
+          "zero": true
+        }
+      ],
+      "ordered_state_stores": [
+        {
+          "offset": 8,
+          "source": {
+            "call_site": 22487049,
+            "kind": "last_callback_AL"
+          }
+        },
+        {
+          "constant": 1,
+          "offset": 9
+        }
+      ],
+      "output_witness_pcs": [
+        22486884,
+        22487246,
+        22486893,
+        22486897,
+        22486901
+      ],
+      "path_rows": [
+        22486864,
+        22486865,
+        22486868,
+        22486870,
+        22486872,
+        22486874,
+        22486876,
+        22486877,
+        22486881,
+        22486884,
+        22486887,
+        22486891,
+        22486919,
+        22486923,
+        22486927,
+        22486930,
+        22486935,
+        22486939,
+        22486941,
+        22486944,
+        22486947,
+        22486950,
+        22486954,
+        22486961,
+        22486968,
+        22486970,
+        22486974,
+        22486977,
+        22486981,
+        22486984,
+        22486986,
+        22486988,
+        22486991,
+        22486995,
+        22486998,
+        22487001,
+        22487004,
+        22487006,
+        22487008,
+        22487011,
+        22487015,
+        22487022,
+        22487027,
+        22487030,
+        22487032,
+        22487038,
+        22487042,
+        22487045,
+        22487049,
+        22487052,
+        22487246,
+        22487249,
+        22486893,
+        22486897,
+        22486901,
+        22486904,
+        22486908,
+        22486909,
+        22486911,
+        22486913,
+        22486915,
+        22486917,
+        22486918
+      ],
+      "return": "original state pointer"
+    },
+    {
+      "blocks": [
+        22486864,
+        22486893
+      ],
+      "calls": [],
+      "error_origin": {
+        "kind": "constant",
+        "value": 1
+      },
+      "guards": [
+        {
+          "site": 22486891,
+          "value": "entry_error",
+          "zero": false
+        }
+      ],
+      "ordered_state_stores": [
+        {
+          "offset": 8,
+          "source": {
+            "kind": "constant",
+            "value": 1
+          }
+        },
+        {
+          "constant": 1,
+          "offset": 9
+        }
+      ],
+      "output_witness_pcs": [
+        22486884,
+        22486893,
+        22486897,
+        22486901
+      ],
+      "path_rows": [
+        22486864,
+        22486865,
+        22486868,
+        22486870,
+        22486872,
+        22486874,
+        22486876,
+        22486877,
+        22486881,
+        22486884,
+        22486887,
+        22486891,
+        22486893,
+        22486897,
+        22486901,
+        22486904,
+        22486908,
+        22486909,
+        22486911,
+        22486913,
+        22486915,
+        22486917,
+        22486918
+      ],
+      "return": "original state pointer"
+    }
+  ],
+  "native_command": [
+    "objdump",
+    "-D",
+    "-b",
+    "binary",
+    "-m",
+    "i386:x86-64",
+    "-M",
+    "intel",
+    "--insn-width=16",
+    "--adjust-vma=0x1571f50",
+    "<owned-390-byte-helper>"
+  ],
+  "native_instruction_rows": 109,
+  "native_tool": "GNU objdump (GNU Binutils for Debian) 2.44",
+  "operand_facts": {
+    "capture_source_register_index": 0,
+    "colon": {
+      "bytes_hex": "3a20",
+      "length": 2,
+      "pointer": 2436094
+    },
+    "entry_compare": 0,
+    "entry_error_offset": 8,
+    "error_store_offset": 8,
+    "field_present_offset": 9,
+    "field_store_offset": 9,
+    "field_store_value": 1,
+    "initial_status": 1,
+    "method_offsets": {
+      "22486981": 24,
+      "22487001": 24,
+      "22487027": 24,
+      "22487049": 24
+    },
+    "mode_mask": 128,
+    "mode_offset": 18,
+    "prefix_choices": [
+      {
+        "H": 0,
+        "bytes_hex": "207b20",
+        "length": 3,
+        "pointer": 2436091
+      },
+      {
+        "H": 1,
+        "bytes_hex": "2c20",
+        "length": 2,
+        "pointer": 2436079
+      }
+    ],
+    "prefix_cmov": "ne",
+    "prefix_xor": 3
+  },
+  "pretty_route_unqualified": true,
+  "range": [
+    "0x1571f50",
+    "0x15720d6"
+  ],
+  "runtime_rendering_or_gate_claimed": false,
+  "schema": "re005-diagnostic-field-static/1",
+  "span_sha256": "e6aec76f57413451c7a873712558e50e18c6f30b2001b6777c3fd29fda32388d",
+  "state_window_is_not_nominal_layout": true,
+  "target_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",
+  "unwind_metadata": {
+    "cie_bytes": "1400000000000000017a5200017810011b0c070890010000",
+    "cie_va": "0xce1518",
+    "fde_bytes": "280000009c900100987987008601000000410e108602430d064d83078c068d058e048f03650c0708410c0610",
+    "fde_file_offset": "0xcfa5b0",
+    "fde_va": "0xcfa5b0"
+  },
+  "used_and_opaque_pretty_bindings": {
+    "0x5674228": {
+      "addend_va": "0x157d000",
+      "info": 8,
+      "record_file_offset": "0x1dea0"
+    },
+    "0x576e2c8": {
+      "addend_va": "0x1571f50",
+      "info": 8,
+      "record_file_offset": "0x1b23f0"
+    },
+    "0x576e330": {
+      "addend_va": "0x157d000",
+      "info": 8,
+      "record_file_offset": "0x1b2528"
+    }
+  }
+}
