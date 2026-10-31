@@ -4,7 +4,10 @@
 Parses the ELF section table itself, then checks the binary sha256, the exact
 bytes at every pinned key VA (and the decoded rel32 / RIP-relative GOT target of
 every call), the sha256 of every pinned loop/count block, and re-derives the
-loop bounds and word counts claimed in lthash-mechanism.json.
+loop bounds and word counts claimed in lthash-mechanism.json. It also rescans all
+of .text (e8/e9 rel32, RIP-relative lea) and every R_X86_64_RELATIVE addend for
+references to each pinned function, requires the exact pinned site set, and checks
+each site's owning function against its own .eh_frame_hdr / FDE parse.
 """
 import hashlib
 import json
@@ -17,7 +20,7 @@ ROOT = HERE.parents[2]
 BINARY = ROOT / 'artifacts' / 'node' / '94' / 'hl-node'
 PACKET_JSON = HERE / 'lthash-mechanism.json'
 BINARY_SHA256 = '3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f'
-JSON_SHA256 = '9450c6225fbc78446bfd7813592ec7e9700006c1fa0bf9ad567216ddb703b12a'
+JSON_SHA256 = 'ab89a443e8685ba6b20779e15eb08f65c1b30f8e5b2f4dea798aa638f0d5faaa'
 
 # (va, exact bytes, kind, decoded target or None, role)
 KEYS = (
@@ -71,8 +74,141 @@ BLOBS = (
     (0x37f48a0, 0x4a, '74122bacf7b1c0d01b2788fcf55e4a9a6ab0772e6a86d8658773cc1e46170e8c', 'leaf3 count'),
     (0x37f48f0, 0x58, '4870ac9a5cb7deacbba85b6b5c32e1972c833cf13a367f767a8bf639d2511a80', 'leaf3 merge-loop'),
 )
+# target -> exact ((site, kind, owning function start or None for data), ...)
+REFS = {
+    0x32699c0: ((0x326a2e0, 'call', 0x3269ae0), (0x326aff3, 'call', 0x326aec0), (0x32fc267, 'call', 0x32fc190)),
+    0x3269ae0: ((0x326e4bb, 'call', 0x326e460), (0x32fc41f, 'call', 0x32fc190)),
+    0x343c390: ((0x3830c14, 'call', 0x3830a40), (0x3830e08, 'call', 0x3830a40), (0x38adbb4, 'call', 0x38adb50), (0x3bc4ad4, 'call', 0x3bc4a40)),
+    0x3440b50: ((0x3828cf4, 'call', 0x3828b20), (0x3828ee8, 'call', 0x3828b20), (0x38d0864, 'call', 0x38d0800), (0x3bc5174, 'call', 0x3bc50e0)),
+    0x3443160: ((0x381f4e4, 'call', 0x381f310), (0x381f6d8, 'call', 0x381f310), (0x38ba7e4, 'call', 0x38ba780), (0x3bc47f4, 'call', 0x3bc4760)),
+    0x37d2550: ((0x326a0e5, 'call', 0x3269ae0),),
+    0x37d3070: ((0x3269cbe, 'call', 0x3269ae0),),
+    0x37d3bd0: ((0x3269ed9, 'call', 0x3269ae0),),
+    0x37f3f00: ((0x344320e, 'call', 0x3443160),),
+    0x37f4280: ((0x3440bfe, 'call', 0x3440b50),),
+    0x37f4610: ((0x343c43e, 'call', 0x343c390),),
+    0x381f310: ((0x34433a7, 'call', 0x3443160), (0x38b0a58, 'call', 0x38b09c0), (0x38d95a4, 'call', 0x38d9510)),
+    0x3828b20: ((0x3440d97, 'call', 0x3440b50), (0x38b7d74, 'call', 0x38b7ce0), (0x38d0e18, 'call', 0x38d0d80)),
+    0x3830a40: ((0x343c5d3, 'call', 0x343c390), (0x38bd8c4, 'call', 0x38bd830), (0x38c6758, 'call', 0x38c66c0)),
+    0x3843510: ((0x3440e8c, 'call', 0x3440b50),),
+    0x3846fa0: ((0x344349c, 'call', 0x3443160),),
+    0x384e2d0: ((0x343c6cc, 'call', 0x343c390),),
+    0x3851320: ((0x343c6e7, 'call', 0x343c390),),
+    0x3854d90: ((0x34434b7, 'call', 0x3443160),),
+    0x3857170: ((0x3440ea7, 'call', 0x3440b50),),
+    0x38adb50: ((0x3830b52, 'lea', 0x3830a40),),
+    0x38b09c0: ((0x3854e2c, 'lea', 0x3854d90),),
+    0x38b7ce0: ((0x384359f, 'lea', 0x3843510),),
+    0x38ba780: ((0x381f422, 'lea', 0x381f310),),
+    0x38bd830: ((0x384e35f, 'lea', 0x384e2d0),),
+    0x38c66c0: ((0x38513bc, 'lea', 0x3851320),),
+    0x38d0800: ((0x3828c32, 'lea', 0x3828b20),),
+    0x38d0d80: ((0x385720c, 'lea', 0x3857170),),
+    0x38d9510: ((0x384702f, 'lea', 0x3846fa0),),
+    0x3bc4760: ((0x37d3574, 'call', 0x37d3070), (0x37d386c, 'call', 0x37d3070)),
+    0x3bc4a40: ((0x37d29c2, 'call', 0x37d2550), (0x37d2d00, 'call', 0x37d2550)),
+    0x3bc50e0: ((0x37d4080, 'call', 0x37d3bd0), (0x37d43ae, 'call', 0x37d3bd0)),
+}
+TOP_FN = 0x3269ae0
+LEAF_FNS = (0x37f3f00, 0x37f4280, 0x37f4610)
 ENTRY_LOOPS = (0x37f40d0, 0x37f4460, 0x37f4800)
 MERGE_LOOPS = (0x37f41c0, 0x37f4550, 0x37f48f0)
+
+
+def section_table(data):
+    if data[:6] != b'\x7fELF\x02\x01':
+        raise ValueError('not ELF64 LE')
+    shoff = struct.unpack_from('<Q', data, 40)[0]
+    es, cnt, ni = struct.unpack_from('<HHH', data, 58)
+    hdr = [struct.unpack_from('<IIQQQQ', data, shoff + i * es) for i in range(cnt)]
+    stro = hdr[ni][4]
+    return {data[stro + n:data.index(b'\0', stro + n)].decode(): (a, o, z) for n, _t, _f, a, o, z in hdr}
+
+
+def fde_range(data, secs, start):
+    """pc range of the FDE whose initial location is start, via .eh_frame_hdr."""
+    ha, ho, _ = secs['.eh_frame_hdr']
+    ver, _efp, cnt_enc, tab_enc = data[ho:ho + 4]
+    if (ver, cnt_enc, tab_enc) != (1, 0x03, 0x3b):
+        raise ValueError('unexpected .eh_frame_hdr encodings')
+    n = struct.unpack_from('<I', data, ho + 8)[0]
+    lo, hi = 0, n
+    while lo < hi:
+        mid = (lo + hi) // 2
+        loc, fde = struct.unpack_from('<ii', data, ho + 12 + 8 * mid)
+        if ha + loc < start:
+            lo = mid + 1
+        else:
+            hi = mid
+    loc, fde = struct.unpack_from('<ii', data, ho + 12 + 8 * lo)
+    if ha + loc != start:
+        return None
+    ea, eo, _ = secs['.eh_frame']
+    fva = ha + fde
+    fo = fva - ea + eo
+    pc = fva + 8 + struct.unpack_from('<i', data, fo + 8)[0]
+    if pc != start:
+        raise ValueError(f'{start:#x}: FDE pc_begin mismatch')
+    return start, start + struct.unpack_from('<I', data, fo + 12)[0]
+
+
+def scan_refs(data, secs, targets):
+    ta, to, ts = secs['.text']
+    tb = data[to:to + ts]
+    hits = {x: [] for x in targets}
+    for i in range(len(tb) - 5):
+        o = tb[i]
+        if o == 0xe8 or o == 0xe9:
+            x = ta + i + 5 + struct.unpack_from('<i', tb, i + 1)[0]
+            if x in hits:
+                hits[x].append((ta + i, 'call' if o == 0xe8 else 'jmp'))
+        if o == 0x8d and tb[i + 1] & 0xc7 == 5 and i + 6 <= len(tb):
+            x = ta + i + 6 + struct.unpack_from('<i', tb, i + 2)[0]
+            if x in hits:
+                hits[x].append((ta + i - 1, 'lea'))
+    _ra, ro, rz = secs['.rela.dyn']
+    for j in range(ro, ro + rz - 23, 24):
+        off, info, add = struct.unpack_from('<QQq', data, j)
+        if info & 0xffffffff == 8 and add in hits:
+            hits[add].append((off, 'reloc'))
+    return {x: sorted(v) for x, v in hits.items()}
+
+
+def check_refs(data, packet=None):
+    errors = []
+    secs = section_table(data)
+    got = scan_refs(data, secs, tuple(REFS))
+    for tgt, want in REFS.items():
+        if [(s, k) for s, k, _ in want] != got[tgt]:
+            errors.append(f'{tgt:#x}: reference sites {[(hex(s), k) for s, k in got[tgt]]}')
+        for site, kind, src in want:
+            if src is None:
+                continue
+            r = fde_range(data, secs, src)
+            if r is None or not (r[0] <= site < r[1]):
+                errors.append(f'{site:#x}: not inside FDE of {src:#x}')
+    for leaf in LEAF_FNS:
+        seen, todo = {leaf}, [leaf]
+        while todo:
+            f = todo.pop()
+            if f == TOP_FN:
+                continue
+            for _s, _k, src in REFS.get(f, ((None, 'missing', None),)):
+                if src is None:
+                    errors.append(f'{f:#x}: closure reaches unpinned or data reference')
+                elif src not in seen:
+                    seen.add(src)
+                    todo.append(src)
+        if packet is not None:
+            rec = [x for x in packet['reference_closure']['leaves'] if x['leaf'] == hex(leaf)]
+            if not rec or sorted(int(a, 16) for a, _ in rec[0]['closure_functions']) != sorted(seen):
+                errors.append(f'{leaf:#x}: packet closure_functions disagree with scan')
+    if packet is not None:
+        rc = packet['reference_closure']
+        for key, tgt in (('writer_refs', 0x32699c0), ('top_function_refs', TOP_FN)):
+            if [[hex(s), k, hex(f)] for s, k, f in REFS[tgt]] != rc[key]:
+                errors.append(f'packet {key} disagree with pinned references')
+    return errors
 
 
 def text_section(data):
@@ -140,12 +276,16 @@ def main():
     errors = []
     if hashlib.sha256(raw).hexdigest() != JSON_SHA256:
         errors.append('packet json sha256 mismatch')
-    errors += check(BINARY.read_bytes(), json.loads(raw))
+    data, packet = BINARY.read_bytes(), json.loads(raw)
+    errors += check(data, packet)
+    errors += check_refs(data, packet)
     for e in errors:
         print('FAIL', e)
     n = len(KEYS) + len(BLOBS)
     print(f'independent_verify: {n} pinned items checked, '
-          f'{len(KEYS)} key VAs, {len(BLOBS)} blocks, errors={len(errors)}')
+          f'{len(KEYS)} key VAs, {len(BLOBS)} blocks; '
+          f'{len(REFS)} reference targets, {sum(len(v) for v in REFS.values())} pinned reference sites; '
+          f'errors={len(errors)}')
     return 1 if errors else 0
 
 

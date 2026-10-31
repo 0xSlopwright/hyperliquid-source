@@ -4,9 +4,11 @@
 Derives, from the instruction bytes of three pinned leaves, a blake3 XOF read of
 0x800 bytes, a 16-bit lattice add whose byte order is decoded by register
 dataflow (not assumed), and a saturating 64-bit count add. Output is sorted,
-deterministic JSON. Uses only main-branch ELF helpers (elf_index, fde_extents).
+deterministic JSON. A full .text reference scan (rel32 call/jmp, RIP-relative
+lea, RELATIVE relocs) pins the exact backward closure of each leaf. Uses only main-branch ELF helpers (elf_index, fde_extents).
 """
 import argparse
+import bisect
 import hashlib
 import json
 from pathlib import Path
@@ -82,6 +84,121 @@ class Image:
         if b[:2] != b'\xff\x15':
             raise ValueError(f'{va:#x}: not call [rip+disp32]')
         return va + 6 + struct.unpack('<i', b[2:])[0]
+
+
+# --- reference closure (full .text) -------------------------------------
+# Reference kinds scanned over all of .text: e8 call rel32, e9 jmp rel32,
+# 8d /r RIP-relative lea; plus every R_X86_64_RELATIVE addend in .rela.dyn.
+# REFS pins, for every function in each leaf's backward closure and for the
+# top function and writer, the exact set of (site, kind, source function).
+REFS = {
+    0x32699c0: ((0x326a2e0, 'call', 0x3269ae0), (0x326aff3, 'call', 0x326aec0), (0x32fc267, 'call', 0x32fc190)),
+    0x3269ae0: ((0x326e4bb, 'call', 0x326e460), (0x32fc41f, 'call', 0x32fc190)),
+    0x343c390: ((0x3830c14, 'call', 0x3830a40), (0x3830e08, 'call', 0x3830a40), (0x38adbb4, 'call', 0x38adb50), (0x3bc4ad4, 'call', 0x3bc4a40)),
+    0x3440b50: ((0x3828cf4, 'call', 0x3828b20), (0x3828ee8, 'call', 0x3828b20), (0x38d0864, 'call', 0x38d0800), (0x3bc5174, 'call', 0x3bc50e0)),
+    0x3443160: ((0x381f4e4, 'call', 0x381f310), (0x381f6d8, 'call', 0x381f310), (0x38ba7e4, 'call', 0x38ba780), (0x3bc47f4, 'call', 0x3bc4760)),
+    0x37d2550: ((0x326a0e5, 'call', 0x3269ae0),),
+    0x37d3070: ((0x3269cbe, 'call', 0x3269ae0),),
+    0x37d3bd0: ((0x3269ed9, 'call', 0x3269ae0),),
+    0x37f3f00: ((0x344320e, 'call', 0x3443160),),
+    0x37f4280: ((0x3440bfe, 'call', 0x3440b50),),
+    0x37f4610: ((0x343c43e, 'call', 0x343c390),),
+    0x381f310: ((0x34433a7, 'call', 0x3443160), (0x38b0a58, 'call', 0x38b09c0), (0x38d95a4, 'call', 0x38d9510)),
+    0x3828b20: ((0x3440d97, 'call', 0x3440b50), (0x38b7d74, 'call', 0x38b7ce0), (0x38d0e18, 'call', 0x38d0d80)),
+    0x3830a40: ((0x343c5d3, 'call', 0x343c390), (0x38bd8c4, 'call', 0x38bd830), (0x38c6758, 'call', 0x38c66c0)),
+    0x3843510: ((0x3440e8c, 'call', 0x3440b50),),
+    0x3846fa0: ((0x344349c, 'call', 0x3443160),),
+    0x384e2d0: ((0x343c6cc, 'call', 0x343c390),),
+    0x3851320: ((0x343c6e7, 'call', 0x343c390),),
+    0x3854d90: ((0x34434b7, 'call', 0x3443160),),
+    0x3857170: ((0x3440ea7, 'call', 0x3440b50),),
+    0x38adb50: ((0x3830b52, 'lea', 0x3830a40),),
+    0x38b09c0: ((0x3854e2c, 'lea', 0x3854d90),),
+    0x38b7ce0: ((0x384359f, 'lea', 0x3843510),),
+    0x38ba780: ((0x381f422, 'lea', 0x381f310),),
+    0x38bd830: ((0x384e35f, 'lea', 0x384e2d0),),
+    0x38c66c0: ((0x38513bc, 'lea', 0x3851320),),
+    0x38d0800: ((0x3828c32, 'lea', 0x3828b20),),
+    0x38d0d80: ((0x385720c, 'lea', 0x3857170),),
+    0x38d9510: ((0x384702f, 'lea', 0x3846fa0),),
+    0x3bc4760: ((0x37d3574, 'call', 0x37d3070), (0x37d386c, 'call', 0x37d3070)),
+    0x3bc4a40: ((0x37d29c2, 'call', 0x37d2550), (0x37d2d00, 'call', 0x37d2550)),
+    0x3bc50e0: ((0x37d4080, 'call', 0x37d3bd0), (0x37d43ae, 'call', 0x37d3bd0)),
+}
+
+
+def _scan_refs(data, targets):
+    secs = {s['name']: s for s in sections(data)}
+    t = secs['.text']
+    tb = data[t['offset']:t['offset'] + t['size']]
+    base = t['address']
+    hits = {x: [] for x in targets}
+    for op, kind, ln, disp in ((b'\xe8', 'call', 5, 1), (b'\xe9', 'jmp', 5, 1)):
+        i = tb.find(op)
+        while i != -1 and i + ln <= len(tb):
+            x = base + i + ln + struct.unpack_from('<i', tb, i + disp)[0]
+            if x in hits:
+                hits[x].append((base + i, kind))
+            i = tb.find(op, i + 1)
+    i = tb.find(b'\x8d')
+    while i != -1 and i + 6 <= len(tb):
+        if tb[i + 1] & 0xc7 == 5:
+            x = base + i + 6 + struct.unpack_from('<i', tb, i + 2)[0]
+            if x in hits:
+                hits[x].append((base + i - 1, 'lea'))
+        i = tb.find(b'\x8d', i + 1)
+    r = secs['.rela.dyn']
+    rb = data[r['offset']:r['offset'] + r['size']]
+    for j in range(0, len(rb) - 23, 24):
+        off, info, add = struct.unpack_from('<QQq', rb, j)
+        if info & 0xffffffff == 8 and add in hits:
+            hits[add].append((off, 'reloc'))
+    return {x: sorted(v) for x, v in hits.items()}
+
+
+def reference_closure(data, extents):
+    starts = sorted(extents)
+
+    def owner(va):
+        k = bisect.bisect_right(starts, va) - 1
+        return starts[k] if k >= 0 and va < extents[starts[k]] else None
+    got = _scan_refs(data, tuple(REFS))
+    for tgt, want in REFS.items():
+        have = [(site, kind, owner(site) if kind != 'reloc' else None) for site, kind in got[tgt]]
+        if have != list(want):
+            raise ValueError(f'{tgt:#x}: references {[(hex(a), k, f and hex(f)) for a, k, f in have]}')
+    leaves = []
+    for L in LEAVES:
+        seen, todo, edges = {L['leaf']}, [L['leaf']], []
+        while todo:
+            f = todo.pop()
+            if f == TOP_FN:
+                continue
+            if f not in REFS:
+                raise ValueError(f'{f:#x}: reached a function without pinned references')
+            for site, kind, src in REFS[f]:
+                if src is None:
+                    raise ValueError(f'{f:#x}: non-code reference {site:#x} inside the closure')
+                edges.append((site, kind, src, f))
+                if src not in seen:
+                    seen.add(src)
+                    todo.append(src)
+        external = sorted({(s, k, a, b) for s, k, a, b in edges if a == TOP_FN})
+        leaves.append({
+            'leaf': hex(L['leaf']),
+            'closure_functions': [[hex(f), hex(extents[f])] for f in sorted(seen)],
+            'closure_edges': [[hex(s), k, hex(a), hex(b)] for s, k, a, b in sorted(edges)],
+            'entry_from_top': [[hex(s), k, hex(a), hex(b)] for s, k, a, b in external],
+        })
+    return {
+        'reference_kinds': ['e8 call rel32', 'e9 jmp rel32', 'rip-relative lea', 'R_X86_64_RELATIVE addend'],
+        'leaves': leaves,
+        'top_function_refs': [[hex(s), k, f and hex(f)] for s, k, f in REFS[TOP_FN]],
+        'writer_refs': [[hex(s), k, f and hex(f)] for s, k, f in REFS[WRITER]],
+        'counts': {'closure_functions_per_leaf': [len(x['closure_functions']) for x in leaves],
+                   'closure_edges_per_leaf': [len(x['closure_edges']) for x in leaves],
+                   'writer_callers': len(REFS[WRITER]), 'top_function_callers': len(REFS[TOP_FN])},
+    }
 
 
 def decode_lattice(img, init_va, body_va, end_va):
@@ -194,7 +311,7 @@ def leaf_extents(data):
     return {f['start']: f['end'] for f in fde_extents(data)[1]}
 
 
-def analyse(data, require_sha=True, extents=None):
+def analyse(data, require_sha=True, extents=None, check_refs=True):
     """require_sha/extents exist so tests can tamper one byte and hit one check."""
     if require_sha and hashlib.sha256(data).hexdigest() != BINARY_SHA256:
         raise ValueError('binary sha256 mismatch')
@@ -247,8 +364,8 @@ def analyse(data, require_sha=True, extents=None):
         })
     if img.rel32_target(WRITER_CALL) != WRITER:
         raise ValueError('top function writer call mismatch')
-    return {
-        'schema': 're009c-lthash-mechanism/1',
+    out = {
+        'schema': 're009c-lthash-mechanism/2',
         'binary_sha256': BINARY_SHA256,
         'coordinates': 'virtual addresses (VA), ELF64 x86-64',
         'top_function': hex(TOP_FN), 'writer': hex(WRITER), 'writer_call': hex(WRITER_CALL),
@@ -256,6 +373,9 @@ def analyse(data, require_sha=True, extents=None):
         'counts': {'leaves': len(out_leaves), 'lattice_loops': 2 * len(out_leaves),
                    'count_blocks': len(out_leaves)},
     }
+    if check_refs:
+        out['reference_closure'] = reference_closure(data, extents)
+    return out
 
 
 def render(result):

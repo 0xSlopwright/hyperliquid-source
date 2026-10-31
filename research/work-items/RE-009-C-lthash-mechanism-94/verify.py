@@ -10,8 +10,10 @@ sys.path.insert(0, str(ROOT / 'tools'))
 import lthash_mechanism as tool  # noqa: E402
 
 PACKET_JSON = HERE / 'lthash-mechanism.json'
-JSON_SHA256 = '9450c6225fbc78446bfd7813592ec7e9700006c1fa0bf9ad567216ddb703b12a'
+JSON_SHA256 = 'ab89a443e8685ba6b20779e15eb08f65c1b30f8e5b2f4dea798aa638f0d5faaa'
 EXPECT = {'leaves': 3, 'lattice_loops': 6, 'count_blocks': 3}
+EXPECT_REFS = {'closure_functions_per_leaf': [11, 11, 11], 'closure_edges_per_leaf': [16, 16, 16],
+               'writer_callers': 3, 'top_function_callers': 2}
 
 
 def main():
@@ -24,6 +26,12 @@ def main():
         errors.append('committed json differs from regenerated output')
     if result['counts'] != EXPECT:
         errors.append(f"counts {result['counts']} != {EXPECT}")
+    rc = result['reference_closure']
+    if rc['counts'] != EXPECT_REFS:
+        errors.append(f"reference counts {rc['counts']} != {EXPECT_REFS}")
+    for x in rc['leaves']:
+        if [e[2] for e in x['entry_from_top']] != ['0x3269ae0']:
+            errors.append(f"{x['leaf']}: entry from outside the closure is not exactly one call from 0x3269ae0")
     for L in result['leaves']:
         for key in ('lattice_entry_add', 'lattice_merge_add'):
             r = L[key]
@@ -34,7 +42,8 @@ def main():
             errors.append(f"{L['leaf']}: count/xof fields")
     for e in errors:
         print('FAIL', e)
-    print(f'verify: leaves=3 loops=6 count_blocks=3 errors={len(errors)}')
+    print(f'verify: leaves=3 loops=6 count_blocks=3 closure_functions=11/11/11 closure_edges=16/16/16 '
+          f'writer_callers=3 top_callers=2 errors={len(errors)}')
     return 1 if errors else 0
 
 

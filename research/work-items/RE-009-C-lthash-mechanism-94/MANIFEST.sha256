@@ -1,6 +1,6 @@
-82d7dc57c4d67feb556d7d4dc76b725b8a8b5fd6b94dc963edb4e4d88f5f1214  README.md
-338d1fa10cf5abc2ec1a7b184efdac411936da11c7e6dfe6ee03d21576a3eb36  independent_verify.py
-9450c6225fbc78446bfd7813592ec7e9700006c1fa0bf9ad567216ddb703b12a  lthash-mechanism.json
-3a440054441154f3159f07853639a9612d8205eafebb81ac48e20de5cdac8802  verify.py
-8209769434ff10047dd0e32778dd698542ec601ea6bf4e4a05c6ec4682b92c1a  ../../../tools/lthash_mechanism.py
-6e274ba095786c3f5283d300f4868877bad30d1192b50a583b8caec97618cd1f  ../../../tests/test_lthash_mechanism.py
+3726f06261df6198fcbeb864cb117cc7a0954f57cb6d7d480e1a98f12d6618f6  README.md
+16d545ca25f397d73280e4088c122d5e010fa5278999d7cd4011280fc8ed60f0  independent_verify.py
+ab89a443e8685ba6b20779e15eb08f65c1b30f8e5b2f4dea798aa638f0d5faaa  lthash-mechanism.json
+f699cd300647b71d58633938dd781a43cf91c05ac077fdfa53c16b207f1efda8  verify.py
+b864d9aeaa087f39d3417414dbe2ef78c624ff5e502b04a1b753b5ec9f7d5c17  ../../../tools/lthash_mechanism.py
+430b55cda1be729c41d3413fa97adecb50609d88230041255bf5bd2120ac04c3  ../../../tests/test_lthash_mechanism.py

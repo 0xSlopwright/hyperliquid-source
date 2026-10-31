@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PACKET = ROOT / "research/work-items/RE-009-C-lthash-mechanism-94"
 BIN = ROOT / "artifacts/node/94/hl-node"
-OUTPUT_SHA256 = "9450c6225fbc78446bfd7813592ec7e9700006c1fa0bf9ad567216ddb703b12a"
+OUTPUT_SHA256 = "ab89a443e8685ba6b20779e15eb08f65c1b30f8e5b2f4dea798aa638f0d5faaa"
 
 
 def load(name, path):
@@ -44,7 +44,7 @@ class PinnedOutput(Base):
         self.assertEqual((PACKET / "lthash-mechanism.json").read_text(), text)
 
     def test_exact_mechanism(self):
-        r = tool.analyse(self.data, extents=self.extents)
+        r = tool.analyse(self.data, extents=self.extents, check_refs=False)
         self.assertEqual(r["counts"], {"leaves": 3, "lattice_loops": 6, "count_blocks": 3})
         self.assertEqual([L["leaf"] for L in r["leaves"]], ["0x37f3f00", "0x37f4280", "0x37f4610"])
         for L in r["leaves"]:
@@ -123,7 +123,7 @@ class KeyVaTamper(Base):
                 o = self.flip(va + len(hx) // 2 - 1)
                 try:
                     out = tool.render(tool.analyse(bytes(self.buf), require_sha=False,
-                                                   extents=self.extents))
+                                                   extents=self.extents, check_refs=False))
                     changed = hashlib.sha256(out.encode()).hexdigest() != OUTPUT_SHA256
                 except ValueError:
                     changed = True
@@ -136,24 +136,74 @@ class KeyVaTamper(Base):
         self.assertEqual(self.buf[o:o + 4], bytes.fromhex("66c1c108"))
         self.buf[o:o + 4] = b"\x90" * 4
         with self.assertRaises(ValueError):
-            tool.analyse(bytes(self.buf), require_sha=False, extents=self.extents)
+            tool.analyse(bytes(self.buf), require_sha=False, extents=self.extents, check_refs=False)
 
     def test_bound_change_changes_output(self):
         o = self.off(0x37f4120 + 2)        # cmp rax,0x401 imm32
         self.assertEqual(struct.unpack_from("<I", self.buf, o)[0], 0x401)
         struct.pack_into("<I", self.buf, o, 0x403)
-        out = tool.analyse(bytes(self.buf), require_sha=False, extents=self.extents)
+        out = tool.analyse(bytes(self.buf), require_sha=False, extents=self.extents, check_refs=False)
         self.assertEqual(out["leaves"][0]["lattice_entry_add"]["u16_words_total"], 1026)
 
     def test_xof_len_change_rejected(self):
         o = self.off(0x37f408a + 1)
         struct.pack_into("<I", self.buf, o, 0x801)
         with self.assertRaises(ValueError):
-            tool.analyse(bytes(self.buf), require_sha=False, extents=self.extents)
+            tool.analyse(bytes(self.buf), require_sha=False, extents=self.extents, check_refs=False)
 
     def test_sha_gate(self):
         with self.assertRaises(ValueError):
-            tool.analyse(self.data[:-1] + bytes([self.data[-1] ^ 0xFF]), extents=self.extents)
+            tool.analyse(self.data[:-1] + bytes([self.data[-1] ^ 0xFF]), extents=self.extents, check_refs=False)
+
+
+
+class ReferenceClosureTamper(Base):
+    """A new reference into the closure, or a lost one, must fail both checkers."""
+    INJECT = 0x1400000                     # arbitrary .text VA outside every pinned function
+
+    def _with_call(self, site, target, op=0xE8):
+        buf = bytearray(self.data)
+        o = self.off(site)
+        buf[o:o + 5] = bytes([op]) + struct.pack("<i", target - (site + 5))
+        return bytes(buf)
+
+    def test_injected_call_to_each_closure_function_rejected(self):
+        for tgt in (0x37f3f00, 0x3443160, 0x38ba780, 0x3bc4a40, 0x32699c0, 0x3269ae0):
+            for op in (0xE8, 0xE9):
+                with self.subTest(target=hex(tgt), op=hex(op)):
+                    data = self._with_call(self.INJECT, tgt, op)
+                    with self.assertRaises(ValueError):
+                        tool.analyse(data, require_sha=False, extents=self.extents)
+                    errs = iv.check_refs(data)
+                    self.assertTrue(any(f"{tgt:#x}: reference sites" in e for e in errs), errs)
+
+    def test_removed_rayon_to_leaf_call_rejected(self):
+        buf = bytearray(self.data)
+        o = self.off(0x344320e)
+        buf[o] = 0x90                      # e8 -> nop: leaf1 loses its only caller
+        with self.assertRaises(ValueError):
+            tool.analyse(bytes(buf), require_sha=False, extents=self.extents)
+        errs = iv.check_refs(bytes(buf))
+        self.assertTrue(any("0x37f3f00: reference sites" in e for e in errs), errs)
+
+    def test_pinned_reference_constant_mutation_rejected(self):
+        saved = iv.REFS[0x37f3f00]
+        try:
+            iv.REFS[0x37f3f00] = ((0x344320f, "call", 0x3443160),)
+            self.assertTrue(any("0x37f3f00" in e for e in iv.check_refs(self.data)))
+        finally:
+            iv.REFS[0x37f3f00] = saved
+
+    def test_exact_counts(self):
+        rc = json.loads((PACKET / "lthash-mechanism.json").read_text())["reference_closure"]
+        self.assertEqual(rc["counts"], {"closure_functions_per_leaf": [11, 11, 11],
+                                        "closure_edges_per_leaf": [16, 16, 16],
+                                        "writer_callers": 3, "top_function_callers": 2})
+        self.assertEqual(rc["writer_refs"], [["0x326a2e0", "call", "0x3269ae0"],
+                                             ["0x326aff3", "call", "0x326aec0"],
+                                             ["0x32fc267", "call", "0x32fc190"]])
+        self.assertEqual(len(iv.REFS), 32)
+        self.assertEqual(sum(len(v) for v in iv.REFS.values()), 53)
 
 
 if __name__ == "__main__":

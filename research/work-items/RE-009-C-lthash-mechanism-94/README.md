@@ -19,20 +19,21 @@ This packet was built off main `1f8c67c63ca4794c9689235471c60297f8a5c985`.
 3. Saturating-adds two u64 counters in a 0x810-byte state (at +0x800 and +0x808).
 4. Merges states with the same word-wise add.
 
-It also covers the direct call chain from the top function 0x3269ae0 to each leaf.
+It also covers the complete reference closure above each leaf. The scan covers four reference kinds across all of `.text`: e8 call, e9 jmp, RIP-relative lea, and R_X86_64_RELATIVE addends.
 
 **Excluded:**
 - The field identities (accounts, contracts, storage). These are a Location-supported inference, consistent with #262.
 - Hash input serialisation.
 - Any comparison with a reference LtHash implementation.
-- The writer 0x32699c0, beyond its call site.
+- What the writer 0x32699c0 does, beyond its pinned callers.
+- Register-computed indirect calls through non-relocated data.
 
 ## Reproduce
 ```
-python3 -O -B tools/lthash_mechanism.py > out.json      # sha256 9450c6225fbc78446bfd7813592ec7e9700006c1fa0bf9ad567216ddb703b12a
+python3 -O -B tools/lthash_mechanism.py > out.json      # sha256 ab89a443e8685ba6b20779e15eb08f65c1b30f8e5b2f4dea798aa638f0d5faaa
 python3 -O -B research/work-items/RE-009-C-lthash-mechanism-94/verify.py
 python3 -O -B research/work-items/RE-009-C-lthash-mechanism-94/independent_verify.py
-python3 -B -m unittest tests.test_lthash_mechanism        # 12 tests
+python3 -B -m unittest tests.test_lthash_mechanism        # 16 tests
 ```
 Tool versions: Python 3.13.5 and GNU objdump 2.44 (Debian), used only for bounded extents. The output is byte-identical under PYTHONHASHSEED 0, 7 and 99.
 
@@ -42,6 +43,13 @@ All coordinates are virtual addresses (VAs). The pinned per-leaf VAs, calls, loo
 - **Entry loop:** rax = 1..0x401 step 2, 2 lanes per iteration. That is 512 × 2 = 1024 words (0x800 bytes). 0x401 is the loop bound, not the word count. The merge loop runs 0..0x400 step 2, which is also 1024 words.
 - **Counters:** add, then `mov rcx,-1` with cmovb/cmovae, which saturates at 2^64−1.
 - **XOF:** blake3 new/update/xof slots 0x57700c0, 0x57700c8 and 0x57700b0, with XOF length 0x800. All links are direct rel32 calls; there is no vtable.
+- **Reference closure:** the full `.text` scan pins 53 reference sites to 32 targets, each with an exact site, kind and owner function. The owner is checked against the `.eh_frame_hdr` FDE ranges.
+  - Each leaf's backward closure has exactly 11 functions and 16 edges.
+  - The only entry from outside the closure is one call from the top function 0x3269ae0.
+  - Inside the closure, the rayon helper and join functions (0x381f310, 0x3828b20, 0x3830a40) recurse into each other. Their job functions are reached only by lea.
+- **Writer 0x32699c0:** exactly 3 callers: 0x326a2e0 (in top 0x3269ae0), 0x326aff3 (in 0x326aec0), and 0x32fc267 (in 0x32fc190). The writer is not exclusive to the top function.
+- **Top 0x3269ae0:** exactly 2 callers: 0x326e4bb (in 0x326e460) and 0x32fc41f (in 0x32fc190).
+  - 0x326aec0, 0x326e460 and 0x32fc190 are referenced only through RELATIVE relocations, at 0x5775058, 0x5775580 and 0x5775720.
 
 ## Implementation and comparison
 Not yet implemented.
@@ -54,13 +62,16 @@ Not yet implemented.
 - Tamper tests cover all 37 key VAs, for both the tool and the independent verifier.
 
 Limitations:
-- No caller-completeness scan has been run yet. It is pending the full `.text` scan.
-- `make` and the full suite have not been run.
+- Reference closure: 3/3 leaves closed, with 11/11/11 functions and 16/16/16 edges.
+  - 53/53 pinned sites over 32/32 targets.
+  - Writer: 3 callers. Top function: 2 callers.
+  - Any new reference site fails both checkers, and so does any removed one. Tests inject e8 and e9 calls, and remove a call.
+- Completeness applies only to the four scanned reference kinds. Register-computed indirect calls through non-relocated data are not covered.
 
-Next question: does any caller outside 0x3269ae0 reach the three leaves? A full `.text` rel32 scan will answer that.
+Next question: do the writer's other callers write the same `/lt_hashes` format? Those callers are 0x326aec0 and 0x32fc190, and both are reached only through relocations. A related question is what the relocation-only entry functions 0x326e460, 0x326aec0 and 0x32fc190 are.
 
 ## What this does not claim
 - It does not claim this is a specific published LtHash. "LtHash" is only a fitting name.
 - It does not claim the accounts/contracts/storage identities. Those are inference, consistent with #262.
 - It does not claim what bytes are hashed, or that this is a security property.
-- It does not claim to have found every caller.
+- It does not claim callers reached through register-computed indirect calls outside the four scanned reference kinds.
