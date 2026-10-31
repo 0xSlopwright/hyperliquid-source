@@ -13,7 +13,7 @@ MANIFEST = frozenset({'README.md', 'RESULT.md', 'oracle-inventory.json',
                       'check_objdump.py', 'verify.py'})
 BIN_SHA = '3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f'
 TOOL_SHA = '80860e9e0f52d780cc13339e68de9d94a3f1b3d1210dc42e02f5774437117513'
-PARSER_SHA = 'ffe4f98ba84648f6ffa1fdaca288799cc62d51fa7d089c82fb28cba77c1d88d1'
+PARSER_SHA = '9fb2581ffd5dad291df1d00614349915a15e4723cd3bc68b7fe9a662c24512c0'
 OUTPUT_SHA = '529c9cfdb7c938cd0535711db79ee4d782d06d7c8ac428fe3e8028bc70f77fea'
 EXCERPT_SHA = '9ee667179632032d5bcc15d79313dcfce88df45fe5efbbbefcb96b3d799bb3f8'
 
