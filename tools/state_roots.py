@@ -81,6 +81,9 @@ class Elf:
         if stro > len(data) or strsize > len(data) - stro:
             raise EvidenceError("section name table extends past end of file")
         table = data[stro:stro + strsize]
+        if secs[shstrndx][1] == 8:
+            raise EvidenceError("section name table is NOBITS")
+        stro = secs[shstrndx][4]
         self.sections = {}
         for s in secs:
             try:
