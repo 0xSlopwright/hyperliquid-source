@@ -145,6 +145,9 @@ def generate(root=ROOT):
     if any('first_party_files' not in inv for inv in inventories.values()):
     if any('fde_count_eh_frame_hdr' not in inv for inv in inventories.values()):
         raise ValueError('Invalid inventory record')
+    for inv in inventories.values():
+        if any(not isinstance(files, list) for files in inv['first_party_files'].values()):
+            raise ValueError('Invalid inventory record')
     paths = {}
     excluded = {}
     for v, inv in inventories.items():
