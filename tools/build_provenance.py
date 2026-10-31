@@ -240,6 +240,16 @@ def record(release):
     if len(data) != item['size'] or hashlib.sha256(data).hexdigest() != item['sha256']:
         raise ValueError(f'Artifact size/SHA-256 mismatch: {ROOT / rel}')
     facts = derive(data)
+    manifest = json.loads((ROOT / 'provenance/artifacts.json').read_text())
+    if not isinstance(manifest, dict) or not isinstance(manifest.get('files'), list):
+        raise ValueError('Invalid artifact manifest')
+    rel = TARGETS[release]
+    item = next((x for x in manifest['files']
+                 if isinstance(x, dict) and x.get('path') == rel), None)
+    if item is None:
+        raise ValueError('Invalid artifact manifest')
+    check(ROOT / rel, item)
+    facts = derive((ROOT / rel).read_bytes())
     return {'target': rel, 'sha256': item['sha256'], 'size': item['size'],
             'tool': 'tools/build_provenance.py', 'facts': facts + interpret(facts)}
 
