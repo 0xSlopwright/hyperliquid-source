@@ -22,6 +22,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from elf_index import sections, unwind_index
+from fde_extents import eh_frame_records
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -88,7 +89,7 @@ def load_segments(data):
     """Return loadable segments as (file_offset, va, size, flags)."""
     if data[:6] != b'\x7fELF\x02\x01':
         raise ValueError('Expected ELF64 little-endian input')
-    if len(data) < 56:
+    if len(data) < 64:
         raise ValueError('Invalid or unsupported program header table')
     phoff = struct.unpack_from('<Q', data, 32)[0]
     phentsize, phnum = struct.unpack_from('<HH', data, 54)
@@ -157,13 +158,20 @@ def function_bounds(data, va):
         raise ValueError(f'VA {va:#x} precedes the first unwind start')
     start = starts[index]
     entry = next(e for e in entries if e['start'] == start)
-    frame = next(s for s in secs if s['name'] == '.eh_frame')
-    fde_offset = frame['offset'] + entry['fde'] - frame['address']
-    pc_begin = entry['fde'] + 8 + struct.unpack_from('<i', data, fde_offset + 8)[0]
-    if pc_begin != start:
-        raise ValueError(f'FDE pc_begin {pc_begin:#x} != unwind start {start:#x}')
-    pc_range = struct.unpack_from('<I', data, fde_offset + 12)[0]
-    return start, start + pc_range
+    # Decode the CIE and complete FDE record before interpreting its range.
+    # An index pointer alone does not establish the field encoding or extent.
+    _cies, fdes = eh_frame_records(data, secs)
+    matches = [fde for fde in fdes if fde['fde'] == entry['fde']]
+    if len(matches) != 1 or matches[0]['start'] != start:
+        raise ValueError(f'FDE does not match unwind start {start:#x}')
+    end = matches[0]['end']
+    if not start <= va < end:
+        raise ValueError(f'VA {va:#x} lies outside the indexed FDE extent')
+    if not any(section['type'] != 8 and section['flags'] & 4
+               and section['address'] <= start < end <= section['address'] + section['size']
+               for section in secs):
+        raise ValueError('FDE extent leaves executable file-backed section')
+    return start, end
 
 
 def find_all(data, needle):

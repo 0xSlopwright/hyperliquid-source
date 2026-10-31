@@ -13,9 +13,9 @@ def magic_prefixed(length):
 
 class ShortHeaderTests(unittest.TestCase):
     def test_short_magic_prefixed_inputs_fail_closed(self):
-        # Each length below 56 leaves at least one header field unreadable,
-        # so the phoff/phentsize unpacks escaped as struct.error on base.
-        for length in (6, 20, 39, 40, 55):
+        # Require the complete ELF64 header, including the two fields read
+        # together at offset54; lengths56 and57 previously escaped as struct.error.
+        for length in (6, 20, 39, 40, 55, 56, 57, 63):
             with self.subTest(length=length), self.assertRaises(ValueError):
                 bi.load_segments(magic_prefixed(length))
 

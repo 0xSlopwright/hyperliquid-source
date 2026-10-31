@@ -102,15 +102,18 @@ class FunctionBoundsTests(unittest.TestCase):
 
     def build(self, functions):
         # functions: list of (start, pc_range), one FDE record each.
-        frame = bytearray()
+        cie = struct.pack('<I', 0) + b'\x01zR\x00\x01\x78\x10\x01\x1b'
+        frame = bytearray(struct.pack('<I', len(cie)) + cie)
         fde_vas = []
         for start, pc_range in functions:
             fde_va = self.FRAME + len(frame)
-            body = struct.pack('<I', 0)                    # CIE pointer (unread)
+            body = struct.pack('<I', fde_va + 4 - self.FRAME)
             body += struct.pack('<i', start - (fde_va + 8))  # initial_location
             body += struct.pack('<I', pc_range)            # address_range
+            body += b'\x00'                              # empty augmentation
             frame += struct.pack('<I', len(body)) + body
             fde_vas.append(fde_va)
+        frame += b'\x00' * 4
         header = bytes([1, 0x1B, 0x03, 0x3B])
         header += struct.pack('<i', self.FRAME - (self.HDR + 4))
         header += struct.pack('<I', len(functions))
@@ -148,6 +151,29 @@ class FunctionBoundsTests(unittest.TestCase):
         data = self.build([(0x1000, 0x10)])
         with self.assertRaisesRegex(ValueError, 'precedes the first unwind start'):
             bi.function_bounds(data, 0x800)
+
+    def test_padding_and_exclusive_end_are_not_function_bytes(self):
+        data = self.build([(0x1000, 0x10), (0x1020, 0x20)])
+        for va in (0x1010, 0x1018, 0x1040):
+            with self.subTest(va=va), self.assertRaisesRegex(ValueError, 'outside.*FDE extent'):
+                bi.function_bounds(data, va)
+
+    def test_truncated_fde_record_is_rejected(self):
+        data = bytearray(self.build([(0x1000, 0x10)]))
+        struct.pack_into('<I', data, 0x600 + 17, 0x10000)
+        with self.assertRaisesRegex(ValueError, 'record outside section'):
+            bi.function_bounds(bytes(data), 0x1008)
+
+    def test_invalid_cie_is_rejected_before_interpreting_range(self):
+        data = bytearray(self.build([(0x1000, 0x10)]))
+        data[0x608] = 9
+        with self.assertRaisesRegex(ValueError, 'Unsupported CIE version'):
+            bi.function_bounds(bytes(data), 0x1008)
+
+    def test_extent_leaving_executable_section_is_rejected(self):
+        data = self.build([(0x1000, 0x200)])
+        with self.assertRaisesRegex(ValueError, 'leaves executable'):
+            bi.function_bounds(data, 0x1008)
 
 
 class ArtifactTests(unittest.TestCase):

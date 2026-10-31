@@ -294,7 +294,7 @@ class MainDefaultIndexTests(unittest.TestCase):
                              for i, n in enumerate(names)])
 
         class FakeConfig:
-            def read_text(self):
+            def read_text(self, *args, **kwargs):
                 return 'DEFAULT_AWS_NAME: AwsName = AwsName::NvTestnet\n'
 
         patches = [
