@@ -1,5 +1,5 @@
     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s
-     Running unittests src/lib.rs (work/kind5-rust-bounded/target-mutants/expected-kind/debug/deps/hyperliquid_node94_kind5_reader-49db751752099e9e)
+     Running unittests src/lib.rs (work/kind5-rust-src-1838-after/target-mutants/expected-kind/debug/deps/hyperliquid_node94_kind5_reader-49db751752099e9e)
 
 running 7 tests
 test tests::nonminimal_payloads_and_all_nonzero_endian_bytes_are_retained ... ok
@@ -32,6 +32,6 @@ failures:
     tests::authenticated_instruction_corpus
     tests::inactive_output_bytes_survive_reuse
 
-test result: FAILED. 5 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: FAILED. 5 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
 error: test failed, to rerun pass `--lib`

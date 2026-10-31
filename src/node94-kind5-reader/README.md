@@ -42,7 +42,7 @@ bound disk use. It retains the two actual release archives, mutant sources,
 all command logs and the comparison record in that output directory. A failed
 unexpected command leaves its build tree available for diagnosis.
 
-`cargo test --manifest-path components/node94-kind5-reader/Cargo.toml --offline
+`cargo test --manifest-path src/node94-kind5-reader/Cargo.toml --offline
 --locked` runs six focused tests and explicitly ignores the authenticated
 corpus until its required export is available. The runner sets
 `NODE94_KIND5_VECTORS` and uses `--include-ignored`; all seven tests must pass.

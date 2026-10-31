@@ -17,7 +17,7 @@ import tempfile
 import kind5_reader as k
 
 ROOT = Path(__file__).resolve().parents[1]
-COMPONENT = ROOT / 'components/node94-kind5-reader'
+COMPONENT = ROOT / 'src/node94-kind5-reader'
 PACKET = ROOT / 'research/work-items/RE-005-kind5-reader-94'
 
 

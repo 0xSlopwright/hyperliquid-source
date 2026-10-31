@@ -119,7 +119,13 @@ are local results, not hosted CI or component acceptance.
 
 ## Independent Rust decoder contract
 
-`components/node94-kind5-reader` implements these three FDEs' observed
+The component follows `src/README.md` by living under `src/`. Its Cargo
+manifest, lockfile and Rust source/test bytes are unchanged by the relocation.
+The retained Rust results and source bindings were regenerated from the new
+path; the prior packet is preserved in Git at
+`c8d737933d07d90d294e4935afce4df41f7e5a45`.
+
+`src/node94-kind5-reader` implements these three FDEs' observed
 byte/cursor/fixed-charge behavior through a safe, allocation-free `no_std`
 interface. This closes the initial packet's lack of any Rust implementation.
 The original disassembly, integer evaluator, byte equations and compressed
