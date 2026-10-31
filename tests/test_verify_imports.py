@@ -42,6 +42,16 @@ class VerifyImportsTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             verify_imports.verify(self.root)
 
+    def test_hidden_untracked_source_is_rejected(self):
+        self.git('config', 'status.showUntrackedFiles', 'no')
+        with contextlib.redirect_stdout(io.StringIO()):
+            verify_imports.verify(self.root)
+        (self.sub / 'unexpected.rs').write_text('// Extra source, not in the pinned commit.\n')
+        # The user's display preference hides a file that source scans can read.
+        self.assertEqual(self.git('status', '--porcelain'), '')
+        with self.assertRaisesRegex(ValueError, 'Modified source reference: refs/sub'):
+            verify_imports.verify(self.root)
+
     def test_missing_submodule_names_the_fix(self):
         shutil.rmtree(self.sub)
         self.sub.mkdir()

@@ -26,7 +26,8 @@ def verify(root):
             raise ValueError(f'Missing pinned source: {repo["path"]}; {SETUP}')
         if git(root, repo['path'], 'rev-parse', 'HEAD') != repo['commit']:
             raise ValueError(f"Source commit mismatch: {repo['path']}")
-        if git(root, repo['path'], 'status', '--porcelain'):
+        # A user's status display preference must not hide extra source inputs.
+        if git(root, repo['path'], 'status', '--porcelain', '--untracked-files=all'):
             raise ValueError(f"Modified source reference: {repo['path']}")
     print(f"Verified {len(manifest['files'])} imported files and all pinned source repositories.")
 
