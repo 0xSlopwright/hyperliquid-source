@@ -103,7 +103,7 @@ Offsets are relative to the FDE start `0x56327f0`. `rax` is set to `rdi` at the 
 - Offset `0x76`: `mov %rcx,0x20(%rax)` — store the new high limb.
 - Offset `0x7a`: `ret` — single return on every path.
 
-The 52-bit limb shape is fixed by the bytes, not assumed: each new limb is masked with `0xfffffffffffff` and each carry is the value shifted right by `0x34` (52), so every carry into the next limb is exactly the overflow above 52 bits. The final high limb is NOT masked to 52 bits — it is the final carry plus the low 48 bits of the old high limb, stored whole.
+The 52-bit limb shape is fixed by the bytes, not assumed: each new limb is masked with `0xfffffffffffff` and each carry is the value shifted right by `0x34` (52), so every carry into the next limb is bits52..63 of the wrapped 64-bit sum; overflow above bit63 is discarded. The final high limb is NOT masked to 52 bits — it is the final carry plus the low 48 bits of the old high limb, stored whole.
 
 ### Incoming calls
 
@@ -129,6 +129,10 @@ No `R_X86_64_RELATIVE` record in any `.rela.*` section names this window as adde
 - What the five-limb integer represents, and what the constant `0x1000003d1` is for.
 - What the three callers do with the updated integer, and whether they share a purpose.
 - Whether other multiply-accumulate windows exist in the binary, and whether this one belongs to a family.
+
+## Review clarification
+
+The original 52-bit-limb examples remain correct: under that declared input bound, intermediate additions cannot overflow 64 bits. For arbitrary qword inputs, each native ADD discards overflow at 64 bits before the later SHR52. The helper and formula now apply that truncation explicitly at limbs1..3. The observed masks establish output widths, not an independent proof that every caller supplies normalized 52-bit inputs.
 
 ## Limits
 

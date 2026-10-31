@@ -68,9 +68,11 @@ def strided_sum(base, index, field_value, read_qword):
     """
     count = element_count(field_value)
     require(count <= (1 << 20), 'Edge-check count too large to iterate')
+    index &= 0xffffffff
     total = 0
     for i in range(count):
-        total = (total + read_qword(base + i * 0xce40 + index * 8)) & MASK
+        address = (base + i * 0xce40 + index * 8) & MASK
+        total = (total + read_qword(address)) & MASK
     return total
 
 

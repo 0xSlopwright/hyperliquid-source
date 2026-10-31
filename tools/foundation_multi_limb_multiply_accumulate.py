@@ -68,7 +68,7 @@ def multiply_accumulate(limbs):
     """Decoded rule, for edge checks only.
 
     A Python restatement of the retained instruction sequence, not a run or
-    emulation of the captured binary: limbs are 52-bit, stored in place at
+    emulation of the captured binary: qword inputs are stored in place at
     [rdi+0x00..0x20]. The high limb's top bits are multiplied by CONST and
     folded into limb 0; carries propagate through limbs 1-3; the high
     limb's low 48 bits are added into the final high limb.
@@ -83,7 +83,7 @@ def multiply_accumulate(limbs):
     out[0] = prod & MASK52
     carry = prod >> 52
     for i in (1, 2, 3):
-        total = carry + limbs[i]
+        total = (carry + limbs[i]) & MASK
         out[i] = total & MASK52
         carry = total >> 52
     out[4] = (carry + low48) & MASK

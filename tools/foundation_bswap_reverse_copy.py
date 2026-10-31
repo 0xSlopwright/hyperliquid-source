@@ -60,7 +60,9 @@ def bswap_reverse_copy(source):
     A Python restatement of the retained instruction sequence, not a run or
     emulation of the captured binary: the destination qword at offset 0x00
     is the byte-swapped source qword at offset 0x18, and so on in reverse
-    order. `source` is four unsigned 64-bit words in address order.
+    order for disjoint source/destination regions. `source` is four unsigned
+    64-bit words in address order; overlapping native regions observe the
+    interleaved loads and stores rather than this source snapshot.
     """
     require(len(source) == 4, 'Source must hold exactly four qwords')
     return [bswap64(source[3]), bswap64(source[2]),

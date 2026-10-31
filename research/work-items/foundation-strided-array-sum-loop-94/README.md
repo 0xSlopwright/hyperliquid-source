@@ -126,6 +126,10 @@ No field is written. No call occurs inside. The only transfer is the backward co
 - Whether the three callers pass related or unrelated tables.
 - Any source-level name, type, or ownership (library vs private) for this window.
 
+## Review clarification
+
+The helper now zero-extends the index from ESI and wraps effective addresses modulo2^64, matching MOV ESI,ESI and the ADD sequence. The native loop reloads the base and count fields every iteration; the fixed-parameter helper assumes stable memory and no concurrent mutation. Its count cap is only a guard on edge-check runtime, not a target limit.
+
 ## Limits
 
 - No stdlib type, source-level function, field meaning, or caller purpose is claimed anywhere.

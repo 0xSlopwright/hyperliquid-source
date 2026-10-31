@@ -36,6 +36,19 @@ def section_bytes(data, name):
 
 
 class StridedSumTests(unittest.TestCase):
+    def test_target_index_width_and_address_wrap(self):
+        data = TARGET.read_bytes()
+        from elf_index import sections
+        section = next(s for s in sections(data) if s['name'] == '.text')
+        off = section['offset'] + START - section['address']
+        self.assertEqual(data[off + 4:off + 6], bytes.fromhex('89f6'))
+        addresses = []
+        def read(address):
+            addresses.append(address)
+            return 7
+        self.assertEqual(strided_sum((1 << 64) - 8, (1 << 32) + 1, 0, read), 7)
+        self.assertEqual(addresses, [0])
+
     def test_body_hash_matches_retained(self):
         retained = json.loads(EVIDENCE.read_text())
         self.assertEqual(hashlib.sha256(BODY).hexdigest(),

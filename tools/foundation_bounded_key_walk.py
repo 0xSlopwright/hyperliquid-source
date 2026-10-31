@@ -59,14 +59,14 @@ def bounded_key_walk(nodes, start, index, key):
     all three paths as storing "(node, steps, key)" is wrong for paths
     2 and 3; this model encodes the bytes, not the note.
     """
-    node, idx = start, index
+    node, idx = start, index & ((1 << 64) - 1)
     if key < nodes[node][2]:
         return (node, idx, key)
     while True:
         nxt = nodes[node][0]
         if nxt is None:
             return (0, node, idx)
-        idx += 1
+        idx = (idx + 1) & ((1 << 64) - 1)
         gate = nodes[node][1]
         node = nxt
         if nodes[node][2] <= gate:

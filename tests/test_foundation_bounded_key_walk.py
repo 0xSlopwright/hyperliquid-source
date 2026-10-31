@@ -29,6 +29,16 @@ def load():
 
 
 class BoundedKeyWalkTests(unittest.TestCase):
+    def test_target_index_increment_wraps(self):
+        data = TARGET.read_bytes()
+        from elf_index import sections
+        section = next(s for s in sections(data) if s['name'] == '.text')
+        off = section['offset'] + START - section['address']
+        self.assertEqual(data[off + 0x38:off + 0x3b], bytes.fromhex('48ffc1'))
+        nodes = {0x1000: (0x2000, 1, 0), 0x2000: (None, 0, 2)}
+        self.assertEqual(bounded_key_walk(nodes, 0x1000, (1 << 64) - 1, 5),
+                         (0x2000, 0, 1))
+
     def test_body_hash_matches_retained(self):
         retained = json.loads(EVIDENCE.read_text())
         self.assertEqual(hashlib.sha256(BODY).hexdigest(),

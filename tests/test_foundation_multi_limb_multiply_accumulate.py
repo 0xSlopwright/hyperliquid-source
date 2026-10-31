@@ -29,6 +29,19 @@ def load():
 
 
 class MultiplyAccumulateTests(unittest.TestCase):
+    def test_target_qword_carry_truncates_before_shift(self):
+        data = TARGET.read_bytes()
+        from elf_index import sections
+        section = next(s for s in sections(data) if s['name'] == '.text')
+        off = section['offset'] + START - section['address']
+        self.assertEqual(data[off + 0x3d:off + 0x41], bytes.fromhex('4c034f08'))
+        self.assertEqual(data[off + 0x4a:off + 0x4e], bytes.fromhex('48c1ef34'))
+        # Limb0 produces carry1. ADD limb1 wraps all-ones+1 to zero;
+        # the following SHR must see zero, not a Python 65-bit total.
+        self.assertEqual(multiply_accumulate([(1 << 52) - 1,
+                         (1 << 64) - 1, 0, 0, 1 << 48]),
+                         [0x1000003d0, 0, 0, 0, 0])
+
     def test_body_hash_matches_retained(self):
         retained = json.loads(EVIDENCE.read_text())
         self.assertEqual(hashlib.sha256(BODY).hexdigest(),

@@ -148,6 +148,10 @@ All addresses below are **ELF VAs**, without a guessed loader or Ghidra rebase. 
   unknown and not claimed; only the byte-level rule differences above
   are established.
 
+## Review clarification
+
+The list helper represents a valid contiguous qword array whose nonwrapping byte span is nonnegative and below 2^63. The native routine additionally handles raw pointer differences with SAR and a signed span test; those malformed-span cases are not represented by a Python list. Sorted keys are required to interpret the result as a lower bound; the instruction loop itself compares whatever values it reads.
+
 ## Limits
 
 - No stdlib type, source-level function, field meaning, or caller purpose is

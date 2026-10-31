@@ -116,6 +116,10 @@ The rule is therefore: `[rdi+0x00..0x20]` = `[rsi] − [rdx]` over four 64-bit l
 - Claimed checked-subtract window `0x2760a10`: 23/81 bytes identical over this window's extent — not a twin (see the distinction above).
 - Nearest claimed packet window `0x3290130`: `0x481e0` away; no closer claimed window exists in the `0x32d8xxx` neighbourhood, and the neighbouring `0x32d8b20+` / `0x32d57f0+` runs are different populations (see above).
 
+## Review clarification
+
+The arithmetic helper describes disjoint operand buffers and a destination that does not overwrite later reads. Native execution updates the first three minuend limbs as it goes, computes/stores the fourth, then copies16 bytes followed by two qwords and the borrow byte. Partial overlaps with subtrahend or destination follow that load/store order; the snapshot helper is not a universal alias model. The ADD CL,0xff restores the saved lower-limb borrow into CF before the final SBB, and OR combines the two top-limb borrow sources.
+
 ## Limits
 
 - No stdlib type, source-level function, field meaning, or caller purpose is claimed anywhere. The "four-limb wrapping subtract with borrow-out byte" label is an inference, kept separate from the observed rule.

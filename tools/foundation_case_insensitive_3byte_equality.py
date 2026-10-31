@@ -56,7 +56,7 @@ def require(condition, message):
 def fold(byte):
     """ASCII A-Z fold, exactly as the retained bytes implement it.
 
-    lea byte-0x41, cmp <= 0x1a unsigned, setb, shl 5, or: bytes in
+    lea byte-0x41, unsigned difference < 0x1a, setb, shl 5, or: bytes in
     'A'..'Z' gain 0x20 (become lowercase); every other byte, including
     bytes below 0x41 (whose wrapped difference exceeds 0x1a unsigned),
     is unchanged. ASCII-only by construction; no locale or Unicode claim.

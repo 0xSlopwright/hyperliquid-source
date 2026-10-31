@@ -125,6 +125,10 @@ Offsets are relative to the FDE start `0x1b26100`.
 - Whether the caller at `0x2576999` is the only runtime caller (the scan covers direct `e8` sites only).
 - Whether other chain-walk windows share this gate idiom beyond the 27 FDEs noted above; the idiom scan is a field-access census, not a component map.
 
+## Review clarification
+
+The index is incremented modulo2^64, as INC RCX does; the helper now preserves that wrap. Gate words are unsigned16-bit values, while the initial key comparison uses a full unsigned64-bit key. A cyclic chain whose gates always continue need not terminate; the helper assumes a terminating case. All output stores follow the final reads, but an output/input overlap can change the original memory after the selected triple is computed.
+
 ## Limits
 
 - No stdlib type, source-level function, field meaning, or caller purpose is claimed anywhere.

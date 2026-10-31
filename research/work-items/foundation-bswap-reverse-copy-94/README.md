@@ -100,6 +100,10 @@ The rule is therefore: `[rdi+0x00] = bswap([rsi+0x18])`, `[rdi+0x08] = bswap([rs
 - Nearest claimed packet window `0x56544a0`: 0/43 bytes identical over this window's extent — not a twin, and `0x21710` away.
 - No bswap window exists in packets #1–#112, so no closer bswap sibling comparison applies.
 
+## Review clarification
+
+The four-source-word helper and its examples represent disjoint source/destination storage. Native execution alternates each source load with its destination store in source order +0x18,+0x10,+8,+0. If the regions overlap, later loads observe earlier stores and a snapshot reversal is not generally the final result. RAX on return holds the byte-swapped last loaded source qword; the source-level return contract is unknown.
+
 ## Limits
 
 - No stdlib type, source-level function, field meaning, or caller purpose is claimed anywhere. The "byte-swapped reversed 4-qword copy" label is an inference, kept separate from the observed rule.

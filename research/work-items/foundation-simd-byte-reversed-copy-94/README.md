@@ -137,6 +137,10 @@ The two reversal blocks are byte-identical in structure (same opcodes at the sam
 - How the window is reached, given zero direct call sites in the byte-pattern scan.
 - Whether other windows elsewhere perform the same copy with different field offsets — the sibling scan above covers the reversal sequence, not every possible copy layout.
 
+## Review clarification
+
+The source-snapshot helper assumes disjoint source and destination storage. Actual order is source dword+0x30 load/store, header+0x20 vector load/store, reversed field+0x10 load/store, then reversed field+0 load/store. If regions overlap, earlier writes can affect later reads. PUNPCK against zero makes every word0..255, so PACKUSWB does not saturate any value; the lane permutations implement exact reversal. RAX retains the output pointer as a machine observation, with source ABI typing unknown.
+
 ## Limits
 
 - The byte-pattern scan is not a complete xref census, and the relocation slot does not identify the window's provenance.

@@ -74,7 +74,7 @@ All addresses below are **ELF VAs**, without a guessed loader or Ghidra rebase. 
 
 ### Instruction sequence
 
-Offsets are relative to the window start `0x5660010`. `rdi` holds the input throughout the 64-bit stages; `rax` holds the running value; the fold stages use 32-bit registers, so they truncate to 32 bits.
+Offsets are relative to the window start `0x5660010`. `rdi` initially holds the input, then holds the first subtract result; `rax` holds the running value; the fold stages use 32-bit registers, so they truncate to 32 bits.
 
 - Offset `0x00`: `mov %rdi,%rax` — input copy.
 - Offset `0x03`: `shr $0x1,%rax` — halved input.
@@ -116,6 +116,10 @@ Offsets are relative to the window start `0x5660010`. `rdi` holds the input thro
 - Whether this window corresponds to a compiler intrinsic, a standard-library routine, or private code. No source-level provenance is claimed either way.
 - Whether indirect calls, tail jumps, or PLT references also reach this window; the retained scan covers direct `e8` sites only.
 - Why this window has no FDE while its neighbours do (stripped tail, hand-written assembly, or linker treatment are all unclaimed possibilities).
+
+## Review clarification
+
+Review checked the complete GNU frame dump: no FDE interval intersects [0x5660010,0x5660072), and the retained bracketing ranges match. The popcount reduction can be reasoned by byte lanes: after the mask each byte is0..8; the successive folds combine2,4,8 byte counts, at most16,32,64. Truncation of upper packed lanes does not change the final low7-bit count. This establishes this window, not a general unwindless-function inventory.
 
 ## Limits
 
