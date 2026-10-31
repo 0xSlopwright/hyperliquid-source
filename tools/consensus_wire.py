@@ -139,13 +139,22 @@ class Elf:
             if p_type == 1:
                 self.loads.append((p_va, p_off, p_filesz))
         secs = [struct.unpack_from("<IIQQQQIIQQ", data, shoff + i * shentsize) for i in range(shnum)]
-        stro = secs[shstrndx][4]
+        stro, strsize = secs[shstrndx][4], secs[shstrndx][5]
+        if stro > len(data) or strsize > len(data) - stro:
+            raise EvidenceError("section name table extends past end of file")
+        table = data[stro:stro + strsize]
         self.sections = {}
         for s in secs:
             try:
                 name = data[stro + s[0]:data.index(b"\0", stro + s[0])].decode()
             except UnicodeDecodeError:
                 raise EvidenceError('section name is not valid UTF-8')
+            if s[0] >= len(table):
+                raise EvidenceError("section name offset outside .shstrtab")
+            end = table.find(b"\0", s[0])
+            if end < 0:
+                raise EvidenceError("unterminated section name")
+            name = table[s[0]:end].decode()
             self.sections[name] = (s[3], s[4], s[5])
 
     def section(self, name):
