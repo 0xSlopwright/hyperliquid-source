@@ -1,4 +1,6 @@
+import contextlib
 import hashlib
+import io
 from pathlib import Path
 import struct
 import sys
@@ -260,6 +262,15 @@ class SectionNameBoundsTests(unittest.TestCase):
         inside = NAMES + b'.extra\0'
         with self.assertRaisesRegex(qsg.EvidenceError, 'section name offset outside .shstrtab'):
             qsg.sections(elf_with_names(inside, b'bogus\0', extra_name_off=len(inside)))
+class MainErrorHandlingTest(unittest.TestCase):
+    def test_missing_binary_is_one_line_error(self):
+        err = io.StringIO()
+        with tempfile.TemporaryDirectory() as d, contextlib.redirect_stderr(err):
+            rc = qsg.main(['--out', d, '--binary', '/nonexistent.bin'])
+        self.assertEqual(rc, 1)
+        self.assertTrue(err.getvalue().startswith('error: '))
+        self.assertEqual(len(err.getvalue().strip().splitlines()), 1)
+        self.assertNotIn('Traceback', err.getvalue())
 
 
 if __name__ == '__main__':

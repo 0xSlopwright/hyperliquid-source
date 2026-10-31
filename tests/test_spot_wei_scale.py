@@ -1,8 +1,10 @@
 """Controls for tools/spot_wei_scale.py (RE-004, node #94)."""
 
+import contextlib
 import filecmp
 import importlib.util
 import struct
+import io
 import sys
 import tempfile
 import unittest
@@ -343,6 +345,15 @@ class FdesTableOrderTests(unittest.TestCase):
         # unchecked table would reject VAs the 0x5000 FDE covers.
         with self.assertRaises(sws.EvidenceError):
             sws.Fdes(sws.Image(synthetic_ehf_elf([(0x5000, 0x100), (0x4000, 0x10)])))
+class MainErrorHandlingTest(unittest.TestCase):
+    def test_missing_binary_is_one_line_error(self):
+        err = io.StringIO()
+        with tempfile.TemporaryDirectory() as d, contextlib.redirect_stderr(err):
+            rc = sws.main(['--out', d, '--binary', '/nonexistent.bin'])
+        self.assertEqual(rc, 1)
+        self.assertTrue(err.getvalue().startswith('error: '))
+        self.assertEqual(len(err.getvalue().strip().splitlines()), 1)
+        self.assertNotIn('Traceback', err.getvalue())
 
 
 if __name__ == '__main__':
