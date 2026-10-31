@@ -219,6 +219,11 @@ def direct_calls(text, base, target):
 
 
 def relative_relocs(data, secs):
+    """Return the node #94 evidence map of RELATIVE offsets to signed addends.
+
+    Require unique RELATIVE offsets: this restricted map does not model
+    relocation composition or loader application order. Other types are ignored.
+    """
     r = secs['.rela.dyn']
     if r['size'] % 24:
         raise EvidenceError('truncated .rela.dyn')
@@ -226,6 +231,8 @@ def relative_relocs(data, secs):
     for o in range(r['offset'], r['offset'] + r['size'], 24):
         where, info, addend = struct.unpack_from('<QQq', data, o)
         if info & 0xffffffff == R_X86_64_RELATIVE:
+            if where in out:
+                raise EvidenceError(f'duplicate RELATIVE relocation at {where:#x}')
             out[where] = addend
     return out
 
