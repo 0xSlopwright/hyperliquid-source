@@ -16,9 +16,10 @@ lead (`node/local_abci_state.rs`, `node/startup.rs`) differ?
   copied.
 - Claim status: observation for byte-level facts, inference where marked,
   unresolved where listed. Partial `node-runtime` research; no gate change.
-- Scope: fifty-nine fixed windows in `0x22689f0` (the lead's
+- Scope: sixty-two fixed windows in `0x22689f0` (the lead's
   `local_abci_state.rs` seed), its helpers `0x1459ca0`, `0x254e7b0`,
-  `0x144a710`, `0x3994ea0`, `0x33de620` and `0x3bacce0`, its two callers `0x227a0e0` and `0x22b47c0`, `0x2271d00`,
+  `0x144a710`, `0x3994ea0`, `0x33de620` and `0x3bacce0`, the assertion in
+  `0x4741dc0`, its two callers `0x227a0e0` and `0x22b47c0`, `0x2271d00`,
   its caller `0x22ae8a0` and the panic shim `0x157b810`.
   Excluded: what `0x226bb20` sends and decodes, how the timestamp is produced,
   what the 0x58-byte map values hold besides `+0x4c`, the rest of the `0x22ae8a0`
@@ -38,8 +39,8 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 59
-windows (2401 instructions), one per checked byte window. All 149 `records.json`
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 62
+windows (2447 instructions), one per checked byte window. All 155 `records.json`
 VAs (values and keys) that fall inside a window are instruction starts there, except `slot_refs`
 and `record_refs` entries, which are ModRM-byte addresses inside instructions. The other code VAs
 are FDE starts, call targets and branch targets outside the windows.
@@ -325,10 +326,25 @@ frozen-state hardfork path. ### Which state and which peers (observation)
 - **Tail:** both paths copy `[rsp+0x7700..0x7718]` to `[rbx+0x3b70]`, the
   peer list above.
 
-Inference: `[rbx+0x80]` is an optional read-lock-guarded config whose field at
-`+0x10` is the root node IP list (5-byte entries). When it is present, startup
-queries exactly that cloned list. Otherwise it derives "validator node IPs"
-from the local abci_state itself. No concatenation with a second list
+Observation: which path runs is fixed by the caller, through future field
+`+0x80` (`r15 = [rbx+0x80]` at `0x2268a5a`, `r13 = r15` at `0x2268f80`):
+
+- `0x227a0e0` builds the future at `&[rbx+0x60]`. Straight before the call
+  it stores `[rbx+0xe0] = [rbx+0x50] + 0x10`, where `[rbx+0x50]` is the Ok
+  payload (niche `2^63 + 0x40`) of slot `0x5773b80` → `0x4741dc0`. That
+  loader references `Last load of FileModTimeTracker failed: ` and panics
+  with the 54-byte `assertion failed: !res.read().root_node_ips.is_empty()`
+  at `node/src/gossip_config.rs:90:13`. So this caller always takes the root
+  path, with the gossip config's root node IPs.
+- `0x22b47c0` builds the future at `&[rbx+0x3b28]` and, on the straight line
+  into the call, stores `0` at `[rbx+0x3ba8]` (future `+0x80`, `0x22b48ed`).
+  So this caller (the lead's `async_touch_state_poll`) always takes the
+  validator path.
+
+Inference: future `+0x80` is an `Option<&RwLock<GossipConfig>>` (the `+0x10`
+is past an `Arc` header), and the lead's `EmptyRootNodeIps` assertion text is
+this one. The lead uses `root_node_ips` on every startup; the binary uses them
+only from `0x227a0e0`. No concatenation with a second list
 (such as reserved peers) occurs on either path inside the checked windows.
 Inference: byte `+0x8f2` of the state is a chain id (the lead's
 `HlChain`: 0 local, 1 sandbox, 2 testnet, 3 mainnet). The only accessor in the
@@ -546,7 +562,7 @@ states, 0xa and 0xb, and treats a set `al` as pending.
 
 ## Controls
 
-`tests/test_local_abci_gates_static.py` (64 tests) regenerates
+`tests/test_local_abci_gates_static.py` (67 tests) regenerates
 `records.json` and checks ten models: the validator node-IP filter, the peer-reply collection, the height selection, the height gate
 including saturation, the day division against exact truncating division,
 the lexicographic compare, the tolerance-to-nanoseconds conversion, the
@@ -589,6 +605,8 @@ output word-0 decoding. It refuses each of these corruptions:
 - An extra direct call to `0x22689f0` planted.
 - The `invalid chain` text changed.
 - The map value stride (0x58) or the skipped tag (2) changed.
+- Caller B's `[rbx+0x3ba8] = 0` store changed, or the gossip loader slot's
+  RELATIVE addend redirected.
 
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
 producer does not use either.
@@ -599,7 +617,7 @@ producer does not use either.
 - The exact path from `0x2269034` to `0x226915c`, and any jump-table edge into
   the join.
 - What the non-validator bootstrap in `0x22b47c0` does with a `stale`
-  peer list, what object `[rbx+0x80]` points to, which state map
+  peer list, what else `0x4741dc0` loads, which state map
   `(&state+0x8f8)+0x150` is and what its tag values 0 and 1 mean, and what
   `0x3751e80` builds.
 - What `[rbx+0x740]+0x60` holds, and which orchestrator paths reach states

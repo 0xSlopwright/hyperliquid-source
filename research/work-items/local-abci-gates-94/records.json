@@ -306,6 +306,25 @@
       "text": "incorrect rpc response variant"
     }
   },
+  "root_source": {
+    "caller_a": {
+      "future": "&[rbx+0x60]",
+      "loader": "0x4741dc0",
+      "loader_slot": "0x5773b80",
+      "ok_niche": "0x8000000000000040",
+      "path": "root node ips",
+      "value": "[rbx+0x50] + 0x10 (loader Ok payload + 0x10)"
+    },
+    "caller_b": {
+      "future": "&[rbx+0x3b28]",
+      "path": "validator node ips",
+      "value": "0 at 0x22b48ed"
+    },
+    "future_field": "0x80",
+    "loader_assert": "assertion failed: !res.read().root_node_ips.is_empty()",
+    "loader_location": "/home/ubuntu/hl/code_Mainnet/node/src/gossip_config.rs:90:13",
+    "startup_load": "r15 = [rbx+0x80] at 0x2268a5a, r13 = r15 at 0x2268f80"
+  },
   "stale_gate": {
     "add_helper": "0x1459ca0",
     "add_slot": "0x576efb8",
@@ -474,11 +493,13 @@
     "call_a": "0x22aef54",
     "call_b": "0x22affbf",
     "caller_a_call": "0x227a23e",
+    "caller_a_config": "0x227a1ab",
     "caller_a_fresh": "0x227a410",
     "caller_a_log": "0x227a330",
     "caller_b_bootstrap": "0x22b5047",
     "caller_b_call": "0x22b48ff",
     "caller_b_dispatch": "0x22b4a9e",
+    "caller_b_none": "0x22b48cb",
     "caller_b_once": "0x22b5b2e",
     "caller_b_stale": "0x22b4b83",
     "chain_static": "0x33de620",
@@ -492,6 +513,7 @@
     "gate_branch": "0x22693b1",
     "gate_pass": "0x226adb1",
     "gate_reject": "0x226ab88",
+    "gossip_assert": "0x4742a75",
     "got_heights_log": "0x226a4a2",
     "hardfork_log": "0x226911b",
     "is_file": "0x144a710",

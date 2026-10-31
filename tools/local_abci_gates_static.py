@@ -160,6 +160,15 @@ WINDOWS = {
     'caller_b_once': (0x22b47c0, 0x22b5b2e,
                       '488d051b504c034889842418350100488d8424183501004889842450420000488d3d14504c03488d0d0d443b034c8d05ee'
                       '433b03488d942450420000be01000000ff15438d4b03e952f5ffff'),
+    'caller_a_config': (0x227a0e0, 0x227a1ab,
+                        'ff15cf994f0348b800000000000000804883c04048398424f80300000f85fd140000488b8424000400000fb68b5f4a000048'
+                        '8943504c8d735bc6435b00884b5c488d53304889542418eb294c8d735b0fb6435b488d4b3048894c2418488d0d2ebe15fe48'
+                        '6304814801c8ffe00fb64b5c488b435066c743590001884b58488943304883c010488983e0000000c683514a000000'),
+    'caller_b_none': (0x22b47c0, 0x22b48cb,
+                      '88831a3b0000888b183b00008893193b000066c7831b3b000001004889b3083b000048c783a83b000000000000c683198500'
+                      '0000'),
+    'gossip_assert': (0x4741dc0, 0x4742a75,
+                      '488d3d188afbfb488d1555c1fe00be36000000ff157ab60201'),
     'validator_collect': (0x3994ea0, 0x3994ea0,
                           '4156534883ec584989f64889fb89d7ff1533e4dd01488b084885c9740b0f104008b801000000eb050f57c031c048'
                           '8944240848c74424100000000048894c24180f13442420488944242848c74424300000000048894c24380f1144'
@@ -811,6 +820,42 @@ def check_consumers(img):
                 missing_and_stale_flag='[rbx+0x3b1c] = 1 in 0x22b47c0')
 
 
+GOSSIP_LOADER, GOSSIP_ASSERT = 0x4741dc0, b'assertion failed: !res.read().root_node_ips.is_empty()'
+GOSSIP_LOCATION_FILE = b'/home/ubuntu/hl/code_Mainnet/node/src/gossip_config.rs'
+FUTURE_ROOT_SOURCE = 0x80
+
+
+def check_root_source(img):
+    a = bytes.fromhex(WINDOWS['caller_a_config'][2])
+    slot = img.rip(0x227a1ab, 6)
+    require(slot == 0x5773b80 and img.relative.get(slot) == GOSSIP_LOADER, f'caller_a loader slot {slot:#x} changed')
+    require(a.count(bytes.fromhex('4883c040' '48398424f8030000')) == 1, 'caller_a Ok niche is not 2**63 + 0x40')
+    require(a.count(bytes.fromhex('488b842400040000' '0fb68b5f4a0000' '48894350')) == 1, '[rbx+0x50] is not the Ok payload')
+    require(a.endswith(bytes.fromhex('4883c010' '488983e0000000' 'c683514a000000')), '[rbx+0xe0] is not [rbx+0x50]+0x10')
+    future_a = bytes.fromhex(WINDOWS['caller_a_call'][2])
+    require(future_a.startswith(bytes.fromhex('4c8d6b60')) and 0xe0 - 0x60 == FUTURE_ROOT_SOURCE,
+            'caller_a future is not &[rbx+0x60]')
+    b = bytes.fromhex(WINDOWS['caller_b_none'][2])
+    require(b.count(bytes.fromhex('48c783a83b000000000000')) == 1, 'caller_b does not clear [rbx+0x3ba8]')
+    require(bytes.fromhex(WINDOWS['caller_b_call'][2]).startswith(bytes.fromhex('488dab283b0000'))
+            and 0x3ba8 - 0x3b28 == FUTURE_ROOT_SOURCE, 'caller_b future is not &[rbx+0x3b28]')
+    require(WINDOWS['caller_b_none'][1] + len(b) == WINDOWS['caller_b_call'][1], 'caller_b store does not run into the call')
+    require(WINDOWS['caller_a_config'][1] + len(a) == WINDOWS['caller_a_call'][1], 'caller_a store does not run into the call')
+    require(img.read(0x2268a5a, 7) == bytes.fromhex('4c8bbb80000000'), 'startup does not load r15 = [rbx+0x80]')
+    msg = img.rip(0x4742a75, 7)
+    require(img.read(msg, len(GOSSIP_ASSERT)) == GOSSIP_ASSERT and img.read(0x4742a84, 4) == struct.pack('<I', len(GOSSIP_ASSERT)),
+            f'gossip assertion at {msg:#x} changed')
+    loc = img.rip(0x4742a7c, 7)
+    flen, line, col = struct.unpack('<QII', img.read(loc + 8, 16))
+    require(loc in img.relative and img.read(img.relative[loc], flen) == GOSSIP_LOCATION_FILE,
+            f'gossip Location {loc:#x} file changed')
+    return dict(future_field=hex(FUTURE_ROOT_SOURCE), startup_load='r15 = [rbx+0x80] at 0x2268a5a, r13 = r15 at 0x2268f80',
+                caller_a=dict(future='&[rbx+0x60]', loader_slot=hex(slot), loader=hex(GOSSIP_LOADER),
+                              ok_niche=hex(2 ** 63 + 0x40), value='[rbx+0x50] + 0x10 (loader Ok payload + 0x10)', path='root node ips'),
+                caller_b=dict(future='&[rbx+0x3b28]', value='0 at 0x22b48ed', path='validator node ips'),
+                loader_assert=GOSSIP_ASSERT.decode(), loader_location=f'{GOSSIP_LOCATION_FILE.decode()}:{line}:{col}')
+
+
 def startup_outcome(word0):
     """Decode word 0 of the 0x22689f0 output."""
     if word0 < 2 ** 63:
@@ -1027,7 +1072,7 @@ def analyse(data):
     fresh = check_freshness(img)
     return dict(target=TARGET, windows={k: hex(v) for k, v in wins.items()},
                 peer_queries=check_queries(img), height_selection=check_selection(img), status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=fresh,
-                stale_gate=check_stale_gate(img, fresh['slots']), node_ips=check_node_ips(img), outcomes=check_outcomes(img), consumers=check_consumers(img), chain_static=check_chain_static(img), validator_ips=check_validator_ips(img), callers=check_callers(img))
+                stale_gate=check_stale_gate(img, fresh['slots']), node_ips=check_node_ips(img), outcomes=check_outcomes(img), consumers=check_consumers(img), chain_static=check_chain_static(img), validator_ips=check_validator_ips(img), root_source=check_root_source(img), callers=check_callers(img))
 
 
 def main(argv=None):

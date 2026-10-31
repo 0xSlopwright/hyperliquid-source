@@ -1613,6 +1613,58 @@
  22b5b6f:	ff 15 43 8d 4b 03    	call   QWORD PTR [rip+0x34b8d43]        # 576e8b8 <__register_atfork@plt+0x10d678>
  22b5b75:	e9 52 f5 ff ff       	jmp    22b50cc <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2cf2d34>
 
+## 0x227a1ab gossip loader 0x4741dc0 Ok payload -> [rbx+0x50]; future+0x80 = [rbx+0x50]+0x10 [0x227a1ab, 0x227a23e)
+ 227a1ab:	ff 15 cf 99 4f 03    	call   QWORD PTR [rip+0x34f99cf]        # 5773b80 <__register_atfork@plt+0x112940>
+ 227a1b1:	48 b8 00 00 00 00 00 	movabs rax,0x8000000000000000
+ 227a1b8:	00 00 80
+ 227a1bb:	48 83 c0 40          	add    rax,0x40
+ 227a1bf:	48 39 84 24 f8 03 00 	cmp    QWORD PTR [rsp+0x3f8],rax
+ 227a1c6:	00
+ 227a1c7:	0f 85 fd 14 00 00    	jne    227b6ca <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d2c736>
+ 227a1cd:	48 8b 84 24 00 04 00 	mov    rax,QWORD PTR [rsp+0x400]
+ 227a1d4:	00
+ 227a1d5:	0f b6 8b 5f 4a 00 00 	movzx  ecx,BYTE PTR [rbx+0x4a5f]
+ 227a1dc:	48 89 43 50          	mov    QWORD PTR [rbx+0x50],rax
+ 227a1e0:	4c 8d 73 5b          	lea    r14,[rbx+0x5b]
+ 227a1e4:	c6 43 5b 00          	mov    BYTE PTR [rbx+0x5b],0x0
+ 227a1e8:	88 4b 5c             	mov    BYTE PTR [rbx+0x5c],cl
+ 227a1eb:	48 8d 53 30          	lea    rdx,[rbx+0x30]
+ 227a1ef:	48 89 54 24 18       	mov    QWORD PTR [rsp+0x18],rdx
+ 227a1f4:	eb 29                	jmp    227a21f <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x2d2dbe1>
+ 227a1f6:	4c 8d 73 5b          	lea    r14,[rbx+0x5b]
+ 227a1fa:	0f b6 43 5b          	movzx  eax,BYTE PTR [rbx+0x5b]
+ 227a1fe:	48 8d 4b 30          	lea    rcx,[rbx+0x30]
+ 227a202:	48 89 4c 24 18       	mov    QWORD PTR [rsp+0x18],rcx
+ 227a207:	48 8d 0d 2e be 15 fe 	lea    rcx,[rip+0xfffffffffe15be2e]        # 3d603c <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4bd1dc4>
+ 227a20e:	48 63 04 81          	movsxd rax,DWORD PTR [rcx+rax*4]
+ 227a212:	48 01 c8             	add    rax,rcx
+ 227a215:	ff e0                	jmp    rax
+ 227a217:	0f b6 4b 5c          	movzx  ecx,BYTE PTR [rbx+0x5c]
+ 227a21b:	48 8b 43 50          	mov    rax,QWORD PTR [rbx+0x50]
+ 227a21f:	66 c7 43 59 00 01    	mov    WORD PTR [rbx+0x59],0x100
+ 227a225:	88 4b 58             	mov    BYTE PTR [rbx+0x58],cl
+ 227a228:	48 89 43 30          	mov    QWORD PTR [rbx+0x30],rax
+ 227a22c:	48 83 c0 10          	add    rax,0x10
+ 227a230:	48 89 83 e0 00 00 00 	mov    QWORD PTR [rbx+0xe0],rax
+ 227a237:	c6 83 51 4a 00 00 00 	mov    BYTE PTR [rbx+0x4a51],0x0
+
+## 0x22b48cb straight into the call: future+0x80 ([rbx+0x3ba8]) = 0 [0x22b48cb, 0x22b48ff)
+ 22b48cb:	88 83 1a 3b 00 00    	mov    BYTE PTR [rbx+0x3b1a],al
+ 22b48d1:	88 8b 18 3b 00 00    	mov    BYTE PTR [rbx+0x3b18],cl
+ 22b48d7:	88 93 19 3b 00 00    	mov    BYTE PTR [rbx+0x3b19],dl
+ 22b48dd:	66 c7 83 1b 3b 00 00 	mov    WORD PTR [rbx+0x3b1b],0x1
+ 22b48e4:	01 00
+ 22b48e6:	48 89 b3 08 3b 00 00 	mov    QWORD PTR [rbx+0x3b08],rsi
+ 22b48ed:	48 c7 83 a8 3b 00 00 	mov    QWORD PTR [rbx+0x3ba8],0x0
+ 22b48f4:	00 00 00 00
+ 22b48f8:	c6 83 19 85 00 00 00 	mov    BYTE PTR [rbx+0x8519],0x0
+
+## 0x4742a75 root_node_ips non-empty assertion at gossip_config.rs:90:13 [0x4742a75, 0x4742a8e)
+ 4742a75:	48 8d 3d 18 8a fb fb 	lea    rdi,[rip+0xfffffffffbfb8a18]        # 6fb494 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x48ac96c>
+ 4742a7c:	48 8d 15 55 c1 fe 00 	lea    rdx,[rip+0xfec155]        # 572ebd8 <__register_atfork@plt+0xcd998>
+ 4742a83:	be 36 00 00 00       	mov    esi,0x36
+ 4742a88:	ff 15 7a b6 02 01    	call   QWORD PTR [rip+0x102b67a]        # 576e108 <__register_atfork@plt+0x10cec8>
+
 ## 0x3994ea0 chain static via 0x57732e8, iterator with &state+0x8f8, collect (whole FDE) [0x3994ea0, 0x3994f1a)
  3994ea0:	41 56                	push   r14
  3994ea2:	53                   	push   rbx

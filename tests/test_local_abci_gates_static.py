@@ -179,6 +179,12 @@ class Results(unittest.TestCase):
                          ('0x3bacce0', '+0x4c (tag byte), +0x4d (4 bytes)', 2, 5, 4))
         self.assertEqual(len(v['facts']), len(la.LOOKUP_FACTS))
 
+    def test_root_source(self):
+        r = self.result['root_source']
+        self.assertEqual((r['caller_a']['loader'], r['caller_a']['path'], r['caller_b']['path'], r['future_field']),
+                         ('0x4741dc0', 'root node ips', 'validator node ips', '0x80'))
+        self.assertEqual(r['loader_location'], '/home/ubuntu/hl/code_Mainnet/node/src/gossip_config.rs:90:13')
+
     def test_node_ips(self):
         n = self.result['node_ips']
         self.assertEqual(n['flow'], {'no_root_to_validator': '0x22695db', 'clone_call': '0x254e7b0',
@@ -341,6 +347,20 @@ class Corruptions(unittest.TestCase):
 
     def test_skipped_tag(self):
         self.refuses(patched((0x3bacd0e, b'\x01')), 'validator_lookup at 0x3bacce0: bytes changed')
+
+    def test_caller_b_root_source(self):
+        self.refuses(patched((0x22b48f4, b'\x01')), 'caller_b_none at 0x22b48cb: bytes changed')
+
+    def test_gossip_loader_slot(self):
+        c = load()
+        img = c['img']
+        rela = next(s for s in img.secs if s['name'] == '.rela.dyn')
+        data = bytearray(c['data'])
+        for pos in range(rela['offset'], rela['offset'] + rela['size'], 24):
+            where, info, _ = struct.unpack_from('<QQq', data, pos)
+            if where == 0x5773b80 and info & 0xffffffff == 8:
+                struct.pack_into('<q', data, pos + 16, 0x4741dd0)
+        self.refuses(bytes(data), 'caller_a loader slot 0x5773b80 changed')
 
     def test_chain_panic_text(self):
         self.refuses(patched((0x58c1ca + 8, b'X')), 'chain 0 panic text at 0x58c1ca changed')
