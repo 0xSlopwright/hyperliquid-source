@@ -8,7 +8,7 @@
   `999556f6e0a474b8312db96ec3149e1c44e97c23` (not consulted)
 - Claim status: observation (extent, bytes, targets); names and semantics remain
   unresolved
-- Scope included: the next hop from `0x1455c00`'s direct callee `0x13460a0`
+- Scope included: the next hop from `0x1455c00`'s RELATIVE-bound indirect callee `0x13460a0`
   (`0x1346100`) and from its RELATIVE callee `0x157b480`
   (`0x157b810`). Scope excluded: the remaining call graph, Rust code, runtime
   behavior, gates.
@@ -46,7 +46,7 @@ Both are FDE starts. Pinned observations:
   `rdx` at `[rbp-0x20]`, `&[rbp-0x10]` at `[rbp-0x28]` and the word `1` at
   `[rbp-0x18]`, then calls `[0x57706e0]` → `0x4ecdcf0`. The stored layout is an
   observation, not a claimed ABI type.
-- Both slots are `R_X86_64_RELATIVE` and both targets are FDE starts.
+- All three slots are `R_X86_64_RELATIVE` and all three targets are FDE starts.
 
 Byte `E8` candidates inside the bodies: `0x1346100` 0, `0x157b810` 1. The single
 `0x157b810` candidate is not a call instruction; no decoded call census is

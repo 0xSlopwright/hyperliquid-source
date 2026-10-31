@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """RE-001: bound two downstream callees reached from node #94 0x1455c00.
 
-0x1455c00 reaches 0x13460a0 (direct call), and 0x157b480 (RELATIVE slot). This
+0x1455c00 reaches 0x13460a0 (RELATIVE-bound indirect call), and 0x157b480 (RELATIVE slot). This
 tool records the next hop from each: 0x1346100 (called by 0x13460a0) and
 0x157b810 (called through slot 0x576e098 by 0x157b480). For each target it
 re-derives the FDE extent, body digest, pinned instruction bytes, byte-pattern

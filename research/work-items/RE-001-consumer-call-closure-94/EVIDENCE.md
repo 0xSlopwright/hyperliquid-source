@@ -61,11 +61,11 @@ Coordinates are linked VAs; `site_offset` is relative to the `.text` address
   stopped at an opaque `0x1455c00` call. Branches copying an indirect callee
   address into a register are not counted by this scan.
 - **No pointer slot.** No `R_X86_64_RELATIVE` relocation in `.rela.dyn` names
-  `0x1455c00`, so no function-pointer/GOT slot references it in this image.
+  `0x1455c00`, This excludes RELATIVE-bound slots only; other relocation forms or runtime-written pointers are outside this observation.
 - **Indirect operands.** Eleven RIP-relative operands resolve to `.got` slots.
-  Six slots are RELATIVE-bound inside `.text`; two `call` sites are GLOB_DAT
+  Five distinct slots are RELATIVE-bound inside `.text`; two `call` sites are GLOB_DAT
   `memcpy` at `0x576dfe0` (`0x1455e10`, `0x1455e79`). The others: `0x576e010`
-  (`free`-shaped single-pointer call under the jemalloc allocator, addend
+  (deallocation-shaped entry with source-level argument roles unresolved, addend
   `0x54c8cb0`, five sites), `0x576dfb8` (addend `0x1346068`), `0x576dfd8`
   (addend `0x54c06b0`), `0x576e0c8` (addend `0x13460a0`), `0x576e118`
   (addend `0x157b480`). The addend labels are relocation targets, not proven

@@ -1,4 +1,4 @@
-﻿# RE-001: bound the five callee addends reached from node #94 0x1455c00
+# RE-001: bound the five callee addends reached from node #94 0x1455c00
 
 - Component ID: none (binary-wide function-map input; no component ownership)
 - Target release and full SHA-256: node #94
@@ -52,21 +52,21 @@ All five are FDE starts. Pinned observations:
   LEAs and TLS reads, with size in `rdi`. Inferred allocator allocate-shaped
   entry; name not proven.
 - **`0x1346068`** (21 bytes): `test rdi,rdi`; `jne +6` skips the first call when
-  the pointer is nonzero. A zero pointer falls through to `call [0x576e0c0]` ??  `0x1346080` and then `call [0x576e020]` ??`0x1345e2a`; a nonzero pointer jumps
+  the pointer is nonzero. A zero pointer falls through to `call [0x576e0c0]` -> `0x1346080` and then `call [0x576e020]` -> `0x1345e2a`; a nonzero pointer jumps
   straight to the second. Both slots are `R_X86_64_RELATIVE` and both targets are
   FDE starts.
-- **`0x13460a0`** (91 bytes): computes `max(2*x, 8)` (`cmp rax,9`; `cmovae`), then
+- **`0x13460a0`** (91 bytes): computes `max((2*x) mod 2^64, 8)` using an unsigned comparison (`cmp rax,9`; `cmovae`), then
   calls `0x1346100` with `rdi=&stack`, `rsi=[arg]`, `rdx=[arg+8]`, `rcx=max`.
   It tests `dword [rbp-0x28] == 1` after the call.
-- **`0x157b480`** (25 bytes): `lea rdi,[0x252cf8]`, `mov esi,0x39`, tail call
-  `[0x576e098]` ??`0x157b810`. Bytes at `0x252cf8` begin
+- **`0x157b480`** (25 bytes): `lea rdi,[0x252cf8]`, `mov esi,0x39`, indirect `call` at the end of the FDE to
+  `[0x576e098]` -> `0x157b810`. Bytes at `0x252cf8` begin
   `attempt to add with overflow`; the immediate `0x39` covers the start of that
   contiguous message blob. The call's exact message/length semantics are unknown.
 
 Byte `E8` candidates inside the bodies (explicitly not a decoded census):
 `0x54c8cb0` 1 (`0x54c8ce5`), `0x54c06b0` 1 (`0x54c06d5`), `0x13460a0` 2
 (`0x13460ce` real, `0x13460f4` not an instruction), `0x1346068` 0,
-`0x157b480` 0. The two false positives are immediate bytes; no native decode was
+`0x157b480` 0. The three non-call candidates (`0x54c8ce5`, `0x54c06d5`, `0x13460f4`) occur inside other instructions; no native decode was
 performed in this packet, so no call count is published.
 
 ## Implementation and comparison
@@ -87,7 +87,7 @@ hash-seed determinism.
   have unread contents.
 - The `E8` rows are byte-pattern evidence and include known non-instructions.
 
-Next question: decode `0x1346100` and `0x157b810`, and read the
-`0x59afd00`/`0x59aff40` table contents, before assigning allocator or panic
+Next question: decode `0x1346100` and `0x157b810`, and establish how the NOBITS tables at
+`0x59afd00`/`0x59aff40` are populated, before assigning allocator or panic
 names.
 
