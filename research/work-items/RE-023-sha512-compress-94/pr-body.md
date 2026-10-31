@@ -1,8 +1,12 @@
-# RE-023: SHA-512 soft compress @ 0x4ec4a40 (node #94)
+RE-023: SHA-512 soft compress @ 0x4ec4a40 (node #94)
 
 Static recovery of the sha2-0.9.9 soft SHA-512 compress in the pinned node #94
 binary, wired through the CPU-feature dispatcher into update/finalize, with a
 Unicorn behavioural proof against FIPS 180-4 empty / abc / two-block digests.
+
+Scope of emulation: Unicorn runs only a single carved, hash-pinned function
+(soft compress `0x4ec4a40`..`0x4ec857a`, carved sha256 `88b5bbdb…e57c`) on known
+FIPS 180-4 test vectors. The captured binary is never run as a whole.
 
 ## Pins
 
