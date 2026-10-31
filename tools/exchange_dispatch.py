@@ -74,6 +74,18 @@ class Elf:
             return self.sections[name]
         except KeyError:
             raise EvidenceError(f"missing section {name}") from None
+        stro, strsize = raw[shstrndx][4], raw[shstrndx][5]
+        if stro > len(data) or strsize > len(data) - stro:
+            raise EvidenceError("section name table extends past end of file")
+        table = data[stro:stro + strsize]
+        self.sections = {}
+        for s in raw:
+            if s[0] >= len(table):
+                raise EvidenceError("section name offset outside .shstrtab")
+            end = table.find(b"\0", s[0])
+            if end < 0:
+                raise EvidenceError("unterminated section name")
+            self.sections[table[s[0]:end].decode()] = (s[3], s[4], s[5])
 
     def off(self, va: int) -> int:
         for v, o, n in self.loads:
