@@ -1,3 +1,4 @@
+import sys
 import hashlib
 import http.client
 import importlib.util
@@ -186,3 +187,18 @@ class ArtifactTests(unittest.TestCase):
             p.write_bytes(bad)
             with self.assertRaisesRegex(ValueError, 'size/SHA-256 mismatch'):
                 a.check(p, self.item)
+    def test_main_missing_files_key_rejected(self):
+        manifest_dir = self.root / 'provenance'
+        manifest_dir.mkdir()
+        (manifest_dir / 'artifacts.json').write_text('{}')
+        with patch.object(a, 'ROOT', self.root), patch.object(sys, 'argv', ['artifacts.py', 'verify']):
+            with self.assertRaises(ValueError):
+                a.main()
+
+    def test_main_empty_files_list_passes_guard(self):
+        manifest_dir = self.root / 'provenance'
+        manifest_dir.mkdir()
+        (manifest_dir / 'artifacts.json').write_text('{"files": [], "signing_fingerprint": "unused"}')
+        with patch.object(a, 'ROOT', self.root), patch.object(sys, 'argv', ['artifacts.py', 'verify']), \
+                patch.object(a, 'verify_signatures'), patch.object(a, 'verify_pinned_pairs'):
+            a.main()

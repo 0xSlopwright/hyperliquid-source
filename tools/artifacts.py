@@ -148,6 +148,8 @@ def main():
     manifest = json.loads((ROOT / 'provenance/artifacts.json').read_text())
     if args.command == 'fetch':
         fetch_all(ROOT, manifest)
+    if not isinstance(manifest, dict) or 'files' not in manifest:
+        raise ValueError('Invalid artifact manifest')
     for item in manifest['files']:
         if type(item) is not dict or 'path' not in item:
             raise ValueError('Invalid artifact record')
