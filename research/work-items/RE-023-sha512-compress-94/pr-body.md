@@ -8,6 +8,15 @@ Scope of emulation: Unicorn runs only a single carved, hash-pinned function
 (soft compress `0x4ec4a40`..`0x4ec857a`, carved sha256 `88b5bbdb…e57c`) on known
 FIPS 180-4 test vectors. The captured binary is never run as a whole.
 
+The closest repository text is CONTRIBUTING.md (Licensing, execution and review):
+"The default workflow is static. Running captured binaries, networked services,
+chain actions or signing requires explicit authorization and an isolated
+harness with declared effects." and docs/SCOPE.md (Current exclusions and
+separate authorization): "Differential execution requires a separately
+approved, isolated offline harness." Neither passage mentions emulating a
+carved function. Whether carved-function emulation counts as the
+authorized-execution or differential-execution case is left to the maintainer.
+
 ## Pins
 
 - Binary: `artifacts/node/94/hl-node` sha256 `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`

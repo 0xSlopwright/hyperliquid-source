@@ -33,10 +33,10 @@ unicorn, everything is static.
 ```bash
 # static only (no unicorn required)
 PYTHONHASHSEED=0 python3 -B tools/sha512_compress.py --no-emu \
-  -o /tmp/out.json
+  -o out.json
 
 # with Unicorn behavioural proof (optional)
-python3 -B tools/sha512_compress.py -o /tmp/out.json
+python3 -B tools/sha512_compress.py -o out.json
 
 # packet verify (emu soft-skipped when unicorn missing)
 python3 -I -B research/work-items/RE-023-sha512-compress-94/verify.py
@@ -109,7 +109,6 @@ Emulated vectors 3/3 match (empty, abc, two_block). No progress gate is requeste
 - Does not reimplement SHA-512 in Python beyond hashlib cross-checks; the
   behavioural proof is Unicorn on the carved binary bytes.
 - Does not assert anything about other node builds or unpinned binaries.
-- Does not open, push, or disclose; this packet is local evidence only.
 
 ### Next step
 
