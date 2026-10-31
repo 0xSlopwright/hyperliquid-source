@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Authenticated node94 source-location-linked truncated-debug guard census."""
 import argparse
+import sys
 import bisect
 import hashlib
 import json
@@ -133,5 +134,10 @@ if __name__ == '__main__':
     parser.add_argument('--binary',type=Path,default=ROOT/'artifacts/node/94/hl-node')
     parser.add_argument('--output',type=Path,default=ROOT/'work/truncated-debug-94')
     args = parser.parse_args()
-    result = generate(args.binary.resolve(),args.output)
-    print(json.dumps({k:v for k,v in result.items() if k!='ranges'},indent=2))
+    try:
+        result = generate(args.binary.resolve(),args.output)
+        print(json.dumps({k:v for k,v in result.items() if k!='ranges'},indent=2))
+    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+        print(f'truncated_debug_static: {error}', file=sys.stderr)
+        raise SystemExit(1)
+

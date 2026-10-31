@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Digest-bound static observations of node #94 compact-string construction."""
 import argparse
+import sys
 import hashlib
 import json
 from pathlib import Path
@@ -160,4 +161,9 @@ if __name__ == '__main__':
     parser.add_argument('--binary', type=Path, default=ROOT / 'artifacts/node/94/hl-node')
     parser.add_argument('--output', type=Path, default=ROOT / 'work/short-string-static-94')
     args = parser.parse_args()
-    print(json.dumps(generate(args.binary.resolve(), args.output), indent=2))
+    try:
+        print(json.dumps(generate(args.binary.resolve(), args.output), indent=2))
+    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+        print(f'short_string_static: {error}', file=sys.stderr)
+        raise SystemExit(1)
+

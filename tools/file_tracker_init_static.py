@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Target94 file-tracker initialization observations; static only."""
 import argparse,hashlib,json,re,struct,subprocess
+import sys
 from pathlib import Path
 from artifacts import ROOT,check
 from elf_index import sections
@@ -54,4 +55,9 @@ def generate(binary,output):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--binary',type=Path,default=ROOT/'artifacts/node/94/hl-node');parser.add_argument('--output',type=Path,default=ROOT/'work/file-tracker-init-94');args=parser.parse_args()
-    print(json.dumps(generate(args.binary.resolve(),args.output),indent=2))
+    try:
+        print(json.dumps(generate(args.binary.resolve(),args.output),indent=2))
+    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+        print(f'file_tracker_init_static: {error}', file=sys.stderr)
+        raise SystemExit(1)
+
