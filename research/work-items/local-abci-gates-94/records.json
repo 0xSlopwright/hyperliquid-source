@@ -116,6 +116,14 @@
       "0x226c860",
       "0x22b51b4"
     ],
+    "chain_assert": {
+      "kind": 0,
+      "left": "&[rsp+0xf] (expected chain)",
+      "location": "/home/ubuntu/hl/code_Mainnet/node/src/gossip_config.rs:89:13",
+      "right": "&[rsp+0x172] (file chain)",
+      "slot": "0x5773b40",
+      "target": "0x4b283dc"
+    },
     "default_roots": {
       "1": [
         {
@@ -568,6 +576,8 @@
     "hardfork_log": "0x226911b",
     "is_file": "0x144a710",
     "linked_state": "0x2268f3f",
+    "loader_chain_assert": "0x4742a03",
+    "loader_chain_test": "0x47428f7",
     "loader_defaults": "0x47427e4",
     "loader_entry": "0x4741dc0",
     "loader_no_file": "0x474223b",

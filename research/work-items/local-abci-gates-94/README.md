@@ -16,7 +16,7 @@ lead (`node/local_abci_state.rs`, `node/startup.rs`) differ?
   copied.
 - Claim status: observation for byte-level facts, inference where marked,
   unresolved where listed. Partial `node-runtime` research; no gate change.
-- Scope: sixty-nine fixed windows in `0x22689f0` (the lead's
+- Scope: seventy-one fixed windows in `0x22689f0` (the lead's
   `local_abci_state.rs` seed), its helpers `0x1459ca0`, `0x254e7b0`,
   `0x144a710`, `0x3994ea0`, `0x33de620` and `0x3bacce0`, five windows of the gossip loader
   `0x4741dc0`, the other `0x227a0e0` caller `0x226c2d0`, its two callers `0x227a0e0` and `0x22b47c0`, `0x2271d00`,
@@ -39,8 +39,8 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 69
-windows (2629 instructions), one per checked byte window. All 169 `records.json`
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 71
+windows (2640 instructions), one per checked byte window. All 171 `records.json`
 VAs (values and keys) that fall inside a window are instruction starts there, except `slot_refs`
 and `record_refs` entries, which are ModRM-byte addresses inside instructions. The other code VAs
 are FDE starts, call targets and branch targets outside the windows.
@@ -460,7 +460,12 @@ No checked path produces `0x8000000000000001`.
     `root_node_ips` assertion below.
   - **`None`:** it builds the 27-byte `override_gossip_config.json` and tests
     it with `is_file` (`0x144a710`) as given, with no directory joined. If it
-    is a file, the `FileModTimeTracker` path loads it. Otherwise
+    is a file, the `FileModTimeTracker` path loads it and compares the
+    file's chain byte `[rsp+0x172]` with the expected byte `[rsp+0xf]`
+    (`0x47428f7`). A mismatch calls slot `0x5773b40` (`0x4b283dc`, an
+    `assert_failed`-shaped thunk) with kind 0, `&expected`, `&file_chain`, no
+    message and Location `node/src/gossip_config.rs:89:13`: an `assert_eq!`
+    one line above the `root_node_ips` assertion (`:90:13`). Otherwise
     `0x474223b` jumps through `0x6f9ab4` on the low byte of `esi`.
   - **The jump table:** arms 0 and 3 share `0x474224f`, which returns the
     file name as an error (word 0 `2^63 + 0x3b`; the caller's Ok is
@@ -582,7 +587,9 @@ states, 0xa and 0xb, and treats a set `al` as pending.
   file name to the data directory. It has the same fallback roots, and the
   same Local/Mainnet error. In the binary the third argument is an optional
   root list, which replaces the file entirely when present. The file name is
-  tested as the bare relative `override_gossip_config.json`.
+  tested as the bare relative `override_gossip_config.json`. The lead returns
+  `UnsupportedChain` and `EmptyRootNodeIps` errors; the binary panics on both
+  (`assert_eq!` at `gossip_config.rs:89:13`, `assert!` at `:90:13`).
 - **Outcome:** the lead's `run_startup` either keeps a linked state when
   `is_linked_state_usable` holds (non-zero height, non-empty node_ips, and
   overlap with the configured IPs, with no time check), or refreshes and
@@ -603,7 +610,7 @@ states, 0xa and 0xb, and treats a set `al` as pending.
 
 ## Controls
 
-`tests/test_local_abci_gates_static.py` (72 tests) regenerates
+`tests/test_local_abci_gates_static.py` (73 tests) regenerates
 `records.json` and checks eleven models: the gossip root source, the validator node-IP filter, the peer-reply collection, the height selection, the height gate
 including saturation, the day division against exact truncating division,
 the lexicographic compare, the tolerance-to-nanoseconds conversion, the
@@ -648,8 +655,8 @@ output word-0 decoding. It refuses each of these corruptions:
 - The map value stride (0x58) or the skipped tag (2) changed.
 - Caller B's `[rbx+0x3ba8] = 0` store changed, or the gossip loader slot's
   RELATIVE addend redirected.
-- The loader's `jno` flipped, a default root byte changed, or the override
-  file name changed.
+- The loader's `jno` flipped, a default root byte changed, the override
+  file name changed, or the chain assertion's Location moved.
 
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
 producer does not use either.

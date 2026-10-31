@@ -1861,6 +1861,21 @@
  4742867:	41 b5 01             	mov    r13b,0x1
  474286a:	e9 4b f9 ff ff       	jmp    47421ba <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x865c46>
 
+## 0x47428f7 file chain byte vs expected chain byte [0x47428f7, 0x4742905)
+ 47428f7:	40 3a ac 24 72 01 00 	cmp    bpl,BYTE PTR [rsp+0x172]
+ 47428fe:	00
+ 47428ff:	0f 85 fe 00 00 00    	jne    4742a03 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x8653fd>
+
+## 0x4742a03 assert_failed(Eq, &expected, &file_chain) at gossip_config.rs:89:13 [0x4742a03, 0x4742a26)
+ 4742a03:	48 8d 94 24 72 01 00 	lea    rdx,[rsp+0x172]
+ 4742a0a:	00
+ 4742a0b:	4c 8d 0d ae c1 fe 00 	lea    r9,[rip+0xfec1ae]        # 572ebc0 <__register_atfork@plt+0xcd980>
+ 4742a12:	48 8d 74 24 0f       	lea    rsi,[rsp+0xf]
+ 4742a17:	31 ff                	xor    edi,edi
+ 4742a19:	31 c9                	xor    ecx,ecx
+ 4742a1b:	ff 15 1f 11 03 01    	call   QWORD PTR [rip+0x103111f]        # 5773b40 <__register_atfork@plt+0x112900>
+ 4742a21:	e9 8c 00 00 00       	jmp    4742ab2 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x86534e>
+
 ## 0x3994ea0 chain static via 0x57732e8, iterator with &state+0x8f8, collect (whole FDE) [0x3994ea0, 0x3994f1a)
  3994ea0:	41 56                	push   r14
  3994ea2:	53                   	push   rbx

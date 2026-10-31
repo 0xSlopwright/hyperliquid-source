@@ -95,9 +95,9 @@ class Models(unittest.TestCase):
 
     def test_gossip_roots(self):
         five = [(0, b'\x0a\x00\x00\x01')]
-        self.assertEqual([la.gossip_roots(five, 3, False), la.gossip_roots([], 3, True), la.gossip_roots(None, 3, True)],
-                         ['override', 'assert', 'file'])
-        self.assertEqual([la.gossip_roots(None, c, False) for c in range(4)],
+        self.assertEqual([la.gossip_roots(five, 3, None), la.gossip_roots([], 3, 3), la.gossip_roots(None, 3, 3),
+                          la.gossip_roots(None, 3, 2)], ['override', 'assert', 'file', 'assert_eq'])
+        self.assertEqual([la.gossip_roots(None, c, None) for c in range(4)],
                          [None, ['54.95.235.126'], ['13.231.133.202', '54.249.160.165'], None])
 
     def test_collect_heights(self):
@@ -191,6 +191,8 @@ class Results(unittest.TestCase):
         self.assertEqual(g['file'], 'override_gossip_config.json')
         self.assertEqual({k: [r['ip'] for r in v] for k, v in g['default_roots'].items()},
                          {1: ['54.95.235.126'], 2: ['13.231.133.202', '54.249.160.165']})
+        self.assertEqual((g['chain_assert']['kind'], g['chain_assert']['location']),
+                         (0, '/home/ubuntu/hl/code_Mainnet/node/src/gossip_config.rs:89:13'))
         self.assertEqual((g['no_file_arms'][0], g['no_file_arms'][3], g['callers_of_0x227a0e0']),
                          ('0x474224f', '0x474224f', ['0x226c860', '0x22b51b4']))
 
@@ -382,6 +384,10 @@ class Corruptions(unittest.TestCase):
 
     def test_default_root_changed(self):
         self.refuses(patched((0x4742804, b'\xec')), 'loader_defaults at 0x47427e4: bytes changed')
+
+    def test_chain_assert_location(self):
+        self.refuses(patched((0x4742a0b + 3, struct.pack('<i', struct.unpack('<i', load()['img'].read(0x4742a0e, 4))[0] + 0x18))),
+                     'loader_chain_assert at 0x4742a03: bytes changed')
 
     def test_override_file_name(self):
         self.refuses(patched((0x6fb65f, b'O')), 'override file name changed')

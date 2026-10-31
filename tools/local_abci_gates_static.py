@@ -196,6 +196,10 @@ WINDOWS = {
                         '41bc05000000bf05000000ff15e3b702014885c00f84b1010000c60000c74001365feb7eb901000000eb3441bc0a000000bf'
                         '0a000000ff15b8b702014885c00f8486010000c60000c740010de785cac6400500c7400636f9a0a5b90200000048c7842428'
                         '0100000000000048898c2438010000488984244001000048898c244801000041b501e94bf9ffff'),
+    'loader_chain_test': (0x4741dc0, 0x47428f7,
+                          '403aac24720100000f85fe000000'),
+    'loader_chain_assert': (0x4741dc0, 0x4742a03,
+                            '488d9424720100004c8d0daec1fe00488d74240f31ff31c9ff151f110301e98c000000'),
     'validator_collect': (0x3994ea0, 0x3994ea0,
                           '4156534883ec584989f64889fb89d7ff1533e4dd01488b084885c9740b0f104008b801000000eb050f57c031c048'
                           '8944240848c74424100000000048894c24180f13442420488944242848c74424300000000048894c24380f1144'
@@ -884,6 +888,7 @@ def check_root_source(img):
 
 
 OVERRIDE_FILE = b'override_gossip_config.json'
+ASSERT_FAILED = 0x4b283dc
 LOADER_FLOW = {
     'some_override': (0x4741df4, 6, 0x4742194), 'not_a_file': (0x4741e4a, 6, 0x474223b),
     'override_nonempty': (0x4742203, 6, 0x474235a), 'override_empty': (0x4742209, 5, 0x4742a75),
@@ -949,19 +954,33 @@ def check_gossip_override(img):
     require(other.startswith(bytes.fromhex('48ba0000000000000080' '488993280b0000')), '0x226c860 override is not None')
     calls = direct_calls(img, 0x227a0e0)
     require(calls == ['0x226c860', '0x22b51b4'], f'direct calls to 0x227a0e0: {calls}')
+    require(img.read(0x4741dd6, 5) == bytes.fromhex('40886c240f') and flow_target(img, 0x47428ff, 6) == 0x4742a03,
+            'file chain is not compared with the expected chain byte [rsp+0xf]')
+    chain_assert = bytes.fromhex(WINDOWS['loader_chain_assert'][2])
+    require(chain_assert.startswith(bytes.fromhex('488d942472010000')) and chain_assert.count(bytes.fromhex('488d74240f' '31ff' '31c9')) == 1,
+            'chain mismatch is not assert_failed(Eq, &expected, &file_chain, None)')
+    slot = img.rip(0x4742a1b, 6)
+    require(img.relative.get(slot) == ASSERT_FAILED, f'chain mismatch slot {slot:#x} does not reach {ASSERT_FAILED:#x}')
+    loc = img.rip(0x4742a0b, 7)
+    flen, line, col = struct.unpack('<QII', img.read(loc + 8, 16))
+    require(loc in img.relative and img.read(img.relative[loc], flen) == GOSSIP_LOCATION_FILE and (line, col) == (89, 13),
+            f'chain assertion Location {loc:#x} changed')
     return dict(loader=hex(0x4741dc0), override_arg='rdx = &Option<Vec<5-byte>> (None iff word 0 == 2**63)',
                 flow={k: hex(v[2]) for k, v in LOADER_FLOW.items()}, file=OVERRIDE_FILE.decode(), file_check=hex(0x144a710),
                 no_file_table=hex(LOADER_TABLE), no_file_arms={k: hex(v) for k, v in LOADER_ARMS.items()},
                 missing_file_err=hex(2 ** 63 + 0x3b), default_roots=roots, callers_of_0x227a0e0=calls,
-                bootstrap_override='startup words {w0, w1, w2}; missing sets w0 = 2**63', other_override='None (0x226c823)')
+                bootstrap_override='startup words {w0, w1, w2}; missing sets w0 = 2**63', other_override='None (0x226c823)',
+                chain_assert=dict(slot=hex(slot), target=hex(ASSERT_FAILED), kind=0, left='&[rsp+0xf] (expected chain)',
+                                  right='&[rsp+0x172] (file chain)', location=f'{GOSSIP_LOCATION_FILE.decode()}:{line}:{col}'))
 
 
-def gossip_roots(override, chain, file_exists):
-    """0x4741dc0 root_node_ips source: 'override', 'file', a default list, or None for the missing-file error."""
+def gossip_roots(override, chain, file_chain):
+    """0x4741dc0 root_node_ips source: 'override', 'file', a default list, None for the missing-file error,
+    or the panic taken; file_chain is None when override_gossip_config.json is not a file."""
     if override is not None:
         return 'override' if override else 'assert'
-    if file_exists:
-        return 'file'
+    if file_chain is not None:
+        return 'file' if file_chain == chain else 'assert_eq'
     return {1: ['54.95.235.126'], 2: ['13.231.133.202', '54.249.160.165']}.get(chain)
 
 
