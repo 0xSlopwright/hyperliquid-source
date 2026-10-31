@@ -16,7 +16,9 @@ import elf_index  # noqa: E402
 class MissingArtifactDiagnostics(unittest.TestCase):
     def test_missing_artifact_is_one_line(self):
         stderr = io.StringIO()
-        with mock.patch.object(artifacts, 'check', side_effect=ValueError('Missing artifact: x')), \
+        # Other discovered tests may load a fresh artifacts module. Patch the
+        # exact object imported by the CLI at invocation, not an earlier alias.
+        with mock.patch.object(sys.modules['artifacts'], 'check', side_effect=ValueError('Missing artifact: x')), \
                 mock.patch.object(sys, 'argv', ['elf_index.py', '--release', '94']), \
                 contextlib.redirect_stderr(stderr):
             with self.assertRaises(SystemExit) as caught:
