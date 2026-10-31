@@ -10,6 +10,8 @@ HyperEVM precompile address `0x09` wiring is **statically shown**: precompile ob
 
 ```
 python3 -m venv .venv && .venv/bin/pip install unicorn
+Emulation tests (`test_output_pin_and_expectations`, seed full-JSON,
+`test_emu_tamper_iv_breaks_vector`, `test_exact_counts_emu_byte_identical`) run only when `unicorn` is importable (`unittest.skipUnless`); static pins and `--no-emu` JSON hash always run.
 .venv/bin/python -I -B research/work-items/RE-021-blake2b-compress-94/verify.py
 .venv/bin/python -O -B research/work-items/RE-021-blake2b-compress-94/verify.py
 .venv/bin/python -I -B research/work-items/RE-021-blake2b-compress-94/independent_verify.py
