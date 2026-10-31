@@ -16,10 +16,10 @@ lead (`node/local_abci_state.rs`, `node/startup.rs`) differ?
   copied.
 - Claim status: observation for byte-level facts, inference where marked,
   unresolved where listed. Partial `node-runtime` research; no gate change.
-- Scope: twelve fixed windows in `0x22689f0` (the lead's
+- Scope: sixteen fixed windows in `0x22689f0` (the lead's
   `local_abci_state.rs` seed), `0x2271d00`, its caller `0x22ae8a0` and the
   panic shim `0x157b810`.
-  Excluded: how the compared heights and the timestamp are produced, what the
+  Excluded: how the per-peer heights in `ip_to_heights` and the timestamp are produced, what the
   logged tolerance is used for, the rest of the `0x22ae8a0` state machine, and
   release #115.
 
@@ -37,10 +37,11 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 12
-windows (287 instructions), one per checked byte window. All 20 code VAs in
-`records.json` are instruction starts in those windows (`slot_refs` entries are ModRM-byte
-addresses inside instructions, not instruction starts).
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 16
+windows (510 instructions), one per checked byte window. All 28 `records.json`
+VAs that fall inside a window are instruction starts there, except `slot_refs`
+entries, which are ModRM-byte addresses inside instructions. The other code VAs
+are FDE starts, call targets and branch targets outside the windows.
 
 Format templates are decoded as rustc 1.94 packs them: a byte below 0x80 is a
 literal length, and `0xc0` is a placeholder followed by the length of the next
@@ -49,6 +50,46 @@ text that ends exactly at the next marker. Reading placeholder *k* as format
 argument *k* is an inference.
 
 ## Evidence
+
+### Where `initial_height` and `latest_height` come from (observation)
+
+Window `0x226a53f..0x226a6d2` follows the `got heights` log (template
+`0x1e7641`, `… @@ got heights @@ [ip_to_heights: {}]`, whose argument is
+`&[rbx+0x49b0]`). It reads `[rbx+0x49c0]`, the length word of the map whose
+root and height are `[rbx+0x49b0]` and `[rbx+0x49b8]`:
+
+1. **Guard:** length > 1 goes to the loop (`ja` at `0x226a54f`). Length 0 goes
+   to `0x226a6d2` (`0x226a551`). Length 1 goes to the loop only if
+   `[[[rbx+0x49c8]]+0x10] == 1`; otherwise also to `0x226a6d2` (`0x226a566`).
+2. **Selection:** an iterator over the map is built on the stack and advanced
+   by calls to `0x27df4f0` (`0x226a5df`, `0x226a659`, `0x226a68a`), each
+   returning `rdx` as a value pointer. `r15 = [rdx]`, `r14 = [rdx+8]` from the
+   first entry. For each later entry `(rbp, r13) = ([rdx], [rdx+8])`, the
+   current pair is kept only if `r15 > rbp`, or `r15 == rbp` and `r14 > r13`
+   (`seta`/`seta`/`cmove` at `0x226a691..0x226a6a0`). Otherwise both are
+   replaced (`cmove` at `0x226a6a6`, `0x226a6aa`). The loop back-edge is
+   `0x226a6b6 → 0x226a680`.
+3. **Error:** `0x226a6d2` allocates 43 bytes and copies three 16-byte pieces
+   from `0x3d7964`, `0x3d7974` and `0x3d797f` to offsets 0, 0x10 and 0x1b.
+   Together they read `unable to find at least 2 valid rpc heights`. The tool
+   rebuilds the string from the three `movups` operands.
+4. **Result:** `0x226a719` stores `r13`, `r15`, `r14` and 0x2b to
+   `[rbx+0x3bd8..0x3bf0]`. On the loop path `r13 = 0x8000000000000040` and
+   `r12b = 1`. On the error path `r15 = 0x2b` and `r14` is the string
+   pointer, and `r12b = 0`. A set `r12b` jumps to `0x226a912` (`0x226a74d`).
+   The only call in between is `0x28b37f0`, and `r14` and `r15` are
+   callee-saved. That window reaches the status-log window at `0x226a974`
+   without writing `r14` or `r15`, which are then logged as `initial_height`
+   and `latest_height`.
+5. **Retry:** the error path (`0x226a753..0x226a8bc`) formats
+   `AsyncSleepRetry::retry desc=[…] n_tries=…` (template `0x1f2256`, LEA at
+   `0x226a7eb`) and jumps back to `0x2269bcc` (`0x226a8b7`).
+
+Model (`select_heights`): with `values` in iteration order, the pair used is
+the lexicographic maximum of `(initial_height, latest_height)`. It is
+checked against Python `max` on 500 random lists. Inference: the map is a
+`BTreeMap` keyed by peer, from the `{root, height, length}` layout and the
+`ip_to_heights` label. The meaning of `[[[rbx+0x49c8]]+0x10]` is unresolved.
 
 ### The three heights are named by the status log (observation)
 
@@ -171,6 +212,16 @@ states, 0xa and 0xb, and treats a set `al` as pending.
 
 ## Comparison with the lead
 
+- **Height quorum:** `startup.rs` `select_height_quorum` keeps fresh
+  statuses, errors if fewer than `MIN_VALID_RPC_HEIGHTS = 2`, sorts by
+  `latest_height` and takes the median `fresh[len / 2]`. The binary takes the
+  lexicographic maximum of `(initial_height, latest_height)` over all map
+  entries. It accepts a single entry when `[[[rbx+0x49c8]]+0x10] == 1`. Its
+  error path retries through `AsyncSleepRetry` instead of returning. For
+  example, entries `(1, 100), (2, 3), (1, 200)` give the median `(1, 100)` in
+  the lead's model but `(2, 3)` in the binary. The lead's per-entry freshness
+  filter is not visible in this window. Whether the map is filtered
+  earlier is not checked.
 - **0x4e20:** `NODE_IP_FRESHNESS_TOLERANCE = Duration::from_secs(0x4e20)`
   cites "`add 0x4e20` in the stale-time branch at `0x226ab1d`". That `add` is
   the height gate above: its saturating sum is compared with `[rsp+0xd0]` and
@@ -195,10 +246,10 @@ states, 0xa and 0xb, and treats a set `al` as pending.
 
 ## Controls
 
-`tests/test_local_abci_gates_static.py` (25 tests) regenerates
-`records.json` and checks three models: the height gate including
-saturation, the day division against exact truncating division, and the
-lexicographic compare. It refuses each of these corruptions:
+`tests/test_local_abci_gates_static.py` (31 tests) regenerates
+`records.json` and checks four models: the height selection, the height gate
+including saturation, the day division against exact truncating division,
+and the lexicographic compare. It refuses each of these corruptions:
 
 - The gate constant changed to 200.
 - Either message's first byte changed.
@@ -215,15 +266,17 @@ lexicographic compare. It refuses each of these corruptions:
 - A status-log field label broken.
 - An extra height-slot operand planted.
 - Dispatch-table entry 0 moved.
+- The selection loop's `seta` changed to `setb`.
+- A byte of the 43-byte heights error changed.
+- The `AsyncSleepRetry::retry` or `got heights` template changed.
 
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
 producer does not use either.
 
 ## Unresolved
 
-- How `r15` and `r14` (initial and latest height) are computed from the
-  queried gossip statuses, and whether the selected message is later extended
-  with values.
+- How each `ip_to_heights` value is produced, what `[[[rbx+0x49c8]]+0x10]`
+  counts, and whether the selected message is later extended with values.
 - The exact path from `0x2269034` to `0x226915c`, and any jump-table edge into
   the join.
 - What the logged 540/840 tolerance controls.

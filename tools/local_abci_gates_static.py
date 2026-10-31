@@ -39,6 +39,10 @@ WINDOWS = {
              '488db388000000' '483b8c24d0000000' '772a' '4989ee' '41bd1e000000' '488d2d62ce16fe' 'eb36'
              '488d88204e0000' '488db388000000' '483b8c24d0000000' '76d6' '483b8424c8000000' '0f8339020000'
              '4989ee' '41bd23000000' '488d2d07ce16fe'),
+    'select_guard_loop': (STARTUP_FDE, 0x226a53f, '488b83c04900004883f8014c896c2418771b0f857b010000488b8bc8490000488b0948837910010f8566010000488b8bb0490000488b93b849000031f64885c9400f95c6480f44c14889b424103c000048c78424183c00000000000048898c24203c000048899424283c00004889b424303c000048c78424383c00000000000048898c24403c000048899424483c000048898424503c0000488dbc24103c0000e80c4f57004885c00f84730b00004885d20f846a0b00004c8b3a4c8b7208488b8424503c00004889842460010000660f108424103c0000660f108c24203c00000f109424303c00000f109c24403c00000f299c24500100000f29942440010000660f298c2430010000660f29842420010000488dbc2420010000e8924e57004885c00f94c04885d20f94c108c1754a4c8da42420010000662e0f1f840000000000488b2a4c8b6a084c89e7e8614e570031c94d39ee0f97c131f64939ef400f97c60f44f14084f64c0f44fd4d0f44f54885c074054885d275c848b800000000000000804c8d684041b401488d2dc0ccf4ffeb47'),
+    'select_error': (STARTUP_FDE, 0x226a6d2, '41bf2b000000bf2b000000ff15f53850034885c00f849b0a00004989c60f100589d216fe0f11401b0f100573d216fe0f114010660f100557d216fe660f11004d8d6c242b4531e4488b7c2418e8cd906400c683da490000014c89abd83b00004c89bbe03b00004c89b3e83b000048c783f03b00002b0000004584e40f85bf010000'),
+    'select_retry': (STARTUP_FDE, 0x226a753, '488d83d83b0000488d8b883c00000f1040400f1183c83c0000660f1000660f1048100f1050200f1058300f119bb83c00000f1193a83c0000660f118b983c0000660f1183883c0000488b83303c00004883c008488d93583c000048898424200100004889ac24280100004889942430010000488b05c4385003488984243801000048898c2440010000488b051d8e50034889842448010000488d35647af8fd488dbc24103c0000488d942420010000ff153838500349bc0000000000000080488b8424203c0000488b8c24b0000000488941100f108424103c00000f1101c683683c0000000f1001488b411048898424300100000f298424200100004c8db3403c0000488bb3403c00004c39e674144885f6740f488bbb483c000031d2ff159a375003c683693c000001488b842430010000498946100f28842420010000410f1106488b83303c0000f20f104020f20f1183d83c00004c8db3703d0000c683703d000000e910f3ffff'),
+    'select_ok': (STARTUP_FDE, 0x226a912, '488bb3403c000049bc00000000000000804c39e674144885f6740f488bbb483c000031d2ff15d4365003c683693c00000031ed488b8424a0000000c60001488bbc2498000000e86300feff4084ed0f85e8060000c683e049000001c683e849000001'),
     'status_log': (STARTUP_FDE, 0x226a974, '4c89bc24c80000004c89b424d0000000488b83b000000048898424d80000004c8d7c24504c89ffff15ff3e50038b4424508984245c3c0000c78424503c000001000000488b44245448898424543c00004c89a424103c0000488d052fca16fe48898424303c000048c78424383c00001600000048c78424403c00000800000048c78424483c0000000000008b056301510385c00f8576060000660f100543015103660f11842400770000488d8424d80000004889442448488d8424c80000004889442408488d8424d00000004889442420488d8424103c00004889842420010000488d2d840671004889ac2428010000488d84240077000048898424300100004c8d3515c9f4ff4c89b42438010000488d4424484889842440010000488d05790844004889842448010000488d4c240848898c245001000048898424580100004c8d6424204c89a424600100004889842468010000488d3d0d4cf8fd488db42420010000ff158a3e5003488bb424103c000048b800000000000000804839c674154885f67410488bbc24183c000031d2ff1506355003'),
     'select_540': (STARTUP_FDE, 0x226900c,
                    'f20f1005c413fafd' '83bb180c000001' '0f8543010000' '483983200c0000' '0f8232070000' '0f8530010000'),
@@ -83,6 +87,18 @@ TEMPLATE_MARKERS = {
 LOCATION_FILE = b'/home/ubuntu/hl/code_Mainnet/node/src/hl_node.rs'
 TOLERANCES = (540.0, 840.0)
 STATUS_TEMPLATE = 0x1ef6dd
+GOT_HEIGHTS_TEMPLATE = 0x1e7641
+# (branch VA, instruction length, expected target)
+SELECT_BRANCHES = {
+    'len_gt_1_to_loop': (0x226a54f, 2, 0x226a56c), 'len_0_to_error': (0x226a551, 6, 0x226a6d2),
+    'single_other_not_1_to_error': (0x226a566, 6, 0x226a6d2), 'loop_back': (0x226a6b6, 2, 0x226a680),
+    'ok_to_result': (0x226a6d0, 2, 0x226a719), 'ok_to_slots': (0x226a74d, 6, 0x226a912),
+    'error_retry_back': (0x226a8b7, 5, 0x2269bcc),
+}
+ITER_NEXT = 0x27df4f0
+ITER_CALLS = (0x226a5df, 0x226a659, 0x226a68a)
+SELECT_ERROR = b'unable to find at least 2 valid rpc heights'
+RETRY_TEMPLATE = 0x1f2256
 # argument k of the status log -> (slot, pointer-to-slot store, argument-array store)
 STATUS_ARGS = {
     2: ('[rsp+0xd8]', '488d8424d8000000' '4889442448', '488d442448' '4889842440010000'),
@@ -190,6 +206,36 @@ def placeholder_before(pieces, literal):
             require(i > 0 and pieces[i - 1] is None, f'literal {literal!r} is not preceded by a placeholder')
             return idx - 1
     raise EvidenceError(f'literal {literal!r} not in template')
+
+
+def check_selection(img):
+    for name, (va, n, want) in SELECT_BRANCHES.items():
+        got = img.rip(va, n) if n != 2 else va + 2 + struct.unpack('<b', img.read(va + 1, 1))[0]
+        require(got == want, f'{name} branch at {va:#x} goes to {got:#x}')
+    for va in ITER_CALLS:
+        require(img.rip(va, 5) == ITER_NEXT, f'iterator call at {va:#x} changed')
+    err = WINDOWS['select_error'][1]
+    loads = {0x1b: img.rip(err + 0x1d, 7), 0x10: img.rip(err + 0x28, 7), 0x00: img.rip(err + 0x33, 8)}
+    buf = bytearray(43)
+    for off, src in sorted(loads.items()):
+        buf[off:off + 16] = img.read(src, 16)
+    require(bytes(buf) == SELECT_ERROR and img.i32(err + 2) == len(SELECT_ERROR),
+            f'error string rebuilt as {bytes(buf)!r}')
+    got = template(img, GOT_HEIGHTS_TEMPLATE)
+    require(b' @@ got heights @@ [ip_to_heights: ' in got, 'got-heights template changed')
+    retry = WINDOWS['select_retry'][1]
+    retry_raw = bytes.fromhex(WINDOWS['select_retry'][2])
+    lea = retry + retry_raw.index(bytes.fromhex('488d35'))
+    tpl = img.rip(lea, 7)
+    require(tpl == RETRY_TEMPLATE and img.read(tpl + 1, 29) == b'AsyncSleepRetry::retry desc=[',
+            f'retry template at {tpl:#x} changed')
+    return dict(map='[rbx+0x49b0] (root, height, len at +0x10)', got_heights_template=hex(GOT_HEIGHTS_TEMPLATE),
+                proceed_when='len > 1, or len == 1 and [[[rbx+0x49c8]]+0x10] == 1',
+                iterator_next=hex(ITER_NEXT), value_fields={'+0x0': 'initial_height (r15)', '+0x8': 'latest_height (r14)'},
+                keep='lexicographic max of (initial_height, latest_height); a later equal pair replaces',
+                error=dict(text=SELECT_ERROR.decode(), len=len(SELECT_ERROR), pieces={hex(k): hex(v) for k, v in loads.items()}),
+                retry_template=hex(tpl), retry_template_lea=hex(lea),
+                branches={k: hex(v[2]) for k, v in SELECT_BRANCHES.items()})
 
 
 def check_status_log(img):
@@ -350,6 +396,18 @@ def check_callers(img):
                 caller_states_when_al_set=states, future_strings=strings)
 
 
+def select_heights(values, other_len=0):
+    """The 0x226a53f loop: None for the error path, else the kept (initial, latest)."""
+    if not (len(values) > 1 or (len(values) == 1 and other_len == 1)):
+        return None
+    cur = values[0]
+    for new in values[1:]:
+        keep_cur = cur[0] > new[0] if cur[0] != new[0] else cur[1] > new[1]
+        if not keep_cur:
+            cur = new
+    return cur
+
+
 def too_far_behind(local, target):
     return min(local + 0x4e20, 2 ** 64 - 1) <= target
 
@@ -361,7 +419,7 @@ def freshness_panics(deadline, now):
 def analyse(data):
     img = Image(data)
     return dict(target=TARGET, windows={k: hex(v) for k, v in windows(img).items()},
-                status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=check_freshness(img),
+                height_selection=check_selection(img), status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=check_freshness(img),
                 callers=check_callers(img))
 
 

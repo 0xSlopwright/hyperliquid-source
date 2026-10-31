@@ -76,6 +76,37 @@
     "tolerance": 20000,
     "window": "0x226ab0a"
   },
+  "height_selection": {
+    "branches": {
+      "error_retry_back": "0x2269bcc",
+      "len_0_to_error": "0x226a6d2",
+      "len_gt_1_to_loop": "0x226a56c",
+      "loop_back": "0x226a680",
+      "ok_to_result": "0x226a719",
+      "ok_to_slots": "0x226a912",
+      "single_other_not_1_to_error": "0x226a6d2"
+    },
+    "error": {
+      "len": 43,
+      "pieces": {
+        "0x0": "0x3d7964",
+        "0x10": "0x3d7974",
+        "0x1b": "0x3d797f"
+      },
+      "text": "unable to find at least 2 valid rpc heights"
+    },
+    "got_heights_template": "0x1e7641",
+    "iterator_next": "0x27df4f0",
+    "keep": "lexicographic max of (initial_height, latest_height); a later equal pair replaces",
+    "map": "[rbx+0x49b0] (root, height, len at +0x10)",
+    "proceed_when": "len > 1, or len == 1 and [[[rbx+0x49c8]]+0x10] == 1",
+    "retry_template": "0x1f2256",
+    "retry_template_lea": "0x226a7eb",
+    "value_fields": {
+      "+0x0": "initial_height (r15)",
+      "+0x8": "latest_height (r14)"
+    }
+  },
   "status_log": {
     "fields": {
       "[rsp+0xc8]": "initial_height",
@@ -141,6 +172,10 @@
     "poll_entry": "0x2271d17",
     "select_540": "0x226900c",
     "select_840": "0x226915c",
+    "select_error": "0x226a6d2",
+    "select_guard_loop": "0x226a53f",
+    "select_ok": "0x226a912",
+    "select_retry": "0x226a753",
     "status_log": "0x226a974",
     "tolerance_log": "0x226928a"
   }

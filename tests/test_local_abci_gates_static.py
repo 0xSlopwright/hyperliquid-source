@@ -61,6 +61,17 @@ class Models(unittest.TestCase):
         self.assertFalse(la.freshness_panics((1, 2, 3), (1, 2, 3)))
         self.assertFalse(la.freshness_panics((2, 0, 0), (1, 86399, 999)))
 
+    def test_select_heights(self):
+        self.assertIsNone(la.select_heights([]))
+        self.assertIsNone(la.select_heights([(5, 9)]))
+        self.assertEqual(la.select_heights([(5, 9)], other_len=1), (5, 9))
+        self.assertEqual(la.select_heights([(1, 100), (2, 3), (1, 200)]), (2, 3))
+        self.assertEqual(la.select_heights([(4, 10), (4, 30), (4, 20)]), (4, 30))
+        rng = random.Random(94)
+        for _ in range(500):
+            vals = [(rng.randrange(4), rng.randrange(4)) for _ in range(rng.randrange(2, 7))]
+            self.assertEqual(la.select_heights(vals), max(vals))
+
 
 @unittest.skipUnless(BINARY.exists(), 'pinned node #94 binary not present')
 class Results(unittest.TestCase):
@@ -93,6 +104,17 @@ class Results(unittest.TestCase):
         self.assertEqual(st['fields'], {'[rsp+0xd8]': 'local_height', '[rsp+0xc8]': 'initial_height',
                                         '[rsp+0xd0]': 'latest_height'})
         self.assertEqual(st['template'], '0x1ef6dd')
+
+    def test_height_selection(self):
+        h = self.result['height_selection']
+        self.assertEqual(h['error'], {'text': 'unable to find at least 2 valid rpc heights', 'len': 43,
+                                      'pieces': {'0x0': '0x3d7964', '0x10': '0x3d7974', '0x1b': '0x3d797f'}})
+        self.assertEqual((h['iterator_next'], h['retry_template'], h['retry_template_lea']),
+                         ('0x27df4f0', '0x1f2256', '0x226a7eb'))
+        self.assertEqual(h['branches'], {'len_gt_1_to_loop': '0x226a56c', 'len_0_to_error': '0x226a6d2',
+                                         'single_other_not_1_to_error': '0x226a6d2', 'loop_back': '0x226a680',
+                                         'ok_to_result': '0x226a719', 'ok_to_slots': '0x226a912',
+                                         'error_retry_back': '0x2269bcc'})
 
     def test_callers(self):
         c = self.result['callers']
@@ -177,6 +199,18 @@ class Corruptions(unittest.TestCase):
 
     def test_template_text(self):
         self.refuses(patched((0x1ed195, b'U')), 'freshness template 0x1ed194 changed')
+
+    def test_selection_compare_flipped(self):
+        self.refuses(patched((0x226a69e, b'\x92')), 'select_guard_loop at 0x226a53f: bytes changed')
+
+    def test_selection_error_text(self):
+        self.refuses(patched((0x3d7980, b'X')), 'error string rebuilt as')
+
+    def test_retry_template(self):
+        self.refuses(patched((0x1f2256 + 5, b'X')), 'retry template at 0x1f2256 changed')
+
+    def test_got_heights_template(self):
+        self.refuses(patched((0x1e7641 + 20, b'X')), 'got-heights template changed')
 
 
 if __name__ == '__main__':
