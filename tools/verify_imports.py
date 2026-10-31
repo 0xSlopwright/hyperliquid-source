@@ -48,6 +48,8 @@ def load_manifest(root, name):
 
 def verify(root):
     manifest = load_manifest(root, 'imports.json')
+    if 'files' in manifest and not isinstance(manifest['files'], list):
+        raise ValueError('Invalid import manifest')
     for item in manifest['files']:
         if not isinstance(item, dict) or 'path' not in item:
             raise ValueError('Invalid import manifest record')
