@@ -63,7 +63,7 @@ mode comparison and branch destinations, and both result-tag stores.
 Corruption controls run below the complete-input identity gate. Local byte
 predicates are not target executions or whole-function equivalence tests.
 
-Required checks pass:437tests,152.262seconds. All four producer exports match
+Required checks passed: 437 tests in 152.262 seconds. All four producer exports match
 an author rerun byte-for-byte; not independent peer review. Eight identities,
 three signatures,37imports and seven pins unchanged. Analysis ready,exact
 rebuild unavailable. `required-checks.log` masks local checkout/tool prefixes
