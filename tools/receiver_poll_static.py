@@ -85,6 +85,8 @@ def relocations(data):
     for section_index, section in enumerate(section_rows):
         if section['type'] != 4:
             continue
+        if section['size'] % 24:
+            raise ValueError('Truncated relocation section')
         for offset in range(section['offset'], section['offset'] + section['size'], 24):
             slot, info, addend = struct.unpack_from('<QQq', data, offset)
             if slot in RELATIVE:
@@ -95,16 +97,30 @@ def relocations(data):
                 # Resolve this actual linked symbol table entry; do not infer exit
                 # from an address annotation or a reference source function name.
                 symbol_index = struct.unpack_from('<I', data, shoff + section_index * shsize + 40)[0]
+                if symbol_index >= len(section_rows):
+                    raise ValueError(f'Receiver symbol table index out of range: {symbol_index}')
                 symbol_section = section_rows[symbol_index]
                 string_index = struct.unpack_from('<I', data, shoff + symbol_index * shsize + 40)[0]
+                if string_index >= len(section_rows):
+                    raise ValueError(f'Receiver string table index out of range: {string_index}')
                 string_section = section_rows[string_index]
                 entry_size = struct.unpack_from('<Q', data, shoff + symbol_index * shsize + 56)[0]
                 if symbol_section['type'] != 11 or entry_size != 24:
                     raise ValueError('Unexpected dynamic symbol table')
                 symbol = symbol_section['offset'] + (info >> 32) * entry_size
+                if symbol + 4 > len(data):
+                    raise ValueError('Receiver symbol entry outside file')
                 name_offset = struct.unpack_from('<I', data, symbol)[0]
-                start = string_section['offset'] + name_offset
-                name = data[start:data.index(b'\0', start)].decode('ascii')
+                if name_offset >= string_section['size']:
+                    raise ValueError('Receiver dynamic symbol name offset outside string table')
+                string_table = data[string_section['offset']:string_section['offset'] + string_section['size']]
+                end = string_table.find(b'\0', name_offset)
+                if end < 0:
+                    raise ValueError('Receiver dynamic symbol name not terminated inside string table')
+                try:
+                    name = string_table[name_offset:end].decode('ascii')
+                except UnicodeDecodeError:
+                    raise ValueError('Receiver dynamic symbol name is not ASCII')
                 if info & 0xFFFFFFFF != 6 or name != 'exit' or addend != 0:
                     raise ValueError('Exit import binding changed')
                 exit_symbol = True
@@ -115,6 +131,9 @@ def relocations(data):
 
 def generate(binary, output):
     identity = manifest_item(ROOT, 'artifacts/node/94/hl-node')
+    missing = [field for field in ('size', 'sha256') if field not in identity]
+    if missing:
+        raise ValueError(f"provenance/artifacts.json entry for artifacts/node/94/hl-node is missing {'/'.join(missing)}")
     check(binary, identity)
     data = binary.read_bytes()
     instruction_controls(data)

@@ -69,6 +69,8 @@ def relevant_relocations(data):
     for section in sections(data):
         if section['type'] != 4:
             continue
+        if section['size'] % 24:
+            raise ValueError('Truncated relocation section')
         for offset in range(section['offset'], section['offset'] + section['size'], 24):
             slot, info, addend = struct.unpack_from('<QQq', data, offset)
             if slot in wanted:
@@ -95,6 +97,9 @@ def decoded_reference(line):
 
 def generate(binary, output):
     identity = manifest_item(ROOT, 'artifacts/node/94/hl-node')
+    missing = [field for field in ('size', 'sha256') if field not in identity]
+    if missing:
+        raise ValueError(f"provenance/artifacts.json entry for artifacts/node/94/hl-node is missing {'/'.join(missing)}")
     check(binary, identity)
     data = binary.read_bytes()
     byte_controls, relocs = controls(data), relevant_relocations(data)
