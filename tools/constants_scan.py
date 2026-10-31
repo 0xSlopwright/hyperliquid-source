@@ -230,7 +230,8 @@ def xrefs(data, text, targets):
     """RIP-relative operands whose resolved address is one of `targets`."""
     base = text['address'] - text['offset']
     wanted = {target: [] for target in targets}
-    for offset in range(text['offset'] + 1, text['offset'] + text['size'] - 7):
+    # offset names the opcode after REX; the remaining encoding occupies 6 bytes.
+    for offset in range(text['offset'] + 1, text['offset'] + text['size'] - 5):
         rex, opcode = data[offset - 1], data[offset]
         if rex not in (0x48, 0x49, 0x4C, 0x4D):
             continue
@@ -385,7 +386,7 @@ def main():
     if args.out:
         args.out.mkdir(parents=True, exist_ok=True)
         for name, content in outputs.items():
-            (args.out / name).write_text(content)
+            (args.out / name).write_text(content, encoding='utf-8', newline='\n')
     print(f'#94 {digest}')
     print('seeds: ' + ', '.join(f'{k}={v[1]:#x}' for k, v in seeds.items()))
     print(f'table: {table_va:#x}, {len(table)} entries, default NvTestnet={default_index}')

@@ -1,21 +1,72 @@
 """Static real-target evidence and independent binary64 comparison controls."""
+
+
 import copy
+
+
 import hashlib
+
+
 import json
+
+
 import math
+
+
 from pathlib import Path
+
+
 import struct
+
+
 import sys
+
+
 import tempfile
+
+
 import unittest
 
+
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
+
+
 import foundation_duration_guards as guards
+
+
 from elf_index import sections
 
 
 def bits(value):
     return struct.unpack('<Q',struct.pack('<d',value))[0]
+
+
+def synthetic_elf(rows,contents):
+    """Minimal ELF64 carrying the given (name, address, size) section rows;
+    contents maps a row index to the bytes placed at that row's offset."""
+    shstr_row=len(rows)
+    rows=list(rows)+[('.shstrtab',0,0)]
+    names=b'\0';name_off={}
+    for name,_addr,_size in rows:
+        if name not in name_off:
+            name_off[name]=len(names);names+=name.encode()+b'\0'
+    rows[shstr_row]=('.shstrtab',0,len(names))
+    shoff=0x1000
+    data=bytearray(shoff+len(rows)*64)
+    data[0:6]=b'\x7fELF\x02\x01'
+    off=0x200;offsets=[]
+    for i,(_name,_addr,size) in enumerate(rows):
+        offsets.append(off)
+        blob=contents.get(i,b'')
+        data[off:off+len(blob)]=blob
+        off+=max(size,len(blob))+0x10
+    data[offsets[shstr_row]:offsets[shstr_row]+len(names)]=names
+    struct.pack_into('<Q',data,40,shoff)
+    struct.pack_into('<HHH',data,58,64,len(rows),shstr_row)
+    for i,(name,addr,size) in enumerate(rows):
+        struct.pack_into('<IIQQQQIIQQ',data,shoff+i*64,
+                         name_off[name],1,0,addr,offsets[i],size,0,0,1,0)
+    return bytes(data)
 
 
 class ArchitecturalModelTests(unittest.TestCase):
@@ -118,33 +169,30 @@ class DurationTargetTests(unittest.TestCase):
                         raw.replace('66 0f 2e c8','66 0f 2e c9'),raw.rsplit('\n',2)[0]]:
             with self.assertRaises(ValueError):guards.decode_export(changed,start,end,body)
 
-
-def synthetic_elf(rows,contents):
-    """Minimal ELF64 carrying the given (name, address, size) section rows;
-    contents maps a row index to the bytes placed at that row's offset."""
-    shstr_row=len(rows)
-    rows=list(rows)+[('.shstrtab',0,0)]
-    names=b'\0';name_off={}
-    for name,_addr,_size in rows:
-        if name not in name_off:
-            name_off[name]=len(names);names+=name.encode()+b'\0'
-    rows[shstr_row]=('.shstrtab',0,len(names))
-    shoff=0x1000
-    data=bytearray(shoff+len(rows)*64)
-    data[0:6]=b'\x7fELF\x02\x01'
-    off=0x200;offsets=[]
-    for i,(_name,_addr,size) in enumerate(rows):
-        offsets.append(off)
-        blob=contents.get(i,b'')
-        data[off:off+len(blob)]=blob
-        off+=max(size,len(blob))+0x10
-    data[offsets[shstr_row]:offsets[shstr_row]+len(names)]=names
-    struct.pack_into('<Q',data,40,shoff)
-    struct.pack_into('<HHH',data,58,64,len(rows),shstr_row)
-    for i,(name,addr,size) in enumerate(rows):
-        struct.pack_into('<IIQQQQIIQQ',data,shoff+i*64,
-                         name_off[name],1,0,addr,offsets[i],size,0,0,1,0)
-    return bytes(data)
+    def test_gnu_objdump_wrapped_instruction_counts_once(self):
+        # Recorded exports of the same window prefix: GNU objdump wraps the
+        # 8-byte movsd at 0x392fabd after 7 bytes, and its last byte continues
+        # on an addressed row with an empty mnemonic field. Both formats must
+        # decode to the same 5 instructions, not 5 (LLVM) vs 6 (GNU).
+        start,end=0x392fab0,0x392fac5;off=self.offset(start);body=self.data[off:off+end-start]
+        gnu='\n'.join([
+            ' 392fab0:\t53                   \tpush   %rbx',
+            ' 392fab1:\t89 f3                \tmov    %esi,%ebx',
+            ' 392fab3:\t40 80 ff 02          \tcmp    $0x2,%dil',
+            ' 392fab7:\t0f 83 b7 00 00 00    \tjae    392fb74 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x167828c>',
+            ' 392fabd:\tf2 0f 10 0d 6b ad 8d \tmovsd  -0x3725295(%rip),%xmm1        # 20a830 <_ZNKSt5ctypeIcE8do_widenEc@@Base-0x4d9d5d0>',
+            ' 392fac4:\tfc '])
+        llvm='\n'.join([
+            ' 392fab0: 53                           \tpushq\t%rbx',
+            ' 392fab1: 89 f3                        \tmovl\t%esi, %ebx',
+            ' 392fab3: 40 80 ff 02                  \tcmpb\t$0x2, %dil',
+            ' 392fab7: 0f 83 b7 00 00 00            \tjae\t0x392fb74 <.text+0x25ebef4>',
+            ' 392fabd: f2 0f 10 0d 6b ad 8d fc      \tmovsd\t-0x3725295(%rip), %xmm1 # 0x20a830'])
+        decoded=guards.decode_export(gnu,start,end,body)
+        self.assertEqual(decoded,guards.decode_export(llvm,start,end,body))
+        self.assertEqual(len(decoded),5)
+        self.assertEqual(decoded[0x392fabd],bytes.fromhex('f2 0f 10 0d 6b ad 8d fc'))
+        self.assertNotIn(0x392fac4,decoded)
 
 
 class DuplicateSectionNameTests(unittest.TestCase):
@@ -153,7 +201,9 @@ class DuplicateSectionNameTests(unittest.TestCase):
     refused: with the valid .eh_frame first the pinned FDE gate failed at
     once, with it last the same bytes passed every FDE/CIE gate, so the
     verdict flipped on section order alone."""
+
     START,END=0x392fab0,0x392fcba
+
     EH_GOOD,EH_BAD=0x3000000,0x4000000
 
     def fixture(self,eh_order):

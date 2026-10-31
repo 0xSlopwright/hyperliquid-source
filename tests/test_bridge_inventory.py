@@ -1,23 +1,50 @@
 import contextlib
 import hashlib
 import io
+
+
 import json
+
+
 from pathlib import Path
+
+
 import shutil
+
+
 import struct
+
+
 import subprocess
+
+
 import sys
+
+
 import tempfile
+
+
 import unittest
+
+
 from unittest import mock
 
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+
+
 import bridge_inventory as bi
 
+
 ROOT = Path(__file__).resolve().parents[1]
+
+
 ARTIFACT = ROOT / 'artifacts/node/94/hl-node'
 
+
 MAINNET_SITE = bytes.fromhex('4180ff03b8b1a40000b9ee6e0600480f44c8')
+
+
 INTERLEAVED_SITE = bytes.fromhex('4080fd03c60061b9b1a40000baee6e0600480f44d1')
 
 
@@ -301,6 +328,17 @@ class ArtifactTests(unittest.TestCase):
             digest, name = line.split('  ', 1)
             if not name.startswith('../'):
                 self.assertEqual(hashlib.sha256((packet / name).read_bytes()).hexdigest(), digest, name)
+
+
+class ChainSiteWindowTests(unittest.TestCase):
+    def test_rejects_moves_running_past_window(self):
+        payload = bytes.fromhex('4180ff03') + b'\xc6\x00\x61' * 12
+        data, mapping = mapping_for(payload)
+        with self.assertRaises(ValueError):
+            bi.decode_chain_site(data, mapping, 0x1000)
+
+    def test_main_reports_missing_artifact(self):
+        self.assertEqual(bi.main(['--artifact', '/tmp/definitely-missing-hl.bin']), 1)
 
 
 if __name__ == '__main__':
