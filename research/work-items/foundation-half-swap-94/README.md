@@ -90,7 +90,7 @@ The output shape, with all arithmetic over plain bytes, is:
 
 - For each 8-byte word `w` in 0..3: `out[w*8..w*8+4] = reverse(in[w*8..w*8+4])` and `out[w*8+4..w*8+8] = reverse(in[w*8+4..w*8+8])`.
 - Equivalently: each of the eight 32-bit lanes is byte-reversed in place; lanes do not move.
-- `rax` is never written, so this window determines no return value; `r8`–`r11` are caller-saved scratch.
+- `rax` is unchanged from entry; its source-level return contract is unknown. `r8`–`r11` are caller-saved scratch.
 - Note the store order: each bswapped word's low half is stored before its high half, but the final memory state is the per-lane reversal above — no store in this window overwrites another.
 
 ### Incoming edges: no direct callers, no naming relocation

@@ -121,6 +121,16 @@ class CursorWalkPacketTests(unittest.TestCase):
                       {0x1000: (2, 0), 0x1038: (0, 0), 0x1070: (2, 0)}),
             (0, 0x1070))
 
+    def test_target_lea_uses_wrapping_64_bit_arithmetic(self):
+        data = BINARY.read_bytes()
+        sec = next(s for s in tool.sections(data) if s['name'] == '.text')
+        offset = sec['offset'] + 0x3c1d69c - sec['address']
+        self.assertEqual(data[offset:offset + 4], bytes.fromhex('488d5638'))
+        # Register-arithmetic control only; no mapped-address claim or execution.
+        cursor = (1 << 64) - 0x38
+        self.assertEqual(tool.walk(cursor, 0, {cursor: (2, 0)}), (1, 0))
+        self.assertEqual(tool.walk(cursor, 0, {cursor: (3, 0)}), (0, 0))
+
     def test_cli_check_passes(self):
         import io
         from contextlib import redirect_stdout

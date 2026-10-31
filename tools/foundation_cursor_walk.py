@@ -59,14 +59,16 @@ def walk(cursor, limit, nodes, max_steps=1024):
     A restatement of the retained bytes, not execution: nodes maps each
     visited node address to (tag_byte_at_+9, first_byte_at_+0). Returns
     (return_value, final_cursor_slot). The step cap only bounds this
-    restatement; the window itself has no bound check (see README).
+    restatement; the window itself compares only equality (see README).
+    Addresses are u64 values. The node map assumes cursor-slot storage does
+    not overlap node fields; address wrap does not establish mapped memory.
     """
     slot = cursor
     if cursor == limit:
         return 0, slot
     node = cursor
     for _ in range(max_steps):
-        nxt = node + 0x38
+        nxt = (node + 0x38) & ((1 << 64) - 1)
         slot = nxt
         tag, first = nodes[node]
         if tag != 2 or first != 0:

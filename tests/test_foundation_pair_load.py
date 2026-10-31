@@ -93,10 +93,24 @@ class PairLoadPacketTests(unittest.TestCase):
     def test_pair_rule_edges(self):
         self.assertEqual(tool.pair_values(0x1111, 0x2222), (0x1111, 0x2222))
         self.assertEqual(tool.pair_values(0, 0), (0, 0))
-        # Order-independence: the two loads address from the same base, so
-        # the pair is (field_190, field_198) regardless of load order.
+        # Field values preserve their positions in the retained load order.
         self.assertEqual(tool.pair_values(5, 9), (5, 9))
         self.assertEqual(tool.pair_values(9, 5), (9, 5))
+
+    def test_target_load_order_preserves_original_base(self):
+        data = BINARY.read_bytes()
+        sec = next(s for s in tool.sections(data) if s['name'] == '.text')
+        offset = sec['offset'] + 0x502b468 - sec['address']
+        self.assertEqual(data[offset:offset + 14], bytes.fromhex(
+            '488b9098010000488b8090010000'))
+        # Static address arithmetic: RDX reads before RAX overwrites the base.
+        base = 0x1000
+        memory = {0x1190: 0x2000, 0x1198: 7, 0x2198: 9}
+        retained = memory[base + 0x190], memory[base + 0x198]
+        reversed_order = memory[base + 0x190], memory[memory[base + 0x190] + 0x198]
+        self.assertEqual(retained, (0x2000, 7))
+        self.assertEqual(reversed_order, (0x2000, 9))
+        self.assertNotEqual(retained, reversed_order)
 
     def test_cli_check_passes(self):
         import io

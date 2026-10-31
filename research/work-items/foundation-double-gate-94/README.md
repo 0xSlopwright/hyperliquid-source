@@ -73,11 +73,11 @@ Offsets are relative to the FDE start `0x5028a40`:
 
 ### The low-byte-only return
 
-- No instruction in the window zeroes `eax` before the `setae`. The `setae` writes only `al`; the upper bytes of `rax` retain whatever the caller left there. The gate bit is therefore the **low byte only**: `(rax & 0xff) == 1` iff the compared double is >= 1.0, else 0. The checker locks this low-byte rule and never claims a full-width 0/1 return. This is the same precision caveat as packet #27's range-membership test.
+- No instruction in the window zeroes `eax` before the `setae`. The `setae` writes only `al`; bits 8 through 63 of `rax` retain the pointer loaded from `rsi+0xf38`. The gate bit is therefore the **low byte only**: `(rax & 0xff) == 1` iff the compared double is >= 1.0, else 0, provided the comparison completes normally. The checker locks this low-byte rule and never claims a full-width 0/1 return. This is the same precision caveat as packet #27's range-membership test.
 
 ### NaN behavior
 
-- `comisd` sets CF=1 on an unordered comparison, so `setae` is false for NaN. The rule therefore yields 0 for NaN, for any negative value, and for zero, and 1 for 1.0, values above 1.0, and positive infinity. Negative infinity yields 0.
+- When the invalid-operation exception is masked, `comisd` sets CF=1 on an unordered comparison, so `setae` is false for NaN. COMISD signals invalid operation for both quiet and signaling NaNs; if that exception is unmasked, normal completion through SETAE/RET is not established. For comparisons that complete normally, the bit is 0 for NaN, negative values, zero, and negative infinity, and 1 for 1.0, larger values, and positive infinity. MXCSR state and exception handlers are outside this packet. See the COMISD instruction in [Intel SDM, volume 2A](https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-2a-manual.pdf).
 
 ### Data edge
 
@@ -96,6 +96,6 @@ Offsets are relative to the FDE start `0x5028a40`:
 ## Limits
 
 - The byte-pattern scan is not a complete xref census, and the absence of direct callers does not prove the window is unreachable.
-- The absence of a zeroing instruction means the full-width return value is not determined by this window; only the low byte is claimed.
+- On normal completion, full RAX is `(loaded_pointer & ~0xff) | gate_bit`; this does not establish a source-level full-width return contract.
 - No progress gate is requested or claimed. Foundation's gates and generated progress files are unchanged.
 - The reference tree was a search lead only; no inferred implementation was copied, and every claim is grounded in target bytes for node #94.

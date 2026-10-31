@@ -81,7 +81,7 @@ The rule, in full:
 
 ### Precision correction over the scout note: low byte only
 
-The scout note described this window as "return 1 iff lo <= rdi < hi, else 0". The retained bytes show that description is imprecise in one respect: **no instruction in the window zeroes eax or ecx before the setcc pair**, so only the low byte of the return value is the membership bit. The upper bytes of rax are the AND of whatever the caller left in the upper bytes of eax and ecx, and are not determined by this window. This packet therefore claims the low-byte rule only. The observation that all four callers consume the result with `test %al,%al` is consistent with low-byte-only use, and is recorded as caller behavior, not as a claim about the window's full return value.
+The scout note described this window as "return 1 iff lo <= rdi < hi, else 0". The retained bytes show that description is imprecise in one respect: **no instruction in the window zeroes eax or ecx before the setcc pair**, so only the low byte of the return value is the membership bit. Bits 8 through 31 of rax are the AND of the corresponding entry eax and ecx bits; bits 32 through 63 are zero because the final AND writes eax. The low byte alone is the membership bit. This packet therefore claims the low-byte rule only. The observation that all four callers consume the result with `test %al,%al` is consistent with low-byte-only use, and is recorded as caller behavior, not as a claim about the window's full return value.
 
 ### Globals: slots locked, values and meaning unknown
 

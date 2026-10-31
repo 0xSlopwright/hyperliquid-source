@@ -47,7 +47,7 @@ def gate(gate_byte, value_byte):
 
     A restatement of the retained bytes, not execution: the je skips the
     second load and the xor when the gate byte is zero, so the ret returns
-    the xor'd eax (zero from the first movzbl) in that path.
+    the zero from the first MOVZBL in that path; no XOR is reached.
     """
     if gate_byte == 0:
         return 0

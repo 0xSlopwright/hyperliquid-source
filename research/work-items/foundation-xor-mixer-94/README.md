@@ -80,7 +80,7 @@ Decoded from the FDE start, the window takes two input pointers, `rdi` (in0, 8 b
 | `0x4b27655` | `xor %rdx,%r9` | r9 = t1hi ^ t2hi |
 | `0x4b27658` | `xor %r8,%r9` | r9 = t1hi ^ t2hi ^ t1lo |
 | `0x4b2765b` | `xor %r9,%rax` | rax = t2lo ^ t1hi ^ t2hi ^ t1lo |
-| `0x4b2765e` | `xor $0x14,%rax` | acc = t2lo ^ t2hi ^ t1lo ^ 0x14 |
+| `0x4b2765e` | `xor $0x14,%rax` | acc = t2lo ^ t2hi ^ t1lo ^ t1hi ^ 0x14 |
 | `0x4b27662` | `mul %r10` | t3 = acc * seed0, 128-bit in rdx:rax |
 | `0x4b27665` | `xor %rdx,%rax` | return t3lo ^ t3hi |
 | `0x4b27668` | `ret` | |
@@ -92,7 +92,7 @@ The rule, in full:
 - B = in1[4] ^ seed0; A = in1[0] ^ in0[0]; t2 = A * B (128-bit).
 - acc = t2lo ^ t2hi ^ t1lo ^ t1hi ^ 0x14. The fold order matters: r9 first holds t1hi (moved from rdx after the first mul), then xors t2hi, then t1lo; rax (t2lo) xors r9 and 0x14. So all four product halves enter acc.
 - t3 = acc * seed0 (128-bit); return t3lo ^ t3hi in rax.
-- `rax` is the only written return register; `r8`–`r11` are caller-saved scratch.
+- `rax` holds the modeled result; `rdx` also retains t3hi from the last multiply. Whether any caller treats rdx as an additional return value is unknown. `r8`–`r11` are caller-saved scratch.
 
 Checked edges from the decoded rule (restatement, not execution):
 

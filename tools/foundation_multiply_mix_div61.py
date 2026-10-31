@@ -10,7 +10,7 @@ mulhi idiom, stores the quotient's low 32 bits, and returns 1.
 
 The divide-by-61 claim is not taken from the scout note on trust: the builder
 re-verified the mulhi tail numerically, with 0 mismatches on 55,003 values
-(including the full 64-bit range) for the full quotient, and 0 mismatches on
+(sampled across the full 64-bit range) for the full quotient, and 0 mismatches on
 20,000 realistic table-byte times sign-extended-field combinations for the
 stored low 32 bits. The product is treated as u64 by the unsigned mul, so a
 negative sign-extended field still divides as a large u64 value; the store is
@@ -72,7 +72,9 @@ def apply_window(old_state, field_i32):
     This is a Python restatement of the retained instructions, not a run or
     emulation of the captured binary. field_i32 is the signed 32-bit value at
     rdi+0x4, sign-extended by movslq before the multiply. Returns
-    (new_state, table_index, stored_u32, return_value).
+    (new_state, table_index, stored_u32, return_value), assuming the state
+    and output memory do not overlap. See README for the integer proof of
+    the division tail and the original ordered stores.
     """
     mixed = (C_MULT * (old_state % (1 << 64)) + C_ADD) % (1 << 64)
     idx = mixed >> 58

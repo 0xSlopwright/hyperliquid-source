@@ -54,9 +54,10 @@ def gate_bit(value, threshold=1.0):
     """Low-byte rule of the window, for edge checks only.
 
     This is a Python restatement of the retained instruction sequence, not a
-    run or emulation of the captured binary. The comisd/setae pair is
-    unsigned in the sense that NaN is unordered: comisd sets CF=1 on an
-    unordered comparison, so setae is false for NaN.
+    run or emulation of the captured binary. It assumes normal completion:
+    COMISD signals invalid operation for quiet or signaling NaN. When that
+    exception is masked, an unordered comparison sets CF=1 and SETAE is
+    false. Unmasked exceptions and MXCSR state are outside this helper.
     """
     if math.isnan(value):
         return 0

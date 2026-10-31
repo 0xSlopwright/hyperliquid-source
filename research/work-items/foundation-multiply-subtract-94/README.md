@@ -55,8 +55,8 @@ repz ret
 ```
 
 Rule: `out[0] -= scalar * in[0]` (mod 2^64, low product only);
-`out[1] = scalar`. No return value is set: `rax` holds the saved scalar at
-`ret`, but no return meaning is claimed.
+`out[1] = scalar`. `rax` holds the saved scalar at `ret`; the source-level return type and
+meaning remain unknown.
 
 Sharp edges, all locked by the checker:
 

@@ -68,7 +68,7 @@ All offsets are relative to the FDE start `0x3c1d690`. Registers: `rsi` holds th
 2. `mov 0x8(%rdi),%rcx` (bytes 3–6): `limit = *(rdi + 8)`.
 3. `cmp %rcx,%rsi` (bytes 7–9).
 4. `je 0x3c1d6de` (bytes 10–11): if `cursor == limit`, go to step 21 (zero, return 0) with `*(rdi)` unchanged.
-5. `lea 0x38(%rsi),%rdx` (bytes 12–15): `next = node + 0x38`.
+5. `lea 0x38(%rsi),%rdx` (bytes 12–15): `next = (node + 0x38) mod 2^64`.
 6. `mov %rdx,(%rdi)` (bytes 16–18): `*(rdi) = next` — the cursor slot is mutated **before** the node checks below, so a failing return leaves it advanced.
 7. `movzbl 0x9(%rsi),%r8d` (bytes 19–23): `tag = *(node + 9)`.
 8. `xor %eax,%eax` (bytes 24–25): return value preset to 0.
@@ -77,7 +77,7 @@ All offsets are relative to the FDE start `0x3c1d690`. Registers: `rsi` holds th
 11. `cmpb $0x0,(%rsi)` (bytes 38–40) + `jne 0x3c1d6dd` (bytes 41–42): first byte of the node != 0 → return 0.
 12. `nopl 0x0(%rax,%rax,1)` (bytes 43–47): alignment inside the loop body, locked as body bytes.
 13. `cmp %rcx,%rdx` (bytes 48–50) + `sete %al` (bytes 51–53) + `je 0x3c1d6dd` (bytes 54–55): if `next == limit`, return 1 (sete set al = 1 and the upper bits of eax are still zero from step 8); otherwise al = 0 and execution falls through.
-14. `lea 0x38(%rdx),%rsi` (bytes 56–59): `next2 = next + 0x38`.
+14. `lea 0x38(%rdx),%rsi` (bytes 56–59): `next2 = (next + 0x38) mod 2^64`.
 15. `mov %rsi,(%rdi)` (bytes 60–62): `*(rdi) = next2`.
 16. `cmpb $0x2,0x9(%rdx)` (bytes 63–66) + `jne 0x3c1d6dd` (bytes 67–68): tag of the previous advance != 2 → return 0. This is the step the scout shorthand skipped: the node checked here is `rdx`, the previous advance, not `rsi`.
 17. `cmpb $0x0,(%rdx)` (bytes 69–71): first byte of that node.
@@ -89,18 +89,25 @@ All offsets are relative to the FDE start `0x3c1d690`. Registers: `rsi` holds th
 ### Rule
 
 ```
-if *(rdi) == *(rdi+8): return 0                    # no mutation
+limit = *(rdi+8)                                 # loaded once
+if *(rdi) == limit: return 0                      # no mutation
 node = *(rdi)
 loop:
-    next = node + 0x38
+    next = (node + 0x38) mod 2^64
     *(rdi) = next                                  # mutation before checks
     if *(node+9) != 2: return 0
     if *(node+0) != 0: return 0
-    if next == *(rdi+8): return 1
+    if next == limit: return 1
     node = next
 ```
 
 Equivalently: return 1 iff walking in 0x38 steps from the entry cursor through nodes with (tag byte at +9 == 2, first byte == 0) lands exactly on the limit; the limit itself is never dereferenced. The return value is fully determined (eax is zeroed on the entry-equal path and at the first iteration before any return, and `sete` only sets the low byte), so no low-byte-only caveat applies here, unlike packets #27/#32.
+
+The helper and node-map notation assume the cursor-slot store does not overlap
+node fields; no caller aliasing invariant is established. The assembly above
+retains the store-before-read order for aliasing cases. Address arithmetic is
+64-bit; a static control advances `2^64 - 0x38` to zero. This control establishes
+register wrap only, with no claim that such addresses are mapped for a caller.
 
 ### Termination note
 

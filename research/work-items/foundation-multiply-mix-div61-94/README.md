@@ -19,7 +19,7 @@ This window is bound **alone**. No census of similar windows is claimed.
 
 ## No scout correction needed
 
-Every scouted element verified exactly: the FDE range, the 87-byte body, all nineteen instructions, the three direct call sites, and no naming relocation. One builder re-verification, not a correction: the scout note claimed the mulhi tail equals unsigned division by 61, citing 20,000 random values plus edges. The builder re-ran that check independently — 0 mismatches on 55,003 values (including the full 64-bit range) for the full quotient, and 0 mismatches on 20,000 realistic table-byte times sign-extended-field combinations for the stored low 32 bits — so the packet states the division rule as verified, not as scout hearsay. A precision note about the ordering, not a correction: the scout's instruction list reads the table-base lea and the field movslq after the mix add, but the retained bytes place both before the add (lea at bytes 14–20, movslq at bytes 31–34, add at bytes 35–37); the rule is unaffected, and the checker locks the retained order.
+Every scouted element verified exactly: the FDE range, the 87-byte body, all nineteen instructions, the three direct call sites, and no naming relocation. One builder re-verification, not a correction: the scout note claimed the mulhi tail equals unsigned division by 61, citing 20,000 random values plus edges. The builder re-ran that check independently — 0 mismatches on 55,003 sampled and boundary values spanning the 64-bit range for the full quotient, and 0 mismatches on 20,000 realistic table-byte times sign-extended-field combinations for the stored low 32 bits — so the packet states the division rule as verified, not as scout hearsay. A precision note about the ordering, not a correction: the scout's instruction list reads the table-base lea and the field movslq after the mix add, but the retained bytes place both before the add (lea at bytes 14–20, movslq at bytes 31–34, add at bytes 35–37); the rule is unaffected, and the checker locks the retained order.
 
 ## Reproduce
 
@@ -97,11 +97,30 @@ x = (t * sign_extend_32(*(rdi + 0x4))) mod 2^64
 return 1
 ```
 
-The division step is the mulhi idiom of steps 12 and 14–17: with `hi = (M * x) >> 64`, the quotient is `(hi + (x - hi)/2) >> 5`, which equals `x // 61` for unsigned 64-bit `x` (builder-verified, see above). Because the mul is unsigned, a negative sign-extended field still divides as a large u64 value; because the store is 32-bit, only the quotient's low 32 bits are written. The return value is fully determined (`mov $0x1,%eax` before `ret`), so no low-byte-only caveat applies here, unlike packets #27 and #32.
+The division step is the mulhi idiom of steps 12 and 14–17: with `hi = (M * x) >> 64`, the quotient is `(hi + (x - hi)/2) >> 5`, which equals `x // 61` for unsigned 64-bit `x` (algebraic proof below, in addition to the sampled controls). Because the mul is unsigned, a negative sign-extended field still divides as a large u64 value; because the store is 32-bit, only the quotient's low 32 bits are written. The return value is fully determined (`mov $0x1,%eax` before `ret`), so no low-byte-only caveat applies here, unlike packets #27 and #32.
 
 The table's 64 bytes at `0x801180` (in `.rodata`) are locked by the checker:
 `fe d3 bb a9 9c 90 87 7f 78 71 6b 66 61 5d 59 55 51 4d 4a 47 44 41 3e 3c 39 37 35 32 30 2e 2c 2a 28 27 25 23 21 20 1e 1d 1b 1a 18 17 15 14 13 12 10 0f 0e 0d 0c 0a 09 08 07 06 05 04 03 02 01 00`.
 The table's meaning is not claimed.
+
+
+### Integer proof of the division tail
+
+Let `m = 0x0c9714fbcda3ac11`, `M = 2^64 + m`, and `0 <= x < 2^64`.
+The locked instructions compute `hi = floor(x*m/2^64)` and
+`q = (hi + ((x-hi) >> 1)) >> 5`. Here `hi <= x`, the subtraction
+cannot borrow, and `hi + floor((x-hi)/2) <= x`, so no intermediate wraps.
+Thus `q = floor((x+hi)/64) = floor(x*M/2^70)`.
+The exact constant satisfies `61*M = 2^70 + 13`, hence the latter argument
+is `x/61 + 13*x/(61*2^70)`. The positive correction is strictly less than
+`1/61`; since the fractional part of `x/61` is an integer multiple of
+`1/61`, it cannot cross the next integer. Therefore `q = floor(x/61)` for
+every unsigned 64-bit x. This proof is integer arithmetic over the decoded
+constant and shifts, not execution of captured code.
+
+The modeled independent state/output values assume their memory regions do
+not overlap; the instruction list above preserves store order for other aliasing
+cases. No caller aliasing invariant is established here.
 
 ### Incoming calls
 

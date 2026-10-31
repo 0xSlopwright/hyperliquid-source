@@ -57,10 +57,9 @@ def pair_values(field_190, field_198):
 
     This is a Python restatement of the retained instruction sequence, not a
     run or emulation of the captured binary. At ret, rax holds *(base+0x190)
-    and rdx holds *(base+0x198); both loads address from the same base, so
-    the pair is order-independent — swapping the two load instructions would
-    leave the final register state unchanged. No return meaning beyond the
-    two registers' contents is claimed.
+    and rdx holds *(base+0x198). The retained order reads RDX first, then
+    overwrites the base in RAX. Reversing those instructions changes the RDX
+    load address. No source-level return contract is claimed.
     """
     return (field_190 % (1 << 64), field_198 % (1 << 64))
 

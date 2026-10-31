@@ -80,7 +80,7 @@ No store, no call, no branch. The comparison is 64-bit (`mov`/`cmp` with REX.W),
 
 ### Low-byte caveat
 
-No instruction zeroes `eax` before the `setne`, so only the **low byte** of the return value is the gate bit; the upper bytes are caller-state dependent — the same low-byte-only precedent as packets #27 and #32. This is unlike packet #35, where a `mov $0x9,%eax` zeroes the upper bits.
+No instruction zeroes `eax` before the `setne`, so only the **low byte** of the return value is the gate bit; bits 8 through 63 retain the field loaded from `rdi+0x1458`. Full RAX is `(field_1458 & ~0xff) | gate_bit`; the source-level return contract remains unknown. This is unlike packet #35, where a `mov $0x9,%eax` zeroes the upper bits.
 
 ### Data edge
 
