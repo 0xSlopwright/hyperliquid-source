@@ -298,6 +298,14 @@ def main():
     from artifacts import check, manifest_item
     rel = f'artifacts/node/{args.release}/hl-node'
     item = manifest_item(ROOT, rel)
+    manifest = json.loads((ROOT / 'provenance/artifacts.json').read_text())
+    if not isinstance(manifest, dict) or not isinstance(manifest.get('files'), list):
+        raise ValueError('Invalid artifact manifest')
+    if any(type(item) is not dict or 'path' not in item for item in manifest['files']):
+        raise ValueError('Invalid artifact record')
+    item = next((i for i in manifest['files'] if i['path'] == rel), None)
+    if item is None:
+        raise ValueError(f'No provenance/artifacts.json entry for {rel}')
     check(ROOT / rel, item)
     summary = generate(ROOT / rel, args.output_dir / f'node-{args.release}-fde')
     expected = load_inventory(ROOT / f'research/imported/hl-node-{args.release}.inventory.json')['fde_count_eh_frame_hdr']
