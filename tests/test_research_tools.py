@@ -369,6 +369,14 @@ class CatalogueTests(unittest.TestCase):
             d = copy.deepcopy(self.progress)
             d['components']['orderbook'] = bad
             with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
+    def test_non_mapping_progress_components_rejected(self):
+        ids = [c['id'] for c in self.parts]
+        for bad in (ids, 0, None):
+            d = copy.deepcopy(self.progress)
+            d['components'] = bad
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                validate_progress(self.parts, d, self.root)
+        validate_progress(self.parts, self.progress, self.root)
 
 
 class VisorIndexTests(unittest.TestCase):
