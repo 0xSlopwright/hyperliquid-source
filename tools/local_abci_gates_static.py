@@ -170,6 +170,36 @@ WINDOWS = {
                      'db1afd488d15ecc23002be1b000000ff1501fa3802488d1d7a7b3a0248891c244889e04889442408488d3d7f7b3a02eb36'
                      '488d1d1e7b3a0248891c244889e04889442408488d3d237b3a02eb1a488d1d227b3a0248891c244889e04889442408488d'
                      '3d277b3a02488d0da8b630024c8d0539b63002488d542408be01000000ff15b10139024889d84883c4105bc3'),
+    'validator_lookup': (0x3bacce0, 0x3bacce0,
+                         '554157415641554154534883ec684989f748897c24484889742408eb180f1f000fb66bff8b1b4c8b7c24084080fd020f8521'
+                         '0100004c89ffe8332476ff4885c00f84ef0000004989c6498b47484c8ba0500100004d85e40f84c3000000488b8058010000'
+                         '4889442418498db424d0030000410fb78424ae040000498d5c24fd48894424108d048500000000488d2c8049c7c7ffffffff'
+                         '662e0f1f8400000000004885ed744b4c8d6e14ba140000004c89f7ff15f116bc0148984885c00f98c10f9fc028c84883c358'
+                         '49ffc74883c5ec4c89ee3c0174ca0fb6c085c00f843fffffff488b4424184883e8017314eb3a66904c8b7c2410488b442418'
+                         '4883e801722848894424184f8ba4fcb0040000e957ffffff66666666662e0f1f84000000000040b502e903ffffff4c8b7c24'
+                         '0840b502e9f6feffff488b44244848c7000000000048c740080100000048c7401000000000e9ed030000bf14000000ff1597'
+                         '11bc014885c00f840604000040882889580148c7442428040000004889442440488944243048c744243801000000410fb60f'
+                         '498b5f08498b47104d8b67184d8b77404d8b7f48ba0100000048895424204c897c24504983ee017339e96c0300006690440f'
+                         'b66dff8b6d004c8b7424604c8b7c24504c8b642458b101b8000000004180fd020f85e10200004983ee010f8238030000f6c1'
+                         '010f84660300004885db74200fb78be60000004939cc0f83c00000004889d94c89e2e9d70000000f1f4400004d85e474384c'
+                         '89e14889c34883e107743131d2666666662e0f1f840000000000488b9be800000048ffc24839d175f14c89e04829d04983fc'
+                         '087315eb514889c3eb4c4c89e04983fc0872430f1f440000488b8be8000000488b89e8000000488b89e8000000488b89e800'
+                         '0000488b89e8000000488b89e8000000488b89e8000000488b99e80000004883c0f875c24531e431c00fb78be60000004939'
+                         'cc0f824dffffff666666662e0f1f840000000000488b0b4885c90f847602000048ffc00fb793e40000004889cb663b91e600'
+                         '000073de4885c00f8485010000488d34d14881c6f00000004889c74883e7070f848d0100004531c0662e0f1f840000000000'
+                         '488b1e488db3e800000049ffc04c39c775ee4889c74c29c74883f80872436690488b06488b80e8000000488b80e800000048'
+                         '8b80e8000000488b80e8000000488b80e8000000488b80e8000000488b98e8000000488db3e80000004883c7f875bf4531e4'
+                         '498bbf5001000041b5024885ff0f84030100004c896424584c89742460488d04924c8d2c814983c508498b87580100004889'
+                         '442410488db7d00300000fb787ae04000048897c2418488d6ffd48894424088d0485000000004c8d248049c7c7ffffffff66'
+                         '0f1f8400000000004d85e4745b4c8d7614ba140000004c89efff15a113bc0148984885c00f98c10f9fc028c84883c55849ff'
+                         'c74983c4ec4c89f63c0174ca0fb6c085c00f848ffdffff488b4424104883e801488b7c24187324eb6f666666662e0f1f8400'
+                         '000000004c8b7c2408488b4424104883e801488b7c2418724d48894424104a8bbcffb0040000e942ffffff660f1f84000000'
+                         '00004c8d62014889cb498bbf5001000041b5024885ff0f85fdfeffffe938fdffff904889c74883f8080f8393feffffe9cffe'
+                         'ffff4c8b7424604c8b7c24504c8b64245841b502e90efdffff488b742420483b742428488b4c24407524ba01000000b90100'
+                         '000041b805000000488d7c2428e82c9872ff488b4c2430488b742420488d04b644882c0148894c2440896c010148ffc64889'
+                         '7424204889742438b10131c04983ee010f83c8fcffff488b442438488b4c2448488941104889c80f104424280f11014883c4'
+                         '685b415c415d415e415f5dc3488d3dafcdb301ff153112bc01eb0d488d3dd8b8b301ff152212bc010f0bbf01000000be1400'
+                         '0000ff15580dbc01eb004889c3488b4424284885c07411488b7c2430488d348031d2ff15900dbc014889dfe8882eab010f0b'),
     'is_file': (0x144a710, 0x144a710,
                 '55415741564154534881ecc00000004889f34989feff15e54e320484c07436488d7c24104c89f64889daff15d84e3204837c'
                 '24100275224c8b6424188b054604330485c00f85900000004489e083e00383f801742831edeb12b800f00000234424483d00'
@@ -819,6 +849,90 @@ def check_chain_static(img):
                 collect_args='rdi = out, rsi = &{iterator over the static, &state+0x8f8}')
 
 
+LOOKUP_FDE, MEMCMP_SLOT, ALLOC_SLOT = 0x3bacce0, 0x576e488, 0x576dfd8
+# VA -> expected bytes, for the decoded facts of the 0x3bacce0 filter_map collect
+LOOKUP_FACTS = {
+    0x3bacd18: ('e83324 76ff'.replace(' ', ''), 'first element: set iterator next 0x330f150'),
+    0x3bacd29: ('498b4748', 'map holder = iterator +0x48'),
+    0x3bacd2d: ('4c8ba050010000', 'map root = holder +0x150'),
+    0x3bacd3d: ('488b8058010000', 'map height = holder +0x158'),
+    0x3bacd49: ('498db424d0030000', 'map node keys at +0x3d0'),
+    0x3bacd51: ('410fb78424ae040000', 'map node len (u16) at +0x4ae'),
+    0x3bacd5a: ('498d5c24fd', 'value cursor = node - 3'),
+    0x3bacd85: ('4c8d6e14', 'key stride 0x14'),
+    0x3bacd89: ('ba14000000', 'memcmp length 0x14'),
+    0x3bacda4: ('4883c358', 'value stride 0x58'),
+    0x3bacde5: ('4f8ba4fcb0040000', 'map node edges at +0x4b0'),
+    0x3bacd00: ('0fb66bff', 'tag = byte [cursor - 1]'),
+    0x3bacd04: ('8b1b', 'payload = dword [cursor]'),
+    0x3bacd0b: ('4080fd02', 'tag 2 is skipped'),
+    0x3bace1a: ('48c70000000000', 'empty: cap 0'),
+    0x3bace21: ('48c7400801000000', 'empty: dangling ptr 1'),
+    0x3bace29: ('48c7401000000000', 'empty: len 0'),
+    0x3bace36: ('bf14000000', 'first allocation 0x14 bytes'),
+    0x3bace4a: ('408828', 'element byte 0 = tag'),
+    0x3bace4d: ('895801', 'element bytes 1..5 = payload'),
+    0x3bace50: ('48c744242804000000', 'initial capacity 4'),
+    0x3bad081: ('488d0492', 'set key index * 5'),
+    0x3bad085: ('4c8d2c81', '* 4 = set key stride 0x14'),
+    0x3bad089: ('4983c508', 'set node keys at +8'),
+    0x3bacee0: ('0fb78be6000000', 'set node len (u16) at +0xe6'),
+    0x3bad0d9: ('ba14000000', 'memcmp length 0x14 (inlined loop)'),
+    0x3bad1c4: ('41b805000000', 'grow element size 5'),
+    0x3bad1de: ('488d04b6', 'push offset len * 5'),
+    0x3bad1e2: ('44882c01', 'push tag'),
+    0x3bad1eb: ('896c0101', 'push payload'),
+}
+
+
+def dynamic_symbol(img, slot):
+    """Name of the GLOB_DAT symbol filling `slot`, else None."""
+    secs = {s['name']: s for s in img.secs}
+    rela, dynsym, dynstr = secs['.rela.dyn'], secs['.dynsym'], secs['.dynstr']
+    for pos in range(rela['offset'], rela['offset'] + rela['size'], 24):
+        where, info, _ = struct.unpack_from('<QQq', img.data, pos)
+        if where == slot and info & 0xffffffff == 6:
+            name = dynstr['offset'] + struct.unpack_from('<I', img.data, dynsym['offset'] + (info >> 32) * 24)[0]
+            return img.data[name:img.data.index(b'\0', name)].decode()
+    return None
+
+
+def check_validator_ips(img):
+    start, end = img.fde(LOOKUP_FDE)
+    for va, (want, what) in LOOKUP_FACTS.items():
+        raw = bytes.fromhex(want)
+        require(start <= va and va + len(raw) <= end and img.read(va, len(raw)) == raw, f'{what} at {va:#x} changed')
+    require(flow_target(img, 0x3bacd18, 5) == 0x330f150 and img.read(0x330f151, 4) == bytes.fromhex('488b4740'),
+            'first-element next does not count down iterator +0x40')
+    for va in (0x3bacd91, 0x3bad0e1):
+        slot = img.rip(va, 6)
+        require(slot == MEMCMP_SLOT and dynamic_symbol(img, slot) == 'memcmp', f'key compare at {va:#x} is not memcmp')
+    require(img.rip(0x3bace3b, 6) == ALLOC_SLOT and img.relative.get(ALLOC_SLOT) == 0x54c06b0,
+            'first allocation slot changed')
+    require(flow_target(img, 0x3bad1cf, 5) == 0x32d6a00, 'grow call moved')
+    setup = bytes.fromhex(WINDOWS['validator_collect'][2])
+    for part, what in (('488b08', 'set root = [static]'), ('0f104008', '(height, len) = [static+8..+0x18]'),
+                       ('0f11442440', 'len at iterator +0x40'), ('4c89742450', 'map holder at iterator +0x48')):
+        require(setup.count(bytes.fromhex(part)) == 1, f'0x3994ea0: {what} changed')
+    value_off = -3 + 0x58 - 1 - 8
+    require(8 + 11 * 0x58 == 0x3d0 and 0x3d0 + 11 * 0x14 == 0x4ac and value_off == 0x4c, 'node layout arithmetic')
+    return dict(collect=hex(LOOKUP_FDE), set='chain static: BTreeSet of 20-byte keys (root, height, len)',
+                map='BTreeMap<[u8; 20], 0x58-byte value> at (&state+0x8f8)+0x150',
+                compare=f'memcmp (slot {MEMCMP_SLOT:#x}, GLOB_DAT), length 0x14', value_field='+0x4c (tag byte), +0x4d (4 bytes)',
+                skipped_tag=2, element_bytes=5, initial_capacity=4, empty='{cap 0, ptr 1, len 0}',
+                facts={hex(va): what for va, (_, what) in LOOKUP_FACTS.items()})
+
+
+def validator_node_ips(signers, profiles):
+    """0x3bacce0: signers in key order, kept where the profile exists and its 5-byte field's tag is not 2."""
+    out = []
+    for addr in sorted(signers):
+        field = profiles.get(addr)
+        if field is not None and field[0] != 2:
+            out.append(field)
+    return out
+
+
 def tolerance_nanos(x):
     """0x1459cb6..0x1459d28: f64 seconds * 1e9, clamped to +-2**63, truncated to i64 (NaN -> 0)."""
     v = x * 1e9
@@ -913,7 +1027,7 @@ def analyse(data):
     fresh = check_freshness(img)
     return dict(target=TARGET, windows={k: hex(v) for k, v in wins.items()},
                 peer_queries=check_queries(img), height_selection=check_selection(img), status_log=check_status_log(img), height_gate=check_gate(img), tolerance_log=check_tolerance(img), freshness=fresh,
-                stale_gate=check_stale_gate(img, fresh['slots']), node_ips=check_node_ips(img), outcomes=check_outcomes(img), consumers=check_consumers(img), chain_static=check_chain_static(img), callers=check_callers(img))
+                stale_gate=check_stale_gate(img, fresh['slots']), node_ips=check_node_ips(img), outcomes=check_outcomes(img), consumers=check_consumers(img), chain_static=check_chain_static(img), validator_ips=check_validator_ips(img), callers=check_callers(img))
 
 
 def main(argv=None):

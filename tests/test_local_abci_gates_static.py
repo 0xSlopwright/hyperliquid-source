@@ -85,6 +85,14 @@ class Models(unittest.TestCase):
         self.assertEqual([la.startup_outcome(w) for w in (0, 7, 2 ** 63 - 1, 2 ** 63, 2 ** 63 + 1, 2 ** 63 + 2, 2 ** 63 + 3)],
                          ['node_ips', 'node_ips', 'node_ips', 'local_state', 'unobserved', 'no_local_state', 'pending'])
 
+    def test_validator_node_ips(self):
+        signers = {b'\x02' * 20, b'\x01' * 20, b'\x03' * 20, b'\x04' * 20}
+        profiles = {b'\x03' * 20: (1, b'\x0a\x00\x00\x03'), b'\x01' * 20: (0, b'\x0a\x00\x00\x01'),
+                    b'\x04' * 20: (2, b'\x00\x00\x00\x00'), b'\x09' * 20: (1, b'\x0a\x00\x00\x09')}
+        self.assertEqual(la.validator_node_ips(signers, profiles),
+                         [(0, b'\x0a\x00\x00\x01'), (1, b'\x0a\x00\x00\x03')])
+        self.assertEqual(la.validator_node_ips(set(), profiles), [])
+
     def test_collect_heights(self):
         replies = [('a', (2, (1, 5))), ('b', None), ('c', (3, (9, 9))), ('d', (2, None)), ('a', (2, (1, 7)))]
         self.assertEqual(la.collect_heights(replies), {'a': (1, 7)})
@@ -164,6 +172,12 @@ class Results(unittest.TestCase):
         self.assertEqual(c['statics'], {1: '0x57861d8', 2: '0x57861f8', 3: '0x5786218'})
         self.assertEqual((c['chain0_panic'], c['packed_len'], c['location']),
                          ('invalid chain', '0x1b', '/home/ubuntu/hl/code_Mainnet/l1/src/chain_ext.rs:116:29'))
+
+    def test_validator_ips(self):
+        v = self.result['validator_ips']
+        self.assertEqual((v['collect'], v['value_field'], v['skipped_tag'], v['element_bytes'], v['initial_capacity']),
+                         ('0x3bacce0', '+0x4c (tag byte), +0x4d (4 bytes)', 2, 5, 4))
+        self.assertEqual(len(v['facts']), len(la.LOOKUP_FACTS))
 
     def test_node_ips(self):
         n = self.result['node_ips']
@@ -321,6 +335,12 @@ class Corruptions(unittest.TestCase):
     def test_extra_branch_into_return(self):
         self.refuses(patched((PLANT, b'\xe9' + struct.pack('<i', 0x226ad84 - (PLANT + 5)))),
                      'branches into the return block')
+
+    def test_value_stride(self):
+        self.refuses(patched((0x3bacda7, b'\x50')), 'validator_lookup at 0x3bacce0: bytes changed')
+
+    def test_skipped_tag(self):
+        self.refuses(patched((0x3bacd0e, b'\x01')), 'validator_lookup at 0x3bacce0: bytes changed')
 
     def test_chain_panic_text(self):
         self.refuses(patched((0x58c1ca + 8, b'X')), 'chain 0 panic text at 0x58c1ca changed')

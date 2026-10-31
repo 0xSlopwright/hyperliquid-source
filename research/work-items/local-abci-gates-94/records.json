@@ -425,6 +425,49 @@
     ],
     "tolerance_arg_index": 2
   },
+  "validator_ips": {
+    "collect": "0x3bacce0",
+    "compare": "memcmp (slot 0x576e488, GLOB_DAT), length 0x14",
+    "element_bytes": 5,
+    "empty": "{cap 0, ptr 1, len 0}",
+    "facts": {
+      "0x3bacd00": "tag = byte [cursor - 1]",
+      "0x3bacd04": "payload = dword [cursor]",
+      "0x3bacd0b": "tag 2 is skipped",
+      "0x3bacd18": "first element: set iterator next 0x330f150",
+      "0x3bacd29": "map holder = iterator +0x48",
+      "0x3bacd2d": "map root = holder +0x150",
+      "0x3bacd3d": "map height = holder +0x158",
+      "0x3bacd49": "map node keys at +0x3d0",
+      "0x3bacd51": "map node len (u16) at +0x4ae",
+      "0x3bacd5a": "value cursor = node - 3",
+      "0x3bacd85": "key stride 0x14",
+      "0x3bacd89": "memcmp length 0x14",
+      "0x3bacda4": "value stride 0x58",
+      "0x3bacde5": "map node edges at +0x4b0",
+      "0x3bace1a": "empty: cap 0",
+      "0x3bace21": "empty: dangling ptr 1",
+      "0x3bace29": "empty: len 0",
+      "0x3bace36": "first allocation 0x14 bytes",
+      "0x3bace4a": "element byte 0 = tag",
+      "0x3bace4d": "element bytes 1..5 = payload",
+      "0x3bace50": "initial capacity 4",
+      "0x3bacee0": "set node len (u16) at +0xe6",
+      "0x3bad081": "set key index * 5",
+      "0x3bad085": "* 4 = set key stride 0x14",
+      "0x3bad089": "set node keys at +8",
+      "0x3bad0d9": "memcmp length 0x14 (inlined loop)",
+      "0x3bad1c4": "grow element size 5",
+      "0x3bad1de": "push offset len * 5",
+      "0x3bad1e2": "push tag",
+      "0x3bad1eb": "push payload"
+    },
+    "initial_capacity": 4,
+    "map": "BTreeMap<[u8; 20], 0x58-byte value> at (&state+0x8f8)+0x150",
+    "set": "chain static: BTreeSet of 20-byte keys (root, height, len)",
+    "skipped_tag": 2,
+    "value_field": "+0x4c (tag byte), +0x4d (4 bytes)"
+  },
   "windows": {
     "add_secs_f64": "0x1459ca0",
     "after_panic": "0x227283d",
@@ -483,6 +526,7 @@
     "tolerance_log": "0x226928a",
     "validator_collect": "0x3994ea0",
     "validator_ips": "0x22695db",
+    "validator_lookup": "0x3bacce0",
     "vec5_clone": "0x254e7b0"
   }
 }

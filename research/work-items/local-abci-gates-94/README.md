@@ -16,12 +16,12 @@ lead (`node/local_abci_state.rs`, `node/startup.rs`) differ?
   copied.
 - Claim status: observation for byte-level facts, inference where marked,
   unresolved where listed. Partial `node-runtime` research; no gate change.
-- Scope: fifty-eight fixed windows in `0x22689f0` (the lead's
+- Scope: fifty-nine fixed windows in `0x22689f0` (the lead's
   `local_abci_state.rs` seed), its helpers `0x1459ca0`, `0x254e7b0`,
-  `0x144a710`, `0x3994ea0` and `0x33de620`, its two callers `0x227a0e0` and `0x22b47c0`, `0x2271d00`,
+  `0x144a710`, `0x3994ea0`, `0x33de620` and `0x3bacce0`, its two callers `0x227a0e0` and `0x22b47c0`, `0x2271d00`,
   its caller `0x22ae8a0` and the panic shim `0x157b810`.
   Excluded: what `0x226bb20` sends and decodes, how the timestamp is produced,
-  what `0x3994ea0` collects for validator node IPs, the rest of the `0x22ae8a0`
+  what the 0x58-byte map values hold besides `+0x4c`, the rest of the `0x22ae8a0`
   state machine, and release #115.
 
 ## Reproduce
@@ -38,8 +38,8 @@ sections, `.eh_frame` FDEs (`tools/fde_extents.py`) and `.rela.dyn`
 Python 3 (run here with 3.14.7 on macOS arm64; under 1 s). `records.json` is
 its complete output; the test suite regenerates and compares it.
 
-`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 58
-windows (2054 instructions), one per checked byte window. All 118 `records.json`
+`excerpts.objdump.txt` is raw supporting text from GNU objdump 2.47, in 59
+windows (2401 instructions), one per checked byte window. All 149 `records.json`
 VAs (values and keys) that fall inside a window are instruction starts there, except `slot_refs`
 and `record_refs` entries, which are ModRM-byte addresses inside instructions. The other code VAs
 are FDE starts, call targets and branch targets outside the windows.
@@ -301,9 +301,27 @@ frozen-state hardfork path. ### Which state and which peers (observation)
 
   From the returned object, `[+0]` (tested for zero) and `[+8..+0x18]`, it
   builds a two-ended iterator state and places `&[rbx+0x980]` after it. It
-  then calls `0x3bacce0` (not decoded) to fill `rdi`. The same slot is
+  then calls `0x3bacce0` to fill `rdi`. The same slot is
   called with the boxed state's byte `+0x8f2` on the `fresh` path of
   `0x22b47c0` (`0x22b4b5b`).
+- **`0x3bacce0` (whole FDE):** a `filter_map(..).collect()` into a Vec of
+  5-byte elements.
+  - The set side: the returned static is a B-tree set (root `[+0]`, height
+    `[+8]`, length `[+0x10]`, copied to iterator `+0x40`). Its nodes hold u16
+    `len` at `+0xe6` and 20-byte keys from `+8`. The first element comes
+    from `0x330f150`, which counts down iterator `+0x40`; the rest is the
+    same walk inlined.
+  - The lookup side: for each key it searches the B-tree map at
+    `[iterator+0x48]+0x150` (root; height at `+0x158`), that is
+    `(&state+0x8f8)+0x150`. The map nodes hold 0x58-byte values from `+8`,
+    20-byte keys from `+0x3d0`, u16 `len` at `+0x4ae` and edges at `+0x4b0`.
+    Keys are compared with `memcmp(…, 0x14)` (slot `0x576e488`, a GLOB_DAT
+    of the dynamic symbol `memcmp`), so the order is bytewise.
+  - The filter: on a hit it reads the tag byte at value `+0x4c` and four bytes
+    at `+0x4d`. A miss or tag 2 skips the key. Otherwise it pushes
+    `{tag, 4 bytes}` (5 bytes). The first push allocates 0x14 bytes
+    (capacity 4); later pushes grow via `0x32d6a00` with element size 5.
+    No element returns `{cap 0, ptr 1, len 0}`.
 - **Tail:** both paths copy `[rsp+0x7700..0x7718]` to `[rbx+0x3b70]`, the
   peer list above.
 
@@ -316,9 +334,15 @@ Inference: byte `+0x8f2` of the state is a chain id (the lead's
 `HlChain`: 0 local, 1 sandbox, 2 testnet, 3 mainnet). The only accessor in the
 lead's `chain_ext.rs` that panics `invalid chain` for chain 0 is
 `foundation_self_signer_addresses` (a per-chain `BTreeSet`). So validator node
-IPs are probably collected by walking such a per-chain set against the state's
-table at `+0x8f8`. What `0x3bacce0` collects is not decoded, so this is
-unconfirmed.
+IPs are the foundation self-signer addresses, in byte order, that have an entry
+in a state map keyed by address whose value carries a set 5-byte node IP at
+`+0x4c`. The 5-byte element matches the root-node-IP clone, and tag 2 reads
+as `None` of an `Option` around a two-variant, IPv4-sized node IP. Neither lead
+`NodeIp` (`{Localhost, Ip(IpAddr)}` in `gossip_config.rs`, `NodeIp(IpAddr)`
+in `hl_node.rs`) would fit in 5 bytes. Which
+state map this is (validator profiles, by the `node_ip` schema string the lead
+cites) is not proven. The lead's startup has no such source: it only uses
+`root_node_ips` and reserved peers.
 
 ### What the future returns (observation)
 
@@ -522,8 +546,8 @@ states, 0xa and 0xb, and treats a set `al` as pending.
 
 ## Controls
 
-`tests/test_local_abci_gates_static.py` (60 tests) regenerates
-`records.json` and checks nine models: the peer-reply collection, the height selection, the height gate
+`tests/test_local_abci_gates_static.py` (64 tests) regenerates
+`records.json` and checks ten models: the validator node-IP filter, the peer-reply collection, the height selection, the height gate
 including saturation, the day division against exact truncating division,
 the lexicographic compare, the tolerance-to-nanoseconds conversion, the
 nanosecond floor split against `divmod`, the local-state gate, and the
@@ -564,6 +588,7 @@ output word-0 decoding. It refuses each of these corruptions:
 - A variant-name byte changed.
 - An extra direct call to `0x22689f0` planted.
 - The `invalid chain` text changed.
+- The map value stride (0x58) or the skipped tag (2) changed.
 
 The module passes with GNU binutils or with LLVM tools only on `PATH`; the
 producer does not use either.
@@ -574,8 +599,8 @@ producer does not use either.
 - The exact path from `0x2269034` to `0x226915c`, and any jump-table edge into
   the join.
 - What the non-validator bootstrap in `0x22b47c0` does with a `stale`
-  peer list, what object `[rbx+0x80]` points to, what
-  `0x3bacce0` collects from the chain static and `[rbx+0x980]`, and what
+  peer list, what object `[rbx+0x80]` points to, which state map
+  `(&state+0x8f8)+0x150` is and what its tag values 0 and 1 mean, and what
   `0x3751e80` builds.
 - What `[rbx+0x740]+0x60` holds, and which orchestrator paths reach states
   0xa and 0xb.
