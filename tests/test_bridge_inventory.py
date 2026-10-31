@@ -107,6 +107,15 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(bi.find_all(b'no literal here', b'requestWithdrawal'), [])
 
     @unittest.skipUnless(ARTIFACT.exists(), 'captured node #94 not present')
+    def test_out_evidence_is_byte_identical(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with contextlib.redirect_stdout(io.StringIO()):
+                bi.main(['--release', '94', '--out', tmp])
+            self.assertEqual(
+                (Path(tmp) / 'bridge-inventory.json').read_bytes(),
+                (ROOT / 'research/work-items/bridge/evidence/bridge-inventory.json').read_bytes())
+
+    @unittest.skipUnless(ARTIFACT.exists(), 'captured node #94 not present')
     def test_end_to_end_report_is_pinned(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
