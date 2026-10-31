@@ -167,3 +167,14 @@ caller/source type ownership and target runtime proof remain unresolved.
 The repository's root rebuild toolchains and all four serialization gates
 are unchanged. `rust/source-sha256.json` pins the actual compared sources;
 `rust/` retains raw test/build/control logs without home-directory paths.
+
+## Separate node115 correspondence
+
+[drift/README.md](drift/README.md) records a bounded RE-014 comparison of the
+complete reader, error builder and two node115 wrapper copies. Of eight
+FDE-start prefix candidates, four pass the full instruction/relocation/table
+comparison and four lookalikes fail. Five real node115 byte/data/relocation
+corruptions are rejected below the separate whole-image admission gate.
+This is static correspondence with explicit slot aliases, not target execution
+or a transfer of the node94 fixture measurements to node115. The original
+node94 source, static exports and Rust results remain unchanged.
