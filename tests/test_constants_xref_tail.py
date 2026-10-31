@@ -12,7 +12,7 @@ class XrefTail(unittest.TestCase):
         cls.data=(ROOT/'artifacts/node/94/hl-node').read_bytes()
         if hashlib.sha256(cls.data).hexdigest()!='3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f':
             raise AssertionError('node94 identity')
-        # Packet site is the opcode; the complete 7-byte encoding starts one byte earlier.
+        # The accepted instruction-start fix reports the REX byte, not the opcode.
         cls.va=0x164fbae;cls.off=0x164ebae;cls.target=0x1ef5f5
         if cls.data[cls.off:cls.off+7].hex()!='488d3540fab9fe':
             raise AssertionError('original packet bytes')
@@ -24,7 +24,7 @@ class XrefTail(unittest.TestCase):
         for size in (7,8,9):
             with self.subTest(size=size):
                 self.assertEqual(xrefs(self.data,self.view(size),[self.target]),
-                                 {self.target:[(self.va+1,'488d3540fab9fe')]})
+                                 {self.target:[(self.va,'488d3540fab9fe')]})
 
     def test_incomplete_terminal_operand_is_not_read_past_section(self):
         for size in range(7):
@@ -33,7 +33,7 @@ class XrefTail(unittest.TestCase):
 
     def test_retained_whole_text_keeps_original_reference(self):
         self.assertEqual(xrefs(self.data,section(self.data,'.text'),[self.target]),
-                         {self.target:[(self.va+1,'488d3540fab9fe')]})
+                         {self.target:[(self.va,'488d3540fab9fe')]})
 
     def test_bridge_scanner_includes_complete_terminal_displacement(self):
         for size in (7,8,9):

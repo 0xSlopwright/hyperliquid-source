@@ -132,15 +132,10 @@ def generate(binary, output):
         ranges[name] = {'start_va': hex(begin), 'end_va': hex(end), 'file_offset': hex(offset),
                         'bytes': len(body), 'sha256': hashlib.sha256(body).hexdigest()}
         result = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
-                                          f'--stop-address={end:#x}', str(binary)], text=True)
+                                          f'--stop-address={end:#x}', str(binary)], text=True, encoding='utf-8')
         (output / (name + '.objdump.txt')).write_text(result.replace(str(binary), '<authenticated-node94>'), encoding='utf-8', newline='\n')
     (output / 'frames.txt').write_text('\n'.join(line for line in frames.splitlines()
         if 'FDE' in line and any(f'pc={a:016x}..{b:016x}' in line for a, b in RANGES.values())) + '\n', encoding='utf-8', newline='\n')
-    raw_rela = subprocess.check_output(['readelf', '-rW', str(binary)], text=True)
-                                          f'--stop-address={end:#x}', str(binary)], text=True, encoding='utf-8')
-        (output / (name + '.objdump.txt')).write_text(result.replace(str(binary), '<authenticated-node94>'))
-    (output / 'frames.txt').write_text('\n'.join(line for line in frames.splitlines()
-        if 'FDE' in line and any(f'pc={a:016x}..{b:016x}' in line for a, b in RANGES.values())) + '\n')
     raw_rela = subprocess.check_output(['readelf', '-rW', str(binary)], text=True, encoding='utf-8')
     slots = {*RELATIVE, 0x5777378}
     (output / 'relocations.txt').write_text('\n'.join(line for line in raw_rela.splitlines()

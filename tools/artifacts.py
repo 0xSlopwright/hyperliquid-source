@@ -54,7 +54,7 @@ def _unique_object(pairs):
 
 def load_manifest(root=ROOT):
     """Load artifact identities without ambiguous keys, paths or record shapes."""
-    manifest = json.loads((root / 'provenance/artifacts.json').read_text(), object_pairs_hook=_unique_object)
+    manifest = json.loads((root / 'provenance/artifacts.json').read_text(encoding='utf-8'), object_pairs_hook=_unique_object)
     if not isinstance(manifest, dict) or not isinstance(manifest.get('files'), list):
         raise ValueError('Invalid artifact manifest')
     if any(not isinstance(item, dict) or 'path' not in item for item in manifest['files']):
@@ -112,12 +112,6 @@ def fetch_all(root, manifest):
         raise ValueError('Not recovered by fetch:\n  ' + '\n  '.join(failures))
 
 
-def verify_signatures(root, fingerprint):
-    with tempfile.TemporaryDirectory(prefix='hl-verify-') as home:
-        # This workflow imports only a public verification key. It must not
-        # require starting a secret-key agent or other helper in a sandbox.
-        base = ['gpg', '--batch', '--no-options', '--no-autostart', '--homedir', home]
-        subprocess.run(base + ['--import', str(root / 'artifacts/keys/pub_key.asc')],
 KEY = 'artifacts/keys/pub_key.asc'
 
 
@@ -149,31 +143,25 @@ def verify_signatures(root, manifest):
     fingerprint = manifest['signing_fingerprint']
     pairs = signature_pairs(manifest)
     with tempfile.TemporaryDirectory(prefix='hl-verify-') as home:
-        base = ['gpg', '--batch', '--no-options', '--homedir', home]
+        # This workflow imports only a public verification key. It must not
+        # require starting a secret-key agent or other helper in a sandbox.
+        base = ['gpg', '--batch', '--no-options', '--no-autostart', '--homedir', home]
         subprocess.run(base + ['--import', str(root / KEY)],
                        check=True, capture_output=True)
         for relative, signature in pairs:
             binary = root / relative
             result = subprocess.run(base + ['--status-fd', '1', '--verify', str(root / signature), str(binary)],
-                                    check=True, capture_output=True, text=True)
-        for rel in ['node/94/hl-node', 'node/115/hl-node', 'visor/captured/hl-visor']:
-            binary = root / 'artifacts' / rel
-            result = subprocess.run(base + ['--status-fd', '1', '--verify', str(binary) + '.asc', str(binary)],
                                     check=True, capture_output=True, text=True, encoding='utf-8')
             valid = [line.split() for line in result.stdout.splitlines()
                      if line.startswith('[GNUPG:] VALIDSIG ')]
             if not any(row[2] == fingerprint or row[-1] == fingerprint for row in valid):
                 raise ValueError(f'Expected signing fingerprint not found: {relative}')
-            print(f'Valid signature: {relative}')
-                raise ValueError(f'Expected signing fingerprint not found: {rel}')
-            # VALIDSIG is emitted for a revoked or expired key too. The artifact must be
-            # authenticated by a key that is valid now, not only cryptographically signed.
             for line in result.stdout.splitlines():
                 fields = line.split()
                 if len(fields) > 1 and fields[0] == '[GNUPG:]' and fields[1] in {
                         'REVKEYSIG', 'EXPKEYSIG', 'KEYEXPIRED', 'SIGEXPIRED'}:
-                    raise ValueError(f'Signature is not currently valid: {rel}: {line}')
-            print(f'Valid signature: {rel}')
+                    raise ValueError(f'Signature is not currently valid: {relative}: {line}')
+            print(f'Valid signature: {relative}')
 
 
 PAIRS = [
@@ -199,13 +187,11 @@ def main():
     manifest = load_manifest(ROOT)
     if args.command == 'fetch':
         fetch_all(ROOT, manifest)
-    manifest = json.loads((ROOT / 'provenance/artifacts.json').read_text(encoding='utf-8'))
     for item in manifest['files']:
         check(ROOT / item['path'], item)
         print(f"SHA-256 OK: {item['path']}")
     if 'signing_fingerprint' not in manifest:
         raise ValueError('Invalid artifact manifest')
-    verify_signatures(ROOT, manifest['signing_fingerprint'])
     verify_signatures(ROOT, manifest)
     verify_pinned_pairs(ROOT)
     print('Pinned upstream binary, signature and public key match.')

@@ -12,7 +12,8 @@ def locate_ghidra():
     explicit = os.environ.get('GHIDRA_INSTALL_DIR')
     if explicit:
         directory = Path(explicit)
-        return directory if (directory / 'support/analyzeHeadless').is_file() else None
+        return directory if any((directory / name).is_file() for name in
+                                ('support/analyzeHeadless', 'support/analyzeHeadless.bat')) else None
     candidates = []
     if os.environ.get('GHIDRA_HOME'):
         candidates.append(Path(os.environ['GHIDRA_HOME']))
@@ -60,6 +61,8 @@ def probe_git_lfs():
         if res.get('available'):
             return res
     return {'name': 'git-lfs', 'available': False}
+
+
 def probe_gnu(name):
     # Analysis tools and tests invoke plain `objdump`/`readelf` with GNU-only
     # flags (-M intel, -wf, --debug-dump). macOS ships LLVM objdump under that name.

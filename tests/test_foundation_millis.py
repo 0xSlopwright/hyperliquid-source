@@ -1,16 +1,68 @@
 """Target-grounded corruption controls and finite reciprocal-division proofs."""
+
+
 import copy
+
+
 import hashlib
+
+
 import json
+
+
 from pathlib import Path
+
+
 import struct
+
+
 import sys
+
+
 import tempfile
+
+
 import unittest
 
+
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
+
+
 import foundation_millis as millis
+
+
 from elf_index import sections
+
+
+def synthetic_elf(rows, contents):
+    """Minimal ELF64 carrying the given (name, address, size) section rows;
+    contents maps a row index to the bytes placed at that row's offset."""
+    shstr_row = len(rows)
+    rows = list(rows) + [('.shstrtab', 0, 0)]
+    names = b'\0'
+    name_off = {}
+    for name, _addr, _size in rows:
+        if name not in name_off:
+            name_off[name] = len(names)
+            names += name.encode() + b'\0'
+    rows[shstr_row] = ('.shstrtab', 0, len(names))
+    shoff = 0x1000
+    data = bytearray(shoff + len(rows) * 64)
+    data[0:6] = b'\x7fELF\x02\x01'
+    off = 0x200
+    offsets = []
+    for i, (_name, _addr, size) in enumerate(rows):
+        offsets.append(off)
+        blob = contents.get(i, b'')
+        data[off:off + len(blob)] = blob
+        off += max(size, len(blob)) + 0x10
+    data[offsets[shstr_row]:offsets[shstr_row] + len(names)] = names
+    struct.pack_into('<Q', data, 40, shoff)
+    struct.pack_into('<HHH', data, 58, 64, len(rows), shstr_row)
+    for i, (name, addr, size) in enumerate(rows):
+        struct.pack_into('<IIQQQQIIQQ', data, shoff + i * 64,
+                         name_off[name], 1, 0, addr, offsets[i], size, 0, 0, 1, 0)
+    return bytes(data)
 
 
 class ReciprocalTests(unittest.TestCase):
@@ -115,6 +167,34 @@ class MillisEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'Calendar source relocation'):
             millis.analyze(self.data,records)
 
+    def test_calendar_helper_disassembly_boundary_control(self):
+        row=self.records['windows'][2];start=int(row['start_va'],16);end=int(row['end_va_exclusive'],16)
+        raw=(millis.PACKET/'calendar_helper.objdump.txt').read_text()
+        off=self.offset(start);body=self.data[off:off+end-start]
+        for text in [raw.replace('151f755:','151f756:'),raw.rsplit('\n',2)[0]]:
+            with self.assertRaises(ValueError):millis.decode_export(text,start,end,body)
+
+    def test_duplicate_relocation_rejected(self):
+        rel = next(s for s in self.sections if s['name'] == '.rela.dyn')
+        data = bytearray(self.data)
+        data[rel['offset']:rel['offset'] + 24] = data[rel['offset'] + 24:rel['offset'] + 48]
+        with self.assertRaisesRegex(ValueError, 'Duplicate relocation address'):
+            millis.analyze(bytes(data), self.records)
+
+    def test_millisecond_split_boundary_cases(self):
+        first,day,second_day=self.result['division_proofs']
+        for value in [0,1,999,1000,1001,86399999,86400000,86400001,millis.U64]:
+            secs=(((value>>3)*int(first['multiplier'],16))>>first['shift'])
+            days=(((value>>10)*int(day['multiplier'],16))>>day['shift'])
+            days_from_seconds=(secs*int(second_day['multiplier'],16))>>second_day['shift']
+            self.assertEqual(secs,value//1000)
+            self.assertEqual(days,value//86400000)
+            self.assertEqual(days_from_seconds,days)
+            # The target computes the nanosecond remainder in low 32-bit regs.
+            remainder=((value&0xffffffff)-(secs*1000&0xffffffff))&0xffffffff
+            self.assertEqual(remainder,value%1000)
+            self.assertLess(remainder*1000000,1<<32)
+
     def test_gnu_objdump_wrapped_instruction_counts_once(self):
         # Recorded exports of the same window prefix: GNU objdump wraps the
         # 10-byte movabs at 0x13c8e39 after 7 bytes, and its last 3 bytes
@@ -158,66 +238,6 @@ class MillisEvidenceTests(unittest.TestCase):
         self.assertEqual(decoded[0x13c8e39],bytes.fromhex('48 b9 cf f7 53 e3 a5 9b c4 20'))
         self.assertNotIn(0x13c8e40,decoded)
 
-    def test_calendar_helper_disassembly_boundary_control(self):
-        row=self.records['windows'][2];start=int(row['start_va'],16);end=int(row['end_va_exclusive'],16)
-        raw=(millis.PACKET/'calendar_helper.objdump.txt').read_text()
-        off=self.offset(start);body=self.data[off:off+end-start]
-        for text in [raw.replace('151f755:','151f756:'),raw.rsplit('\n',2)[0]]:
-            with self.assertRaises(ValueError):millis.decode_export(text,start,end,body)
-
-    def test_duplicate_relocation_rejected(self):
-        rel = next(s for s in self.sections if s['name'] == '.rela.dyn')
-        data = bytearray(self.data)
-        data[rel['offset']:rel['offset'] + 24] = data[rel['offset'] + 24:rel['offset'] + 48]
-        with self.assertRaisesRegex(ValueError, 'Duplicate relocation address'):
-            millis.analyze(bytes(data), self.records)
-
-    def test_millisecond_split_boundary_cases(self):
-        first,day,second_day=self.result['division_proofs']
-        for value in [0,1,999,1000,1001,86399999,86400000,86400001,millis.U64]:
-            secs=(((value>>3)*int(first['multiplier'],16))>>first['shift'])
-            days=(((value>>10)*int(day['multiplier'],16))>>day['shift'])
-            days_from_seconds=(secs*int(second_day['multiplier'],16))>>second_day['shift']
-            self.assertEqual(secs,value//1000)
-            self.assertEqual(days,value//86400000)
-            self.assertEqual(days_from_seconds,days)
-            # The target computes the nanosecond remainder in low 32-bit regs.
-            remainder=((value&0xffffffff)-(secs*1000&0xffffffff))&0xffffffff
-            self.assertEqual(remainder,value%1000)
-            self.assertLess(remainder*1000000,1<<32)
-
-
-
-def synthetic_elf(rows, contents):
-    """Minimal ELF64 carrying the given (name, address, size) section rows;
-    contents maps a row index to the bytes placed at that row's offset."""
-    shstr_row = len(rows)
-    rows = list(rows) + [('.shstrtab', 0, 0)]
-    names = b'\0'
-    name_off = {}
-    for name, _addr, _size in rows:
-        if name not in name_off:
-            name_off[name] = len(names)
-            names += name.encode() + b'\0'
-    rows[shstr_row] = ('.shstrtab', 0, len(names))
-    shoff = 0x1000
-    data = bytearray(shoff + len(rows) * 64)
-    data[0:6] = b'\x7fELF\x02\x01'
-    off = 0x200
-    offsets = []
-    for i, (_name, _addr, size) in enumerate(rows):
-        offsets.append(off)
-        blob = contents.get(i, b'')
-        data[off:off + len(blob)] = blob
-        off += max(size, len(blob)) + 0x10
-    data[offsets[shstr_row]:offsets[shstr_row] + len(names)] = names
-    struct.pack_into('<Q', data, 40, shoff)
-    struct.pack_into('<HHH', data, 58, 64, len(rows), shstr_row)
-    for i, (name, addr, size) in enumerate(rows):
-        struct.pack_into('<IIQQQQIIQQ', data, shoff + i * 64,
-                         name_off[name], 1, 0, addr, offsets[i], size, 0, 0, 1, 0)
-    return bytes(data)
-
 
 class DuplicateSectionNameTests(unittest.TestCase):
     """analyze() reads .eh_frame/.rela.dyn through a name->section dict
@@ -226,6 +246,7 @@ class DuplicateSectionNameTests(unittest.TestCase):
     once, with it last the same bytes passed every FDE/CIE gate, so the
     verdict flipped on section order alone. The window is zero-length so
     the FDE/CIE gates are the first content checks reached."""
+
     START, EH_GOOD, EH_BAD = 0x1000000, 0x3000000, 0x4000000
 
     def fixture(self, eh_order):

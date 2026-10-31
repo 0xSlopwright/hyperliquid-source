@@ -15,8 +15,7 @@ SETUP = 'run git submodule update --init --recursive'
 def git(root, path, *args, env=None):
     env = dict(os.environ if env is None else env, GIT_OPTIONAL_LOCKS='0')
     try:
-        return subprocess.check_output(['git', '-C', str(root / path), *args], text=True, stderr=subprocess.DEVNULL, env=env).strip()
-        return subprocess.check_output(['git', '-C', str(root / path), *args], text=True, stderr=subprocess.DEVNULL, encoding='utf-8').strip()
+        return subprocess.check_output(['git', '-C', str(root / path), *args], text=True, stderr=subprocess.DEVNULL, env=env, encoding='utf-8').strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         raise ValueError(f'Unreadable pinned source: {path}; {SETUP}') from None
 
@@ -34,7 +33,7 @@ def _load(root, name):
     path = root / 'provenance' / name
     if not path.is_file():
         raise ValueError(f'Missing manifest: provenance/{name}')
-    return json.loads(path.read_text(), object_pairs_hook=_unique_object)
+    return json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=_unique_object)
 
 
 def verify(root):
@@ -49,21 +48,11 @@ def verify(root):
     for item in manifest['files']:
         check(root / item['path'], item)
     sources = _load(root, 'sources.json')
-    if not isinstance(sources, dict) or 'repositories' not in sources:
+    if not isinstance(sources, dict) or not isinstance(sources.get('repositories'), list):
         raise ValueError('Invalid sources manifest')
     for repo in sources['repositories']:
         if not isinstance(repo, dict) or 'path' not in repo or 'commit' not in repo:
             raise ValueError('Invalid source repository record')
-    sources = json.loads((root / 'provenance/sources.json').read_text())
-    # A missing or non-list `repositories` used to escape as KeyError/TypeError.
-    # Every other failure in this function is a ValueError.
-    if not isinstance(sources, dict) or not isinstance(sources.get('repositories'), list):
-        raise ValueError('Invalid source repository manifest')
-    for repo in sources['repositories']:
-    manifest = json.loads((root / 'provenance/imports.json').read_text(encoding='utf-8'))
-    for item in manifest['files']:
-        check(root / item['path'], item)
-    for repo in json.loads((root / 'provenance/sources.json').read_text(encoding='utf-8'))['repositories']:
         if not (root / repo['path'] / '.git').exists():
             raise ValueError(f'Missing pinned source: {repo["path"]}; {SETUP}')
         if git(root, repo['path'], 'rev-parse', 'HEAD') != repo['commit']:

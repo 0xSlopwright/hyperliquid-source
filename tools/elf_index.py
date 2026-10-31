@@ -114,7 +114,6 @@ def generate(binary, prefix):
                'unique_starts': len({e['start'] for e in entries}), 'executable_sections': [s for s in secs if s['flags'] & 4],
                'limitations': 'Unwind index entries are not a complete function census. The next-index upper bound is not a decoded FDE function extent. No component ownership or equivalence is established.'}
     prefix.with_suffix('.json').write_bytes((json.dumps(summary, indent=2) + '\n').encode())
-    prefix.with_suffix('.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8', newline='\n')
     return summary
 
 

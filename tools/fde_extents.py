@@ -283,7 +283,6 @@ def generate(binary, prefix):
         for g in gaps:
             writer.writerow([hex(g['start']), hex(g['end']), g['end'] - g['start'], g['section'], str(g['int3_only']).lower()])
     prefix.with_suffix('.json').write_bytes((json.dumps(summary, indent=2) + '\n').encode())
-    prefix.with_suffix('.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8', newline='\n')
     return summary
 
 

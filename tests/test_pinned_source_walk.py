@@ -35,6 +35,14 @@ def source_view(binary, versioned=True):
         target = root / 'artifacts/node/94/hl-node'
         target.parent.mkdir(parents=True)
         target.write_bytes(binary)
+        # Catalogue now authenticates all three inventory inputs. Keep the
+        # real retained bytes and manifest while varying only source membership.
+        for name in ('artifacts/node/115/hl-node',
+                     'artifacts/visor/captured/hl-visor',
+                     'provenance/artifacts.json'):
+            target = root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / name, target)
         reference = root / 'references/can1357-hl'
         for name, text in {
             '.gitignore': '*.backup.rs\n',

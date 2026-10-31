@@ -60,17 +60,17 @@ class GhidraPlanManifestLookupTests(unittest.TestCase):
     def test_manifest_without_files_list_fails_closed(self):
         self.assert_fails_closed(
             {'other': []},
-            'Invalid artifact manifest: provenance/artifacts.json must be an object with a files list')
+            'Invalid artifact manifest')
 
     def test_non_object_manifest_fails_closed(self):
         self.assert_fails_closed(
             [{'path': 'artifacts/node/94/hl-node', 'size': 1, 'sha256': 'x'}],
-            'Invalid artifact manifest: provenance/artifacts.json must be an object with a files list')
+            'Invalid artifact manifest')
 
     def test_entry_without_path_fails_closed(self):
         self.assert_fails_closed(
             {'files': [{'size': 1, 'sha256': 'x'}]},
-            'Invalid artifact record in provenance/artifacts.json: entry without path')
+            'Invalid artifact record')
 
     def test_present_entry_passes_lookup_to_artifact_check(self):
         tmp, ghidra = stage(

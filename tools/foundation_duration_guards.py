@@ -133,8 +133,7 @@ def analyze(data,records,objdump=None,binary=TARGET):
     require((pc,pc+struct.unpack_from('<I',fde,12)[0])==(start,end),'FDE range disagrees')
     if objdump:
         output = subprocess.check_output([objdump,'-d',f'--start-address={start:#x}',
-                                          f'--stop-address={end:#x}',str(binary)],cwd=ROOT,text=True)
-                                          f'--stop-address={end:#x}','artifacts/node/94/hl-node'],cwd=ROOT,text=True, encoding='utf-8')
+                                          f'--stop-address={end:#x}',str(binary)],cwd=ROOT,text=True, encoding='utf-8')
     else:
         output = (PACKET/'function.objdump.txt').read_text(encoding='utf-8')
     instructions = decode_export(output,start,end,body)
@@ -210,7 +209,7 @@ def _unique_object(pairs):
 
 
 def load_check(path):
-    return json.loads(Path(path).read_text(), object_pairs_hook=_unique_object)
+    return json.loads(Path(path).read_text(encoding='utf-8'), object_pairs_hook=_unique_object)
 
 
 def _unique_record_object(pairs):
@@ -223,16 +222,14 @@ def _unique_record_object(pairs):
 
 
 def load_records(path):
-    return json.loads(Path(path).read_text(), object_pairs_hook=_unique_record_object)
+    return json.loads(Path(path).read_text(encoding='utf-8'), object_pairs_hook=_unique_record_object)
 
 
 def inspect(path,objdump=None):
     path = Path(path).resolve()
     data = path.read_bytes()
     require(len(data)==91774280 and hashlib.sha256(data).hexdigest()==SHA256,'Expected exact node #94 size/SHA-256')
-    return analyze(data,load_records(PACKET/'records.json'),objdump)
-    return analyze(data,json.loads((PACKET/'records.json').read_text()),objdump,binary=path)
-    return analyze(data,json.loads((PACKET/'records.json').read_text(encoding='utf-8')),objdump)
+    return analyze(data,load_records(PACKET/'records.json'),objdump,binary=path)
 
 
 def main():
@@ -251,12 +248,6 @@ def main():
     except (ValueError, OSError, struct.error, subprocess.CalledProcessError) as error:
         print(f'foundation_duration_guards: {error}', file=sys.stderr)
         raise SystemExit(1)
-    args = parser.parse_args(); result = inspect(args.binary,args.objdump)
-    if args.check:
-        require(result==json.loads(args.check.read_text(encoding='utf-8')),'Retained evidence differs')
-        print('Duration floating guard evidence reproduces exactly.')
-    else:
-        print(json.dumps(result,indent=2))
 
 
 if __name__=='__main__':main()

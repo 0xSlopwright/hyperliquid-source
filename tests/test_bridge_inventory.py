@@ -1,22 +1,51 @@
 import contextlib
+
+
 import io
+
+
 import json
+
+
 from pathlib import Path
+
+
 import shutil
+
+
 import struct
+
+
 import subprocess
+
+
 import sys
+
+
 import tempfile
+
+
 import unittest
+
+
 from unittest import mock
 
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+
+
 import bridge_inventory as bi
 
+
 ROOT = Path(__file__).resolve().parents[1]
+
+
 ARTIFACT = ROOT / 'artifacts/node/94/hl-node'
 
+
 MAINNET_SITE = bytes.fromhex('4180ff03b8b1a40000b9ee6e0600480f44c8')
+
+
 INTERLEAVED_SITE = bytes.fromhex('4080fd03c60061b9b1a40000baee6e0600480f44d1')
 
 
@@ -167,7 +196,6 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(layout['account']['offset'], 1)
         self.assertEqual(layout['destination']['offset'], 0x15)
         self.assertEqual(report['struct_hash']['withdrawal_encoder']['tags'], [6, 0, 0, 4, 4])
-
 
 
 class ChainSiteWindowTests(unittest.TestCase):

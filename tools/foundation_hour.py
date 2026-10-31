@@ -148,7 +148,7 @@ def _unique_object(pairs):
 
 
 def load_check(path):
-    return json.loads(Path(path).read_text(), object_pairs_hook=_unique_object)
+    return json.loads(Path(path).read_text(encoding='utf-8'), object_pairs_hook=_unique_object)
 
 
 def inspect(path):
@@ -172,12 +172,6 @@ def main():
     except (ValueError, OSError, struct.error) as error:
         print(f'foundation_hour: {error}', file=sys.stderr)
         raise SystemExit(1)
-    result = inspect(args.binary)
-    if args.check:
-        require(result == json.loads(args.check.read_text(encoding='utf-8')), 'Retained evidence differs')
-        print('Foundation hour evidence reproduces exactly.')
-    else:
-        print(json.dumps(result, indent=2))
 
 
 if __name__ == '__main__':

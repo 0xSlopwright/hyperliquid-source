@@ -1,21 +1,72 @@
 """Static real-target evidence and independent binary64 comparison controls."""
+
+
 import copy
+
+
 import hashlib
+
+
 import json
+
+
 import math
+
+
 from pathlib import Path
+
+
 import struct
+
+
 import sys
+
+
 import tempfile
+
+
 import unittest
 
+
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
+
+
 import foundation_duration_guards as guards
+
+
 from elf_index import sections
 
 
 def bits(value):
     return struct.unpack('<Q',struct.pack('<d',value))[0]
+
+
+def synthetic_elf(rows,contents):
+    """Minimal ELF64 carrying the given (name, address, size) section rows;
+    contents maps a row index to the bytes placed at that row's offset."""
+    shstr_row=len(rows)
+    rows=list(rows)+[('.shstrtab',0,0)]
+    names=b'\0';name_off={}
+    for name,_addr,_size in rows:
+        if name not in name_off:
+            name_off[name]=len(names);names+=name.encode()+b'\0'
+    rows[shstr_row]=('.shstrtab',0,len(names))
+    shoff=0x1000
+    data=bytearray(shoff+len(rows)*64)
+    data[0:6]=b'\x7fELF\x02\x01'
+    off=0x200;offsets=[]
+    for i,(_name,_addr,size) in enumerate(rows):
+        offsets.append(off)
+        blob=contents.get(i,b'')
+        data[off:off+len(blob)]=blob
+        off+=max(size,len(blob))+0x10
+    data[offsets[shstr_row]:offsets[shstr_row]+len(names)]=names
+    struct.pack_into('<Q',data,40,shoff)
+    struct.pack_into('<HHH',data,58,64,len(rows),shstr_row)
+    for i,(name,addr,size) in enumerate(rows):
+        struct.pack_into('<IIQQQQIIQQ',data,shoff+i*64,
+                         name_off[name],1,0,addr,offsets[i],size,0,0,1,0)
+    return bytes(data)
 
 
 class ArchitecturalModelTests(unittest.TestCase):
@@ -144,41 +195,15 @@ class DurationTargetTests(unittest.TestCase):
         self.assertNotIn(0x392fac4,decoded)
 
 
-def synthetic_elf(rows,contents):
-    """Minimal ELF64 carrying the given (name, address, size) section rows;
-    contents maps a row index to the bytes placed at that row's offset."""
-    shstr_row=len(rows)
-    rows=list(rows)+[('.shstrtab',0,0)]
-    names=b'\0';name_off={}
-    for name,_addr,_size in rows:
-        if name not in name_off:
-            name_off[name]=len(names);names+=name.encode()+b'\0'
-    rows[shstr_row]=('.shstrtab',0,len(names))
-    shoff=0x1000
-    data=bytearray(shoff+len(rows)*64)
-    data[0:6]=b'\x7fELF\x02\x01'
-    off=0x200;offsets=[]
-    for i,(_name,_addr,size) in enumerate(rows):
-        offsets.append(off)
-        blob=contents.get(i,b'')
-        data[off:off+len(blob)]=blob
-        off+=max(size,len(blob))+0x10
-    data[offsets[shstr_row]:offsets[shstr_row]+len(names)]=names
-    struct.pack_into('<Q',data,40,shoff)
-    struct.pack_into('<HHH',data,58,64,len(rows),shstr_row)
-    for i,(name,addr,size) in enumerate(rows):
-        struct.pack_into('<IIQQQQIIQQ',data,shoff+i*64,
-                         name_off[name],1,0,addr,offsets[i],size,0,0,1,0)
-    return bytes(data)
-
-
 class DuplicateSectionNameTests(unittest.TestCase):
     """analyze() reads .eh_frame/.rela.dyn through a name->section dict
     that keeps only the last same-named section. A duplicate name must be
     refused: with the valid .eh_frame first the pinned FDE gate failed at
     once, with it last the same bytes passed every FDE/CIE gate, so the
     verdict flipped on section order alone."""
+
     START,END=0x392fab0,0x392fcba
+
     EH_GOOD,EH_BAD=0x3000000,0x4000000
 
     def fixture(self,eh_order):

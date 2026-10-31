@@ -239,6 +239,7 @@ class ArtifactTests(unittest.TestCase):
         with patch.object(a, 'ROOT', self.root), patch.object(sys, 'argv', ['artifacts.py', 'verify']), \
                 patch.object(a, 'verify_signatures'), patch.object(a, 'verify_pinned_pairs'):
             a.main()
+
     def _signature_root(self):
         for rel in ['node/94/hl-node', 'node/115/hl-node', 'visor/captured/hl-visor']:
             for suffix in ('', '.asc'):
@@ -247,6 +248,11 @@ class ArtifactTests(unittest.TestCase):
                 p.with_name(p.name + suffix).write_bytes(b'x')
         (self.root / 'artifacts/keys').mkdir(parents=True, exist_ok=True)
         (self.root / 'artifacts/keys/pub_key.asc').write_bytes(b'key')
+        self.signature_manifest = {
+            'signing_fingerprint': 'A' * 40,
+            'files': [{'path': p.relative_to(self.root).as_posix()}
+                      for p in (self.root / 'artifacts').rglob('*') if p.is_file()],
+        }
 
     def _fake_gpg(self, extra=''):
         fingerprint = 'A' * 40
@@ -263,14 +269,14 @@ class ArtifactTests(unittest.TestCase):
     def test_valid_signature_accepted(self):
         self._signature_root()
         with patch.object(a.subprocess, 'run', side_effect=self._fake_gpg()):
-            a.verify_signatures(self.root, 'A' * 40)
+            a.verify_signatures(self.root, self.signature_manifest)
 
     def test_revoked_key_signature_rejected(self):
         self._signature_root()
         with patch.object(a.subprocess, 'run',
                           side_effect=self._fake_gpg('[GNUPG:] REVKEYSIG DEADBEEF Test')):
             with self.assertRaises(ValueError) as caught:
-                a.verify_signatures(self.root, 'A' * 40)
+                a.verify_signatures(self.root, self.signature_manifest)
         self.assertIn('not currently valid', str(caught.exception))
 
     def test_expired_key_signature_rejected(self):
@@ -278,4 +284,4 @@ class ArtifactTests(unittest.TestCase):
         with patch.object(a.subprocess, 'run',
                           side_effect=self._fake_gpg('[GNUPG:] KEYEXPIRED 1')):
             with self.assertRaises(ValueError):
-                a.verify_signatures(self.root, 'A' * 40)
+                a.verify_signatures(self.root, self.signature_manifest)

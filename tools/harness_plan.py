@@ -43,8 +43,7 @@ def _unique_object(pairs):
 
 
 def load_json(path: Path):
-    return json.loads(path.read_text(), object_pairs_hook=_unique_object)
-    return json.loads(path.read_text(encoding='utf-8'))
+    return json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=_unique_object)
 
 
 def validate_protocol(protocol: dict) -> None:
@@ -132,7 +131,7 @@ def validate_fixtures(fixtures_doc: dict, protocol: dict) -> dict:
 def approval_covers(request_id: str) -> bool:
     if not APPROVAL_PATH.is_file():
         return False
-    text = APPROVAL_PATH.read_text()
+    text = APPROVAL_PATH.read_text(encoding='utf-8')
     # Both must appear on the same line as whole tokens. A bare substring
     # match would let a denial ("unauthorized") or another request's
     # approval ("<id>-extended") pass the network/execute gate.
@@ -141,8 +140,6 @@ def approval_covers(request_id: str) -> bool:
     authorized_word = re.compile(r'(?<![A-Za-z])authorized(?![A-Za-z])', re.IGNORECASE)
     return any(request_token.search(line) and authorized_word.search(line)
                for line in text.splitlines())
-    text = APPROVAL_PATH.read_text(encoding='utf-8')
-    return request_id in text and 'authorized' in text.lower()
 
 
 def validate_request(request: dict, fixtures_by_id: dict) -> dict:

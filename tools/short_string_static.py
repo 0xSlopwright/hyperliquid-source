@@ -133,20 +133,13 @@ def generate(binary, output):
         ranges[name] = {'start_va': hex(begin), 'end_va': hex(end), 'file_offset': hex(offset),
                         'bytes': len(body), 'sha256': hashlib.sha256(body).hexdigest()}
         text = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
-                                        f'--stop-address={end:#x}', str(binary)], text=True)
+                                        f'--stop-address={end:#x}', str(binary)], text=True, encoding='utf-8')
         (output / f'{name}.objdump.txt').write_text(text.replace(str(binary), '<authenticated-node94>'), encoding='utf-8', newline='\n')
     for site, begin, end in CALLERS:
         # Retain caller context without claiming its opaque calls are closed.
         text = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
-                                        f'--stop-address={end:#x}', str(binary)], text=True)
+                                        f'--stop-address={end:#x}', str(binary)], text=True, encoding='utf-8')
         (output / f'caller-{site:x}.objdump.txt').write_text(text.replace(str(binary), '<authenticated-node94>'), encoding='utf-8', newline='\n')
-                                        f'--stop-address={end:#x}', str(binary)], text=True, encoding='utf-8')
-        (output / f'{name}.objdump.txt').write_text(text.replace(str(binary), '<authenticated-node94>'))
-    for site, begin, end in CALLERS:
-        # Retain caller context without claiming its opaque calls are closed.
-        text = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
-                                        f'--stop-address={end:#x}', str(binary)], text=True, encoding='utf-8')
-        (output / f'caller-{site:x}.objdump.txt').write_text(text.replace(str(binary), '<authenticated-node94>'))
     (output / 'frames.txt').write_text('\n'.join(line for line in frames_text.splitlines()
         if 'FDE' in line and any(f'pc={a:016x}..{b:016x}' in line for a, b in scope)) + '\n', encoding='utf-8', newline='\n')
     records = {'target_sha256': identity['sha256'], 'target_bytes': len(data),

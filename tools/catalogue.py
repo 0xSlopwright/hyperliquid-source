@@ -132,8 +132,7 @@ def generate(root=ROOT):
         excluded[v] = {crate: files for crate, files in inv['first_party_files'].items()
                        if crate not in config['known_first_party_crates']}
     reference = root / 'references/can1357-hl'
-    source_paths = {p.relative_to(reference).as_posix() for p in reference.rglob('*.rs')}
-    source_paths = {str(p.relative_to(reference)) for p in rust_files(reference)}
+    source_paths = {p.relative_to(reference).as_posix() for p in rust_files(reference)}
     first_party_source = {p for p in source_paths if p.split('/')[0] in config['known_first_party_crates']}
     for p in source_paths | paths['94'] | paths['115']:
         owner(p, components)
