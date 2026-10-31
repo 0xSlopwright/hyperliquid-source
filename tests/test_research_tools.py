@@ -330,6 +330,8 @@ class CatalogueTests(unittest.TestCase):
 
     def test_missing_component_id_rejected(self):
         parts = copy.deepcopy(self.parts); del parts[0]['id']
+    def test_missing_component_depends_on_rejected(self):
+        parts = copy.deepcopy(self.parts); del parts[0]['depends_on']
         with self.assertRaises(ValueError): validate_progress(parts, self.progress, self.root)
 
 
