@@ -1,0 +1,19 @@
+2026-10-31; Debian 13.6, Linux x86-64; Python 3.12.14; GNU binutils 2.44.
+Source base 1f8c67c63ca4794c9689235471c60297f8a5c985; all seven reference pins unchanged.
+
+Baseline make doctor verify: exit 0, prior to edits. Existing authenticated
+artifacts and imported files reused; no install/download or captured binary run.
+The existing packet leaves this exact callee result contract unresolved.
+
+Final focused test command (seven tests): exit 0. See focused-tests.txt.
+Final collector: exit 0. All five accepted files exactly equal the earlier
+author export and separate earlier author repeat; no interpreted range added.
+Native output was regenerated under explicit LC_ALL=C, UTF-8/LF settings.
+The initial incomplete caller display remains retained and excluded.
+
+Required final aggregate checks are recorded in the pull request's exact-commit
+validation receipt. This file does not claim unrun checks or an independent
+review, and does not treat the baseline/focused result as a whole-suite pass.
+
+No gate, catalogue, source pin, Rust implementation, native build, target
+execution, live network/chain action, runtime equivalence or complete policy claim.
