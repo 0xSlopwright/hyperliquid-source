@@ -48,7 +48,11 @@ def find_node():
         if 'preferred_node' not in CONFIG:
             raise ValueError('config/rea.json missing preferred_node')
         candidates = [str(Path.home() / '.nvm/versions/node' / ('v' + CONFIG['preferred_node']) / 'bin/node'),
-                      shutil.which('node'), '/opt/homebrew/bin/node', '/usr/local/bin/node']
+                      shutil.which('node')]
+        # The shell's first Node can be incompatible while a later PATH
+        # entry already contains a supported runtime. Keep PATH order.
+        candidates += [shutil.which('node', path=directory) for directory in os.get_exec_path()]
+        candidates += ['/opt/homebrew/bin/node', '/usr/local/bin/node']
         candidates += [str(p) for p in sorted((Path.home() / '.nvm/versions/node').glob('*/bin/node'), reverse=True)]
     for item in dict.fromkeys(c for c in candidates if c):
         try:

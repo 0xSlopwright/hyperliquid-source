@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -53,6 +54,40 @@ class TargetSelectionTests(unittest.TestCase):
                 self.assertEqual(result.stdout, '')
                 self.assertIn('Usage: rea.py target [94|115|visor]', result.stderr)
                 self.assertNotIn('Traceback', result.stderr)
+
+
+class PathRuntimeSelectionTests(unittest.TestCase):
+    def select(self, versions):
+        with tempfile.TemporaryDirectory(prefix='rea-path-') as temporary:
+            root = Path(temporary)
+            candidates = []
+            for index, version in enumerate(versions):
+                directory = root / str(index)
+                directory.mkdir()
+                candidate = directory / ('node.cmd' if os.name == 'nt' else 'node')
+                # These are version-protocol fixtures; the native CLI probe
+                # separately uses real supported and unsupported Node binaries.
+                candidate.write_text(
+                    '@echo off\necho v' + version + '\n' if os.name == 'nt'
+                    else '#!/bin/sh\nprintf "v' + version + '\\n"\n',
+                    encoding='utf-8',
+                )
+                candidate.chmod(0o755)
+                candidates.append(candidate)
+            with patch.dict(os.environ, {'PATH': os.pathsep.join(str(p.parent) for p in candidates)}), \
+                    patch.object(rea.Path, 'home', return_value=root):
+                os.environ.pop('REA_NODE', None)
+                selected = rea.find_node()
+                version = subprocess.check_output([str(selected), '--version'], text=True).strip()
+            return selected.name, version
+
+    def test_later_supported_path_runtime_is_selected(self):
+        _name, version = self.select(['24.12.0', '24.22.1'])
+        self.assertEqual(version, 'v24.22.1')
+
+    def test_first_supported_path_runtime_keeps_priority(self):
+        _name, version = self.select(['24.22.1', '26.12.1'])
+        self.assertEqual(version, 'v24.22.1')
 
 
 class RuntimeSelectionTests(unittest.TestCase):
