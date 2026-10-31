@@ -53,14 +53,12 @@ def _unique_object(pairs):
 
 
 def load_manifest(root=ROOT):
-    """Parse the artifact manifest strictly.
-
-    A duplicated key inside one entry (plain json.loads keeps the last
-    value) or a duplicated path entry lets a substitute binary inherit a
-    pinned identity, so both are rejected instead of silently resolved.
-    """
-    manifest = json.loads((root / 'provenance/artifacts.json').read_text(),
-                          object_pairs_hook=_unique_object)
+    """Load artifact identities without ambiguous keys, paths or record shapes."""
+    manifest = json.loads((root / 'provenance/artifacts.json').read_text(), object_pairs_hook=_unique_object)
+    if not isinstance(manifest, dict) or not isinstance(manifest.get('files'), list):
+        raise ValueError('Invalid artifact manifest')
+    if any(not isinstance(item, dict) or 'path' not in item for item in manifest['files']):
+        raise ValueError('Invalid artifact record')
     paths = [item['path'] for item in manifest['files']]
     if len(set(paths)) != len(paths):
         raise ValueError('Duplicate path in artifact manifest')
@@ -68,7 +66,10 @@ def load_manifest(root=ROOT):
 
 
 def manifest_item(root, relative):
-    return next(i for i in load_manifest(root)['files'] if i['path'] == relative)
+    item = next((i for i in load_manifest(root)['files'] if i['path'] == relative), None)
+    if item is None:
+        raise ValueError(f'No provenance/artifacts.json entry for {relative}')
+    return item
 
 
 def fetch_one(root, item):
@@ -149,18 +150,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['verify', 'fetch'])
     args = parser.parse_args()
-    manifest = load_manifest()
-    manifest = json.loads((ROOT / 'provenance/artifacts.json').read_text())
+    manifest = load_manifest(ROOT)
     if args.command == 'fetch':
         fetch_all(ROOT, manifest)
-    if not isinstance(manifest, dict) or 'files' not in manifest:
-    if not isinstance(manifest['files'], list):
-        raise ValueError('Invalid artifact manifest')
     for item in manifest['files']:
-        if type(item) is not dict or 'path' not in item:
-            raise ValueError('Invalid artifact record')
-        if args.command == 'fetch':
-            fetch_one(ROOT, item)
         check(ROOT / item['path'], item)
         print(f"SHA-256 OK: {item['path']}")
     if 'signing_fingerprint' not in manifest:

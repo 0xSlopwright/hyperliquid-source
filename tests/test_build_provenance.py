@@ -1,15 +1,35 @@
 import json
+import hashlib
+
+
 from pathlib import Path
+
+
 import struct
+
+
 import sys
-import tempfile
+
+
 import unittest
 
+
 ROOT = Path(__file__).resolve().parents[1]
+
+
 sys.path.insert(0, str(ROOT / 'tools'))
-import build_provenance
-import build_provenance as bp
+
+
 from build_provenance import OUT, TARGETS, derive, diff, interpret, record
+
+
+import tempfile
+
+
+import build_provenance
+
+
+import build_provenance as bp
 
 
 def elf(comment, rodata):
@@ -34,6 +54,38 @@ def elf(comment, rodata):
 
 
 def dynamic_elf(tags, dynstr=b'\0libfixture.so\0'):
+    names = b'\0.shstrtab\0.dynstr\0.dynamic\0'
+    blob = b''.join(struct.pack('<qQ', *tag) for tag in tags)
+    body = bytearray(64)
+    body[:6] = b'\x7fELF\x02\x01'
+    struct.pack_into('<HH', body, 16, 3, 0x3E)
+    rows = [(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)]
+    for name, kind, data, link, entsize in ((b'.shstrtab', 3, names, 0, 0), (b'.dynstr', 3, dynstr, 0, 0),
+                                             (b'.dynamic', 6, blob, 2, 16)):
+        body += b'\0' * (-len(body) % 8)
+        rows.append((names.index(name + b'\0'), kind, 0, 0, len(body), len(data), link, 0, 8, entsize))
+        body += data
+    body += b'\0' * (-len(body) % 8)
+    struct.pack_into('<Q', body, 40, len(body))
+    struct.pack_into('<HHH', body, 58, 64, len(rows), 1)
+    for row in rows:
+        body += struct.pack('<IIQQQQIIQQ', *row)
+    return bytes(body)
+
+
+def dynamic_facts(tags):
+    return {i['key']: i['value'] for i in derive(dynamic_elf(tags))}
+
+
+def by_key(items, key):
+    return [i for i in items if i['key'] == key]
+
+
+def captured(release):
+    path = ROOT / TARGETS[release]
+    return path.is_file() and path.stat().st_size > 1_000_000
+
+
 def stripping_elf(*, symbols, debug):
     """Section-table fixture with a valid minimal DWARF 4 compile unit."""
     entries = [(b'.shstrtab', 3, b'', 0, 0, 0)]
@@ -60,30 +112,6 @@ def stripping_elf(*, symbols, debug):
     return bytes(body)
 
 
-def dynamic_elf(tags):
-    names = b'\0.shstrtab\0.dynstr\0.dynamic\0'
-    blob = b''.join(struct.pack('<qQ', *tag) for tag in tags)
-    body = bytearray(64)
-    body[:6] = b'\x7fELF\x02\x01'
-    struct.pack_into('<HH', body, 16, 3, 0x3E)
-    rows = [(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)]
-    for name, kind, data, link, entsize in ((b'.shstrtab', 3, names, 0, 0), (b'.dynstr', 3, dynstr, 0, 0),
-                                             (b'.dynamic', 6, blob, 2, 16)):
-        body += b'\0' * (-len(body) % 8)
-        rows.append((names.index(name + b'\0'), kind, 0, 0, len(body), len(data), link, 0, 8, entsize))
-        body += data
-    body += b'\0' * (-len(body) % 8)
-    struct.pack_into('<Q', body, 40, len(body))
-    struct.pack_into('<HHH', body, 58, 64, len(rows), 1)
-    for row in rows:
-        body += struct.pack('<IIQQQQIIQQ', *row)
-    return bytes(body)
-
-
-def dynamic_facts(tags):
-    return {i['key']: i['value'] for i in derive(dynamic_elf(tags))}
-
-
 def sectioned_elf(pairs):
     distinct = [b'.shstrtab']
     for name, _ in pairs:
@@ -108,10 +136,6 @@ def sectioned_elf(pairs):
     for row in rows:
         body += struct.pack('<IIQQQQIIQQ', *row, 0, 0, 1, 0)
     return bytes(body)
-
-
-def by_key(items, key):
-    return [i for i in items if i['key'] == key]
 
 
 class DeriveTests(unittest.TestCase):
@@ -161,6 +185,18 @@ class DeriveTests(unittest.TestCase):
         for tags in ([(30, 8), (0, 0)], [(0x6FFFFFFB, 1), (0, 0)], [(24, 0), (0, 0)]):
             self.assertIs(dynamic_facts(tags)['dynamic.bind_now'], True, tags)
 
+    def test_non_elf_input_is_rejected(self):
+        with self.assertRaises(ValueError):
+            derive(b'not an elf' * 10)
+
+    def test_dynamic_string_must_stay_inside_dynstr(self):
+        with self.assertRaisesRegex(ValueError, r'DT_NEEDED string offset is outside \.dynstr'):
+            dynamic_facts([(1, 100), (0, 0)])
+        with self.assertRaisesRegex(ValueError, r'DT_RPATH string is not terminated inside \.dynstr'):
+            derive(dynamic_elf([(15, 1), (0, 0)], dynstr=b'\0lib'))
+        with self.assertRaisesRegex(ValueError, r'DT_NEEDED string is not UTF-8'):
+            derive(dynamic_elf([(1, 1), (0, 0)], dynstr=b'\0\xff\0'))
+
     def test_stripping_inference_preserves_retained_debug_sections(self):
         for symbols, debug, expected in (
                 (False, True, 'static symbols absent; debug sections retained'),
@@ -177,6 +213,7 @@ class DeriveTests(unittest.TestCase):
         reasoning = by_key(interpret(exact), 'stripped')[0]['evidence']['reasoning']
         self.assertIn('.symtab is present', reasoning)
         self.assertNotIn('no .symtab', reasoning)
+
     def test_duplicate_comment_section_rejected(self):
         data = sectioned_elf([(b'.comment', b'FIRST\x00'), (b'.comment', b'SECOND\x00')])
         with self.assertRaisesRegex(ValueError, r'Duplicate section: \.comment'):
@@ -187,72 +224,19 @@ class DeriveTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r'Duplicate section: \.interp'):
             derive(data)
 
-    def test_non_elf_input_is_rejected(self):
-        with self.assertRaises(ValueError):
-            derive(b'not an elf' * 10)
 
-    def test_dynamic_string_must_stay_inside_dynstr(self):
-        with self.assertRaisesRegex(ValueError, r'DT_NEEDED string offset is outside \.dynstr'):
-            dynamic_facts([(1, 100), (0, 0)])
-        with self.assertRaisesRegex(ValueError, r'DT_RPATH string is not terminated inside \.dynstr'):
-            derive(dynamic_elf([(15, 1), (0, 0)], dynstr=b'\0lib'))
-        with self.assertRaisesRegex(ValueError, r'DT_NEEDED string is not UTF-8'):
-            derive(dynamic_elf([(1, 1), (0, 0)], dynstr=b'\0\xff\0'))
+@unittest.skipUnless(all(captured(r) for r in TARGETS), 'captured binaries not materialized (git lfs pull)')
+class CapturedTargetTests(unittest.TestCase):
+    def test_committed_records_reproduce_from_verified_targets(self):
+        for release in TARGETS:
+            committed = json.loads((OUT / f'provenance-{release}.json').read_text())
+            self.assertEqual(committed, json.loads(json.dumps(record(release))), release)
 
-
-class RecordTests(unittest.TestCase):
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.root = Path(self.tmp.name)
-        art = self.root / TARGETS['94']
-        art.parent.mkdir(parents=True)
-        art.write_bytes(b'fake-node-bytes')
-        (self.root / 'provenance').mkdir()
-        self.old_root, self.old_check, self.old_derive = bp.ROOT, bp.check, bp.derive
-        bp.ROOT = self.root
-        bp.check = lambda path, item: None
-        bp.derive = lambda data: []
-
-    def tearDown(self):
-        bp.ROOT, bp.check, bp.derive = self.old_root, self.old_check, self.old_derive
-        self.tmp.cleanup()
-
-    def _write_manifest(self, text):
-        (self.root / 'provenance/artifacts.json').write_text(text)
-
-    def _valid_item(self):
-        return {'path': TARGETS['94'], 'sha256': '0' * 64, 'size': 15}
-
-    def test_missing_files_key_is_rejected(self):
-        self._write_manifest('{}')
-        with self.assertRaises(ValueError):
-            record('94')
-
-    def test_non_dict_manifest_is_rejected(self):
-        self._write_manifest('[]')
-        with self.assertRaises(ValueError):
-            record('94')
-
-    def test_missing_target_entry_is_rejected(self):
-        self._write_manifest(json.dumps({'files': [{'path': 'artifacts/node/115/hl-node',
-                                                    'sha256': '0' * 64, 'size': 1}]}))
-        with self.assertRaises(ValueError):
-            record('94')
-
-    def test_non_dict_files_entry_is_rejected(self):
-        self._write_manifest(json.dumps({'files': ['not-a-record']}))
-        with self.assertRaises(ValueError):
-            record('94')
-
-    def test_valid_manifest_still_records(self):
-        self._write_manifest(json.dumps({'files': [self._valid_item()]}))
-        rec = record('94')
-        self.assertEqual((rec['target'], rec['sha256'], rec['size']), (TARGETS['94'], '0' * 64, 15))
-
-
-def captured(release):
-    path = ROOT / TARGETS[release]
-    return path.is_file() and path.stat().st_size > 1_000_000
+    def test_node_94_and_115_toolchains_differ(self):
+        def commits(release):
+            return {i['value'] for i in record(release)['facts'] if i['key'] == 'rustc.commit_path'}
+        self.assertEqual(commits('94'), {'e408947bfd200af42db322daf0fadfe7e26d3bd1'})
+        self.assertEqual(commits('115'), {'59807616e1fa2540724bfbac14d7976d7e4a3860'})
 
 
 class CheckModeTests(unittest.TestCase):
@@ -297,18 +281,54 @@ class CheckModeTests(unittest.TestCase):
         self.assertEqual(self.path.read_bytes(), self.text.encode('utf-8'))
 
 
-@unittest.skipUnless(all(captured(r) for r in TARGETS), 'captured binaries not materialized (git lfs pull)')
-class CapturedTargetTests(unittest.TestCase):
-    def test_committed_records_reproduce_from_verified_targets(self):
-        for release in TARGETS:
-            committed = json.loads((OUT / f'provenance-{release}.json').read_text())
-            self.assertEqual(committed, json.loads(json.dumps(record(release))), release)
+class RecordTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        art = self.root / TARGETS['94']
+        art.parent.mkdir(parents=True)
+        art.write_bytes(b'fake-node-bytes')
+        (self.root / 'provenance').mkdir()
+        self.old_root, self.old_derive = bp.ROOT, bp.derive
+        bp.ROOT = self.root
+        bp.derive = lambda data: []
 
-    def test_node_94_and_115_toolchains_differ(self):
-        def commits(release):
-            return {i['value'] for i in record(release)['facts'] if i['key'] == 'rustc.commit_path'}
-        self.assertEqual(commits('94'), {'e408947bfd200af42db322daf0fadfe7e26d3bd1'})
-        self.assertEqual(commits('115'), {'59807616e1fa2540724bfbac14d7976d7e4a3860'})
+    def tearDown(self):
+        bp.ROOT, bp.derive = self.old_root, self.old_derive
+        self.tmp.cleanup()
+
+    def _write_manifest(self, text):
+        (self.root / 'provenance/artifacts.json').write_text(text)
+
+    def _valid_item(self):
+        data = (self.root / TARGETS['94']).read_bytes()
+        return {'path': TARGETS['94'], 'sha256': hashlib.sha256(data).hexdigest(), 'size': len(data)}
+
+    def test_missing_files_key_is_rejected(self):
+        self._write_manifest('{}')
+        with self.assertRaises(ValueError):
+            record('94')
+
+    def test_non_dict_manifest_is_rejected(self):
+        self._write_manifest('[]')
+        with self.assertRaises(ValueError):
+            record('94')
+
+    def test_missing_target_entry_is_rejected(self):
+        self._write_manifest(json.dumps({'files': [{'path': 'artifacts/node/115/hl-node',
+                                                    'sha256': '0' * 64, 'size': 1}]}))
+        with self.assertRaises(ValueError):
+            record('94')
+
+    def test_non_dict_files_entry_is_rejected(self):
+        self._write_manifest(json.dumps({'files': ['not-a-record']}))
+        with self.assertRaises(ValueError):
+            record('94')
+
+    def test_valid_manifest_still_records(self):
+        self._write_manifest(json.dumps({'files': [self._valid_item()]}))
+        rec = record('94')
+        self.assertEqual((rec['target'], rec['sha256'], rec['size']), (TARGETS['94'], self._valid_item()['sha256'], self._valid_item()['size']))
 
 
 if __name__ == '__main__':

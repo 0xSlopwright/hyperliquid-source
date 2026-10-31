@@ -13,12 +13,11 @@ ACCEPTANCE_GATES = frozenset({'mapped', 'built', 'behavior', 'identity'})
 
 
 def owner(path, components):
-    if any('patterns' not in c for c in components):
-    if any(type(c) is not dict for c in components):
-    if any('id' not in c for c in components):
-    if any('patterns' in c and type(c['patterns']) is not list for c in components):
-    if any('patterns' in c and any(type(p) is not str for p in c['patterns']) for c in components):
-        raise ValueError('Invalid component record')
+    for c in components:
+        if (not isinstance(c, dict) or 'id' not in c or 'patterns' not in c
+                or not isinstance(c['patterns'], list)
+                or any(not isinstance(p, str) for p in c['patterns'])):
+            raise ValueError('Invalid component record')
     for c in components:
         if any(fnmatch.fnmatchcase(path, p) for p in c['patterns']):
             return c['id']
@@ -26,46 +25,32 @@ def owner(path, components):
 
 
 def validate_progress(components, progress, root):
+    if not isinstance(progress, dict) or 'gates' not in progress or 'components' not in progress:
+        raise ValueError('Invalid progress record')
+    if not isinstance(progress['gates'], dict) or set(progress['gates']) != ACCEPTANCE_GATES:
+        raise ValueError('Progress must declare exactly the four acceptance gates: mapped, built, behavior, identity')
+    if not isinstance(progress['components'], dict):
+        raise ValueError('Progress components must be a mapping')
+    for c in components:
+        if (not isinstance(c, dict)
+                or not {'id', 'name', 'scope', 'artifact', 'first_task', 'depends_on'} <= c.keys()
+                or not isinstance(c['scope'], str) or not isinstance(c['depends_on'], list)):
+            raise ValueError('Invalid component record')
     ids = [c['id'] for c in components]
     if len(set(ids)) != len(ids):
         raise ValueError('Duplicate component id')
     ids = set(ids)
-    if type(progress) is not dict or 'gates' not in progress:
-        raise ValueError('Invalid progress record')
-    if any('id' not in c for c in components):
-        raise ValueError('Invalid component record')
-    if not isinstance(progress.get('gates'), dict) or set(progress['gates']) != ACCEPTANCE_GATES:
-        raise ValueError('Progress must declare exactly the four acceptance gates: mapped, built, behavior, identity')
-    if any(type(c) is not dict for c in components):
-    if any('name' not in c for c in components):
-    if any('scope' not in c for c in components):
-    if any('artifact' not in c for c in components):
-    if any('first_task' not in c for c in components):
-    if any('scope' in c and type(c['scope']) is not str for c in components):
-        raise ValueError('Invalid component record')
-    ids = {c['id'] for c in components}
-    if 'components' not in progress:
-        raise ValueError('Invalid progress record')
-    if isinstance(progress, dict) and 'components' in progress \
-            and not isinstance(progress['components'], dict):
-        raise ValueError('Progress components must be a mapping')
     if set(progress['components']) != ids:
         raise ValueError('Progress components differ from scope')
     for c in components:
-        if 'depends_on' not in c:
-        if type(c['depends_on']) is not list:
-            raise ValueError('Invalid component record')
         if not set(c['depends_on']) <= ids:
             raise ValueError('Unknown dependency')
         row = progress['components'][c['id']]
-        if not {'gates', 'raw_equal_bodies', 'normalized_only_bodies',
-                'total_function_windows', 'evidence'} <= set(row):
+        if (not isinstance(row, dict) or not {'gates', 'raw_equal_bodies', 'normalized_only_bodies',
+                'total_function_windows', 'evidence'} <= row.keys()):
             raise ValueError('Invalid progress record')
-        if type(row['gates']) is not dict:
-            raise ValueError('Invalid acceptance gate record')
-        if type(row) is not dict:
-            raise ValueError('Invalid progress record')
-        if set(row['gates']) != set(progress['gates']) or any(type(v) is not bool for v in row['gates'].values()):
+        if (not isinstance(row['gates'], dict) or set(row['gates']) != set(progress['gates'])
+                or any(type(v) is not bool for v in row['gates'].values())):
             raise ValueError('Invalid acceptance gate record')
         if any(type(row[k]) is not int for k in ('raw_equal_bodies', 'normalized_only_bodies')):
             raise ValueError('Invalid match count')
@@ -74,35 +59,28 @@ def validate_progress(components, progress, root):
         total = row['total_function_windows']
         if total is not None and (type(total) is not int or total < 0 or row['raw_equal_bodies'] + row['normalized_only_bodies'] > total):
             raise ValueError('Invalid match denominator')
-        if type(row['evidence']) is not list:
+        if not isinstance(row['evidence'], list):
             raise ValueError('Invalid progress record')
         if any(row['gates'].values()) and not row['evidence']:
             raise ValueError('Completed gates require reviewed evidence records')
         for evidence in row['evidence']:
-            if type(evidence) is not str:
+            if not isinstance(evidence, str):
                 raise ValueError('Invalid progress evidence record')
             p = (root / evidence).resolve()
             if not p.is_relative_to(root.resolve()) or not p.is_file():
                 raise ValueError('Missing or external progress evidence')
 
 
-def node94_binary(root):
-    """Read the node #94 artifact only after its pinned-manifest check.
+def authenticated_binary(root, relative):
+    """Authenticate the immutable byte snapshot used by catalogue analysis."""
+    from artifacts import manifest_item
+    item = manifest_item(root, relative)
+    data = (root / relative).read_bytes()
+    if len(data) != item['size'] or hashlib.sha256(data).hexdigest() != item['sha256']:
+        raise ValueError(f'Artifact size/SHA-256 mismatch: {root / relative}')
+    return data
 
-    Every other binary consumer in tools/ verifies the file against
-    provenance/artifacts.json before parsing it. generate() stamps this
-    file's SHA-256 into seed-candidates.json and derives the seeds'
-    executable-section membership from it, so the bytes must be the
-    pinned artifact, not whatever currently sits at the path.
-    """
-    from artifacts import check
-    identity = next((i for i in json.loads((root / 'provenance/artifacts.json').read_text())['files']
-                     if i['path'] == 'artifacts/node/94/hl-node'), None)
-    if identity is None:
-        raise ValueError('Missing artifact manifest entry: artifacts/node/94/hl-node')
-    path = root / 'artifacts/node/94/hl-node'
-    check(path, identity)
-    return path.read_bytes()
+
 def _unique_object(pairs):
     out = {}
     for key, value in pairs:
@@ -118,47 +96,33 @@ def _load_input(path):
 
 def generate(root=ROOT):
     config = _load_input(root / 'research/components.json')
-    config = json.loads((root / 'research/components.json').read_text())
-    if 'components' not in config:
-    if 'known_first_party_crates' not in config:
-    if not isinstance(config['known_first_party_crates'], list):
-    if isinstance(config['known_first_party_crates'], list) and not all(
-            isinstance(crate, str) for crate in config['known_first_party_crates']):
+    if (not isinstance(config, dict) or 'components' not in config
+            or 'known_first_party_crates' not in config
+            or not isinstance(config['known_first_party_crates'], list)
+            or any(not isinstance(c, str) for c in config['known_first_party_crates'])):
         raise ValueError('Invalid component configuration')
     components = config['components']
     progress = _load_input(root / 'research/progress.json')
     validate_progress(components, progress, root)
-    inventories = {v: json.loads((root / f'research/imported/hl-node-{v}.inventory.json').read_text()) for v in ['94', '115']}
-    inventories['visor'] = json.loads((root / 'research/imported/hl-visor.inventory.json').read_text())
-    # The published unwind counts must come from the pinned binaries, not
-    # from the inventory files' own claims: elf_index and fde_extents recount
-    # the .eh_frame_hdr table and reject a differing inventory, and the
-    # catalogue --check only compares generated output with itself, so an
-    # unverified claim would otherwise be republished indefinitely.
-    from artifacts import check
+    inventories = {v: _load_input(root / f'research/imported/hl-node-{v}.inventory.json') for v in ['94', '115']}
+    inventories['visor'] = _load_input(root / 'research/imported/hl-visor.inventory.json')
+    for inv in inventories.values():
+        if (not isinstance(inv, dict) or 'first_party_files' not in inv
+                or 'fde_count_eh_frame_hdr' not in inv or not isinstance(inv['first_party_files'], dict)
+                or any(not isinstance(files, list) or any(not isinstance(f, str) for f in files)
+                       for files in inv['first_party_files'].values())):
+            raise ValueError('Invalid inventory record')
     from elf_index import unwind_index
-    manifest = json.loads((root / 'provenance/artifacts.json').read_text())
+    binary94 = None
     for v, relative in [('94', 'artifacts/node/94/hl-node'),
                         ('115', 'artifacts/node/115/hl-node'),
                         ('visor', 'artifacts/visor/captured/hl-visor')]:
-        item = next(i for i in manifest['files'] if i['path'] == relative)
-        check(root / relative, item)
-        _, entries = unwind_index((root / relative).read_bytes())
+        data = authenticated_binary(root, relative)
+        _, entries = unwind_index(data)
         if len(entries) != inventories[v]['fde_count_eh_frame_hdr']:
             raise ValueError(f'Inventory unwind count differs from the pinned binary: {relative}')
-    inventories = {v: _load_input(root / f'research/imported/hl-node-{v}.inventory.json') for v in ['94', '115']}
-    inventories['visor'] = _load_input(root / 'research/imported/hl-visor.inventory.json')
-    if any('first_party_files' not in inv for inv in inventories.values()):
-    if any('fde_count_eh_frame_hdr' not in inv for inv in inventories.values()):
-        raise ValueError('Invalid inventory record')
-    for inv in inventories.values():
-        if any(not isinstance(files, list) for files in inv['first_party_files'].values()):
-    for inv in inventories.values():
-        if not isinstance(inv['first_party_files'], dict):
-    for inv in inventories.values():
-        if any(not isinstance(entry, str) for files in inv['first_party_files'].values()
-               if isinstance(files, list) for entry in files):
-            raise ValueError('Invalid inventory record')
+        if v == '94':
+            binary94 = data
     paths = {}
     excluded = {}
     for v, inv in inventories.items():
@@ -169,32 +133,21 @@ def generate(root=ROOT):
     reference = root / 'references/can1357-hl'
     source_paths = {p.relative_to(reference).as_posix() for p in reference.rglob('*.rs')}
     first_party_source = {p for p in source_paths if p.split('/')[0] in config['known_first_party_crates']}
-    # Every known path must be owned once by the ordered taxonomy, including added #115 paths.
     for p in source_paths | paths['94'] | paths['115']:
         owner(p, components)
-    literal_items = _load_input(root / 'research/imported/can1357-literal-classes.json')['items']
+    literal_record = _load_input(root / 'research/imported/can1357-literal-classes.json')
+    if not isinstance(literal_record, dict) or not isinstance(literal_record.get('items'), list):
+        raise ValueError('Invalid literal-classes record')
+    literal_items = literal_record['items']
     seen_literals = set()
     for item in literal_items:
+        if (not isinstance(item, dict) or 'class' not in item or 'file' not in item
+                or not isinstance(item['file'], str)):
+            raise ValueError('Invalid literal-classes record')
         marker = json.dumps(item, sort_keys=True)
         if marker in seen_literals:
             raise ValueError(f'Duplicate literal-class entry: {item}')
         seen_literals.add(marker)
-    literal_data = json.loads((root / 'research/imported/can1357-literal-classes.json').read_text())
-    if 'items' not in literal_data:
-        raise ValueError('Invalid literal-classes record')
-    literal_items = literal_data['items']
-    literal_items = json.loads((root / 'research/imported/can1357-literal-classes.json').read_text())['items']
-    if any('class' not in i for i in literal_items):
-    if any('file' not in i for i in literal_items):
-    if any(not isinstance(item, dict) for item in literal_items):
-    if not isinstance(literal_items, list):
-        raise ValueError('Invalid literal-classes record')
-    literal_record = json.loads((root / 'research/imported/can1357-literal-classes.json').read_text())
-    if not isinstance(literal_record, dict):
-        raise ValueError('Invalid literal-classes record')
-    literal_items = literal_record['items']
-    if any(isinstance(i, dict) and 'file' in i and not isinstance(i['file'], str) for i in literal_items):
-        raise ValueError('Invalid literal-classes record')
     rows = []
     for c in components:
         source = sorted(p for p in source_paths if owner(p, components) == c['id'])
@@ -214,7 +167,7 @@ def generate(root=ROOT):
     result = {'research/catalogue/components.json': json.dumps(output, indent=2) + '\n'}
     # Addresses in imported prose are leads only. Executable-section membership is not validation.
     from elf_index import sections
-    data = node94_binary(root)
+    data = binary94
     execsecs = [s for s in sections(data) if s['flags'] & 4]
     seeds = []
     for path in sorted(source_paths):

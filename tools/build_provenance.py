@@ -15,7 +15,6 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from artifacts import load_manifest
-from artifacts import check
 from elf_index import sections
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -106,7 +105,6 @@ def dynamic(data, by_name):
         tags.append(tag)
     else:
         raise ValueError('Missing DT_NULL terminator in .dynamic')
-    name = lambda v: dstr[v:dstr.index(b'\0', v)].decode()
 
     def name(value, context):
         return dynamic_string(dstr, value, context)
@@ -312,26 +310,19 @@ def interpret(items):
 def record(release):
     manifest = load_manifest(ROOT)
     rel = TARGETS[release]
-    item = next(x for x in manifest['files'] if x['path'] == rel)
-    # Authenticate the same immutable byte string passed to derive(). A path
-    # can be replaced between a separate check() and read_bytes().
-    data = (ROOT / rel).read_bytes()
+    item = next((x for x in manifest['files'] if x['path'] == rel), None)
+    if item is None:
+        raise ValueError('Invalid artifact manifest')
+    missing = [field for field in ('size', 'sha256') if field not in item]
+    if missing:
+        raise ValueError(f'provenance/artifacts.json entry for {rel} is missing ' + '/'.join(missing))
+    path = ROOT / rel
+    if not path.is_file():
+        raise ValueError(f'Missing artifact: {path}')
+    data = path.read_bytes()
     if len(data) != item['size'] or hashlib.sha256(data).hexdigest() != item['sha256']:
         raise ValueError(f'Artifact size/SHA-256 mismatch: {ROOT / rel}')
     facts = derive(data)
-    manifest = json.loads((ROOT / 'provenance/artifacts.json').read_text())
-    if not isinstance(manifest, dict) or not isinstance(manifest.get('files'), list):
-        raise ValueError('Invalid artifact manifest')
-    rel = TARGETS[release]
-    item = next((x for x in manifest['files']
-                 if isinstance(x, dict) and x.get('path') == rel), None)
-    if item is None:
-        raise ValueError('Invalid artifact manifest')
-    missing = [f for f in ('size', 'sha256') if f not in item]
-    if missing:
-        raise ValueError(f'provenance/artifacts.json entry for {rel} is missing ' + '/'.join(missing))
-    check(ROOT / rel, item)
-    facts = derive((ROOT / rel).read_bytes())
     return {'target': rel, 'sha256': item['sha256'], 'size': item['size'],
             'tool': 'tools/build_provenance.py', 'facts': facts + interpret(facts)}
 

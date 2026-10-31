@@ -17,7 +17,8 @@ class CataloguePortablePaths(unittest.TestCase):
                          'research/imported/hl-node-115.inventory.json',
                          'research/imported/hl-visor.inventory.json',
                          'research/imported/can1357-literal-classes.json',
-                         'artifacts/node/94/hl-node'):
+                         'artifacts/node/94/hl-node', 'artifacts/node/115/hl-node',
+                         'artifacts/visor/captured/hl-visor', 'provenance/artifacts.json'):
                 target=stage/name;target.parent.mkdir(parents=True,exist_ok=True)
                 shutil.copyfile(ROOT/name,target)
             path=stage/'references/can1357-hl/base/duration.rs'

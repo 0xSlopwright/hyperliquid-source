@@ -7,6 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from catalogue import generate
+from catalogue_fixtures import prepare_inputs
 
 
 def elf_fixture():
@@ -45,6 +46,7 @@ def make_root(tmp, first_party_files):
     artifact = root / 'artifacts/node/94/hl-node'
     artifact.parent.mkdir(parents=True)
     artifact.write_bytes(elf_fixture())
+    prepare_inputs(root)
     return root
 
 

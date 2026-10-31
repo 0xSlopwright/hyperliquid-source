@@ -149,34 +149,18 @@ def main():
     from artifacts import check, manifest_item
     rel, inventory, prefix = target_for(args.release)
     item = manifest_item(ROOT, rel)
-    manifest = json.loads((ROOT / 'provenance/artifacts.json').read_text())
-    if not isinstance(manifest, dict) or not isinstance(manifest.get('files'), list):
-        raise ValueError('Invalid artifact manifest')
-    if any(type(item) is not dict or 'path' not in item for item in manifest['files']):
-        raise ValueError('Invalid artifact record')
-    item = next((i for i in manifest['files'] if i['path'] == rel), None)
-    if item is None:
-        raise ValueError(f'No provenance/artifacts.json entry for {rel}')
     check(ROOT / rel, item)
     summary = generate(ROOT / rel, args.output_dir / prefix)
     expected = load_inventory(ROOT / inventory)['fde_count_eh_frame_hdr']
     if summary['unwind_entries'] != expected:
         raise ValueError('Parsed unwind count differs from retained inventory')
-    try:
-        from artifacts import check
-        rel, inventory, prefix = target_for(args.release)
-        item = next(i for i in json.loads((ROOT / 'provenance/artifacts.json').read_text())['files'] if i['path'] == rel)
-        check(ROOT / rel, item)
-        summary = generate(ROOT / rel, args.output_dir / prefix)
-        expected = json.loads((ROOT / inventory).read_text())['fde_count_eh_frame_hdr']
-        if summary['unwind_entries'] != expected:
-            raise ValueError('Parsed unwind count differs from retained inventory')
-    except (ValueError, OSError) as e:
-        print(f'elf_index: {e}', file=sys.stderr)
-        return 1
     print(json.dumps(summary, indent=2))
     return 0
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except (ValueError, OSError) as error:
+        print(f'elf_index: {error}', file=sys.stderr)
+        raise SystemExit(1)

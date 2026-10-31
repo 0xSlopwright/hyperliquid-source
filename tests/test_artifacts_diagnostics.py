@@ -14,7 +14,7 @@ class ArtifactsDiagnosticsTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve().resolve()
         (self.root / 'tools').mkdir()
         shutil.copy(REPO_ROOT / 'tools/artifacts.py', self.root / 'tools/artifacts.py')
         (self.root / 'provenance').mkdir()

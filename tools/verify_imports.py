@@ -27,42 +27,29 @@ def _unique_object(pairs):
 
 
 def _load(root, name):
-    return json.loads((root / 'provenance' / name).read_text(),
-                      object_pairs_hook=_unique_object)
+    path = root / 'provenance' / name
+    if not path.is_file():
+        raise ValueError(f'Missing manifest: provenance/{name}')
+    return json.loads(path.read_text(), object_pairs_hook=_unique_object)
 
 
 def verify(root):
     manifest = _load(root, 'imports.json')
+    if not isinstance(manifest, dict) or not isinstance(manifest.get('files'), list):
+        raise ValueError('Invalid import manifest')
+    if any(not isinstance(item, dict) or 'path' not in item for item in manifest['files']):
+        raise ValueError('Invalid import manifest record')
     paths = [item['path'] for item in manifest['files']]
     if len(set(paths)) != len(paths):
         raise ValueError('Duplicate path in imports manifest')
-    manifest = json.loads((root / 'provenance/imports.json').read_text())
-    if not isinstance(manifest, dict) or 'files' not in manifest:
-        raise ValueError('Invalid import manifest')
-def load_manifest(root, name):
-    path = root / 'provenance' / name
-    if not path.is_file():
-        raise ValueError(f'Missing manifest: provenance/{name}')
-    return json.loads(path.read_text())
-
-
-def verify(root):
-    manifest = load_manifest(root, 'imports.json')
-    if 'files' in manifest and not isinstance(manifest['files'], list):
-        raise ValueError('Invalid import manifest')
     for item in manifest['files']:
-        if not isinstance(item, dict) or 'path' not in item:
-            raise ValueError('Invalid import manifest record')
         check(root / item['path'], item)
-    for repo in _load(root, 'sources.json')['repositories']:
-    for repo in json.loads((root / 'provenance/sources.json').read_text())['repositories']:
-        if not isinstance(repo, dict) or 'path' not in repo or 'commit' not in repo:
-            raise ValueError('Invalid source repository record')
-    sources = json.loads((root / 'provenance/sources.json').read_text())
+    sources = _load(root, 'sources.json')
     if not isinstance(sources, dict) or 'repositories' not in sources:
         raise ValueError('Invalid sources manifest')
     for repo in sources['repositories']:
-    for repo in load_manifest(root, 'sources.json')['repositories']:
+        if not isinstance(repo, dict) or 'path' not in repo or 'commit' not in repo:
+            raise ValueError('Invalid source repository record')
         if not (root / repo['path'] / '.git').exists():
             raise ValueError(f'Missing pinned source: {repo["path"]}; {SETUP}')
         if git(root, repo['path'], 'rev-parse', 'HEAD') != repo['commit']:

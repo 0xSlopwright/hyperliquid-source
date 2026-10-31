@@ -7,6 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from catalogue import generate
+from catalogue_fixtures import prepare_inputs
 
 
 def fixture():
@@ -53,6 +54,7 @@ class InventoryFdeCountTests(unittest.TestCase):
         (root / 'research/imported/can1357-literal-classes.json').write_text(
             json.dumps({"items": []}))
         (root / 'artifacts/node/94/hl-node').write_bytes(bytes(fixture()))
+        prepare_inputs(root)
         return root
 
     def test_missing_fde_count_key_rejected(self):

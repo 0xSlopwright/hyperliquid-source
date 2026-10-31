@@ -1,15 +1,37 @@
 import copy
-import hashlib
+
+
 import json
+
+
 from pathlib import Path
+
+
 import struct
+
+
 import sys
-import tempfile
+
+
 import unittest
 
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
-from catalogue import generate, owner, validate_progress
+
+
+from catalogue import owner, validate_progress
+
+
 from elf_index import entry_file_offset, sections, target_for, unwind_index
+
+
+import hashlib
+
+
+import tempfile
+
+
+from catalogue import generate, owner, validate_progress
 
 
 def fixture():
@@ -37,7 +59,6 @@ class UnwindTests(unittest.TestCase):
         data = fixture()
         struct.pack_into('<Q', data, 24, 0x108)
         self.assertEqual(entry_file_offset(data), 264)
-
 
     def test_data_relative_negative_start(self):
         secs, rows = unwind_index(fixture())
@@ -90,27 +111,6 @@ class CatalogueTests(unittest.TestCase):
     def test_unknown_tree_rejected(self):
         with self.assertRaises(ValueError): owner('unrecognized/private.rs', self.parts)
 
-    def test_missing_component_patterns_rejected(self):
-        parts = copy.deepcopy(self.parts); del parts[0]['patterns']
-        with self.assertRaises(ValueError): owner('l1/exchange/handlers/14_order.rs', parts)
-    def test_non_dict_component_record_rejected_by_owner(self):
-        for bad in (123, None, 'patterns', ['patterns']):
-            with self.assertRaises(ValueError): owner('l1/exchange/impl_trading.rs', [bad])
-        self.assertEqual(owner('l1/exchange/impl_trading.rs', self.parts), 'exchange')
-    def test_non_list_depends_on_rejected(self):
-        for bad in (123, None):
-            parts = copy.deepcopy(self.parts); parts[0]['depends_on'] = bad
-            with self.assertRaises(ValueError): validate_progress(parts, self.progress, self.root)
-        validate_progress(self.parts, self.progress, self.root)
-    def test_missing_component_id_rejected_by_owner(self):
-        parts = copy.deepcopy(self.parts)
-        for c in parts:
-            if c['id'] == 'exchange':
-                del c['id']
-                break
-        with self.assertRaises(ValueError): owner('l1/exchange/impl_trading.rs', parts)
-        self.assertEqual(owner('l1/exchange/impl_trading.rs', self.parts), 'exchange')
-
     def test_complete_gate_without_evidence_rejected(self):
         d = copy.deepcopy(self.progress)
         d['components']['orderbook']['gates']['built'] = True
@@ -121,33 +121,6 @@ class CatalogueTests(unittest.TestCase):
         row = d['components']['orderbook']
         row['raw_equal_bodies'] = 2; row['total_function_windows'] = 1
         with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
-
-    def test_gate_schema_rejects_additional_acceptance_credit(self):
-        d = copy.deepcopy(self.progress)
-        d['gates']['extra'] = 'An extra milestone would allow 125% completion.'
-        for row in d['components'].values():
-            row['gates']['extra'] = False
-        with self.assertRaisesRegex(ValueError, 'four acceptance gates'):
-            validate_progress(self.parts, d, self.root)
-
-    def test_gate_schema_rejects_missing_or_replaced_gate(self):
-        for replacement in (None, 'source_imported'):
-            with self.subTest(replacement=replacement):
-                d = copy.deepcopy(self.progress)
-                del d['gates']['identity']
-                for row in d['components'].values():
-                    del row['gates']['identity']
-                if replacement is not None:
-                    d['gates'][replacement] = 'Not target code/data/call identity.'
-                    for row in d['components'].values():
-                        row['gates'][replacement] = False
-                with self.assertRaisesRegex(ValueError, 'four acceptance gates'):
-                    validate_progress(self.parts, d, self.root)
-
-    def test_gate_schema_accepts_canonical_names_in_any_order(self):
-        d = copy.deepcopy(self.progress)
-        d['gates'] = dict(reversed(list(d['gates'].items())))
-        validate_progress(self.parts, d, self.root)
 
     def test_missing_component_rejected(self):
         d = copy.deepcopy(self.progress); del d['components']['visor']
@@ -178,18 +151,14 @@ class CatalogueTests(unittest.TestCase):
         d = copy.deepcopy(self.progress)
         del d['components']['orderbook']['raw_equal_bodies']
         with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
+
     @staticmethod
-    def _elf(text_addr=0x400000):
-        names = b'\0.text\0.shstrtab\0'
-        shstr_off = 64 + 4 * 64
-        data = bytearray(0x3000)
-        data[0:16] = b'\x7fELF\x02\x01\x01' + b'\0' * 9
-        struct.pack_into('<HHIQQQIHHHHHH', data, 16, 2, 0x3E, 1, 0, 0, 64, 0, 64, 0, 0, 64, 4, 3)
-        def sh(idx, name, typ, flags, addr, off, size):
-            struct.pack_into('<IIQQQQIIQQ', data, 64 + idx * 64, name, typ, flags, addr, off, size, 0, 0, 1, 0)
-        sh(1, 1, 1, 0x6, text_addr, 0x1000, 0x2000)
-        sh(3, 7, 3, 0, 0, shstr_off, len(names))
-        data[shstr_off:shstr_off + len(names)] = names
+    def _elf():
+        data = fixture()
+        for index in (2, 3, 4):
+            offset = 512 + index * 64 + 16
+            address = struct.unpack_from('<Q', data, offset)[0]
+            struct.pack_into('<Q', data, offset, address + 0x400f00)
         return bytes(data)
 
     def _catalogue_root(self, tmp, elf):
@@ -207,9 +176,16 @@ class CatalogueTests(unittest.TestCase):
         src = root / 'references/can1357-hl' / crate / 'src' / inv['first_party_files'][crate][0]
         src.parent.mkdir(parents=True, exist_ok=True)
         src.write_text('// 0x401000 captured entry candidate\nfn main() {}\n')
-        binary = root / 'artifacts/node/94/hl-node'
-        binary.parent.mkdir(parents=True, exist_ok=True)
-        binary.write_bytes(elf)
+        for relative in ('artifacts/node/94/hl-node', 'artifacts/node/115/hl-node',
+                         'artifacts/visor/captured/hl-visor'):
+            binary = root / relative
+            binary.parent.mkdir(parents=True, exist_ok=True)
+            binary.write_bytes(elf)
+        for name in ('hl-node-94', 'hl-node-115', 'hl-visor'):
+            path = root / f'research/imported/{name}.inventory.json'
+            inventory = json.loads(path.read_text())
+            inventory['fde_count_eh_frame_hdr'] = 1
+            path.write_text(json.dumps(inventory))
         manifest = json.loads((self.root / 'provenance/artifacts.json').read_text())
         (root / 'provenance').mkdir(parents=True, exist_ok=True)
         (root / 'provenance/artifacts.json').write_text(json.dumps(manifest))
@@ -235,8 +211,11 @@ class CatalogueTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root, manifest = self._catalogue_root(tmp, elf)
             item = next(i for i in manifest['files'] if i['path'] == 'artifacts/node/94/hl-node')
-            item['size'] = len(elf)
-            item['sha256'] = hashlib.sha256(elf).hexdigest()
+            for record in manifest['files']:
+                if record['path'] in ('artifacts/node/94/hl-node', 'artifacts/node/115/hl-node',
+                                      'artifacts/visor/captured/hl-visor'):
+                    record['size'] = len(elf)
+                    record['sha256'] = hashlib.sha256(elf).hexdigest()
             (root / 'provenance/artifacts.json').write_text(json.dumps(manifest))
             result = generate(root)
             seeds = json.loads(result['research/catalogue/seed-candidates.json'])
@@ -244,7 +223,6 @@ class CatalogueTests(unittest.TestCase):
             mine = [s for s in seeds['items'] if s['address'] == '0x401000']
             self.assertEqual(len(mine), 1)
             self.assertTrue(mine[0]['inside_executable_section_94'])
-
 
     def fde_root(self, claims):
         import hashlib, tempfile
@@ -258,8 +236,8 @@ class CatalogueTests(unittest.TestCase):
         (root / 'research/components.json').write_text(json.dumps(
             {"components": [comp], "known_first_party_crates": ["base"]}))
         (root / 'research/progress.json').write_text(json.dumps(
-            {"gates": {"mapped": "m"}, "components": {"foundation":
-             {"gates": {"mapped": False}, "evidence": [], "raw_equal_bodies": 0,
+            {"gates": {g: g for g in ('mapped', 'built', 'behavior', 'identity')}, "components": {"foundation":
+             {"gates": {g: False for g in ('mapped', 'built', 'behavior', 'identity')}, "evidence": [], "raw_equal_bodies": 0,
               "normalized_only_bodies": 0, "total_function_windows": None}}}))
         for name, claim in claims.items():
             (root / f'research/imported/{name}.inventory.json').write_text(json.dumps(
@@ -288,7 +266,6 @@ class CatalogueTests(unittest.TestCase):
         root = self.fde_root({'hl-node-94': 2, 'hl-node-115': 1, 'hl-visor': 1})
         with self.assertRaises(ValueError):
             generate(root)
-
 
     def run_catalogue_main(self, root, argv):
         import catalogue
@@ -323,31 +300,12 @@ class CatalogueTests(unittest.TestCase):
         self.assertEqual((root / 'docs/PROGRESS.md').read_bytes(), content.encode())
         self.run_catalogue_main(root, ['--check'])
 
-
     def input_root(self, inventory94=None, literal_items=()):
-        import tempfile
-        temp = tempfile.TemporaryDirectory()
-        self.addCleanup(temp.cleanup)
-        root = Path(temp.name)
-        (root / 'research/imported').mkdir(parents=True)
-        (root / 'references/can1357-hl').mkdir(parents=True)
-        (root / 'artifacts/node/94').mkdir(parents=True)
-        comp = {"id": "foundation", "name": "Foundation", "patterns": ["base/*"],
-                "depends_on": [], "scope": "x", "first_task": "y", "artifact": "node94"}
-        (root / 'research/components.json').write_text(json.dumps(
-            {"components": [comp], "known_first_party_crates": ["base"]}))
-        (root / 'research/progress.json').write_text(json.dumps(
-            {"gates": {"mapped": "m"}, "components": {"foundation":
-             {"gates": {"mapped": False}, "evidence": [], "raw_equal_bodies": 0,
-              "normalized_only_bodies": 0, "total_function_windows": None}}}))
-        plain = json.dumps({"first_party_files": {}, "fde_count_eh_frame_hdr": 1})
-        (root / 'research/imported/hl-node-94.inventory.json').write_text(
-            inventory94 if inventory94 is not None else plain)
-        for name in ('hl-node-115', 'hl-visor'):
-            (root / f'research/imported/{name}.inventory.json').write_text(plain)
+        root = self.fde_root({'hl-node-94': 1, 'hl-node-115': 1, 'hl-visor': 1})
+        if inventory94 is not None:
+            (root / 'research/imported/hl-node-94.inventory.json').write_text(inventory94)
         (root / 'research/imported/can1357-literal-classes.json').write_text(
-            json.dumps({"items": list(literal_items)}))
-        (root / 'artifacts/node/94/hl-node').write_bytes(bytes(fixture()))
+            json.dumps({'items': list(literal_items)}))
         return root
 
     def test_duplicate_inventory_key_rejected(self):
@@ -377,31 +335,72 @@ class CatalogueTests(unittest.TestCase):
         # AttributeError from the .values() call in the gate check.
         d = copy.deepcopy(self.progress)
         d['components']['orderbook']['gates'] = list(d['components']['orderbook']['gates'])
+        with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
+
     def test_non_list_evidence_record_rejected(self):
         # A non-list evidence value must fail closed as a ValueError, like
         # every other malformed progress record — on base it escaped as
         # TypeError from iterating the evidence value.
         d = copy.deepcopy(self.progress)
         d['components']['orderbook']['evidence'] = None
+        with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
+
     def test_missing_progress_gates_rejected(self):
         # A progress record without its top-level gates key must fail closed
         # as a ValueError — on base it escaped as KeyError from the gate
         # comparison in the component loop.
         d = copy.deepcopy(self.progress); del d['gates']
+        with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
+
     def test_missing_components_key_rejected(self):
         d = copy.deepcopy(self.progress); del d['components']
         with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
 
     def test_missing_component_id_rejected(self):
         parts = copy.deepcopy(self.parts); del parts[0]['id']
+        with self.assertRaises(ValueError): validate_progress(parts, self.progress, self.root)
+
     def test_missing_component_depends_on_rejected(self):
         parts = copy.deepcopy(self.parts); del parts[0]['depends_on']
         with self.assertRaises(ValueError): validate_progress(parts, self.progress, self.root)
+
+    def test_missing_component_patterns_rejected(self):
+        parts = copy.deepcopy(self.parts); del parts[0]['patterns']
+        with self.assertRaises(ValueError): owner('l1/exchange/handlers/14_order.rs', parts)
+
     def test_non_dict_progress_row_rejected(self):
         for bad in (None, 5, ['gates']):
             d = copy.deepcopy(self.progress)
             d['components']['orderbook'] = bad
             with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
+
+    def test_gate_schema_rejects_additional_acceptance_credit(self):
+        d = copy.deepcopy(self.progress)
+        d['gates']['extra'] = 'An extra milestone would allow 125% completion.'
+        for row in d['components'].values():
+            row['gates']['extra'] = False
+        with self.assertRaisesRegex(ValueError, 'four acceptance gates'):
+            validate_progress(self.parts, d, self.root)
+
+    def test_gate_schema_rejects_missing_or_replaced_gate(self):
+        for replacement in (None, 'source_imported'):
+            with self.subTest(replacement=replacement):
+                d = copy.deepcopy(self.progress)
+                del d['gates']['identity']
+                for row in d['components'].values():
+                    del row['gates']['identity']
+                if replacement is not None:
+                    d['gates'][replacement] = 'Not target code/data/call identity.'
+                    for row in d['components'].values():
+                        row['gates'][replacement] = False
+                with self.assertRaisesRegex(ValueError, 'four acceptance gates'):
+                    validate_progress(self.parts, d, self.root)
+
+    def test_gate_schema_accepts_canonical_names_in_any_order(self):
+        d = copy.deepcopy(self.progress)
+        d['gates'] = dict(reversed(list(d['gates'].items())))
+        validate_progress(self.parts, d, self.root)
+
     def test_non_mapping_progress_components_rejected(self):
         ids = [c['id'] for c in self.parts]
         for bad in (ids, 0, None):
@@ -409,6 +408,8 @@ class CatalogueTests(unittest.TestCase):
             d['components'] = bad
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 validate_progress(self.parts, d, self.root)
+        validate_progress(self.parts, self.progress, self.root)
+
     def test_non_dict_component_record_rejected(self):
         # The 'id'/'patterns' key-presence guards of #321/#325 assume dict
         # records: the string/list cases below carry the key, so they slip
@@ -419,6 +420,18 @@ class CatalogueTests(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 validate_progress(parts, self.progress, self.root)
         validate_progress(self.parts, self.progress, self.root)
+
+    def test_non_dict_component_record_rejected_by_owner(self):
+        for bad in (123, None, 'patterns', ['patterns']):
+            with self.assertRaises(ValueError): owner('l1/exchange/impl_trading.rs', [bad])
+        self.assertEqual(owner('l1/exchange/impl_trading.rs', self.parts), 'exchange')
+
+    def test_non_list_depends_on_rejected(self):
+        for bad in (123, None):
+            parts = copy.deepcopy(self.parts); parts[0]['depends_on'] = bad
+            with self.assertRaises(ValueError): validate_progress(parts, self.progress, self.root)
+        validate_progress(self.parts, self.progress, self.root)
+
     def test_non_string_evidence_entry_rejected(self):
         for bad in (123, {'a': 1}, ['x'], None, True):
             d = copy.deepcopy(self.progress)
@@ -427,6 +440,15 @@ class CatalogueTests(unittest.TestCase):
         d = copy.deepcopy(self.progress)
         d['components']['foundation']['evidence'] = ['research/components.json']
         validate_progress(self.parts, d, self.root)
+
+    def test_missing_component_id_rejected_by_owner(self):
+        parts = copy.deepcopy(self.parts)
+        for c in parts:
+            if c['id'] == 'exchange':
+                del c['id']
+                break
+        with self.assertRaises(ValueError): owner('l1/exchange/impl_trading.rs', parts)
+        self.assertEqual(owner('l1/exchange/impl_trading.rs', self.parts), 'exchange')
 
 
 class VisorIndexTests(unittest.TestCase):

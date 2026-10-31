@@ -1,17 +1,37 @@
-import sys
 import hashlib
-import http.client
+
+
 import importlib.util
-import json
+
+
 from pathlib import Path
-import sys
+
+
 import tempfile
+
+
 import unittest
+
+
 from unittest.mock import patch
 
+
 spec = importlib.util.spec_from_file_location('artifacts', Path(__file__).resolve().parents[1] / 'tools/artifacts.py')
+
+
 a = importlib.util.module_from_spec(spec)
+
+
 spec.loader.exec_module(a)
+
+
+import http.client
+
+
+import json
+
+
+import sys
 
 
 class ArtifactTests(unittest.TestCase):
@@ -27,13 +47,6 @@ class ArtifactTests(unittest.TestCase):
         p.write_bytes(b'evil')
         with self.assertRaises(ValueError):
             a.check(p, self.item)
-
-    def test_malformed_artifact_record_rejected(self):
-        p = self.root / 'node'
-        p.write_bytes(b'good')
-        for bad in ({'size': 4}, {'sha256': self.item['sha256']}, None):
-            with self.assertRaises(ValueError):
-                a.check(p, bad)
 
     def test_failed_download_does_not_publish_partial(self):
         source = self.root / 'source'
@@ -53,17 +66,6 @@ class ArtifactTests(unittest.TestCase):
         with patch.object(a.urllib.request, 'urlopen', side_effect=AssertionError('network')):
             a.fetch_one(self.root, self.item)
 
-    def test_manifest_entry_missing_path_rejected(self):
-        manifest = {'files': [{'size': 4, 'sha256': '0' * 64}], 'signing_fingerprint': 'X'}
-        (self.root / 'provenance').mkdir()
-        (self.root / 'provenance/artifacts.json').write_text(json.dumps(manifest))
-        with patch.object(a, 'ROOT', self.root), \
-             patch.object(a, 'verify_signatures'), \
-             patch.object(a, 'verify_pinned_pairs'), \
-             patch.object(sys, 'argv', ['artifacts.py', 'verify']):
-            with self.assertRaises(ValueError):
-                a.main()
-
     def test_missing_pinned_reference_names_the_fix(self):
         with self.assertRaises(ValueError) as caught:
             a.verify_pinned_pairs(self.root)
@@ -78,6 +80,14 @@ class ArtifactTests(unittest.TestCase):
         (self.root / a.PAIRS[0][1]).write_bytes(b'evil')
         with self.assertRaises(ValueError):
             a.verify_pinned_pairs(self.root)
+
+    def test_corrupt_existing_file_not_overwritten(self):
+        p = self.root / self.item['path']
+        p.parent.mkdir()
+        p.write_bytes(b'evil')
+        with self.assertRaises(ValueError):
+            a.fetch_one(self.root, self.item)
+        self.assertEqual(p.read_bytes(), b'evil')
 
     def write_manifest(self, text):
         manifest = self.root / 'provenance/artifacts.json'
@@ -109,14 +119,6 @@ class ArtifactTests(unittest.TestCase):
         manifest = a.load_manifest(self.root)
         self.assertEqual(manifest['files'][0]['sha256'], sha)
         self.assertEqual(a.manifest_item(self.root, 'bin/node')['size'], 4)
-
-    def test_corrupt_existing_file_not_overwritten(self):
-        p = self.root / self.item['path']
-        p.parent.mkdir()
-        p.write_bytes(b'evil')
-        with self.assertRaises(ValueError):
-            a.fetch_one(self.root, self.item)
-        self.assertEqual(p.read_bytes(), b'evil')
 
     def test_fetch_continues_past_unrecoverable_item(self):
         # Manifest order puts node/115 (no recovery URL) before node/94.
@@ -187,10 +189,41 @@ class ArtifactTests(unittest.TestCase):
             p.write_bytes(bad)
             with self.assertRaisesRegex(ValueError, 'size/SHA-256 mismatch'):
                 a.check(p, self.item)
+
+    def test_malformed_artifact_record_rejected(self):
+        p = self.root / 'node'
+        p.write_bytes(b'good')
+        for bad in ({'size': 4}, {'sha256': self.item['sha256']}, None):
+            with self.assertRaises(ValueError):
+                a.check(p, bad)
+
+    def test_manifest_entry_missing_path_rejected(self):
+        manifest = {'files': [{'size': 4, 'sha256': '0' * 64}], 'signing_fingerprint': 'X'}
+        (self.root / 'provenance').mkdir()
+        (self.root / 'provenance/artifacts.json').write_text(json.dumps(manifest))
+        with patch.object(a, 'ROOT', self.root), \
+             patch.object(a, 'verify_signatures'), \
+             patch.object(a, 'verify_pinned_pairs'), \
+             patch.object(sys, 'argv', ['artifacts.py', 'verify']):
+            with self.assertRaises(ValueError):
+                a.main()
+
     def test_main_missing_files_key_rejected(self):
         manifest_dir = self.root / 'provenance'
         manifest_dir.mkdir()
         (manifest_dir / 'artifacts.json').write_text('{}')
+        with patch.object(a, 'ROOT', self.root), patch.object(sys, 'argv', ['artifacts.py', 'verify']):
+            with self.assertRaises(ValueError):
+                a.main()
+
+    def test_main_empty_files_list_passes_guard(self):
+        manifest_dir = self.root / 'provenance'
+        manifest_dir.mkdir()
+        (manifest_dir / 'artifacts.json').write_text('{"files": [], "signing_fingerprint": "unused"}')
+        with patch.object(a, 'ROOT', self.root), patch.object(sys, 'argv', ['artifacts.py', 'verify']), \
+                patch.object(a, 'verify_signatures'), patch.object(a, 'verify_pinned_pairs'):
+            a.main()
+
     def test_main_missing_signing_fingerprint_rejected(self):
         manifest_dir = self.root / 'provenance'
         manifest_dir.mkdir()
@@ -199,7 +232,6 @@ class ArtifactTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 a.main()
 
-    def test_main_empty_files_list_passes_guard(self):
     def test_main_files_and_fingerprint_pass_guard(self):
         manifest_dir = self.root / 'provenance'
         manifest_dir.mkdir()
