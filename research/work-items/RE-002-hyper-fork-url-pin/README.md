@@ -7,13 +7,13 @@
 - Source commit: repository `main` at `cec50f68`. Upstream reference: hyper `v0.14.16` (`41dee4a7`), `src/client/connect/http.rs`.
 - Claim status: observation for every anchor, inference for the reconstructed Rust shape. No implementation and no gate.
 - Scope included: the fork-only code in `hyper-fork/src/client/connect/http.rs`, i.e. Location points 494:21, 515:28, 546:55 and 558:85, which have no upstream counterpart at any line shift.
-- Scope excluded: the public setter that fills the new map (in the +10-line hunk before upstream L270), the first-party code that calls it, and the other patched hyper files.
+- Scope excluded: the other patched hyper files, and the name and signature of the setter in the +10-line hunk before upstream L270. No caller of that setter survives in either capture; see **Who fills the map**.
 
 ## Question and answer
 
 The hyper-fork base is hyper 0.14.16. Its `connect/http.rs` is 42 lines longer, and four panic Locations fall in lines that upstream does not have. What do those lines do?
 
-**They add a URL-to-address pin.** `HttpConnector`'s `Config` gets a `BTreeMap<String, SocketAddr>`. For each connection, the destination URI string is tested against every key with `str::contains`:
+**They add a URL-to-address pin, which is never enabled in #94 or #115 (see "Who fills the map").** `HttpConnector`'s `Config` gets a `BTreeMap<String, SocketAddr>`. For each connection, the destination URI string is tested against every key with `str::contains`:
 
 - If exactly one key matches, the connector prints `hyper-fork only trying <addr> on <uri>` to stdout and connects only to that `SocketAddr`. The DNS results are ignored.
 - If two keys match, it panics with `two matching urls <key1> <key2>`.
@@ -42,14 +42,28 @@ let addrs: Vec<SocketAddr> = match self.pin {
 };
 ```
 
+## Who fills the map: nothing, in both captures
+
+The pin code is compiled in, but **no code path stores `Some(map)`**. Every `HttpConnector` in #94 and #115 is built with the map `None`, so the matching loop never runs, and connections behave as upstream (apart from one extra `String` allocation per connect).
+
+How this was established (`map_population` in the JSON):
+
+- **Layout.** `ArcInner<Config>` is 0xa0 bytes with `Config` at +0x10, so the map tag `Config+0x20` is `Arc+0x30`. The `Config` clone used by `Arc::make_mut` (#94 `0x14e6140`, #115 `0x15c2b10`) checks `cmpl $1,0x20(%rbx)` and clones the `BTreeMap` (#94 `call 0x14d8fb0`, which allocates 0x278-byte leaves) only when the tag is 1. So the field is `Option<BTreeMap<String, SocketAddr>>`.
+- **Every build has tag 0.** All `ArcInner<Config>` builds were found by a fingerprint: `mov $0xa0,%edi`, followed by the upstream `new_with_resolver` defaults (`connect_timeout` nanos `0x3b9aca00` at +0x58, `happy_eyeballs_timeout` 300 ms `0x11e1a300` at +0x68). #94 has 4 and #115 has 3. Each stores `movq $0x0,0x30(%rax)`, i.e. map `None`.
+- **No setter runs.** `&mut Config` comes only from `Arc::make_mut`, whose slow path calls the clone:
+  - #94: the clone has exactly 4 direct callers, the 4 builders. After each unique check the only write is `movb $0,0x80(%reg)` (`Config+0x70`, `enforce_http(false)`) at `0x14390f3`, `0x14574c7`, `0x147a063` and `0x14b278e`.
+  - #115: the clone is called from builder 1 (inlined `make_mut`, write `0x158d220`) and from `make_mut` `0x15ae6e0`. Its two callers (`0x15a035d`, `0x15a6925`) each write only `Config+0x70 = 0`.
+- **Inference.** The setter in the +10-line hunk is not present in either binary (no caller, so the linker dropped it). The map field, the matching loop and the `println!` remain because `ConnectingTcp::new` and `connect` are always compiled.
+- **Limit.** A write through `Arc::get_mut` or through unsafe code would not call the clone. The scan does not exclude that, but no store of a non-zero tag to `+0x30` appears in any `Config` build.
+
 ## Reproduce
 
 ```sh
 python3 tools/hyper_fork_url_pin.py --check            # all anchors, both captures
-python3 -m unittest discover -s tests -p test_hyper_fork_url_pin.py   # 6 tests incl. corruption controls
+python3 -m unittest discover -s tests -p test_hyper_fork_url_pin.py   # 8 tests incl. corruption controls
 ```
 
-Python 3.12.3. GNU objdump 2.42 was used for reading only; the tool decodes the RIP-relative operands itself. `hyper-fork-url-pin.json` SHA-256: `6de57d85af1b914cf7d99f871b9138b32a7d85848967c6c2ac0508779f7f3809`, byte-identical under `PYTHONHASHSEED=7`. Captured binaries were not executed.
+Python 3.12.3. GNU objdump 2.42 was used for reading only; the tool decodes the RIP-relative operands itself. `hyper-fork-url-pin.json` SHA-256: `847ca229a5f66de0c2adf2ca76de186bc6d55df01d5692436b672a05947eba11`, byte-identical under `PYTHONHASHSEED=7`. Captured binaries were not executed.
 
 ## Evidence (node #94 virtual addresses)
 
@@ -100,8 +114,8 @@ Not implemented. The Rust above is a description of the observed behavior, not a
 
 - Observation: 30 #94 anchors (bytes plus resolved targets), 3 helper identifications by string reference, and the #115 strings and Location references.
 - Inference: the Rust shape, the field names (`pin`, `dst`), and `SocketAddr` as the value type (from size, niche and V4/V6 tag use).
-- Not determined: the setter name and signature, the meaning of `Config+0x20 == 1` (a flag or enum tag in front of the map), the first-party callers that fill the map, and its runtime contents. No captured binary was run, so no URL or address values are known.
-- Behavior notes for reviewers: a pinned destination ignores the DNS results. All four `ConnectingTcpRemote::new` calls (`0x29c2722`, `0x29c28db`, `0x29c2a12`, `0x29c2a87`), including the Happy Eyeballs fallback ones, receive the same pin slot (`r9 = 0x1b0(%rsp)`). An ambiguous configuration panics the connecting task.
+- Not determined: the setter name and signature (dropped by the linker). `Config+0x20 == 1` is the `Some` tag of `Option<BTreeMap>`, per the clone. The map is never filled, so it has no contents in these captures.
+- Behavior notes for reviewers (dormant in #94/#115, but this is what a filled map would do): a pinned destination ignores the DNS results. All four `ConnectingTcpRemote::new` calls (`0x29c2722`, `0x29c28db`, `0x29c2a12`, `0x29c2a87`), including the Happy Eyeballs fallback ones, receive the same pin slot (`r9 = 0x1b0(%rsp)`). An ambiguous configuration panics the connecting task.
 - No progress gate is requested.
 
-Next question: which first-party function fills `Config+0x20..+0x38` (the setter in the +10-line hunk before upstream L270), and with which key/address pairs?
+Next question: does any later capture (after #115) call the setter, i.e. contain an `ArcInner<Config>` build or `make_mut` write with a non-zero tag at `+0x30`?

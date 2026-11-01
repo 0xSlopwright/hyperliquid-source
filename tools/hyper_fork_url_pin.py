@@ -195,6 +195,76 @@ def fork_points(data, secs, relocs, release):
     return out
 
 
+# ---- who fills the pin map ----
+# ArcInner<Config> is 0xa0 bytes; Config starts at +0x10, so the map tag Config+0x20 is Arc+0x30.
+# Upstream HttpConnector::new_with_resolver writes connect_timeout None (nanos 1e9 at Arc+0x58)
+# and happy_eyeballs_timeout Some(300 ms) (nanos 0x11e1a300 at Arc+0x68).
+CONFIG_ALLOC = re.compile(rb'\xbf\xa0\x00\x00\x00')
+CONFIG_NONE_TIMEOUT = re.compile(rb'\xc7[\x40-\x47]\x58\x00\xca\x9a\x3b')
+TAG_STORE = re.compile(rb'\x48\xc7([\x40-\x47])\x30(....)', re.S)
+POPULATION = {
+    '94': {'clone': 0x14e6140, 'make_mut': None,
+           'clone_checks': [(0x14e6202, '837b2001', 'cmpl $1,0x20(%rbx): map is Some?'),
+                            (0x14e6258, 'e853 2dffff', 'call 0x14d8fb0: clone the BTreeMap<String, SocketAddr>')],
+           'writes': [(0x14390f3, '41c6878000000000', 'movb $0,0x80(%r15): enforce_http(false)'),
+                      (0x14574c7, '41c6842480000000 00', 'movb $0,0x80(%r12): enforce_http(false)'),
+                      (0x147a063, '41c6842480000000 00', 'movb $0,0x80(%r12): enforce_http(false)'),
+                      (0x14b278e, '41c6858000000000', 'movb $0,0x80(%r13): enforce_http(false)')]},
+    '115': {'clone': 0x15c2b10, 'make_mut': 0x15ae6e0, 'clone_checks': [],
+            'writes': [(0x158d220, '41c6858000000000', 'movb $0,0x80(%r13): enforce_http(false), inlined make_mut')]},
+}
+
+
+def direct_callers(text, text_va, target):
+    out = []
+    for m in re.finditer(rb'\xe8', text):
+        p = m.start()
+        if p + 5 <= len(text) and text_va + p + 5 + struct.unpack_from('<i', text, p + 1)[0] == target:
+            out.append(text_va + p)
+    return out
+
+
+def population(data, secs, release):
+    t = secs['.text']
+    text, tva = data[t['offset']:t['offset'] + t['size']], t['addr']
+    builds = []
+    for m in CONFIG_ALLOC.finditer(text):
+        w = text[m.start():m.start() + 260]
+        if not CONFIG_NONE_TIMEOUT.search(w) or b'\x00\xa3\xe1\x11' not in w:
+            continue
+        tag = TAG_STORE.search(w)
+        if tag is None:
+            raise EvidenceError(f'#{release}: Config build at {tva + m.start():#x} has no tag store')
+        builds.append({'alloc': hex(tva + m.start()), 'tag_store': hex(tva + m.start() + tag.start()),
+                       'tag_value': struct.unpack('<i', tag.group(2))[0]})
+    if not builds or any(b['tag_value'] != 0 for b in builds):
+        raise EvidenceError(f'#{release}: a Config build stores a non-zero map tag')
+    cfg = POPULATION[release]
+    body = text[cfg['clone'] - tva:cfg['clone'] - tva + 0x200]
+    if b'\xbf\xa0\x00\x00\x00' not in body or b'\x83\x7b\x20\x01' not in body:
+        raise EvidenceError(f'#{release}: {cfg["clone"]:#x} is not the Config clone')
+    rec = {'config_builds': builds, 'config_clone': hex(cfg['clone']),
+           'config_clone_callers': [hex(a) for a in direct_callers(text, tva, cfg['clone'])]}
+    if cfg['make_mut']:
+        callers = direct_callers(text, tva, cfg['make_mut'])
+        rec['make_mut'] = hex(cfg['make_mut'])
+        rec['make_mut_callers'] = []
+        for a in callers:
+            nxt = bytes_in_section(data, secs, a + 5, 16)
+            # first config write after make_mut returns &mut Config in rax
+            m = re.search(rb'\xc6\x40(.)\x00', nxt, re.S)
+            if m is None:
+                raise EvidenceError(f'#{release}: no byte store after make_mut call {a:#x}')
+            rec['make_mut_callers'].append({'call': hex(a), 'writes_config_offset': hex(m.group(1)[0]), 'value': 0})
+    rec['checks'] = []
+    for va, hexbytes, meaning in cfg['clone_checks'] + cfg['writes']:
+        raw = bytes.fromhex(hexbytes.replace(' ', ''))
+        if bytes_in_section(data, secs, va, len(raw)) != raw:
+            raise EvidenceError(f'#{release}: {va:#x} bytes differ')
+        rec['checks'].append({'va': hex(va), 'bytes': raw.hex(), 'meaning': meaning})
+    return rec
+
+
 def build():
     result = {'schema': 'hyperliquid-source/re-002-hyper-fork-url-pin/v1', 'targets': {}}
     for release in TARGETS:
@@ -208,6 +278,7 @@ def build():
                 raise EvidenceError(f'#{release}: {name} occurs {len(hits)} times')
             rec['string_file_offsets'][name] = hex(hits[0])
         rec['fork_only_points'] = fork_points(data, secs, relocs, release)
+        rec['map_population'] = population(data, secs, release)
         if release == '94':
             t = secs['.text']
             text = data[t['offset']:t['offset'] + t['size']]

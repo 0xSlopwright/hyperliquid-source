@@ -40,6 +40,50 @@
      }
     ]
    },
+   "map_population": {
+    "checks": [
+     {
+      "bytes": "41c6858000000000",
+      "meaning": "movb $0,0x80(%r13): enforce_http(false), inlined make_mut",
+      "va": "0x158d220"
+     }
+    ],
+    "config_builds": [
+     {
+      "alloc": "0x158d071",
+      "tag_store": "0x158d0a4",
+      "tag_value": 0
+     },
+     {
+      "alloc": "0x15a02e2",
+      "tag_store": "0x15a0315",
+      "tag_value": 0
+     },
+     {
+      "alloc": "0x15a689f",
+      "tag_store": "0x15a68d9",
+      "tag_value": 0
+     }
+    ],
+    "config_clone": "0x15c2b10",
+    "config_clone_callers": [
+     "0x158d161",
+     "0x15ae71a"
+    ],
+    "make_mut": "0x15ae6e0",
+    "make_mut_callers": [
+     {
+      "call": "0x15a035d",
+      "value": 0,
+      "writes_config_offset": "0x70"
+     },
+     {
+      "call": "0x15a6925",
+      "value": 0,
+      "writes_config_offset": "0x70"
+     }
+    ]
+   },
    "path": "artifacts/node/115/hl-node",
    "sha256": "a6e2897cd051213d004802deca416e8eca62b7a8278fa39f249e98c3867b5301",
    "string_file_offsets": {
@@ -354,6 +398,69 @@
      ],
      "string": "A Tokio 1.x context was found, but timers are disabled"
     }
+   },
+   "map_population": {
+    "checks": [
+     {
+      "bytes": "837b2001",
+      "meaning": "cmpl $1,0x20(%rbx): map is Some?",
+      "va": "0x14e6202"
+     },
+     {
+      "bytes": "e8532dffff",
+      "meaning": "call 0x14d8fb0: clone the BTreeMap<String, SocketAddr>",
+      "va": "0x14e6258"
+     },
+     {
+      "bytes": "41c6878000000000",
+      "meaning": "movb $0,0x80(%r15): enforce_http(false)",
+      "va": "0x14390f3"
+     },
+     {
+      "bytes": "41c684248000000000",
+      "meaning": "movb $0,0x80(%r12): enforce_http(false)",
+      "va": "0x14574c7"
+     },
+     {
+      "bytes": "41c684248000000000",
+      "meaning": "movb $0,0x80(%r12): enforce_http(false)",
+      "va": "0x147a063"
+     },
+     {
+      "bytes": "41c6858000000000",
+      "meaning": "movb $0,0x80(%r13): enforce_http(false)",
+      "va": "0x14b278e"
+     }
+    ],
+    "config_builds": [
+     {
+      "alloc": "0x1439021",
+      "tag_store": "0x1439057",
+      "tag_value": 0
+     },
+     {
+      "alloc": "0x14572d3",
+      "tag_store": "0x1457309",
+      "tag_value": 0
+     },
+     {
+      "alloc": "0x1479f43",
+      "tag_store": "0x1479f7e",
+      "tag_value": 0
+     },
+     {
+      "alloc": "0x14b2673",
+      "tag_store": "0x14b26a5",
+      "tag_value": 0
+     }
+    ],
+    "config_clone": "0x14e6140",
+    "config_clone_callers": [
+     "0x14390cb",
+     "0x14573d1",
+     "0x147a043",
+     "0x14b2762"
+    ]
    },
    "path": "artifacts/node/94/hl-node",
    "sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",

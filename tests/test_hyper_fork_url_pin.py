@@ -36,6 +36,25 @@ class UrlPinTests(unittest.TestCase):
                 self.assertTrue(any(r['lea_sites'] for r in records), (release, point))
         self.assertEqual(len(self.result['targets']['94']['anchors']), len(mod.ANCHORS))
 
+    def test_map_is_never_filled(self):
+        p94 = self.result['targets']['94']['map_population']
+        p115 = self.result['targets']['115']['map_population']
+        self.assertEqual(len(p94['config_builds']), 4)
+        self.assertEqual(len(p115['config_builds']), 3)
+        for p in (p94, p115):
+            self.assertTrue(all(b['tag_value'] == 0 for b in p['config_builds']))
+        self.assertEqual(len(p94['config_clone_callers']), 4)
+        self.assertEqual([c['writes_config_offset'] for c in p115['make_mut_callers']], ['0x70', '0x70'])
+
+    def test_nonzero_tag_store_is_rejected(self):
+        broken = bytearray(self.data)
+        va = int(self.result['targets']['94']['map_population']['config_builds'][0]['tag_store'], 16)
+        off = next(s['offset'] + va - s['addr'] for s in self.secs.values()
+                   if s['addr'] and s['addr'] <= va < s['addr'] + s['size'])
+        broken[off + 4] = 1  # movq $0x1,0x30(%rax)
+        with self.assertRaises(mod.EvidenceError):
+            mod.population(bytes(broken), self.secs, '94')
+
     def test_wrong_bytes_are_rejected(self):
         va, hexbytes, kind, want, meaning = mod.ANCHORS[2]
         bad = (va, '410fb78d70020000', kind, want, meaning)  # node len at +0x270 instead of +0x272
