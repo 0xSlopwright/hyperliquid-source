@@ -34,6 +34,8 @@ def source_bindings(data):
     for sec in sections(data):
         if sec['type'] != 4:
             continue
+        if sec['size'] % 24:
+            raise ValueError('Truncated relocation section')
         for off in range(sec['offset'], sec['offset']+sec['size'], 24):
             slot, info, addend = struct.unpack_from('<QQq', data, off)
             if slot in SLOTS:
@@ -62,7 +64,9 @@ def rip_target(body, start, off, prefix, length):
 def census(data, fdes):
     # Scan every byte of .text for this exact RIP-relative LEA encoding. Raw
     # candidates are then tied to a unique FDE and checked as decoded instructions.
-    text = next(s for s in sections(data) if s['name'] == '.text')
+    text = next((s for s in sections(data) if s['name'] == '.text'), None)
+    if text is None:
+        raise ValueError('No .text section')
     raw = data[text['offset']:text['offset']+text['size']]
     ordered = sorted(fdes)
     starts = [a for a, b in ordered]
@@ -110,6 +114,9 @@ def gnu(name):
 
 def generate(binary, output):
     identity = manifest_item(ROOT,'artifacts/node/94/hl-node')
+    missing = [field for field in ('size', 'sha256') if field not in identity]
+    if missing:
+        raise ValueError(f"provenance/artifacts.json entry for artifacts/node/94/hl-node is missing {'/'.join(missing)}")
     check(binary,identity)
     data = binary.read_bytes()
     bindings = source_bindings(data)

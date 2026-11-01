@@ -40,22 +40,61 @@ HANDLER_RE = re.compile(
 
 class Elf:
     def __init__(self, data: bytes):
+        if len(data) < 64:
+            raise EvidenceError("truncated ELF header")
         if data[:4] != b"\x7fELF" or data[4] != 2 or data[5] != 1:
             raise EvidenceError("not an ELF64 little-endian file")
         self.data = data
         phoff, shoff = struct.unpack_from("<QQ", data, 0x20)
         phentsize, phnum, shentsize, shnum, shstrndx = struct.unpack_from("<HHHHH", data, 0x36)
+        if phnum and phoff + (phnum - 1) * phentsize + 40 > len(data):
+            raise EvidenceError("program header table extends past end of file")
+        if shnum and shoff + (shnum - 1) * shentsize + 64 > len(data):
+            raise EvidenceError("section header table extends past end of file")
+        if shstrndx >= shnum:
+            raise EvidenceError("section name string table index out of range")
         self.loads = []
         for i in range(phnum):
             p_type, _f, p_off, p_va, _pa, p_filesz = struct.unpack_from("<IIQQQQ", data, phoff + i * phentsize)
             if p_type == 1:
                 self.loads.append((p_va, p_off, p_filesz))
-        raw = [struct.unpack_from("<IIQQQQIIQQ", data, shoff + i * shentsize) for i in range(shnum)]
-        stro = raw[shstrndx][4]
+        secs = [struct.unpack_from("<IIQQQQIIQQ", data, shoff + i * shentsize) for i in range(shnum)]
+        if secs[shstrndx][1] == 8:
+            raise EvidenceError("section name table is NOBITS")
+        stro, strsize = secs[shstrndx][4], secs[shstrndx][5]
+        if stro > len(data) or strsize > len(data) - stro:
+            raise EvidenceError("section name table extends past end of file")
+        table = data[stro:stro + strsize]
+        self.sections = {}
+        for sec in secs:
+            if sec[0] >= len(table):
+                raise EvidenceError("section name offset outside .shstrtab")
+            end = table.find(b"\0", sec[0])
+            if end < 0:
+                raise EvidenceError("unterminated section name")
+            try:
+                name = table[sec[0]:end].decode()
+            except UnicodeDecodeError as exc:
+                raise EvidenceError("section name is not valid UTF-8") from exc
+            self.sections[name] = (sec[3], sec[4], sec[5])
+
+    def section(self, name):
+        try:
+            return self.sections[name]
+        except KeyError:
+            raise EvidenceError(f"missing section {name}") from None
+        stro, strsize = raw[shstrndx][4], raw[shstrndx][5]
+        if stro > len(data) or strsize > len(data) - stro:
+            raise EvidenceError("section name table extends past end of file")
+        table = data[stro:stro + strsize]
         self.sections = {}
         for s in raw:
-            end = data.index(b"\0", stro + s[0])
-            self.sections[data[stro + s[0]:end].decode()] = (s[3], s[4], s[5])
+            if s[0] >= len(table):
+                raise EvidenceError("section name offset outside .shstrtab")
+            end = table.find(b"\0", s[0])
+            if end < 0:
+                raise EvidenceError("unterminated section name")
+            self.sections[table[s[0]:end].decode()] = (s[3], s[4], s[5])
 
     def off(self, va: int) -> int:
         for v, o, n in self.loads:
@@ -64,38 +103,62 @@ class Elf:
         raise EvidenceError(f"unmapped va {va:#x}")
 
     def read(self, va: int, n: int) -> bytes:
-        o = self.off(va)
-        return self.data[o:o + n]
+        for v, o, sz in self.loads:
+            if v <= va < v + sz:
+                if va + n > v + sz:
+                    raise EvidenceError(
+                        f"read of {n} bytes at {va:#x} crosses segment end {v + sz:#x}")
+                if o + va - v + n > len(self.data):
+                    raise EvidenceError(f"read at {va:#x} runs past end of file")
+                return self.data[o + va - v:o + va - v + n]
+        raise EvidenceError(f"unmapped va {va:#x}")
 
 
 def fde_index(elf: Elf):
-    va, off, size = elf.sections[".eh_frame_hdr"]
+    """Return ordered, non-overlapping FDE starts and ends from the header table."""
+    addr, off, size = elf.section(".eh_frame_hdr")
     d = elf.data
-    if d[off] != 1 or tuple(d[off + 1:off + 4]) != (0x1B, 0x03, 0x3B):
+    if size < 12 or off + 12 > len(d):
+        raise EvidenceError("truncated .eh_frame_hdr header")
+    ver, ep_enc, cnt_enc, tab_enc = d[off:off + 4]
+    if (ver, ep_enc, cnt_enc, tab_enc) != (1, 0x1B, 0x03, 0x3B):
         raise EvidenceError("unexpected .eh_frame_hdr encodings")
     count = struct.unpack_from("<I", d, off + 8)[0]
+    if 12 + 8 * count > size or off + 12 + 8 * count > len(d):
+        raise EvidenceError(".eh_frame_hdr table truncated")
     starts, ends = [], []
-    prev = None
     for i in range(count):
         pc_rel, fde_rel = struct.unpack_from("<ii", d, off + 12 + 8 * i)
-        start, fde_va = va + pc_rel, va + fde_rel
+        pc, fde_va = addr + pc_rel, addr + fde_rel
         fo = elf.off(fde_va)
+        if fo is None:
+            raise EvidenceError(f"FDE {fde_va:#x} not file-backed")
+        if fo + 16 > len(d):
+            raise EvidenceError(f"truncated FDE body at {fde_va:#x}")
         pc_begin = fde_va + 8 + struct.unpack_from("<i", d, fo + 8)[0]
         pc_range = struct.unpack_from("<I", d, fo + 12)[0]
-        if pc_begin != start:
-            raise EvidenceError(f"FDE pc_begin mismatch at {start:#x}")
-        if prev is not None and start <= prev:
-            raise EvidenceError(".eh_frame_hdr table not strictly sorted")
-        prev = start
-        starts.append(start)
-        ends.append(start + pc_range)
+        if pc_begin != pc:
+            raise EvidenceError(f"FDE pc_begin mismatch at {pc:#x}")
+        starts.append(pc)
+        ends.append(pc + pc_range)
+    if any(a >= b for a, b in zip(starts, starts[1:])):
+        raise EvidenceError(".eh_frame_hdr table not strictly sorted")
+    for i in range(len(starts) - 1):
+        if starts[i] == starts[i + 1]:
+            raise EvidenceError(f"duplicate FDE start {starts[i]:#x}")
+        if ends[i] > starts[i + 1]:
+            raise EvidenceError(
+                f"FDE at {starts[i]:#x} ends at {ends[i]:#x}, "
+                f"overlapping next start {starts[i + 1]:#x}")
     return starts, ends
 
 
 def relative_relocs(elf: Elf) -> dict:
-    _va, off, size = elf.sections[".rela.dyn"]
+    _va, off, size = elf.section(".rela.dyn")
     out = {}
     for i in range(0, size, 24):
+        if off + i + 24 > len(elf.data):
+            raise EvidenceError(".rela.dyn truncated")
         r_off, r_info, r_add = struct.unpack_from("<QQq", elf.data, off + i)
         if r_info & 0xFFFFFFFF == R_X86_64_RELATIVE:
             out[r_off] = r_add
@@ -134,18 +197,24 @@ class Insn:
 
 def _modrm(code, i):
     """Return (length of ModRM+SIB+displacement, RIP displacement or None, reg field)."""
+    if i >= len(code):
+        raise EvidenceError("truncated instruction: ModRM byte past end of buffer")
     m = code[i]
     mod, reg, rm = m >> 6, (m >> 3) & 7, m & 7
     n = 1
     rip = None
     if mod != 3 and rm == 4:
+        if i + 1 >= len(code):
+            raise EvidenceError("truncated instruction: SIB byte past end of buffer")
         sib = code[i + 1]
         n += 1
         if mod == 0 and sib & 7 == 5:
             n += 4
     if mod == 0 and rm == 5:
-        rip = struct.unpack_from("<i", code, i + 1)[0]
         n += 4
+        if i + n > len(code):
+            raise EvidenceError("truncated instruction: displacement past end of buffer")
+        rip = struct.unpack_from("<i", code, i + 1)[0]
     elif mod == 1:
         n += 1
     elif mod == 2:
@@ -159,22 +228,32 @@ def decode_one(code, i, va):
     Anything outside the subset raises EvidenceError instead of being guessed.
     """
     start = i
+
+    def need(k):
+        if k > len(code):
+            raise EvidenceError(f"truncated instruction at {va:#x}")
+
+    need(i + 1)
     opsize16 = False
     if code[i] == 0x66:
         opsize16 = True
         i += 1
+        need(i + 1)
     rex_w = False
     if 0x40 <= code[i] <= 0x4F:
         rex_w = bool(code[i] & 8)
         i += 1
+        need(i + 1)
     op = code[i]
     i += 1
     if op == 0x0F:
+        need(i + 1)
         op2 = code[i]
         i += 1
         if op2 in (0x10, 0x11, 0x28, 0x29, 0xB6, 0xB7):
             i += _modrm(code, i)[0]
         elif 0x80 <= op2 <= 0x8F:
+            need(i + 4)
             rel = struct.unpack_from("<i", code, i)[0]
             i += 4
             return Insn(va, i - start, "jcc", va + i - start + rel)
@@ -193,10 +272,12 @@ def decode_one(code, i, va):
     elif 0xB8 <= op <= 0xBF:
         i += 8 if rex_w else 4
     elif op in (0xE8, 0xE9):
+        need(i + 4)
         rel = struct.unpack_from("<i", code, i)[0]
         i += 4
         return Insn(va, i - start, "call" if op == 0xE8 else "jmp", va + i - start + rel)
     elif op == 0xEB or 0x70 <= op <= 0x7F:
+        need(i + 1)
         rel = struct.unpack_from("<b", code, i)[0]
         i += 1
         return Insn(va, i - start, "jmp" if op == 0xEB else "jcc", va + i - start + rel)
@@ -208,6 +289,7 @@ def decode_one(code, i, va):
         raise EvidenceError(f"unsupported ff /{reg} at {va:#x}")
     else:
         raise EvidenceError(f"unsupported opcode {op:02x} at {va:#x}")
+    need(i)
     return Insn(va, i - start)
 
 
@@ -255,7 +337,7 @@ def classify(claim, first_call, branch_calls, starts):
         return "claimed_not_fde_start"
     if first_call is not None and first_call["target"] == ea:
         return "real_first_call"
-    if first_call is None and ea in branch_calls:
+    if ea in branch_calls:
         return "real_first_call_on_branch"
     return "fde_start_not_called_from_arm"
 
