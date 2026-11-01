@@ -11,7 +11,7 @@ ROOT = HERE.parents[2]
 BIN_SHA256 = "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
 STATE_ROOTS_SHA256 = "1ac3af0abe3b12e44819f117d3288a2e7e7ae336934cb6927d566142bc8387a8"
 SCHEMA_SHA256 = "ae0c6815914486fefb7092a697f3748c39caaad6131a6f93de339814c45429e4"
-HASHERS_SHA256 = "6411981c8f0953dc152e432a3c9abeb8512f703599e36df675d39dfb9f6a77f0"
+HASHERS_SHA256 = "1e7fbe921766315fb37f5c72227b24ba8ceb07822ad950de570b4553480855fa"
 
 
 def fail(msg):
@@ -31,11 +31,29 @@ def load(name):
     return m
 
 
+PACKET_FILES = frozenset({
+    "README.md", "fixture-schema.json", "hashers-objdump-excerpts.txt",
+    "hashers.json", "objdump-excerpts.txt", "state-roots.json", "verify.py",
+})
+
+
 def main():
+    listed = set()
     for line in (HERE / "MANIFEST.sha256").read_text().splitlines():
         digest, name = line.split("  ", 1)
         got = hashlib.sha256((HERE / name).read_bytes()).hexdigest()
         check(got == digest, f"manifest mismatch for {name}")
+        listed.add(name)
+    # The manifest pins every packet file except itself. Comparing it only
+    # against the directory is not enough: a file deleted together with
+    # its manifest row leaves the two sets equal. So the listed set must
+    # also equal the packet's pinned file set, and the directory must not
+    # hold unlisted files.
+    check(listed == PACKET_FILES, f"manifest file set differs from the pinned packet files: "
+          f"missing rows {sorted(PACKET_FILES - listed)}, unexpected rows {sorted(listed - PACKET_FILES)}")
+    present = {p.name for p in HERE.iterdir() if p.is_file()} - {"MANIFEST.sha256"}
+    check(listed == present, f"manifest file set differs from packet contents: "
+          f"unlisted {sorted(present - listed)}, missing {sorted(listed - present)}")
     binary = (ROOT / "artifacts/node/94/hl-node").read_bytes()
     check(hashlib.sha256(binary).hexdigest() == BIN_SHA256, "binary sha256")
     sr = load("state_roots")
@@ -65,7 +83,9 @@ def main():
     htext = sh.render(h)
     check(hashlib.sha256(htext).hexdigest() == HASHERS_SHA256, "regenerated hashers.json hash")
     check((HERE / "hashers.json").read_bytes() == htext, "hashers.json differs from tool output")
-    check(h["hasher_count"] == 30, "hasher_count")
+    check(h["hasher_count"] == 29, "hasher_count")
+    check(0x506CB20 not in [x["function"] for x in h["hashers"]],
+          "0x506cb20 (mov [rdx+0x80],0 byte match, not a Keccak RC) must not be a hasher")
     check(h["hasher_with_first_party_location_count"] == 0, "hasher first-party count")
     check(h["edge_counts"] == {"rel32_edges": 495523, "slot_edges": 345767, "vtable_edges": 21027}, "edge counts")
     check(h["first_party_direct_hasher_caller_count"] == 108, "first-party hasher callers")

@@ -21,9 +21,15 @@ No component ownership or function equivalence follows from this index.
 extents, checks them against that index and lists uncovered `.text` gaps. An
 FDE extent is still not a validated function boundary; see
 [RE-001 FDE extents](../research/work-items/RE-001-fde-extents/README.md).
+The separate `python3 tools/entrypoint_candidates.py --release 94` command
+resolves entrypoint-array membership and classifies raw `E8` byte candidates.
+These are not decoded calls or reachability evidence; see the
+[entrypoint census](../research/work-items/RE-001-entrypoints/README.md).
 
 `ghidra_plan.py` prints a static import command for a fresh, digest-named
 project under `work/ghidra/`. Set `GHIDRA_HOME` when Ghidra is not discovered.
+On Windows it prints a PowerShell plan for `analyzeHeadless.bat`; on POSIX
+hosts it retains the shell plan for `analyzeHeadless`.
 Run the printed command when ready for the substantial import; save the tool
 version, options, log and completeness of analysis. The 1,800-second per-file
 analysis budget may produce partial results. Reuse that project for later

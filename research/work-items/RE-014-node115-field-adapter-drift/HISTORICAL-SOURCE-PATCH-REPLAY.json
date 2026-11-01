@@ -1,0 +1,47 @@
+{
+  "current_producer_edited": false,
+  "only_owned_temporary_file_changed": true,
+  "schema": "historical-source-diff-byte-replay-v1",
+  "steps": [
+    {
+      "argv": [
+        "git",
+        "apply",
+        "--reverse",
+        "/tmp/hl-node115-field-drift-20261101/checkout/research/work-items/RE-014-node115-field-adapter-drift/SLOT-FOOTPRINT-CORRECTION.patch"
+      ],
+      "exit": 0,
+      "expected_sha256": "a4106b0baaaf2576771fa64bc506f4be93b832682192a84c68e559472d393fdd",
+      "result_sha256": "a4106b0baaaf2576771fa64bc506f4be93b832682192a84c68e559472d393fdd",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "git",
+        "apply",
+        "--reverse",
+        "/tmp/hl-node115-field-drift-20261101/checkout/research/work-items/RE-014-node115-field-adapter-drift/FDE-LENGTH-CORRECTION.patch"
+      ],
+      "exit": 0,
+      "expected_sha256": "923f3387dc13dbe04c1bb7607a3471d6463b3f536e88b029a52091b6aeb7007e",
+      "result_sha256": "923f3387dc13dbe04c1bb7607a3471d6463b3f536e88b029a52091b6aeb7007e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "git",
+        "apply",
+        "--reverse",
+        "/tmp/hl-node115-field-drift-20261101/checkout/research/work-items/RE-014-node115-field-adapter-drift/PREPARATION-SOURCE-CORRECTION.patch"
+      ],
+      "exit": 0,
+      "expected_sha256": "e268f6c6828667422a159e82a34a8ddc03904578cbcdb8465d03d2d2ad7050f5",
+      "result_sha256": "e268f6c6828667422a159e82a34a8ddc03904578cbcdb8465d03d2d2ad7050f5",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "target_or_prototype_executed": false
+}

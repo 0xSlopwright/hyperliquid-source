@@ -120,24 +120,51 @@ class EvidenceError(ValueError):
 
 class Elf:
     def __init__(self, data: bytes):
+        if len(data) < 64:
+            raise EvidenceError("truncated ELF header")
         if data[:4] != b"\x7fELF" or data[4] != 2 or data[5] != 1:
             raise EvidenceError("not an ELF64 little-endian file")
         self.data = data
-        phoff, = struct.unpack_from("<Q", data, 0x20)
-        shoff, = struct.unpack_from("<Q", data, 0x28)
+        phoff, shoff = struct.unpack_from("<QQ", data, 0x20)
         phentsize, phnum, shentsize, shnum, shstrndx = struct.unpack_from("<HHHHH", data, 0x36)
+        if phnum and phoff + (phnum - 1) * phentsize + 56 > len(data):
+            raise EvidenceError("program header table extends past end of file")
+        if shnum and shoff + (shnum - 1) * shentsize + 64 > len(data):
+            raise EvidenceError("section header table extends past end of file")
+        if shstrndx >= shnum:
+            raise EvidenceError("section name string table index out of range")
         self.loads = []
         for i in range(phnum):
-            p_type, _f, p_off, p_va, _pa, p_filesz, _m, _a = struct.unpack_from(
-                "<IIQQQQQQ", data, phoff + i * phentsize)
+            p_type, _f, p_off, p_va, _pa, p_filesz, _m, _a = struct.unpack_from("<IIQQQQQQ", data, phoff + i * phentsize)
             if p_type == 1:
                 self.loads.append((p_va, p_off, p_filesz))
         secs = [struct.unpack_from("<IIQQQQIIQQ", data, shoff + i * shentsize) for i in range(shnum)]
-        stro = secs[shstrndx][4]
+        if secs[shstrndx][1] == 8:
+            raise EvidenceError("section name table is NOBITS")
+        stro, strsize = secs[shstrndx][4], secs[shstrndx][5]
+        if stro > len(data) or strsize > len(data) - stro:
+            raise EvidenceError("section name table extends past end of file")
+        table = data[stro:stro + strsize]
         self.sections = {}
-        for s in secs:
-            name = data[stro + s[0]:data.index(b"\0", stro + s[0])].decode()
-            self.sections[name] = (s[3], s[4], s[5])
+        for sec in secs:
+            if sec[0] >= len(table):
+                raise EvidenceError("section name offset outside .shstrtab")
+            end = table.find(b"\0", sec[0])
+            if end < 0:
+                raise EvidenceError("unterminated section name")
+            try:
+                name = table[sec[0]:end].decode()
+            except UnicodeDecodeError as exc:
+                raise EvidenceError("section name is not valid UTF-8") from exc
+            if name in self.sections:
+                raise EvidenceError(f"Duplicate section: {name}")
+            self.sections[name] = (sec[3], sec[4], sec[5])
+
+    def section(self, name):
+        try:
+            return self.sections[name]
+        except KeyError:
+            raise EvidenceError(f"missing section {name}") from None
 
     def off(self, va):
         for v, o, s in self.loads:
@@ -146,32 +173,53 @@ class Elf:
         return None
 
     def read(self, va, n):
-        o = self.off(va)
-        if o is None:
-            raise EvidenceError(f"{va:#x} not file-backed")
-        return self.data[o:o + n]
+        for v, o, sz in self.loads:
+            if v <= va < v + sz:
+                if va + n > v + sz:
+                    raise EvidenceError(
+                        f"read of {n} bytes at {va:#x} crosses segment end {v + sz:#x}")
+                if o + va - v + n > len(self.data):
+                    raise EvidenceError(f"read at {va:#x} runs past end of file")
+                return self.data[o + va - v:o + va - v + n]
+        raise EvidenceError(f"{va:#x} not file-backed")
 
 
 def fde_index(elf: Elf):
-    addr, off, size = elf.sections[".eh_frame_hdr"]
+    """Return ordered, non-overlapping FDE starts and ends from the header table."""
+    addr, off, size = elf.section(".eh_frame_hdr")
     d = elf.data
+    if size < 12 or off + 12 > len(d):
+        raise EvidenceError("truncated .eh_frame_hdr header")
     ver, ep_enc, cnt_enc, tab_enc = d[off:off + 4]
     if (ver, ep_enc, cnt_enc, tab_enc) != (1, 0x1B, 0x03, 0x3B):
         raise EvidenceError("unexpected .eh_frame_hdr encodings")
     count = struct.unpack_from("<I", d, off + 8)[0]
+    if 12 + 8 * count > size or off + 12 + 8 * count > len(d):
+        raise EvidenceError(".eh_frame_hdr table truncated")
     starts, ends = [], []
     for i in range(count):
-        pos = off + 12 + 8 * i
-        pc = addr + struct.unpack_from("<i", d, pos)[0]
-        fde_va = addr + struct.unpack_from("<i", d, pos + 4)[0]
+        pc_rel, fde_rel = struct.unpack_from("<ii", d, off + 12 + 8 * i)
+        pc, fde_va = addr + pc_rel, addr + fde_rel
         fo = elf.off(fde_va)
+        if fo is None:
+            raise EvidenceError(f"FDE {fde_va:#x} not file-backed")
+        if fo + 16 > len(d):
+            raise EvidenceError(f"truncated FDE body at {fde_va:#x}")
         pc_begin = fde_va + 8 + struct.unpack_from("<i", d, fo + 8)[0]
+        pc_range = struct.unpack_from("<I", d, fo + 12)[0]
         if pc_begin != pc:
-            raise EvidenceError(f"FDE pc_begin mismatch at {fde_va:#x}")
+            raise EvidenceError(f"FDE pc_begin mismatch at {pc:#x}")
         starts.append(pc)
-        ends.append(pc + struct.unpack_from("<I", d, fo + 12)[0])
+        ends.append(pc + pc_range)
     if starts != sorted(starts):
         raise EvidenceError(".eh_frame_hdr table not sorted")
+    for i in range(len(starts) - 1):
+        if starts[i] == starts[i + 1]:
+            raise EvidenceError(f"duplicate FDE start {starts[i]:#x}")
+        if ends[i] > starts[i + 1]:
+            raise EvidenceError(
+                f"FDE at {starts[i]:#x} ends at {ends[i]:#x}, "
+                f"overlapping next start {starts[i + 1]:#x}")
     return starts, ends
 
 
@@ -183,33 +231,48 @@ def containing(starts, ends, va):
 
 
 def relative_relocs(elf: Elf) -> dict:
-    _a, off, size = elf.sections[".rela.dyn"]
+    _a, off, size = elf.section(".rela.dyn")
     out = {}
     for o in range(off, off + size, 24):
+        if o + 24 > len(elf.data):
+            raise EvidenceError(".rela.dyn truncated")
         r_off, info, add = struct.unpack_from("<QQq", elf.data, o)
         if info & 0xFFFFFFFF == 8:
+            if r_off in out:
+                raise EvidenceError(f"duplicate RELATIVE relocation slot {r_off:#x}")
             out[r_off] = add
     return out
 
 
 def first_party_locations(elf, relocs):
-    ro_va, _o, ro_size = elf.sections[".rodata"]
-    drr_va, _o2, drr_size = elf.sections[".data.rel.ro"]
+    ro_va, _o, ro_size = elf.section(".rodata")
+    drr_va, _o2, drr_size = elf.section(".data.rel.ro")
     out = {}
     for slot, a in relocs.items():
         if not (drr_va <= slot < drr_va + drr_size and ro_va <= a < ro_va + ro_size):
             continue
-        ln, line, col = struct.unpack_from("<QII", elf.read(slot + 8, 16))
+        if slot + 24 > drr_va + drr_size:
+            raise EvidenceError("location record leaves .data.rel.ro")
+        record = elf.read(slot + 8, 16)
+        if len(record) < 16:
+            raise EvidenceError("truncated location record")
+        ln, line, col = struct.unpack_from("<QII", record)
         if not 0 < ln < 256 or line == 0 or col == 0:
             continue
-        s = elf.read(a, ln)
-        if s.startswith(FIRST_PARTY) and s.endswith(b".rs") and b"\0" not in s:
-            out[slot] = (s[len(FIRST_PARTY):].decode(), line, col)
+        if a + ln > ro_va + ro_size:
+            raise EvidenceError("location path leaves .rodata")
+        path = elf.read(a, ln)
+        if path.startswith(FIRST_PARTY) and path.endswith(b".rs") and b"\0" not in path:
+            try:
+                name = path[len(FIRST_PARTY):].decode()
+            except UnicodeDecodeError as exc:
+                raise EvidenceError("location name is not valid UTF-8") from exc
+            out[slot] = (name, line, col)
     return out
 
 
 def lea_targets(elf):
-    t_va, t_off, t_size = elf.sections[".text"]
+    t_va, t_off, t_size = elf.section(".text")
     text = elf.data[t_off:t_off + t_size]
     out = {}
     for m in LEA_RE.finditer(text):
@@ -222,7 +285,7 @@ def lea_targets(elf):
 
 
 def literal_anchors(elf, kind, lit, leas, relocs):
-    ro_va, ro_off, ro_size = elf.sections[".rodata"]
+    ro_va, ro_off, ro_size = elf.section(".rodata")
     ro = elf.data[ro_off:ro_off + ro_size]
     rel_targets = set(relocs.values())
     out = []
@@ -251,7 +314,7 @@ def is_fde_start(starts, va):
 
 def verifier_edges(elf, starts, ends, relocs, verifiers):
     start_set = set(starts)
-    t_va, t_off, t_size = elf.sections[".text"]
+    t_va, t_off, t_size = elf.section(".text")
     text = elf.data[t_off:t_off + t_size]
     out = {}
     for name, f in verifiers.items():
@@ -341,7 +404,7 @@ def build(data: bytes, ref_root: Path = ROOT / REF_DIR,
     relocs = relative_relocs(elf)
     locs = first_party_locations(elf, relocs)
     leas = lea_targets(elf)
-    t_va, _o, t_size = elf.sections[".text"]
+    t_va, _o, t_size = elf.section(".text")
 
     def owner(site):
         c = containing(starts, ends, site)
@@ -507,7 +570,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     try:
         r = build(a.binary.read_bytes())
-    except EvidenceError as e:
+    except (EvidenceError, OSError) as e:
         print(f"consensus_wire: {e}", file=sys.stderr)
         return 2
     text = render(r)

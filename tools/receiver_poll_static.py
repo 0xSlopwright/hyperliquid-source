@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Authenticate and export node #94 receiver poll/terminal-path static evidence."""
 import argparse
+import sys
 import hashlib
 import json
 from pathlib import Path
 import re
 import struct
 import subprocess
-from artifacts import ROOT, check
+from artifacts import ROOT, check, manifest_item
 from elf_index import sections
 
 RANGES = {
@@ -85,6 +86,8 @@ def relocations(data):
     for section_index, section in enumerate(section_rows):
         if section['type'] != 4:
             continue
+        if section['size'] % 24:
+            raise ValueError('Truncated relocation section')
         for offset in range(section['offset'], section['offset'] + section['size'], 24):
             slot, info, addend = struct.unpack_from('<QQq', data, offset)
             if slot in RELATIVE:
@@ -95,16 +98,32 @@ def relocations(data):
                 # Resolve this actual linked symbol table entry; do not infer exit
                 # from an address annotation or a reference source function name.
                 symbol_index = struct.unpack_from('<I', data, shoff + section_index * shsize + 40)[0]
+                if symbol_index >= len(section_rows):
+                    raise ValueError(f'Receiver symbol table index out of range: {symbol_index}')
                 symbol_section = section_rows[symbol_index]
                 string_index = struct.unpack_from('<I', data, shoff + symbol_index * shsize + 40)[0]
+                if string_index >= len(section_rows):
+                    raise ValueError(f'Receiver string table index out of range: {string_index}')
                 string_section = section_rows[string_index]
                 entry_size = struct.unpack_from('<Q', data, shoff + symbol_index * shsize + 56)[0]
                 if symbol_section['type'] != 11 or entry_size != 24:
                     raise ValueError('Unexpected dynamic symbol table')
                 symbol = symbol_section['offset'] + (info >> 32) * entry_size
+                if symbol + 4 > len(data):
+                    raise ValueError('Receiver symbol entry outside file')
+                if symbol + entry_size > symbol_section['offset'] + symbol_section['size']:
+                    raise ValueError('Receiver dynamic symbol entry outside symbol table')
                 name_offset = struct.unpack_from('<I', data, symbol)[0]
-                start = string_section['offset'] + name_offset
-                name = data[start:data.index(b'\0', start)].decode('ascii')
+                if name_offset >= string_section['size']:
+                    raise ValueError('Receiver dynamic symbol name offset outside string table')
+                string_table = data[string_section['offset']:string_section['offset'] + string_section['size']]
+                end = string_table.find(b'\0', name_offset)
+                if end < 0:
+                    raise ValueError('Receiver dynamic symbol name not terminated inside string table')
+                try:
+                    name = string_table[name_offset:end].decode('ascii')
+                except UnicodeDecodeError:
+                    raise ValueError('Receiver dynamic symbol name is not ASCII')
                 if info & 0xFFFFFFFF != 6 or name != 'exit' or addend != 0:
                     raise ValueError('Exit import binding changed')
                 exit_symbol = True
@@ -114,39 +133,47 @@ def relocations(data):
     return [rows[slot] for slot in sorted(rows)]
 
 def generate(binary, output):
-    identity = next(item for item in json.loads((ROOT / 'provenance/artifacts.json').read_text())['files']
-                    if item['path'] == 'artifacts/node/94/hl-node')
+    identity = manifest_item(ROOT, 'artifacts/node/94/hl-node')
+    missing = [field for field in ('size', 'sha256') if field not in identity]
+    if missing:
+        raise ValueError(f"provenance/artifacts.json entry for artifacts/node/94/hl-node is missing {'/'.join(missing)}")
     check(binary, identity)
     data = binary.read_bytes()
     instruction_controls(data)
     jump_tables, relocation_rows = tables(data), relocations(data)
-    frames = subprocess.check_output(['readelf', '-wf', str(binary)], text=True)
-    extents = [(int(a, 16), int(b, 16)) for a, b in
-               re.findall(r'FDE[^\n]*pc=([0-9a-f]+)\.\.([0-9a-f]+)', frames)]
     output.mkdir(parents=True, exist_ok=True)
     ranges = {}
-    for name, pair in RANGES.items():
-        if extents.count(pair) != 1:
-            raise ValueError(f'Expected one exact receiver FDE: {pair}')
-        begin, end = pair
-        offset, body = read_va(data, begin, end - begin)
-        ranges[name] = {'start_va': hex(begin), 'end_va': hex(end), 'file_offset': hex(offset),
-                        'bytes': len(body), 'sha256': hashlib.sha256(body).hexdigest()}
-        result = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
-                                          f'--stop-address={end:#x}', str(binary)], text=True)
-        (output / (name + '.objdump.txt')).write_text(result.replace(str(binary), '<authenticated-node94>'))
-    (output / 'frames.txt').write_text('\n'.join(line for line in frames.splitlines()
-        if 'FDE' in line and any(f'pc={a:016x}..{b:016x}' in line for a, b in RANGES.values())) + '\n')
-    raw_rela = subprocess.check_output(['readelf', '-rW', str(binary)], text=True)
-    slots = {*RELATIVE, 0x5777378}
-    (output / 'relocations.txt').write_text('\n'.join(line for line in raw_rela.splitlines()
-        if re.match(r'^[0-9a-f]+\s', line) and int(line.split()[0], 16) in slots) + '\n')
+    # Bind external decoder input to the same bytes using a private snapshot.
+    import tempfile
+    with tempfile.TemporaryDirectory() as temporary:
+        snapshot = Path(temporary) / 'node94.elf'
+        snapshot.write_bytes(data)
+        check(snapshot, identity)  # Authenticate the exact bytes the decoders reopen.
+        frames = subprocess.check_output(['readelf', '-wf', str(snapshot)], text=True, encoding='utf-8')
+        extents = [(int(a, 16), int(b, 16)) for a, b in
+                   re.findall(r'FDE[^\n]*pc=([0-9a-f]+)\.\.([0-9a-f]+)', frames)]
+        for name, pair in RANGES.items():
+            if extents.count(pair) != 1:
+                raise ValueError(f'Expected one exact receiver FDE: {pair}')
+            begin, end = pair
+            offset, body = read_va(data, begin, end - begin)
+            ranges[name] = {'start_va': hex(begin), 'end_va': hex(end), 'file_offset': hex(offset),
+                            'bytes': len(body), 'sha256': hashlib.sha256(body).hexdigest()}
+            result = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
+                                              f'--stop-address={end:#x}', str(snapshot)], text=True, encoding='utf-8')
+            (output / (name + '.objdump.txt')).write_text(result.replace(str(snapshot), '<authenticated-node94>'), encoding='utf-8', newline='\n')
+        (output / 'frames.txt').write_text('\n'.join(line for line in frames.splitlines()
+            if 'FDE' in line and any(f'pc={a:016x}..{b:016x}' in line for a, b in RANGES.values())) + '\n', encoding='utf-8', newline='\n')
+        raw_rela = subprocess.check_output(['readelf', '-rW', str(snapshot)], text=True, encoding='utf-8')
+        slots = {*RELATIVE, 0x5777378}
+        (output / 'relocations.txt').write_text('\n'.join(line for line in raw_rela.splitlines()
+            if re.match(r'^[0-9a-f]+\s', line) and int(line.split()[0], 16) in slots) + '\n', encoding='utf-8', newline='\n')
     record = {'target_sha256': identity['sha256'], 'target_bytes': len(data), 'ranges': ranges,
               'jump_tables': jump_tables, 'relocations': relocation_rows,
               'instruction_controls': {hex(a): b for a, b in CONTROLS.items()},
               'fde_records_observed': len(extents), 'captured_binary_executed': False,
               'limits': 'Numeric poll states and terminal call path only. No full channel/API, scheduler, wait duration, runtime reachability, floating conversion equivalence, ownership or component gate claim.'}
-    (output / 'records.json').write_text(json.dumps(record, indent=2) + '\n')
+    (output / 'records.json').write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8', newline='\n')
     return record
 
 if __name__ == '__main__':
@@ -154,4 +181,8 @@ if __name__ == '__main__':
     parser.add_argument('--binary', type=Path, default=ROOT / 'artifacts/node/94/hl-node')
     parser.add_argument('--output', type=Path, default=ROOT / 'work/receiver-poll-94')
     args = parser.parse_args()
-    print(json.dumps(generate(args.binary.resolve(), args.output), indent=2))
+    try:
+        print(json.dumps(generate(args.binary.resolve(), args.output), indent=2))
+    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+        print(f'receiver_poll_static: {error}', file=sys.stderr)
+        raise SystemExit(1)

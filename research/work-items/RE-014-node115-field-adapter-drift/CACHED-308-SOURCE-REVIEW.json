@@ -1,0 +1,39 @@
+{
+  "actions_this_review": "File/diff/hash/log reading only; no importedcode/target/native/compiler/evaluator/tests/Git/public actions.",
+  "actual_oldbase_test_results": [
+    {
+      "actual_receipt_sha256": "87a791914e1cd1f86cd619a141f037906097c4c6ce3af5604497a4bc5a942101",
+      "mode": "normal",
+      "skips": 0,
+      "tests": 10
+    },
+    {
+      "actual_receipt_sha256": "41848d4080cc84dc5c4bb3b98de57f9236ef811493dc1dd8773fcdd78acab6a4",
+      "mode": "optimized",
+      "skips": 0,
+      "tests": 10
+    }
+  ],
+  "full_make_test_CI_publication": "HOLD/NOT_RUN",
+  "old_a410_independent_CLI_preserved": {
+    "not_restamped_as_be144": true,
+    "observed_records_sha256": "8835fe993817868632119b31d84b17145fd712c8b57948a80628b78774bf7ca1",
+    "path": "/tmp/hl-node115-peer-20261101/final-static/STATIC-REPRODUCTION.json",
+    "sha256": "8ceebc9002b77a33c7b9b6cdc9943007ab9bf67157af516f7fbe7d9e37ac6371"
+  },
+  "old_base": "308e5127990217a9d6196992665da6ca1afd4b82",
+  "pending": "Root546canonicalbase/import/ownership review; finalsource/test/packet freeze; authorized one justified finalpostfixstaticCLI on intendedadmittedbase.",
+  "retained_before_proofs": {
+    "/tmp/hl-node115-field-drift-20261101/pre-fde-length-bound/BEFORE-ACCEPTANCE.json": "e62aba7c50f58dc53140ec1be62f92d98a8edade971d8a067b65bdc13f50ab2e",
+    "/tmp/hl-node115-field-drift-20261101/pre-slot-footprint-bound/BEFORE-ACCEPTANCE.json": "b11201e3ddc8c1590860f898eae5e4b45946259809bc7dc298b7cb6684e9402e"
+  },
+  "reviewed_FDE_fix": "Previously accepted actual length4 records preserved; current supported zR header includes17usedbytes inside declared>=13payload andzeroaug byte. Not all-CFI/unwind qualification.",
+  "reviewed_footprint_fix": "Exactly maps every used8B slot to one agreeing file-backed section/PT_LOAD before addend mapping, recording actual rawbytes/fileoffset/section. No .got-only/privateABI/newcallee semantics. Validmapped opaque other2 addends remain accepted unqualified.",
+  "source_diff_from_a410": "--- \n\n+++ \n\n@@ -314,8 +314,11 @@\n\n             dynamic[row['offset']].append(row)\n     for slot, records in dynamic.items():\n         need(len(records) == 1 and records[0]['type'] == 8 and records[0]['symbol_index'] == 0,\n              'target pointer lacks one symbol-free RELATIVE record')\n+        raw_slot, slot_offset, slot_section = image.virtual(slot, 8)\n+        records[0].update(slot_file_offset=slot_offset, slot_section=slot_section['name'],\n+                          raw_slot_hex=raw_slot.hex())\n         image.virtual(records[0]['addend'], 1, code=True)\n     got = dynamic[got_slots[0]][0]\n     need(got['addend'] == ADAPTER_START, 'selected GOT target is not the observed adapter')\n     bindings = []",
+  "source_sha256": "be144319213e86575535976eb9649b963bc720aaa1f47a182c66300db5f7b8b9",
+  "status": "CACHED_OLD308_SOURCE_AND_CONTROL_PEER_PASS; NEW546_BASE_AND_FINAL_POSTFIX_STATICCLI_NOT_QUALIFIED",
+  "test_handoff_path": "/tmp/hl-node115-drift-independent-20261101/SLOT-BOUND-FINAL-TEST-HANDOFF.json",
+  "test_handoff_sha256": "4e81012d99d74005a8e170a0cea0b396706a226c3ca59154d1e70bd660b796c8",
+  "test_sha256": "ae145e3fb0bc7863efd7c1486d06340fbdfcf5fd85c17b293605b4a41b5e4c29",
+  "upstream_current_pending_admission": "546081f3"
+}

@@ -33,6 +33,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
+from artifacts import load_manifest
 from elf_index import sections, unwind_index  # noqa: E402
 
 REFERENCE = ROOT / 'references/can1357-hl/global_constants/aws_name.rs'
@@ -48,7 +49,13 @@ class ScanError(ValueError):
 def artifact(release):
     path = ROOT / f'artifacts/node/{release}/hl-node'
     data = path.read_bytes()
-    record = json.loads((ROOT / 'provenance/artifacts.json').read_text())
+    try:
+        record = load_manifest(ROOT)
+    except ValueError as exc:
+        raise ScanError(f'invalid provenance record: {exc}') from exc
+    for entry in record['files']:
+        if not isinstance(entry, dict) or 'path' not in entry or 'sha256' not in entry:
+            raise ScanError('invalid provenance record')
     expected = next((f['sha256'] for f in record['files']
                      if f['path'] == f'artifacts/node/{release}/hl-node'), None)
     if expected is None:
@@ -78,6 +85,8 @@ def entries_size(data, name):
     """Read sh_entsize for `name` from the raw section table."""
     if data[:6] != b'\x7fELF\x02\x01':
         raise ScanError('expected ELF64 little-endian input')
+    if len(data) < 64:
+        raise ScanError('truncated ELF header')
     shoff = struct.unpack_from('<Q', data, 40)[0]
     entsize, count, _ = struct.unpack_from('<HHH', data, 58)
     if entsize < 64 or shoff + entsize * count > len(data):
@@ -102,7 +111,10 @@ def section_name(data, index, entsize, count):
     end = table.find(b'\0', start)
     if end < 0:
         raise ScanError('unterminated section name')
-    return table[start:end].decode('utf-8')
+    try:
+        return table[start:end].decode('utf-8')
+    except UnicodeDecodeError:
+        raise ScanError('section name is not valid UTF-8')
 
 
 def relocations(data):
@@ -110,6 +122,8 @@ def relocations(data):
     sec = section(data, '.rela.dyn')
     if entries_size(data, '.rela.dyn') != 24:
         raise ScanError('unsupported .rela.dyn entsize')
+    if sec['size'] % 24:
+        raise ScanError('truncated .rela.dyn entry')
     out = {}
     for index in range(sec['size'] // 24):
         offset, info, addend = struct.unpack_from('<QQq', data, sec['offset'] + index * 24)
@@ -132,9 +146,11 @@ def expected_names():
 def pool_entry(data, rodata, needle, require_marker=False):
     """Locate `needle` as a `[c0] <len> <text> 00` pool entry in .rodata.
 
-    The 0xc0 byte is an optional alignment marker emitted before a literal; when
-    present it is the byte the code points at. Entries without it are prefixed
-    by the length byte alone. Exactly one candidate must exist.
+    In the compiler-stamped format-template layout, 0xc0 is a default argument
+    placeholder. This matcher includes that preceding token when present,
+    because the selected code sites point there, then locates the literal's
+    length-prefixed bytes. It does not evaluate the placeholder's argument.
+    Exactly one candidate must exist.
     """
     encoded = needle.encode()
     starts = []
@@ -149,6 +165,12 @@ def pool_entry(data, rodata, needle, require_marker=False):
     hits = []
     for offset in starts:
         length = len(encoded)
+        # The length byte and text were found inside .rodata. The terminator is
+        # the next byte and must be in that section too; a NUL in the following
+        # section is not this entry's terminator. Also refuse a short buffer so
+        # the index itself cannot run off the file.
+        if offset + length >= end or offset + length >= len(data):
+            continue
         if data[offset + length] not in (0, POOL_MARKER):
             continue
         if offset - 2 >= rodata['offset'] and data[offset - 2] == POOL_MARKER and data[offset - 1] == length:
@@ -168,7 +190,8 @@ def string_table(data, rodata, relro, names, count=EXPECTED_VARIANTS):
     """Find the longest 16-byte-stride (pointer, length) run into .rodata."""
     relocs = relocations(data)
     hits = {}
-    for offset in range(0, relro['size'] - 16, 8):
+    # A complete 16-byte slot may start exactly at size - 16.
+    for offset in range(0, relro['size'] - 15, 8):
         slot = relro['address'] + offset
         pointer = relocs.get(slot)
         if pointer is None:
@@ -177,6 +200,10 @@ def string_table(data, rodata, relro, names, count=EXPECTED_VARIANTS):
         if not rodata['address'] <= pointer < rodata['address'] + rodata['size']:
             continue
         if not 2 <= length <= 16:
+            continue
+        # The pointer is inside .rodata. Every byte of the declared length has
+        # to be there too; the next section's bytes are not part of this string.
+        if pointer + length > rodata['address'] + rodata['size']:
             continue
         text = data[va_to_offset(rodata, pointer):va_to_offset(rodata, pointer) + length]
         if not text.isascii() or not all(32 < byte < 127 for byte in text):
@@ -205,7 +232,8 @@ def xrefs(data, text, targets):
     """RIP-relative operands whose resolved address is one of `targets`."""
     base = text['address'] - text['offset']
     wanted = {target: [] for target in targets}
-    for offset in range(text['offset'] + 1, text['offset'] + text['size'] - 7):
+    # offset names the opcode after REX; the remaining encoding occupies 6 bytes.
+    for offset in range(text['offset'] + 1, text['offset'] + text['size'] - 5):
         rex, opcode = data[offset - 1], data[offset]
         if rex not in (0x48, 0x49, 0x4C, 0x4D):
             continue
@@ -216,7 +244,7 @@ def xrefs(data, text, targets):
         end = base + offset + 6
         target = end + struct.unpack_from('<i', data, offset + 2)[0]
         if target in wanted:
-            wanted[target].append((base + offset, data[offset - 1:offset + 6].hex()))
+            wanted[target].append((base + offset - 1, data[offset - 1:offset + 6].hex()))
     return wanted
 
 
@@ -258,6 +286,8 @@ def main():
                 raise ScanError(f'table entry {index}: {got!r} != reference {want!r}')
         raise ScanError('table and reference differ in length')
 
+    if 'NvTestnet' not in names:
+        raise ScanError('NvTestnet is not in the reference order')
     default_index = names.index('NvTestnet')
     if default_index != 32:
         raise ScanError('NvTestnet is not discriminant 32 in the reference order')
@@ -358,7 +388,7 @@ def main():
     if args.out:
         args.out.mkdir(parents=True, exist_ok=True)
         for name, content in outputs.items():
-            (args.out / name).write_text(content)
+            (args.out / name).write_bytes(content.encode('utf-8'))
     print(f'#94 {digest}')
     print('seeds: ' + ', '.join(f'{k}={v[1]:#x}' for k, v in seeds.items()))
     print(f'table: {table_va:#x}, {len(table)} entries, default NvTestnet={default_index}')
@@ -368,5 +398,5 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except ScanError as error:
+    except (ScanError, OSError) as error:
         raise SystemExit(f'constants_scan: {error}')

@@ -37,10 +37,10 @@ Retained outputs:
 
 | File | Content | SHA-256 |
 | --- | --- | --- |
-| `constants.json` | machine-readable record | `e904db8f717a905edc933701592e3b22135a162bdd16a9e3e501a9a36e664f8b` |
+| `constants.json` | machine-readable record | `f96c97435f2c1195cc4a05a578725e575950d7cb14a2e191a6d13f2d49cf33db` |
 | `strings.tsv` | 2 seeds + 76 table entries | `5c9a65c930f0645661e96fc7e5a59c51baff38b86d0cd2d424e170f0c44ed65b` |
-| `xrefs.tsv` | 9 reference sites | `06d7d4a091d2652dc79129cfa844a30b0d142634f2d6f8ba5aa639001c78329b` |
-| `context.txt` | raw hex around each cited address | `373eb95d9c81ec837f3e40a5f0374c9783e01afb0e769a93a6a2031aa0f58e0b` |
+| `xrefs.tsv` | 9 reference sites | `d0da5edc9b6f7156b331d32db5d5dc7dceae04777b53fbed65d3d4daed979e8b` |
+| `context.txt` | raw hex around each cited address | `973cafd97be131c644c237ca37f9143580caaf887f04ab66eef8e5ba4ee52093` |
 | `disassembly/select_cham_dir.txt` | window `0x164f810`–`0x164f970` | `9545e0535a5ff09d7bdddc3e135ad0a1eb1babd2ef88e156a55b739ebddcb296` |
 | `disassembly/read_static_config_aws_name.txt` | window `0x164fb80`–`0x164fea0` | `42b6cd41f85042a5d11f6c2069cda7ed042b4b7c8dbc0b78f0d90fd9cb7e1e28` |
 | `disassembly/static_config_load.txt` | window `0x164ff00`–`0x1650060` | `77151280e6f5b7a9952adc6ed3bbaaa723cdb057f45e4fa7c114170d7fa49c40` |
@@ -50,23 +50,33 @@ Coordinates are linked virtual addresses (VA). `.rodata` has VA == file offset
 in this link; `.text` is offset by `0x1000`, so `xrefs.tsv` carries both the
 site VA and its file offset.
 
+The xref site coordinates and generated output hashes were corrected in [RE-015 xref instruction starts](../RE-015-xref-instruction-starts/README.md). The original scanner reported the opcode byte after the REX prefix; the corrected sites point at the first byte of each reported instruction. Target addresses, instruction bytes, table contents and window bounds are unchanged.
+
 ## Evidence
 
-### The seeds are pool entries, not plain literals
+### The seeds are literal suffixes in format templates
 
-Both seeds sit in a compact format-argument pool. An entry is
-`[alignment marker] [length] [bytes] 00`; the marker `0xc0` carries 0–6 padding
-bytes in its low three bits, zero here. The module's own builder at `0x1344760`
-decodes that shape: a byte with bit 7 set is consumed as padding flags, the next
-byte is the piece length. All path entries below use the same marker.
+Both selected anchors have bytes `c0 [length] [literal bytes] 00` in a compact
+format template. Under the compiler-stamped Rust representation, `0xc0` is a
+default argument placeholder, followed here by a length-prefixed literal
+suffix. Placeholder low bits describe optional formatting fields; they are
+not alignment padding. The zero byte ends the template.
+
+The shared formatter at `0x1344760` walks this encoding. Its failure Location
+points into Rust `alloc/src/fmt.rs:650:14`; it is not established as code owned
+by `global_constants`. The scanner's legacy pool/marker field names and all
+recorded coordinates remain unchanged. The placeholder's value and complete
+rendered path remain outside this inventory claim. See the
+[correction evidence](../RE-015-format-prefix-correction-94/README.md) for
+the target binding and pinned Rust layout contract.
 
 | Seed | Text VA | Entry VA | Entry bytes | Xref site | Window |
 | --- | ---: | ---: | --- | ---: | --- |
-| `/static_config` | `0x1ef5f7` | `0x1ef5f5` | `c0 0e` | `0x164fbaf` | `0x164fb80`–`0x164fea0` |
-| `/cham` | `0x1fc0ee` | `0x1fc0ec` | `c0 05` | `0x164f841` | `0x164f810`–`0x164f970` |
+| `/static_config` | `0x1ef5f7` | `0x1ef5f5` | `c0 0e` | `0x164fbae` | `0x164fb80`–`0x164fea0` |
+| `/cham` | `0x1fc0ee` | `0x1fc0ec` | `c0 05` | `0x164f840` | `0x164f810`–`0x164f970` |
 
-The second byte of each entry equals the text length (14 and 5), and the text
-is NUL-terminated. A naive search for the text address finds no xref at all:
+The second byte of each anchor equals the literal length (14 and 5), and `00`
+terminates each selected template. A naive search for the text address finds no xref at all:
 both code sites point two bytes before it. `NvTestnet` at `0x2180ff` is the same
 trap in another form: it is a slice of one concatenated name blob and has no
 direct xref either; its canonical reference is the pair at `0x5668488`.
@@ -77,16 +87,20 @@ direct xref either; its canonical reference is the pair at `0x5668488`.
 `0x5668288`, every pointer fixed by an `R_X86_64_RELATIVE` relocation. The
 strings are exactly the 76 names of the pinned reference array, in the reference
 order, so the table index equals the `repr(u8)` discriminant 0–75. 62 point into
-one contiguous `.rodata` blob (`0x217ff1`–`0x21822e`, names from `0x21800b`); the other 14 are
+one contiguous `.rodata` blob (names `0x21800b`–`0x218227`; the alphanumeric run the tool
+reports is `0x217ff1`–`0x21822e`, which also takes the first 7 bytes, `variant`, of the
+next string); the other 14 are
 deduplicated to earlier copies of names the compiler needed elsewhere
 (`EaMm`, `FBinSpot`, `FBinPerp`, `FHuobiPi`, `FCobSpot`, `FKraSpot`, `OBinSpot`
 and the seven `*HlPerp` names).
 
 Independent count checks in the same blob:
 
-- `variant index 0 <= i < 76` at `0x218244` — the serde variant bound.
+- `variant index 0 <= i < 76` at `0x21823f` (`&str` pair `0x5668778`, RELATIVE, length 25)
+  — the serde variant bound.
 - `LocalSandboxTestnetMainnet` precedes the names, then
-  `variant index 0 <= i < 4` at `0x21822b` — the four `HlChain` variants.
+  `variant index 0 <= i < 4` at `0x218227` (`&str` pair `0x5668748`, RELATIVE, length 24)
+  — the four `HlChain` variants.
 
 `AWS_NAME_VARIANTS: [AwsName; 76]` is *not* materialized: no contiguous
 `00 01 … 4b` byte run exists in the file.
@@ -95,8 +109,10 @@ Independent count checks in the same blob:
 
 `DEFAULT_AWS_NAME = AwsName::NvTestnet` is discriminant 32. The fallback path of
 `read_static_config_aws_name` materializes it as `movb $0x20` (`0x164fc56`);
-`parse_static_config_aws_name` uses `movl $0x20` (`0x164fdac`) as the `None`
-sentinel. `StaticConfig` is returned by value in a `0x49`-byte buffer: three
+after `parse_static_config_aws_name` (`0x164d630`, called at `0x164fca8`) returns,
+`read_static_config_aws_name` selects 32 with `testb %bpl,%bpl` / `movl $0x20,%ebp` /
+`cmovel %eax,%ebp` (`0x164fda1`, `0x164fda4`, `0x164fda9`), keeping the parsed byte only when the
+returned tag byte is zero. `StaticConfig` is returned by value in a `0x49`-byte buffer: three
 24-byte `String`s and the `AwsName` byte at `+0x48` (`0x164ffc2`), matching
 `home_dir`, `cham_dir`, `code_dir`, `aws_name` in that order.
 
@@ -107,15 +123,15 @@ indirect table walks in the scan set.
 
 | Target | Target VA | Site | Window |
 | --- | ---: | ---: | --- |
-| `/cham` | `0x1fc0ec` | `0x164f841` | `0x164f810`–`0x164f970` |
-| `/hl` | `0x1ed055` | `0x164f88e` | `0x164f810`–`0x164f970` |
-| `/static_config` | `0x1ef5f5` | `0x164fbaf` | `0x164fb80`–`0x164fea0` |
-| `/code` | `0x1ed05b` | `0x164ff60` | `0x164ff00`–`0x1650060` |
-| `cham_dir does not exist: ` | `0x1f6798` | `0x164ffe9` | `0x164ff00`–`0x1650060` |
-| `could not create ` | `0x201ea5` | `0x164f9a5` | `0x164f970`–`0x164fa80` |
-| `AWS_NAME_STRINGS` | `0x5668288` | `0x13f5892` | `0x13f4360`–`0x13f5980` |
-| `AWS_NAME_STRINGS` | `0x5668288` | `0x13f61ce` | `0x13f5980`–`0x13f6410` |
-| `AWS_NAME_STRINGS` | `0x5668288` | `0x13f6c2c` | `0x13f6410`–`0x13f6dc0` |
+| `/cham` | `0x1fc0ec` | `0x164f840` | `0x164f810`–`0x164f970` |
+| `/hl` | `0x1ed055` | `0x164f88d` | `0x164f810`–`0x164f970` |
+| `/static_config` | `0x1ef5f5` | `0x164fbae` | `0x164fb80`–`0x164fea0` |
+| `/code` | `0x1ed05b` | `0x164ff5f` | `0x164ff00`–`0x1650060` |
+| `cham_dir does not exist: ` | `0x1f6798` | `0x164ffe8` | `0x164ff00`–`0x1650060` |
+| `could not create ` | `0x201ea5` | `0x164f9a4` | `0x164f970`–`0x164fa80` |
+| `AWS_NAME_STRINGS` | `0x5668288` | `0x13f5891` | `0x13f4360`–`0x13f5980` |
+| `AWS_NAME_STRINGS` | `0x5668288` | `0x13f61cd` | `0x13f5980`–`0x13f6410` |
+| `AWS_NAME_STRINGS` | `0x5668288` | `0x13f6c2b` | `0x13f6410`–`0x13f6dc0` |
 
 The three table sites are the `unknown_variant` fallbacks of three string→variant
 parsers at `0x13f4360`, `0x13f5980` and `0x13f6410`; each builds
@@ -159,9 +175,9 @@ closure is claimed. Reference agreement and disagreement, item by item:
 
 | Reference fact | #94 | Basis |
 | --- | --- | --- |
-| 76 `AwsName` names, order, discriminants | agree 76/76 | table `0x5668288`; bound `0x218244` |
+| 76 `AwsName` names, order, discriminants | agree 76/76 | table `0x5668288`; bound `0x21823f` |
 | `CHAM_DIR_SUFFIX`, `HL_DIR_SUFFIX`, `CODE_DIR_SUFFIX`, `STATIC_CONFIG_SUFFIX` | agree | `0x1fc0ec`, `0x1ed055`, `0x1ed05b`, `0x1ef5f5` |
-| `DEFAULT_AWS_NAME = NvTestnet` (32) | agree | `0x164fc56`, `0x164fdac` |
+| `DEFAULT_AWS_NAME = NvTestnet` (32) | agree | `0x164fc56`, `0x164fda4` |
 | `StaticConfig` field order and size | agree, `0x49` bytes | writes at `+0x00/+0x18/+0x30/+0x48` |
 | `home_dir_string` via deprecated `env::home_dir` | agree | call to `0x158f430` |
 | `cham_dir does not exist: {}` / `could not create {}: {}` | agree | `0x1f6798`, `0x201ea5` |
@@ -186,4 +202,4 @@ four component gates stay false; this is a partial packet and requests no gate.
 Next question: does the `parse_static_config_aws_name` state machine at
 `0x164d630` implement the same escape rejection (`\` → `None`) and the same
 externally-tagged `{"Variant": null}` form as the reference, and where does the
-`0x20` `None` sentinel diverge from a real `NvTestnet`?
+`0x20` fallback for a failed parse diverge from a parsed `NvTestnet`?

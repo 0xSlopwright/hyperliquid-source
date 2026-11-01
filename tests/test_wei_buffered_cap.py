@@ -1,12 +1,17 @@
 """Controls for tools/wei_buffered_cap.py (RE-004, node #94)."""
 
+import contextlib
 import filecmp
+import io
 import importlib.util
 import math
+import struct
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from gnu_binutils import requires_gnu  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOL = ROOT / 'tools' / 'wei_buffered_cap.py'
@@ -33,6 +38,7 @@ def mutate(insns, va, mnemonic=None, ops=None):
     return out
 
 
+@requires_gnu('objdump')
 class Fixture(unittest.TestCase):
     def set_up_class(cls):
         if not CACHE:
@@ -209,6 +215,157 @@ class EvaluatorControls(unittest.TestCase):
         self.assertEqual(wbc.cvttsd2si(2.0 ** 63), 1 << 63)
         self.assertEqual(wbc.cvttsd2si(math.nan), 1 << 63)
         self.assertEqual(wbc.cvttsd2si(-1.5), wbc.MASK)
+
+
+
+class ReciprocalShiftExtractionTests(unittest.TestCase):
+    @staticmethod
+    def insn(va, mn, text):
+        return (va, mn, [], text)
+
+    def idiom(self, shr):
+        return [self.insn(0x1000, 'movabs', 'movabs rax,0x346dc5d63886594b'),
+                self.insn(0x100a, 'mul', 'mul    QWORD PTR [rbx]'),
+                self.insn(0x100d, 'mov', 'mov    r15,rdx'),
+                self.insn(0x1010, 'shr', f'shr    r15,{shr}')]
+
+    def test_extracts_modelled_shift(self):
+        self.assertEqual(wbc.extract_reciprocal_shift(self.idiom('0xb')), 75)
+
+    def test_extracts_a_different_shift(self):
+        self.assertEqual(wbc.extract_reciprocal_shift(self.idiom('0xc')), 76)
+
+    def test_no_idiom_no_shift(self):
+        self.assertIsNone(wbc.extract_reciprocal_shift(
+            [self.insn(0x1000, 'nop', 'nop')]))
+_EHF_HDR_VA = 0x1000
+_EHF_FRAME_VA = 0x2000
+
+# CIE understood by Fdes.cie_r_encoding: id=0, version=1, aug "zR",
+# code_align=1, data_align=-1 (0x7f), retreg=0x10, aug_len=1, R enc=0x1b
+# (DW_EH_PE_pcrel | DW_EH_PE_sdata4).
+_EHF_CIE = (struct.pack('<I', 20) + struct.pack('<I', 0) + bytes([1]) + b'zR\0'
+            + bytes([1, 0x7f, 0x10, 1, 0x1b]) + b'\0\0\0')
+
+
+def _ehf_fde(va, cie_va, start, length):
+    return (struct.pack('<I', 16) + struct.pack('<I', va + 4 - cie_va)
+            + struct.pack('<i', start - (va + 8)) + struct.pack('<i', length))
+
+
+def synthetic_ehf_elf(entries):
+    """Minimal ELF whose .eh_frame_hdr search table holds the (start, length)
+    FDE entries in the given order."""
+    ehf = bytearray(_EHF_CIE)
+    fde_vas = []
+    for i, (start, length) in enumerate(entries):
+        va = _EHF_FRAME_VA + 20 + 16 * i
+        ehf += _ehf_fde(va, _EHF_FRAME_VA, start, length)
+        fde_vas.append(va)
+    ehf += b'\0' * (192 - len(ehf))  # cie_r_encoding reads a fixed 64-byte window
+    hdr = bytearray()
+    hdr += bytes([1, 0x1b, 0x03, 0x3b])
+    hdr += struct.pack('<i', _EHF_FRAME_VA - (_EHF_HDR_VA + 4))  # eh_frame_ptr
+    hdr += struct.pack('<I', len(entries))                       # fde_count
+    for (start, _length), fva in zip(entries, fde_vas):
+        hdr += struct.pack('<ii', start - _EHF_HDR_VA, fva - _EHF_HDR_VA)
+    shstr = b'\0.eh_frame_hdr\0.eh_frame\0.shstrtab\0'
+    off_hdr, off_ehf, off_shstr, shoff = 0x100, 0x200, 0x400, 0x500
+    data = bytearray(shoff + 4 * 64)
+    data[off_hdr:off_hdr + len(hdr)] = hdr
+    data[off_ehf:off_ehf + len(ehf)] = ehf
+    data[off_shstr:off_shstr + len(shstr)] = shstr
+    data[0:6] = b'\x7fELF\x02\x01'
+    struct.pack_into('<Q', data, 0x28, shoff)
+    struct.pack_into('<HHH', data, 0x3a, 64, 4, 3)
+    secs = [(0, 0, 0, 0, 0, 0),
+            (1, 1, 0, _EHF_HDR_VA, off_hdr, len(hdr)),
+            (15, 1, 0, _EHF_FRAME_VA, off_ehf, len(ehf)),
+            (25, 3, 0, 0, off_shstr, len(shstr))]
+    for i, s in enumerate(secs):
+        struct.pack_into('<IIQQQQIIQQ', data, shoff + i * 64,
+                         s[0], s[1], s[2], s[3], s[4], s[5], 0, 0, 1, 0)
+    return bytes(data)
+
+
+class FdesTableOrderTests(unittest.TestCase):
+    def test_sorted_unique_table_is_accepted(self):
+        fdes = wbc.Fdes(wbc.Image(synthetic_ehf_elf([(0x5000, 0x10), (0x6000, 0x20)])))
+        self.assertEqual(fdes.range_of(0x5000), {'start': 0x5000, 'end': 0x5010,
+                                                 'fde': fdes.fde[0]})
+        self.assertEqual(fdes.range_of(0x600f)['end'], 0x6020)
+
+    def test_duplicate_starts_are_rejected(self):
+        # Same start, contradictory lengths: range_of would flip its verdict
+        # on the entry order alone.
+        for entries in ([(0x5000, 0x10), (0x5000, 0x40)],
+                        [(0x5000, 0x40), (0x5000, 0x10)]):
+            with self.assertRaises(wbc.EvidenceError):
+                wbc.Fdes(wbc.Image(synthetic_ehf_elf(entries)))
+
+    def test_unsorted_table_is_rejected(self):
+        # The wide 0x5000 FDE is listed before the 0x4000 FDE; bisect over the
+        # unchecked table would reject VAs the 0x5000 FDE covers.
+        with self.assertRaises(wbc.EvidenceError):
+            wbc.Fdes(wbc.Image(synthetic_ehf_elf([(0x5000, 0x100), (0x4000, 0x10)])))
+def elf_with_names(inside, outside=b'', extra_name_off=None):
+    """ELF64 whose .shstrtab is `inside` and whose next file bytes are `outside`."""
+    shstr_off = 64
+    labels = [b'', b'.text', b'.shstrtab', b'.extra']
+    shoff = shstr_off + len(inside) + len(outside)
+
+    def name_off(label):
+        if label == b'':
+            return 0
+        return inside.index(label)
+
+    headers = b''
+    for label in labels:
+        off, size = (shstr_off, len(inside)) if label == b'.shstrtab' else (0, 0)
+        off_name = extra_name_off if (label == b'.extra' and extra_name_off is not None) else name_off(label)
+        headers += struct.pack('<IIQQQQIIQQ', off_name, 3 if label == b'.shstrtab' else 1,
+                               0, 0, off, size, 0, 0, 1, 0)
+    header = bytearray(64)
+    header[0:6] = b'\x7fELF\x02\x01'
+    struct.pack_into('<Q', header, 40, shoff)
+    struct.pack_into('<HHH', header, 58, 64, len(labels), labels.index(b'.shstrtab'))
+    return bytes(header) + inside + outside + headers
+
+
+NAMES = b'\0.text\0.shstrtab\0'
+
+
+class SectionNameBoundsTests(unittest.TestCase):
+    def test_name_terminated_inside_shstrtab_is_kept(self):
+        self.assertIn('.extra', wbc.sections(elf_with_names(NAMES + b'.extra\0')))
+
+    def test_name_finished_outside_shstrtab_is_rejected(self):
+        # '.extra' has no NUL inside .shstrtab; its terminator lives in the
+        # following bytes, which the old unbounded search accepted as
+        # '.extra_name'.
+        with self.assertRaisesRegex(wbc.EvidenceError, 'unterminated section name'):
+            wbc.sections(elf_with_names(NAMES + b'.extra', b'_name\0'))
+
+    def test_unterminated_name_is_rejected(self):
+        with self.assertRaisesRegex(wbc.EvidenceError, 'unterminated section name'):
+            wbc.sections(elf_with_names(NAMES + b'.extra'))
+
+    def test_name_offset_outside_shstrtab_is_rejected(self):
+        # The offset points at 'bogus' in the bytes after .shstrtab; on base
+        # it was read as a section name instead of being rejected.
+        inside = NAMES + b'.extra\0'
+        with self.assertRaisesRegex(wbc.EvidenceError, 'section name offset outside .shstrtab'):
+            wbc.sections(elf_with_names(inside, b'bogus\0', extra_name_off=len(inside)))
+class MainErrorHandlingTests(unittest.TestCase):
+    def test_missing_binary_is_one_line_error(self):
+        err = io.StringIO()
+        with tempfile.TemporaryDirectory() as d:
+            with contextlib.redirect_stderr(err):
+                rc = wbc.main(['--binary', '/nonexistent.bin', '--out', str(Path(d) / 'out.json')])
+        self.assertEqual(rc, 1)
+        self.assertTrue(err.getvalue().startswith('error: '))
+        self.assertEqual(len(err.getvalue().strip().splitlines()), 1)
+        self.assertNotIn('Traceback', err.getvalue())
 
 
 if __name__ == '__main__':

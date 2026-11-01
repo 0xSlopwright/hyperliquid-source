@@ -1,12 +1,14 @@
+import shutil
 """RE-005 decode-side tests: pinned output, tamper controls, determinism, objdump cross-check."""
 import hashlib
 import os
 from pathlib import Path
-import shutil
 import struct
 import subprocess
 import sys
 import unittest
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from gnu_binutils import requires_gnu  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
@@ -46,6 +48,20 @@ def boundary_misses(sites):
 
 def scan_mutated(buf):
     return dv.scan(buf, expected_sha256=hashlib.sha256(buf).hexdigest())
+
+
+class JumpTableBounds(unittest.TestCase):
+    def test_table_ending_on_the_last_section_byte_is_read(self):
+        data = struct.pack('<iiii', 1, 2, 3, 4) + b'\xff' * 8
+        secs = {'.rodata': {'addr': 0x2000, 'offset': 0, 'size': 16}}
+        self.assertEqual(dv.rel32_table(data, secs, 0x2000), (0x2001, 0x2002, 0x2003, 0x2004))
+
+    def test_table_that_leaves_its_section_is_rejected(self):
+        # Only the first rel32 sits in .rodata. The other three are the next file bytes.
+        data = struct.pack('<iiii', 0x10, 0x20, 0x30, 0x40)
+        secs = {'.rodata': {'addr': 0x2000, 'offset': 0, 'size': 4}}
+        with self.assertRaisesRegex(bv.EvidenceError, r'jump table 0x2000\+16 leaves its section'):
+            dv.rel32_table(data, secs, 0x2000)
 
 
 class Pinned(unittest.TestCase):
@@ -115,8 +131,8 @@ class Determinism(unittest.TestCase):
         self.assertEqual(hashlib.sha256(outs.pop()).hexdigest(), OUTPUT_SHA256)
 
 
-@unittest.skipUnless(shutil.which('readelf') and shutil.which('objdump'), 'binutils required')
 class Binutils(unittest.TestCase):
+    @requires_gnu('objdump', 'readelf')
     def test_fde_readelf(self):
         out = subprocess.run(['readelf', '--debug-dump=frames', str(bv.TARGET)], check=True,
                              capture_output=True, text=True).stdout
@@ -124,6 +140,7 @@ class Binutils(unittest.TestCase):
             s, e = int(d['fde_start'], 16), int(d['fde_end'], 16)
             self.assertIn(f'pc={s:016x}..{e:016x}', out)
 
+    @requires_gnu('objdump', 'readelf')
     def test_anchor_objdump(self):
         for d in dv.scan(data())['decoders']:
             for a in d['anchors']:
@@ -138,6 +155,7 @@ class Binutils(unittest.TestCase):
     def sites(self):
         return [(int(s['va'], 16), int(s['fde_start'], 16)) for s in dv.scan(data())['tag_dispatch_sites']]
 
+    @requires_gnu('objdump', 'readelf')
     def test_dispatch_vas_are_objdump_instruction_starts(self):
         self.assertEqual(boundary_misses(self.sites()), [])
 
@@ -147,6 +165,7 @@ class Binutils(unittest.TestCase):
             '0x2558fe2', '0x2559079', '0x2561b18', '0x2973ac6', '0x2973bb6',
             '0x466d895', '0x466d9c5', '0x466db15'])
 
+    @requires_gnu('objdump', 'readelf')
     def test_off_by_one_va_rejected(self):
         sites = self.sites()
         for i in (sites.index((0x2558fe2, 0x2558ee0)), sites.index((0x466bd5b, 0x466bd10))):
@@ -154,6 +173,20 @@ class Binutils(unittest.TestCase):
             shifted[i] = (sites[i][0] + 1, sites[i][1])
             self.assertEqual(boundary_misses(shifted), [sites[i][0] + 1])
 
+
+
+
+class AnchorBounds(unittest.TestCase):
+    def test_anchor_inside_section_is_returned(self):
+        raw = bytes.fromhex('81f9fb000000')
+        secs = {'.text': {'addr': 0x1000, 'offset': 0, 'size': len(raw)}}
+        self.assertEqual(dv.section_slice(raw, secs, 0x1000, len(raw)), (0, raw))
+
+    def test_anchor_that_leaves_section_is_rejected(self):
+        raw = bytes.fromhex('81f9fb000000')
+        secs = {'.text': {'addr': 0x1000, 'offset': 0, 'size': 2}}
+        with self.assertRaisesRegex(bv.EvidenceError, r'range 0x1000\+6 leaves its section'):
+            dv.section_slice(raw, secs, 0x1000, len(raw))
 
 if __name__ == '__main__':
     unittest.main()

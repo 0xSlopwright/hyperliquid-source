@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import struct
 import subprocess
+import sys
 from elf_index import sections
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -78,9 +79,17 @@ def partition():
 def decode_export(output,start,end,body):
     rows = []
     for line in output.splitlines():
-        match = re.match(r'^\s*([0-9a-f]+):\s*((?:[0-9a-f]{2}\s+)+)',line)
+        match = re.match(r'^\s*([0-9a-f]+):\s*((?:[0-9a-f]{2}\s+)+)(.*)$',line)
         if match:
-            rows.append((int(match[1],16),bytes.fromhex(match[2])))
+            address,raw = int(match[1],16),bytes.fromhex(match[2])
+            # GNU objdump wraps instructions longer than 7 bytes: the bytes
+            # past the seventh continue on an addressed row whose mnemonic
+            # field is empty. Merge such a row into the previous instruction
+            # instead of counting it as a separate instruction.
+            if rows and not match[3].strip() and address == rows[-1][0]+len(rows[-1][1]):
+                rows[-1] = (rows[-1][0],rows[-1][1]+raw)
+            else:
+                rows.append((address,raw))
     cursor = start
     for address,raw in rows:
         require(address == cursor, 'Off-by-one or noncontiguous disassembly')
@@ -89,8 +98,18 @@ def decode_export(output,start,end,body):
     return dict(rows)
 
 
-def analyze(data,records,objdump=None):
+def analyze(data,records,objdump=None,binary=TARGET):
     secs = sections(data); named = {s['name']:s for s in secs}
+    # The dict above keeps only the last section of a given name, so a
+    # duplicate would silently decide which bytes the pinned checks below
+    # run against. Refuse the ambiguity for every name this tool reads,
+    # mirroring read()'s exactly-one-match rule for VA mappings.
+    for name in ('.eh_frame','.rela.dyn'):
+        require(sum(s['name']==name for s in secs)<=1,'Duplicate section: '+name)
+
+    def section(name):
+        require(name in named, f'Missing section {name}')
+        return named[name]
 
     def read(va,size):
         matches = [s for s in secs if s['type']!=8 and s['address']<=va and va+size<=s['address']+s['size']]
@@ -103,6 +122,7 @@ def analyze(data,records,objdump=None):
     require((start,end)==(0x392fab0,0x392fcba),'Scope changed')
     body = read(start,end-start)
     require(hashlib.sha256(body).hexdigest()==records['body_sha256'],'Instruction window changed')
+    require('.eh_frame' in named,'Missing section .eh_frame')
     eh = named['.eh_frame']['address']; fde_offset = int(records['fde_offset'],16)
     fde,cie = bytes.fromhex(records['fde_hex']),bytes.fromhex(records['cie_hex'])
     require(read(eh+fde_offset,len(fde))==fde,'FDE changed')
@@ -113,9 +133,9 @@ def analyze(data,records,objdump=None):
     require((pc,pc+struct.unpack_from('<I',fde,12)[0])==(start,end),'FDE range disagrees')
     if objdump:
         output = subprocess.check_output([objdump,'-d',f'--start-address={start:#x}',
-                                          f'--stop-address={end:#x}','artifacts/node/94/hl-node'],cwd=ROOT,text=True)
+                                          f'--stop-address={end:#x}',str(binary)],cwd=ROOT,text=True, encoding='utf-8')
     else:
-        output = (PACKET/'function.objdump.txt').read_text()
+        output = (PACKET/'function.objdump.txt').read_text(encoding='utf-8')
     instructions = decode_export(output,start,end,body)
 
     def exact(va,raw):
@@ -145,9 +165,12 @@ def analyze(data,records,objdump=None):
                  (0x392fb18,0x392fb2c,'77'),(0x392fc54,0x392fc64,'77'),
                  (0x392fb26,0x392fc88,'0f82'),(0x392fc62,0x392fc88,'72'),
                  (0x392fb64,0x392fca1,'0f82'),(0x392fc7c,0x392fca1,'72')]:branch(*args)
-    rel = named['.rela.dyn']; raw = read(rel['address'],rel['size'])
+    rel = section('.rela.dyn'); raw = read(rel['address'],rel['size'])
     require(len(raw)%24==0,'Truncated RELA section')
-    rels = {a:(info,addend) for a,info,addend in struct.iter_unpack('<QQq',raw)}
+    rels = {}
+    for a,info,addend in struct.iter_unpack('<QQq',raw):
+        require(a not in rels,'Duplicate relocation address')
+        rels[a] = (info,addend)
     for address,target in records['relative_slots'].items():
         require(rels.get(int(address,16))==(8,int(target,16)),'Relative call slot changed')
     for location in records['source_locations']:
@@ -176,10 +199,37 @@ def analyze(data,records,objdump=None):
                 captured_binary_executed=False,progress_gate_requested=False)
 
 
+def _unique_object(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError(f'Duplicate key in retained check input: {key}')
+        out[key] = value
+    return out
+
+
+def load_check(path):
+    return json.loads(Path(path).read_text(encoding='utf-8'), object_pairs_hook=_unique_object)
+
+
+def _unique_record_object(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError(f'Duplicate key in retained records input: {key}')
+        out[key] = value
+    return out
+
+
+def load_records(path):
+    return json.loads(Path(path).read_text(encoding='utf-8'), object_pairs_hook=_unique_record_object)
+
+
 def inspect(path,objdump=None):
-    data = Path(path).read_bytes()
+    path = Path(path).resolve()
+    data = path.read_bytes()
     require(len(data)==91774280 and hashlib.sha256(data).hexdigest()==SHA256,'Expected exact node #94 size/SHA-256')
-    return analyze(data,json.loads((PACKET/'records.json').read_text()),objdump)
+    return analyze(data,load_records(PACKET/'records.json'),objdump,binary=path)
 
 
 def main():
@@ -187,12 +237,17 @@ def main():
     parser.add_argument('--binary',type=Path,default=TARGET)
     parser.add_argument('--objdump',help='Rerun LLVM instead of using the retained export')
     parser.add_argument('--check',type=Path)
-    args = parser.parse_args(); result = inspect(args.binary,args.objdump)
-    if args.check:
-        require(result==json.loads(args.check.read_text()),'Retained evidence differs')
-        print('Duration floating guard evidence reproduces exactly.')
-    else:
-        print(json.dumps(result,indent=2))
+    args = parser.parse_args()
+    try:
+        result = inspect(args.binary,args.objdump)
+        if args.check:
+            require(result==load_check(args.check),'Retained evidence differs')
+            print('Duration floating guard evidence reproduces exactly.')
+        else:
+            print(json.dumps(result,indent=2))
+    except (ValueError, OSError, struct.error, subprocess.CalledProcessError) as error:
+        print(f'foundation_duration_guards: {error}', file=sys.stderr)
+        raise SystemExit(1)
 
 
 if __name__=='__main__':main()

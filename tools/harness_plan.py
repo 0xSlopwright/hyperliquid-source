@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,11 +33,22 @@ KNOWN_TARGET_DIGESTS = {
 }
 
 
+def _unique_object(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError(f'Duplicate key in harness JSON input: {key}')
+        out[key] = value
+    return out
+
+
 def load_json(path: Path):
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=_unique_object)
 
 
 def validate_protocol(protocol: dict) -> None:
+    if not isinstance(protocol, dict):
+        raise ValueError('protocol.json must be a mapping')
     required = [
         'schema_version',
         'task_id',
@@ -56,33 +68,60 @@ def validate_protocol(protocol: dict) -> None:
         raise ValueError('protocol.json task_id must be RE-003')
     if protocol.get('execution_default') != 'denied':
         raise ValueError('execution_default must be denied')
-    if not protocol.get('requires_execution_approval'):
+    if protocol['requires_execution_approval'] is not True:
         raise ValueError('requires_execution_approval must be true')
     isolation = protocol['isolation']
+    if not isinstance(isolation, dict):
+        raise ValueError('isolation must be a dict')
     if isolation.get('network') != 'deny':
         raise ValueError('isolation.network must default to deny')
+    if not isinstance(protocol['positive_controls'], list) or not isinstance(
+        protocol['negative_controls'], list
+    ):
+        raise ValueError('protocol positive_controls and negative_controls must be lists')
     if not protocol['positive_controls'] or not protocol['negative_controls']:
         raise ValueError('protocol must name positive and negative controls')
+    if not isinstance(protocol['request_fields'], list):
+        raise ValueError('protocol request_fields must be a list')
     for field in REQUIRED_REQUEST_FIELDS:
         if field not in protocol['request_fields']:
             raise ValueError(f'protocol request_fields missing {field}')
 
 
 def validate_fixtures(fixtures_doc: dict, protocol: dict) -> dict:
+    if not isinstance(fixtures_doc, dict):
+        raise ValueError('fixture-identities.json must be a mapping')
     if fixtures_doc.get('task_id') != 'RE-003':
         raise ValueError('fixture-identities.json task_id must be RE-003')
     fields = protocol['fixture_identity_fields']
+    if not isinstance(fields, list):
+        raise ValueError('protocol fixture_identity_fields must be a list')
+    fixtures = fixtures_doc.get('fixtures', [])
+    if not isinstance(fixtures, list):
+        raise ValueError('fixtures must be a list')
     by_id = {}
-    for row in fixtures_doc.get('fixtures', []):
+    for row in fixtures:
+        if not isinstance(row, dict):
+            raise ValueError('Invalid fixture record')
         missing = [key for key in fields if key not in row]
         if missing:
             raise ValueError(f'fixture {row.get("fixture_id")} missing {missing}')
+        if 'fixture_id' not in row or 'target_sha256' not in row:
+            raise ValueError('fixture row missing fixture_id or target_sha256')
         fid = row['fixture_id']
+        if not isinstance(fid, str):
+            raise ValueError('fixture_id must be a string')
         if fid in by_id:
             raise ValueError(f'duplicate fixture_id: {fid}')
         digest = row['target_sha256']
+        if not isinstance(digest, str):
+            raise ValueError(f'fixture {fid} has invalid target_sha256')
         if len(digest) != 64 or any(c not in '0123456789abcdef' for c in digest):
             raise ValueError(f'fixture {fid} has invalid target_sha256')
+        payload_digest = row['payload_sha256']
+        if (not isinstance(payload_digest, str) or len(payload_digest) != 64
+                or any(c not in '0123456789abcdef' for c in payload_digest)):
+            raise ValueError(f'fixture {fid} has invalid payload_sha256')
         by_id[fid] = row
     if not by_id:
         raise ValueError('fixture-identities.json has no fixtures')
@@ -92,17 +131,32 @@ def validate_fixtures(fixtures_doc: dict, protocol: dict) -> dict:
 def approval_covers(request_id: str) -> bool:
     if not APPROVAL_PATH.is_file():
         return False
-    text = APPROVAL_PATH.read_text()
-    return request_id in text and 'authorized' in text.lower()
+    text = APPROVAL_PATH.read_text(encoding='utf-8')
+    # Both must appear on the same line as whole tokens. A bare substring
+    # match would let a denial ("unauthorized") or another request's
+    # approval ("<id>-extended") pass the network/execute gate.
+    request_token = re.compile(
+        r'(?<![A-Za-z0-9_.-])' + re.escape(request_id) + r'(?![A-Za-z0-9_.-])')
+    authorized_word = re.compile(r'(?<![A-Za-z])authorized(?![A-Za-z])', re.IGNORECASE)
+    return any(request_token.search(line) and authorized_word.search(line)
+               for line in text.splitlines())
 
 
 def validate_request(request: dict, fixtures_by_id: dict) -> dict:
+    if not isinstance(request, dict):
+        raise ValueError('request must be a mapping')
     missing = [key for key in REQUIRED_REQUEST_FIELDS if key not in request]
     if missing:
         raise ValueError(f'request missing fields: {missing}')
+    for field in ('execute_target', 'approval_present'):
+        if type(request[field]) is not bool:
+            raise ValueError(f'{field} must be a boolean')
+
+    if not isinstance(request['request_id'], str):
+        raise ValueError('request_id must be a string')
 
     release = request['target_release']
-    if release not in KNOWN_TARGET_DIGESTS:
+    if not isinstance(release, str) or release not in KNOWN_TARGET_DIGESTS:
         raise ValueError(f'unknown target_release: {release}')
     expected = KNOWN_TARGET_DIGESTS[release]
     if request['target_sha256'] != expected:
@@ -117,10 +171,21 @@ def validate_request(request: dict, fixtures_by_id: dict) -> dict:
     fixture_ids = request['fixture_ids']
     if not isinstance(fixture_ids, list) or not fixture_ids:
         raise ValueError('fixture_ids must be a non-empty list')
+    seen_fixture_ids = set()
     for fid in fixture_ids:
+        if not isinstance(fid, str):
+            raise ValueError(f'unknown fixture_id: {fid}')
+        if fid in seen_fixture_ids:
+            raise ValueError(f'duplicate fixture_id: {fid}')
+        seen_fixture_ids.add(fid)
         if fid not in fixtures_by_id:
             raise ValueError(f'unknown fixture_id: {fid}')
         row = fixtures_by_id[fid]
+        if row['target_release'] != release:
+            raise ValueError(
+                f'fixture {fid} release {row["target_release"]!r} does not match '
+                f'request release {release!r}'
+            )
         if row['target_sha256'] != request['target_sha256']:
             raise ValueError(
                 f'fixture {fid} digest {row["target_sha256"]} does not match '
@@ -129,6 +194,9 @@ def validate_request(request: dict, fixtures_by_id: dict) -> dict:
 
     if not isinstance(request['declared_side_effects'], list):
         raise ValueError('declared_side_effects must be a list')
+    for effect in request['declared_side_effects']:
+        if not isinstance(effect, str):
+            raise ValueError('declared_side_effects entries must be strings')
 
     required_effects = []
     seen_effects = set()
@@ -137,6 +205,10 @@ def validate_request(request: dict, fixtures_by_id: dict) -> dict:
         if not isinstance(effects, list):
             raise ValueError(f'fixture {fid} declared_side_effects must be a list')
         for effect in effects:
+            if not isinstance(effect, str):
+                raise ValueError(
+                    f'fixture {fid} declared_side_effects entries must be strings'
+                )
             if effect not in seen_effects:
                 seen_effects.add(effect)
                 required_effects.append(effect)
@@ -155,9 +227,9 @@ def validate_request(request: dict, fixtures_by_id: dict) -> dict:
         [*required_effects, *request['declared_side_effects']]
     ))
 
-    execute = bool(request['execute_target'])
+    execute = request['execute_target']
     network_allow = request['network'] == 'allow'
-    approval_claimed = bool(request['approval_present'])
+    approval_claimed = request['approval_present']
     approval_ok = approval_covers(request['request_id'])
 
     if approval_claimed and not approval_ok:
@@ -185,6 +257,8 @@ def validate_request(request: dict, fixtures_by_id: dict) -> dict:
     return {
         'status': 'planned',
         'request_id': request['request_id'],
+        'component_id': request['component_id'],
+        'bounded_question': request['bounded_question'],
         'target_release': release,
         'target_sha256': request['target_sha256'],
         'fixture_ids': fixture_ids,

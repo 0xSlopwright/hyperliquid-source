@@ -9,37 +9,77 @@ import sys
 
 
 def locate_ghidra():
+    explicit = os.environ.get('GHIDRA_INSTALL_DIR')
+    if explicit:
+        directory = Path(explicit)
+        return directory if any((directory / name).is_file() for name in
+                                ('support/analyzeHeadless', 'support/analyzeHeadless.bat')) else None
     candidates = []
     if os.environ.get('GHIDRA_HOME'):
         candidates.append(Path(os.environ['GHIDRA_HOME']))
     candidates.extend(sorted((Path.home() / '.local/share/rea-tools').glob('ghidra_*_PUBLIC'), reverse=True))
     for directory in candidates:
-        if (directory / 'support/analyzeHeadless').is_file():
-            return directory
+        for script_name in ['support/analyzeHeadless', 'support/analyzeHeadless.bat']:
+            if (directory / script_name).is_file():
+                return directory
     return None
 
 
 def locate_llvm():
     if os.environ.get('LLVM_OBJDUMP'):
-        return shutil.which(os.environ['LLVM_OBJDUMP'])
-    return shutil.which('llvm-objdump') or next((str(p) for p in [Path('/opt/homebrew/opt/llvm/bin/llvm-objdump'), Path('/usr/local/opt/llvm/bin/llvm-objdump')] if p.is_file()), None)
+        val = os.environ['LLVM_OBJDUMP']
+        if Path(val).is_file():
+            return val
+        return shutil.which(val)
+    fallback_paths = [
+        Path('/opt/homebrew/opt/llvm/bin/llvm-objdump'),
+        Path('/usr/local/opt/llvm/bin/llvm-objdump'),
+        Path(os.environ.get('ProgramFiles', 'C:/Program Files')) / 'LLVM/bin/llvm-objdump.exe',
+        Path(os.environ.get('ProgramFiles(x86)', 'C:/Program Files (x86)')) / 'LLVM/bin/llvm-objdump.exe',
+    ]
+    return shutil.which('llvm-objdump') or next((str(p) for p in fallback_paths if p.is_file()), None)
 
 
 def probe(name, command):
     if not command or not command[0]:
         return {'name': name, 'available': False}
     try:
-        p = subprocess.run(command, text=True, capture_output=True, timeout=10)
+        p = subprocess.run(command, text=True, capture_output=True, timeout=10, encoding='utf-8')
         lines = (p.stdout + p.stderr).splitlines()
         return {'name': name, 'available': p.returncode == 0, 'version': lines[0] if lines else '', 'executable': command[0]}
     except (OSError, subprocess.TimeoutExpired) as exc:
         return {'name': name, 'available': False, 'error': str(exc)}
 
 
+def probe_git_lfs():
+    lfs_bin = shutil.which('git-lfs')
+    if lfs_bin:
+        return probe('git-lfs', [lfs_bin, 'version'])
+    git_bin = shutil.which('git')
+    if git_bin:
+        res = probe('git-lfs', [git_bin, 'lfs', 'version'])
+        if res.get('available'):
+            return res
+    return {'name': 'git-lfs', 'available': False}
+
+
+def probe_gnu(name):
+    # Analysis tools and tests invoke plain `objdump`/`readelf` with GNU-only
+    # flags (-M intel, -wf, --debug-dump). macOS ships LLVM objdump under that name.
+    result = probe(name, [shutil.which(name), '--version'])
+    if result['available'] and 'GNU' not in result['version']:
+        result['available'] = False
+    if not result['available']:
+        result['hint'] = f'put GNU binutils {name} first on PATH (macOS: brew install binutils; export PATH="$(brew --prefix binutils)/bin:$PATH")'
+    return result
+
+
 def report():
     required = [probe('python', [sys.executable, '--version'])]
-    for name, args in [('git', ['--version']), ('git-lfs', ['version']), ('gpg', ['--version']), ('rg', ['--version'])]:
+    for name, args in [('git', ['--version']), ('gpg', ['--version']), ('rg', ['--version'])]:
         required.append(probe(name, [shutil.which(name), *args]))
+    required.append(probe_git_lfs())
+    required.extend(probe_gnu(name) for name in ['objdump', 'readelf'])
     optional = [probe('llvm-objdump', [locate_llvm(), '--version']), probe('java', [shutil.which('java'), '-version'])]
     rustup = shutil.which('rustup')
     for version in ['1.94.1', '1.95.0']:
@@ -49,7 +89,7 @@ def report():
     if ghidra:
         properties = ghidra / 'Ghidra/application.properties'
         if properties.is_file():
-            ghidra_version = next((line.split('=', 1)[1] for line in properties.read_text().splitlines() if line.startswith('application.version=')), None)
+            ghidra_version = next((line.split('=', 1)[1] for line in properties.read_text(encoding='utf-8').splitlines() if line.startswith('application.version=')), None)
     return {'analysis_ready': all(t['available'] for t in required) and sys.version_info >= (3, 10),
             'exact_rebuild_ready': False,
             'missing_rebuild_evidence': ['Recovered Cargo manifests and dependency locks', 'Target Linux build flags and exact LLVM/fork provenance', 'Accepted reconstructed implementation and comparison harness'],

@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/tmp/hl-node115-field-drift-20261101/checkout/tools/node115_field_adapter_drift.py", line 386, in <module>
+    main()
+  File "/tmp/hl-node115-field-drift-20261101/checkout/tools/node115_field_adapter_drift.py", line 382, in main
+    generate(args.binary, args.libcore, args.output)
+  File "/tmp/hl-node115-field-drift-20261101/checkout/tools/node115_field_adapter_drift.py", line 368, in generate
+    result = analyze(target, archive)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/hl-node115-field-drift-20261101/checkout/tools/node115_field_adapter_drift.py", line 358, in analyze
+    result = derive(target, archive)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/hl-node115-field-drift-20261101/checkout/tools/node115_field_adapter_drift.py", line 272, in derive
+    need(len(expected) == 48 and struct.unpack('<6Q', expected) == (0, 16, 8, 0, 0, 0),
+  File "/tmp/hl-node115-field-drift-20261101/checkout/tools/node115_field_adapter_drift.py", line 41, in need
+    raise EvidenceError(message)
+EvidenceError: source vtable raw layout changed

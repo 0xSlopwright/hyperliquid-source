@@ -1,15 +1,37 @@
 import contextlib
+
+
 import io
+
+
 import json
+
+
 from pathlib import Path
+
+
 import shutil
+
+
+
 import subprocess
+
+
 import sys
+
+
 import tempfile
+
+
 import unittest
+
+
 from unittest.mock import patch
 
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+
+
 import verify_imports
 
 
@@ -43,7 +65,9 @@ class VerifyImportsTests(unittest.TestCase):
             verify_imports.verify(self.root)
 
     def test_missing_submodule_names_the_fix(self):
-        shutil.rmtree(self.sub)
+        # A .git directory contains read-only object files on Windows; deleting
+        # it needs a permission reset, while renaming it does not.
+        self.sub.rename(self.root / 'refs/sub-removed')
         self.sub.mkdir()
         with self.assertRaises(ValueError) as caught:
             verify_imports.verify(self.root)
@@ -62,8 +86,107 @@ class VerifyImportsTests(unittest.TestCase):
             verify_imports.verify(self.root)
         self.assertIn('Modified source reference', str(caught.exception))
 
+    def test_duplicate_key_in_imports_rejected(self):
+        import hashlib
+        good = self.root / 'good.txt'
+        good.write_bytes(b'good')
+        item = ('{"path": "missing-or-tampered.txt", "path": "good.txt", '
+                f'"size": 4, "sha256": "{hashlib.sha256(b"good").hexdigest()}"}}')
+        (self.root / 'provenance/imports.json').write_text('{"files": [' + item + ']}')
+        with self.assertRaises(ValueError):
+            verify_imports.verify(self.root)
+
+    def test_duplicate_path_entries_rejected(self):
+        import hashlib
+        good = self.root / 'good.txt'
+        good.write_bytes(b'good')
+        entry = {'path': 'good.txt', 'size': 4,
+                 'sha256': hashlib.sha256(b'good').hexdigest()}
+        (self.root / 'provenance/imports.json').write_text(
+            json.dumps({'files': [entry, entry]}))
+        with self.assertRaises(ValueError):
+            verify_imports.verify(self.root)
+
+    def test_duplicate_key_in_sources_rejected(self):
+        self.sources.write_text(
+            '{"repositories": [{"path": "refs/sub", '
+            f'"commit": "{"0" * 40}", "commit": "{self.commit}"}}]}}')
+        with self.assertRaises(ValueError):
+            verify_imports.verify(self.root)
+
     def test_missing_git_binary_is_a_message(self):
         with patch.object(verify_imports.subprocess, 'check_output', side_effect=FileNotFoundError('git')):
             with self.assertRaises(ValueError) as caught:
                 verify_imports.verify(self.root)
         self.assertIn('Unreadable pinned source', str(caught.exception))
+
+    def test_hidden_untracked_source_is_rejected(self):
+        self.git('config', 'status.showUntrackedFiles', 'no')
+        with contextlib.redirect_stdout(io.StringIO()):
+            verify_imports.verify(self.root)
+        (self.sub / 'unexpected.rs').write_text('// Extra source, not in the pinned commit.\n')
+        # The user's display preference hides a file that source scans can read.
+        self.assertEqual(self.git('status', '--porcelain'), '')
+        with self.assertRaisesRegex(ValueError, 'Modified source reference: refs/sub'):
+            verify_imports.verify(self.root)
+
+    def check_index_flag(self, flag):
+        self.git('update-index', '--' + flag, '--', 'file')
+        with contextlib.redirect_stdout(io.StringIO()):
+            verify_imports.verify(self.root)
+        index = (self.sub / '.git/index').read_bytes()
+        marker = self.git('ls-files', '-v', '--', 'file')
+        (self.sub / 'file').write_text('y')
+        self.assertEqual(self.git('status', '--porcelain', '--untracked-files=all'), '')
+        with self.assertRaisesRegex(ValueError, 'Modified source reference: refs/sub'):
+            verify_imports.verify(self.root)
+        self.assertEqual((self.sub / '.git/index').read_bytes(), index)
+        self.assertEqual(self.git('ls-files', '-v', '--', 'file'), marker)
+        (self.sub / 'file').unlink()
+        with self.assertRaisesRegex(ValueError, 'Modified source reference: refs/sub'):
+            verify_imports.verify(self.root)
+        (self.sub / 'file').write_text('x')
+        with contextlib.redirect_stdout(io.StringIO()):
+            verify_imports.verify(self.root)
+        self.assertEqual(self.git('ls-files', '-v', '--', 'file'), marker)
+
+    def test_assume_unchanged_does_not_hide_modified_source(self):
+        self.check_index_flag('assume-unchanged')
+
+    def test_skip_worktree_does_not_hide_modified_source(self):
+        self.check_index_flag('skip-worktree')
+
+    def test_sources_manifest_must_list_repositories(self):
+        for payload in ('[]', '{}', '{"repositories":{}}', '{"repositories":"refs/sub"}'):
+            with self.subTest(payload=payload):
+                self.sources.write_text(payload)
+                with self.assertRaises(ValueError) as caught:
+                    verify_imports.verify(self.root)
+                self.assertEqual(str(caught.exception), 'Invalid sources manifest')
+
+    def test_empty_repository_list_passes(self):
+        self.sources.write_text(json.dumps({'repositories': []}))
+        with contextlib.redirect_stdout(io.StringIO()):
+            verify_imports.verify(self.root)
+
+
+class RepositoryManifestCoverageTests(unittest.TestCase):
+    def test_every_retained_import_is_pinned(self):
+        # Retained evidence that `make verify` must hash-check: the tracked
+        # files, or outside a git checkout a walk that skips what .gitignore
+        # ignores in these trees (.DS_Store, __pycache__, *.py[cod]).
+        root = Path(__file__).resolve().parents[1]
+        tops = ('research/imported', 'research/upstream-docs', 'tools/legacy')
+        try:
+            listed = subprocess.run(['git', '-C', str(root), 'ls-files', '-z', '--', *tops],
+                                    capture_output=True, check=True).stdout.decode()
+            retained = {p for p in listed.split('\0') if p}
+        except (OSError, subprocess.CalledProcessError):
+            retained = {p.relative_to(root).as_posix()
+                        for top in tops for p in (root / top).rglob('*')
+                        if p.is_file() and '__pycache__' not in p.parts
+                        and p.name != '.DS_Store' and p.suffix not in ('.pyc', '.pyo', '.pyd')}
+        pinned = {item['path'] for item in
+                  json.loads((root / 'provenance/imports.json').read_text())['files']}
+        self.assertEqual(sorted(retained - pinned), [])
+        self.assertEqual(sorted(pinned - retained), [])

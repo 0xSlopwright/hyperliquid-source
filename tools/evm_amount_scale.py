@@ -18,7 +18,7 @@ its own RAM.
     python3 tools/evm_amount_scale.py --out <dir>
 
 writes evidence.json, exponent-table.tsv, boundaries.tsv and function-bytes.txt.  Only the
-Python standard library and objdump are used.
+Python standard library and GNU objdump are used.
 """
 
 import argparse
@@ -31,6 +31,9 @@ import subprocess
 import sys
 from functools import partial
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gnu_binutils import gnu_objdump  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 BINARY = 'artifacts/node/94/hl-node'
@@ -104,16 +107,31 @@ def check_digest(data, expected=SHA256):
 # ------------------------------------------------------------------- ELF / FDE
 
 def sections(data):
-    if data[:6] != b'\x7fELF\x02\x01':
+    if data[:6] != b'\x7fELF\x02\x01' or len(data) < 64:
         raise EvidenceError('not an ELF64 little-endian file')
     shoff = struct.unpack_from('<Q', data, 0x28)[0]
     shentsize, shnum, shstrndx = struct.unpack_from('<HHH', data, 0x3a)
+    if shentsize < 64 or shstrndx >= shnum or shoff + shentsize * shnum > len(data):
+        raise EvidenceError('Invalid or unsupported ELF section table')
     raw = [struct.unpack_from('<IIQQQQIIQQ', data, shoff + i * shentsize) for i in range(shnum)]
-    stroff = raw[shstrndx][4]
+    stroff, strsize = raw[shstrndx][4], raw[shstrndx][5]
+    if stroff > len(data) or strsize > len(data) - stroff:
+        raise EvidenceError('section name table extends past end of file')
+    table = data[stroff:stroff + strsize]
     out = {}
-    for name, _typ, _flags, addr, off, size, *_ in raw:
-        end = data.index(b'\0', stroff + name)
-        out[data[stroff + name:end].decode()] = (addr, off, size)
+    for name, typ, _flags, addr, off, size, *_ in raw:
+        if typ == 8:  # SHT_NOBITS has no file bytes.
+            continue
+        if name >= len(table):
+            raise EvidenceError('section name offset outside .shstrtab')
+        end = table.find(b'\0', name)
+        if end < 0:
+            raise EvidenceError('unterminated section name')
+        try:
+            decoded = table[name:end].decode()
+        except UnicodeDecodeError:
+            raise EvidenceError('Non-UTF8 section name') from None
+        out[decoded] = (addr, off, size)
     return out
 
 
@@ -132,20 +150,30 @@ class Image:
         o = self.off(va, size)
         return self.data[o:o + size]
 
+    def section(self, name):
+        try:
+            return self.sec[name]
+        except KeyError:
+            raise EvidenceError(f'missing required section {name}') from None
+
     def text(self):
-        addr, off, size = self.sec['.text']
+        addr, off, size = self.section('.text')
         return addr, self.data[off:off + size]
 
     def in_rodata(self, va, size):
-        addr, _, sz = self.sec['.rodata']
+        addr, _, sz = self.section('.rodata')
         return addr <= va and va + size <= addr + sz
 
     def slots(self):
         """GOT contents after load: RELATIVE addends, plus the two libc symbols the helpers use."""
-        _, off, size = self.sec['.rela.dyn']
-        _, sym_off, _ = self.sec['.dynsym']
-        _, str_off, _ = self.sec['.dynstr']
-        got = self.sec['.got']
+        _, off, size = self.section('.rela.dyn')
+        if off + size > len(self.data) or size % 24:
+            raise EvidenceError('.rela.dyn truncated')
+        _, sym_off, sym_size = self.section('.dynsym')
+        _, str_off, str_size = self.section('.dynstr')
+        if sym_off + sym_size > len(self.data) or str_off + str_size > len(self.data):
+            raise EvidenceError('dynamic symbol table extends past end of file')
+        got = self.section('.got')
         stubs = {b'memset': MEMSET_STUB, b'memcpy': MEMCPY_STUB}
         out = {}
         for where, info, addend in struct.iter_unpack('<QQq', self.data[off:off + size]):
@@ -155,14 +183,25 @@ class Image:
             if typ == 8:
                 out[where] = addend & MASK
             elif typ == 6:
+                if sym * 24 + 24 > sym_size:
+                    raise EvidenceError('dynamic symbol index outside .dynsym')
                 n = struct.unpack_from('<I', self.data, sym_off + sym * 24)[0]
-                name = self.data[str_off + n:self.data.index(b'\0', str_off + n)]
+                # The symbol name has to end inside .dynstr. A NUL in the next
+                # section is not this symbol's terminator.
+                if n >= str_size:
+                    raise EvidenceError('dynamic symbol name outside .dynstr')
+                end = self.data.find(b'\0', str_off + n, str_off + str_size)
+                if end < 0:
+                    raise EvidenceError('unterminated dynamic symbol name')
+                name = self.data[str_off + n:end]
                 if name in stubs:
                     out[where] = stubs[name]
         return out
 
     def relative_relocs(self):
-        _, off, size = self.sec['.rela.dyn']
+        _, off, size = self.section('.rela.dyn')
+        if off + size > len(self.data) or size % 24:
+            raise EvidenceError('.rela.dyn truncated')
         return {where: addend for where, info, addend in
                 struct.iter_unpack('<QQq', self.data[off:off + size]) if info & 0xffffffff == 8}
 
@@ -170,16 +209,23 @@ class Image:
 def uleb(buf, i):
     val = shift = 0
     while True:
+        if i >= len(buf) or shift > 63:
+            raise EvidenceError('Truncated or oversized ULEB128')
         b = buf[i]
         i += 1
         val |= (b & 0x7f) << shift
         shift += 7
         if b < 0x80:
+            if val >= 1 << 64:
+                raise EvidenceError('ULEB128 value exceeds 64 bits')
             return val, i
 
 
 def read_enc(img, va, enc):
-    size, code = {0x03: (4, '<I'), 0x0b: (4, '<i'), 0x04: (8, '<Q'), 0x0c: (8, '<q')}[enc & 0x0f]
+    fmt = {0x03: (4, '<I'), 0x0b: (4, '<i'), 0x04: (8, '<Q'), 0x0c: (8, '<q')}.get(enc & 0x0f)
+    if fmt is None:
+        raise EvidenceError(f'unsupported pointer encoding {enc:#x}')
+    size, code = fmt
     val = struct.unpack(code, img.read(va, size))[0]
     if enc & 0x70 == 0x10:
         val += va
@@ -193,7 +239,7 @@ class Fdes:
 
     def __init__(self, img):
         self.img = img
-        hdr = img.sec['.eh_frame_hdr'][0]
+        hdr = img.section('.eh_frame_hdr')[0]
         version, ptr_enc, cnt_enc, tbl_enc = img.read(hdr, 4)
         if (version, cnt_enc, tbl_enc) != (1, 0x03, 0x3b):
             raise EvidenceError('unexpected .eh_frame_hdr encodings')
@@ -205,6 +251,8 @@ class Fdes:
             loc, fde = struct.unpack_from('<ii', table, i * 8)
             self.starts.append(hdr + loc)
             self.fde.append(hdr + fde)
+        if any(b <= a for a, b in zip(self.starts, self.starts[1:])):
+            raise EvidenceError('.eh_frame_hdr table not strictly increasing')
         self.count = count
 
     def cie_r_encoding(self, cie):
@@ -212,8 +260,14 @@ class Fdes:
         if struct.unpack_from('<I', body, 0)[0] != 0:
             raise EvidenceError('CIE id is not zero')
         version = body[4]
-        end = body.index(b'\0', 5)
-        aug = body[5:end].decode()
+        try:
+            end = body.index(b'\0', 5)
+        except ValueError:
+            raise EvidenceError('Unterminated CIE augmentation') from None
+        try:
+            aug = body[5:end].decode()
+        except UnicodeDecodeError:
+            raise EvidenceError('Non-ASCII CIE augmentation') from None
         i = end + 1
         _, i = uleb(body, i)
         _, i = uleb(body, i)
@@ -223,15 +277,29 @@ class Fdes:
             _, i = uleb(body, i)
         if not aug.startswith('z'):
             raise EvidenceError('CIE without z augmentation')
-        _, i = uleb(body, i)
+        aug_length, i = uleb(body, i)
+        aug_end = i + aug_length
+        if aug_end > len(body):
+            raise EvidenceError('CIE augmentation data outside record')
         for ch in aug[1:]:
             if ch == 'R':
+                if i >= aug_end:
+                    raise EvidenceError('Truncated CIE augmentation data')
                 return body[i]
             if ch == 'L':
+                if i >= aug_end:
+                    raise EvidenceError('Truncated CIE augmentation data')
                 i += 1
             elif ch == 'P':
+                if i >= aug_end:
+                    raise EvidenceError('Truncated CIE augmentation data')
                 penc = body[i]
-                i += 1 + {0x03: 4, 0x0b: 4, 0x04: 8, 0x0c: 8}[penc & 0x0f]
+                step = {0x03: 4, 0x0b: 4, 0x04: 8, 0x0c: 8}.get(penc & 0x0f)
+                if step is None:
+                    raise EvidenceError(f'Unsupported personality encoding {penc:#x}')
+                if i + 1 + step > aug_end:
+                    raise EvidenceError('Truncated CIE augmentation data')
+                i += 1 + step
             else:
                 raise EvidenceError(f'unsupported augmentation {aug!r}')
         raise EvidenceError('CIE has no R augmentation')
@@ -255,9 +323,12 @@ class Fdes:
 # ------------------------------------------------------------ instruction reader
 
 def disassemble(binary, start, end):
-    cmd = ['objdump', '-d', '-M', 'intel', '--no-show-raw-insn',
+    objdump, why = gnu_objdump()
+    if objdump is None:
+        raise EvidenceError(f'{why}; the listing parser reads GNU objdump Intel syntax only')
+    cmd = [objdump, '-d', '-M', 'intel', '--no-show-raw-insn',
            f'--start-address={start:#x}', f'--stop-address={end:#x}', str(binary)]
-    return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
+    return subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8').stdout
 
 
 LINE_RE = re.compile(r'^\s*([0-9a-f]+):\t(.*)$')
@@ -976,7 +1047,9 @@ def check_constants(insns):
 
 def exponent_source(insns, site):
     """Describe how esi is set before one call site, from the caller's own instructions."""
-    pos = next(i for i, ins in enumerate(insns) if ins[0] == site)
+    pos = next((i for i, ins in enumerate(insns) if ins[0] == site), None)
+    if pos is None:
+        raise EvidenceError(f'no instruction at {site:#x}')
     for ins in reversed(insns[max(0, pos - 6):pos]):
         if ins[2] and ins[2][0] == ('r', RSI, 4):
             if ins[1] == 'mov' and ins[2][1][0] == 'i':
@@ -1039,7 +1112,9 @@ def check_caller_pins(binary, fdes):
 
 def check_quotient_reads(insns):
     """After the divide call the only memory reads are the numerator limbs through rbx."""
-    pos = next(i for i, ins in enumerate(insns) if ins[0] == CALL_DIV)
+    pos = next((i for i, ins in enumerate(insns) if ins[0] == CALL_DIV), None)
+    if pos is None:
+        raise EvidenceError(f'no instruction at {CALL_DIV:#x}')
     reads = [ins for ins in insns[pos + 1:] if ins[0] < CAP_INSN and any(op[0] == 'm' for op in ins[2])]
     checked(len(reads) == 4, 'unexpected reads after the divide call')
     checked(all(ins[2][1][2] == RBX for ins in reads), 'a read after the divide call is not through rbx')
@@ -1168,27 +1243,35 @@ def analyse(binary, data):
 
 def write_outputs(out, result, table, bounds, data):
     out.mkdir(parents=True, exist_ok=True)
-    (out / 'evidence.json').write_text(json.dumps(result, indent=1, sort_keys=True) + '\n')
+    (out / 'evidence.json').write_text(json.dumps(result, indent=1, sort_keys=True) + '\n',
+                                       encoding='utf-8', newline='\n')
     lines = ['exponent_i8\tabs\tpower_or_none']
     lines += [f'{e}\t{k}\t{p if p is not None else "none"}' for e, k, p in table]
-    (out / 'exponent-table.tsv').write_text('\n'.join(lines) + '\n')
+    (out / 'exponent-table.tsv').write_text('\n'.join(lines) + '\n',
+                                             encoding='utf-8', newline='\n')
     lines = ['exponent_i8\tpower\tlargest_admitted_amount\tresult_there\tfirst_rejected_amount']
     lines += ['\t'.join(str(v) for v in row) for row in bounds]
-    (out / 'boundaries.tsv').write_text('\n'.join(lines) + '\n')
+    (out / 'boundaries.tsv').write_text('\n'.join(lines) + '\n',
+                                         encoding='utf-8', newline='\n')
     img = Image(data)
     rows = [f'# {SCALE:#x}..{SCALE_END:#x} raw bytes, VA then hex']
     for va in range(SCALE, SCALE_END, 16):
         rows.append(f'{va:#x} {img.read(va, min(16, SCALE_END - va)).hex()}')
-    (out / 'function-bytes.txt').write_text('\n'.join(rows) + '\n')
+    (out / 'function-bytes.txt').write_text('\n'.join(rows) + '\n',
+                                             encoding='utf-8', newline='\n')
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     parser.add_argument('--out', required=True, type=Path)
     args = parser.parse_args(argv)
-    binary = ROOT / BINARY
-    data = binary.read_bytes()
-    result, table, bounds, _ = analyse(binary, data)
+    try:
+        binary = ROOT / BINARY
+        data = binary.read_bytes()
+        result, table, bounds, _ = analyse(binary, data)
+    except (EvidenceError, OSError) as exc:
+        print(f'error: {exc}', file=sys.stderr)
+        return 1
     write_outputs(args.out, result, table, bounds, data)
     v = result['vectors']
     print(f"vectors {v['total']}, mismatches {v['mismatches']}, sites {len(result['sites'])}, "

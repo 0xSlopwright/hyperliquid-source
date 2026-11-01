@@ -1,0 +1,17 @@
+{
+  "excluded_search": "The unrelated preliminary decimal-pattern search is not primary evidence, an absence claim or part of this deliverable.",
+  "intake_snapshot_admissions": 2,
+  "linked_adapter_range": [
+    "0x1686bd0",
+    "0x1686e46"
+  ],
+  "manual_transcription_correction": "Initial message added0x200 to both candidate addresses. Machine-generated records were correct; final addresses usehex()/format.",
+  "original_sealed_intake_sha256": "8473ab000090aa5618a0930a23ce241ea87c3c4d4ecc552769c3383e9c11c323",
+  "preliminary_released_before_final_typed_data_check": true,
+  "project_source_or_provider_original_identity_claim": false,
+  "schema": "historical-intake-projection-v1",
+  "source_parent_range": [
+    "0x167d950",
+    "0x167dad6"
+  ]
+}

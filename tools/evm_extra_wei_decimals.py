@@ -60,16 +60,31 @@ def check_digest(data, expected=SHA256):
 
 
 def sections(data):
-    if data[:6] != b'\x7fELF\x02\x01':
+    if data[:6] != b'\x7fELF\x02\x01' or len(data) < 64:
         raise EvidenceError('not an ELF64 little-endian file')
     shoff = struct.unpack_from('<Q', data, 0x28)[0]
     shentsize, shnum, shstrndx = struct.unpack_from('<HHH', data, 0x3a)
+    if shentsize < 64 or shstrndx >= shnum or shoff + shentsize * shnum > len(data):
+        raise EvidenceError('Invalid or unsupported ELF section table')
     raw = [struct.unpack_from('<IIQQQQIIQQ', data, shoff + i * shentsize) for i in range(shnum)]
-    stroff = raw[shstrndx][4]
+    stroff, strsize = raw[shstrndx][4], raw[shstrndx][5]
+    if stroff > len(data) or strsize > len(data) - stroff:
+        raise EvidenceError('section name table extends past end of file')
+    table = data[stroff:stroff + strsize]
     out = {}
-    for name, _typ, _flags, addr, off, size, *_ in raw:
-        end = data.index(b'\0', stroff + name)
-        out[data[stroff + name:end].decode()] = (addr, off, size)
+    for name, typ, _flags, addr, off, size, *_ in raw:
+        if typ == 8:  # SHT_NOBITS has no file bytes.
+            continue
+        if name >= len(table):
+            raise EvidenceError('section name offset outside .shstrtab')
+        end = table.find(b'\0', name)
+        if end < 0:
+            raise EvidenceError('unterminated section name')
+        try:
+            decoded = table[name:end].decode()
+        except UnicodeDecodeError:
+            raise EvidenceError('Non-UTF8 section name') from None
+        out[decoded] = (addr, off, size)
     return out
 
 
@@ -77,6 +92,12 @@ class Image:
     def __init__(self, data):
         self.data = data
         self.sec = sections(data)
+
+    def section(self, name):
+        try:
+            return self.sec[name]
+        except KeyError:
+            raise EvidenceError(f'missing section {name}') from None
 
     def off(self, va, size=1):
         for addr, off, sz in self.sec.values():
@@ -89,24 +110,31 @@ class Image:
         return self.data[o:o + size]
 
     def text(self):
-        addr, off, size = self.sec['.text']
+        addr, off, size = self.section('.text')
         return addr, self.data[off:off + size]
 
 
 def uleb(buf, i):
     val = shift = 0
     while True:
+        if i >= len(buf) or shift > 63:
+            raise EvidenceError('Truncated or oversized ULEB128')
         b = buf[i]
         i += 1
         val |= (b & 0x7f) << shift
         shift += 7
         if b < 0x80:
+            if val >= 1 << 64:
+                raise EvidenceError('ULEB128 value exceeds 64 bits')
             return val, i
 
 
 def read_enc(img, va, enc):
     fmt = enc & 0x0f
-    size, code = {0x03: (4, '<I'), 0x0b: (4, '<i'), 0x04: (8, '<Q'), 0x0c: (8, '<q')}[fmt]
+    try:
+        size, code = {0x03: (4, '<I'), 0x0b: (4, '<i'), 0x04: (8, '<Q'), 0x0c: (8, '<q')}[fmt]
+    except KeyError:
+        raise EvidenceError(f'unsupported pointer encoding {enc:#x}')
     val = struct.unpack(code, img.read(va, size))[0]
     if enc & 0x70 == 0x10:
         val += va
@@ -120,7 +148,7 @@ class Fdes:
 
     def __init__(self, img):
         self.img = img
-        hdr = img.sec['.eh_frame_hdr'][0]
+        hdr = img.section('.eh_frame_hdr')[0]
         version, ptr_enc, cnt_enc, tbl_enc = img.read(hdr, 4)
         if (version, cnt_enc, tbl_enc) != (1, 0x03, 0x3b):
             raise EvidenceError('unexpected .eh_frame_hdr encodings')
@@ -132,6 +160,8 @@ class Fdes:
             loc, fde = struct.unpack_from('<ii', table, i * 8)
             self.starts.append(hdr + loc)
             self.fde.append(hdr + fde)
+        if any(b <= a for a, b in zip(self.starts, self.starts[1:])):
+            raise EvidenceError('.eh_frame_hdr table not strictly increasing')
         self.count = count
 
     def cie_r_encoding(self, cie):
@@ -139,8 +169,14 @@ class Fdes:
         if struct.unpack_from('<I', body, 0)[0] != 0:
             raise EvidenceError('CIE id is not zero')
         version = body[4]
-        end = body.index(b'\0', 5)
-        aug = body[5:end].decode()
+        try:
+            end = body.index(b'\0', 5)
+        except ValueError:
+            raise EvidenceError('Unterminated CIE augmentation') from None
+        try:
+            aug = body[5:end].decode()
+        except UnicodeDecodeError:
+            raise EvidenceError('Non-ASCII CIE augmentation') from None
         i = end + 1
         _, i = uleb(body, i)
         _, i = uleb(body, i)
@@ -150,15 +186,29 @@ class Fdes:
             _, i = uleb(body, i)
         if not aug.startswith('z'):
             raise EvidenceError('CIE without z augmentation')
-        _, i = uleb(body, i)
+        aug_length, i = uleb(body, i)
+        aug_end = i + aug_length
+        if aug_end > len(body):
+            raise EvidenceError('CIE augmentation data outside record')
         for ch in aug[1:]:
             if ch == 'R':
+                if i >= aug_end:
+                    raise EvidenceError('Truncated CIE augmentation data')
                 return body[i]
             if ch == 'L':
+                if i >= aug_end:
+                    raise EvidenceError('Truncated CIE augmentation data')
                 i += 1
             elif ch == 'P':
+                if i >= aug_end:
+                    raise EvidenceError('Truncated CIE augmentation data')
                 penc = body[i]
-                i += 1 + {0x03: 4, 0x0b: 4, 0x04: 8, 0x0c: 8}[penc & 0x0f]
+                step = {0x03: 4, 0x0b: 4, 0x04: 8, 0x0c: 8}.get(penc & 0x0f)
+                if step is None:
+                    raise EvidenceError(f'Unsupported personality encoding {penc:#x}')
+                if i + 1 + step > aug_end:
+                    raise EvidenceError('Truncated CIE augmentation data')
+                i += 1 + step
             else:
                 raise EvidenceError(f'unsupported augmentation {aug!r}')
         raise EvidenceError('CIE has no R augmentation')
@@ -180,7 +230,7 @@ class Fdes:
 
 
 def find_unique(img, needle):
-    addr, off, size = img.sec['.rodata']
+    addr, off, size = img.section('.rodata')
     ro = img.data[off:off + size]
     first = ro.find(needle)
     if first == -1 or ro.find(needle, first + 1) != -1:
@@ -392,6 +442,16 @@ def gate_jump(buf, base_va, guard_off, already_va):
     return out
 
 
+def measured_admitted(ok):
+    """Admitted i8 values measured from the fully verified sites' guards.
+
+    The summary reports this set rather than restating the range parsed
+    out of the error message: with no fully verified site it is empty.
+    """
+    return sorted({v for s in ok for v in admitted_signed(
+        s['guards'][0]['k'], s['guards'][0]['c'], s['guards'][0]['jcc'])})
+
+
 def analyse(data):
     digest = check_digest(data)
     img = Image(data)
@@ -429,6 +489,7 @@ def analyse(data):
     ok = [s for s in sites if len(s['guards']) == 1 and s['guards'][0]['admitted_equals_message_range']
           and s['guards'][0]['ok_target_outside_error_block'] and s['guards'][0]['ok_target_in_function']
           and s['payload'] and s['payload']['length'] == len(MESSAGE) and s['payload']['stores_ptr_and_len']]
+    measured = measured_admitted(ok)
     forms = sorted({(s['guards'][0]['adjust'].split()[0], s['guards'][0]['k'], s['guards'][0]['c'],
                      s['guards'][0]['jcc']) for s in sites if len(s['guards']) == 1})
     tags = sorted({s['payload']['tag'] for s in sites if s['payload']})
@@ -449,7 +510,9 @@ def analyse(data):
             'lea_refs': len(leas), 'functions': len(funcs),
             'sites_with_exactly_one_guard': sum(1 for s in sites if len(s['guards']) == 1),
             'sites_fully_verified': len(ok), 'guard_forms': len(forms),
-            'admitted_i8_min': lo, 'admitted_i8_max': hi, 'admitted_count': len(expected),
+            'admitted_i8_min': measured[0] if measured else None,
+            'admitted_i8_max': measured[-1] if measured else None,
+            'admitted_count': len(measured),
             'error_tags': tags,
             'sites_gated_by_already_set': sum(1 for s in sites if len(s['gate']) == 1),
             'sites_ok_path_stores_input_byte': sum(
@@ -462,7 +525,7 @@ def analyse(data):
 
 def write(out, result, funcs, table):
     out.mkdir(parents=True, exist_ok=True)
-    (out / 'evidence.json').write_text(json.dumps(result, indent=2, sort_keys=True) + '\n')
+    (out / 'evidence.json').write_text(json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8', newline='\n')
     rows = ['lea_va\tfn_start\tfn_end\tguard_va\tadjust\tk\tcmp_reg\tc\tjcc\tok_target\t'
             'admitted_min\tadmitted_max\tadmitted_count\tlen_imm\ttag\tgate_je']
     for s in result['sites']:
@@ -480,7 +543,7 @@ def write(out, result, funcs, table):
     rows.append('byte\ti8\t' + '\t'.join(table[0]['admitted']))
     for t in table:
         rows.append(f"{t['byte']:#04x}\t{t['i8']}\t" + '\t'.join(str(v).lower() for v in t['admitted'].values()))
-    (out / 'guards.tsv').write_text('\n'.join(rows) + '\n')
+    (out / 'guards.tsv').write_text('\n'.join(rows) + '\n', encoding='utf-8', newline='\n')
     lines = []
     for s in result['sites']:
         start = int(s['fn_start'], 16)
@@ -493,7 +556,7 @@ def write(out, result, funcs, table):
         for k in range(lo, hi, 16):
             lines.append(f'{k:x}: {fn[k - start:min(k + 16, hi) - start].hex(" ")}')
         lines.append('')
-    (out / 'guard-bytes.txt').write_text('\n'.join(lines))
+    (out / 'guard-bytes.txt').write_text('\n'.join(lines), encoding='utf-8', newline='\n')
 
 
 def main(argv=None):
@@ -503,7 +566,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     try:
         result, funcs, table = analyse(args.binary.read_bytes())
-    except EvidenceError as exc:
+    except (EvidenceError, OSError) as exc:
         print(f'error: {exc}', file=sys.stderr)
         return 1
     write(args.out, result, funcs, table)

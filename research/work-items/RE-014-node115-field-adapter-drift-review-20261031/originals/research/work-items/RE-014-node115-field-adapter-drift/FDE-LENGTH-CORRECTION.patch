@@ -1,0 +1,30 @@
+--- a/tools/node115_field_adapter_drift.py
++++ b/tools/node115_field_adapter_drift.py
+@@ -184,11 +184,15 @@
+                  'selected unwind index neighborhood is not strict')
+     fde_va = header['address'] + frame_delta
+     fde_offset = frames['offset'] + fde_va - frames['address']
+-    need(frames['offset'] <= fde_offset and fde_offset + 16 <= frames['offset'] + frames['size'],
++    need(frames['offset'] <= fde_offset and fde_offset + 4 <= frames['offset'] + frames['size'],
+          'selected FDE outside .eh_frame')
+-    length, cie_delta, begin_delta, size = struct.unpack_from('<IIiI', image.data, fde_offset)
+-    need(length not in (0, 0xffffffff) and fde_offset + length + 4 <= frames['offset'] + frames['size'],
++    length = struct.unpack_from('<I', image.data, fde_offset)[0]
++    # The supported zR record needs4B CIE displacement,4B begin,4B range,
++    # and its one-byte zero augmentation length INSIDE the declared record.
++    need(13 <= length < 0xffffffff and fde_offset + length + 4 <= frames['offset'] + frames['size'],
+          'invalid selected FDE length')
++    cie_delta, begin_delta, size = struct.unpack_from('<IiI', image.data, fde_offset + 4)
++    need(image.data[fde_offset + 16] == 0, 'unsupported selected FDE augmentation length')
+     need(fde_va + 8 + begin_delta == expected_start and size == expected_size,
+          'selected FDE extent disagreement')
+     cie_offset = fde_offset + 4 - cie_delta
+@@ -207,6 +211,8 @@
+             'FDE_raw_sha256': sha(image.data[fde_offset:fde_offset + length + 4]),
+             'FDE_raw_length_bytes': length + 4, 'FDE_range_file_offset': fde_offset + 12,
+             'FDE_CIE_pointer_file_offset': fde_offset + 4,
++            'FDE_augmentation_length_file_offset': fde_offset + 16,
++            'FDE_declared_length_bytes': length, 'FDE_used_header_bytes': 17,
+             'CIE_file_offset': cie_offset, 'CIE_raw_sha256': sha(cie),
+             'CIE_encoding_file_offset': cie_offset + 16, 'CIE_raw_hex': cie.hex(),
+             'index_entry_file_offset': header['offset'] + entry,

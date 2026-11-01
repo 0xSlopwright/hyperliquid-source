@@ -123,16 +123,36 @@ IDIOMS = {
 def sections(data):
     if data[:6] != b'\x7fELF\x02\x01':
         raise EvidenceError('not a little-endian ELF64 file')
+    if len(data) < 64:
+        raise EvidenceError('truncated ELF header')
     shoff = struct.unpack_from('<Q', data, 40)[0]
     shentsize, shnum, shstrndx = struct.unpack_from('<HHH', data, 58)
     if shentsize != 64 or shoff + shnum * 64 > len(data):
         raise EvidenceError('section header table is truncated or malformed')
+    if shstrndx >= shnum:
+        raise EvidenceError('section name string table index out of range')
     raw = [struct.unpack_from('<IIQQQQIIQQ', data, shoff + i * 64) for i in range(shnum)]
-    stro = raw[shstrndx][4]
+    stro, strsize = raw[shstrndx][4], raw[shstrndx][5]
+    if stro > len(data) or strsize > len(data) - stro:
+        raise EvidenceError('section name table extends past end of file')
+    table = data[stro:stro + strsize]
     out = {}
     for h in raw:
-        end = data.index(b'\0', stro + h[0])
-        out[data[stro + h[0]:end].decode()] = {'addr': h[3], 'offset': h[4], 'size': h[5]}
+        if h[1] == 8:  # NOBITS has no bytes to map.
+            continue
+        name_off = h[0]
+        if name_off >= len(table):
+            raise EvidenceError('section name offset outside .shstrtab')
+        end = table.find(b'\0', name_off)
+        if end < 0:
+            raise EvidenceError('unterminated section name; section name is not NUL-terminated')
+        try:
+            name = table[name_off:end].decode()
+        except UnicodeDecodeError:
+            raise EvidenceError('section name is not valid UTF-8')
+        if name in out:
+            raise EvidenceError(f'Duplicate section: {name}')
+        out[name] = {'addr': h[3], 'offset': h[4], 'size': h[5]}
     for name in ('.text', '.eh_frame', '.eh_frame_hdr', '.rela.dyn', '.data.rel.ro', '.rodata'):
         if name not in out:
             raise EvidenceError(f'missing section {name}')
@@ -153,24 +173,37 @@ def fde_extents(data, secs):
     """Return {pc_begin: pc_end} from .eh_frame_hdr's table and each FDE body."""
     hdr = secs['.eh_frame_hdr']
     h = hdr['offset']
+    if hdr['size'] < 12:
+        raise EvidenceError('truncated .eh_frame_hdr')
     version, eh_ptr_enc, count_enc, table_enc = data[h:h + 4]
     if (version, eh_ptr_enc, count_enc, table_enc) != (1, 0x1b, 0x03, 0x3b):
         raise EvidenceError('unexpected .eh_frame_hdr encodings')
     count = struct.unpack_from('<I', data, h + 8)[0]
+    if 12 + count * 8 > hdr['size']:
+        raise EvidenceError('truncated .eh_frame_hdr table')
     ef = secs['.eh_frame']
+    frame_end = ef['addr'] + ef['size']
     out = {}
     for i in range(count):
         start_rel, fde_rel = struct.unpack_from('<ii', data, h + 12 + i * 8)
         start = hdr['addr'] + start_rel
         fde_va = hdr['addr'] + fde_rel
+        # The indexed record must itself lie in .eh_frame. A negative file
+        # offset would make unpack_from read the end of the file instead.
+        if fde_va < ef['addr'] or fde_va + 16 > frame_end:
+            raise EvidenceError(f'FDE at {fde_va:#x} is outside .eh_frame')
         fo = ef['offset'] + fde_va - ef['addr']
         length, cie_ptr = struct.unpack_from('<II', data, fo)
-        if length in (0, 0xffffffff) or cie_ptr == 0:
+        if length in (0, 0xffffffff) or cie_ptr == 0 or length < 12:
             raise EvidenceError(f'FDE at {fde_va:#x} is malformed')
+        if fo + 4 + length > ef['offset'] + ef['size']:
+            raise EvidenceError(f'FDE at {fde_va:#x} is truncated')
         begin_rel, pc_range = struct.unpack_from('<iI', data, fo + 8)
         begin = fde_va + 8 + begin_rel
         if begin != start:
             raise EvidenceError(f'FDE at {fde_va:#x} disagrees with its index entry')
+        if begin in out:
+            raise EvidenceError(f'duplicate FDE start {begin:#x}')
         out[begin] = begin + pc_range
     return out
 
@@ -186,28 +219,81 @@ def direct_calls(text, base, target):
 
 
 def relative_relocs(data, secs):
+    """Return the node #94 evidence map of RELATIVE offsets to signed addends.
+
+    Require unique RELATIVE offsets: this restricted map does not model
+    relocation composition or loader application order. Other types are ignored.
+    """
     r = secs['.rela.dyn']
+    if r['size'] % 24:
+        raise EvidenceError('truncated .rela.dyn')
     out = {}
     for o in range(r['offset'], r['offset'] + r['size'], 24):
         where, info, addend = struct.unpack_from('<QQq', data, o)
         if info & 0xffffffff == R_X86_64_RELATIVE:
+            if where in out:
+                raise EvidenceError(f'duplicate RELATIVE relocation at {where:#x}')
             out[where] = addend
     return out
 
 
+def bytes_in_section(data, secs, va, size):
+    """Return `size` bytes at `va` from the section `va_to_off` would select.
+
+    A declared length must not continue into the next section or past EOF.
+    `va_to_off` only checks that the first byte is mapped, and a Python slice
+    silently shortens a read that runs off the end of the file.
+    """
+    if size <= 0:
+        raise EvidenceError(f'range {va:#x} has non-positive length {size}')
+    for name, s in secs.items():
+        if s['addr'] and s['addr'] <= va < s['addr'] + s['size']:
+            if va + size > s['addr'] + s['size']:
+                raise EvidenceError(f'range {va:#x}+{size} leaves section {name}')
+            off = s['offset'] + va - s['addr']
+            blob = data[off:off + size]
+            if len(blob) != size:
+                raise EvidenceError(f'range {va:#x}+{size} leaves the file')
+            return blob
+    raise EvidenceError(f'address {va:#x} is outside every section')
+
+
 def panic_location(data, secs, relocs, lea_va):
-    o = va_to_off(secs, lea_va)
-    if data[o:o + 3] != b'\x48\x8d\x3d':
+    insn = bytes_in_section(data, secs, lea_va, 7)
+    if insn[:3] != b'\x48\x8d\x3d':
         raise EvidenceError(f'no lea rdi,[rip+disp] at {lea_va:#x}')
-    loc = lea_va + 7 + struct.unpack_from('<i', data, o + 3)[0]
+    loc = lea_va + 7 + struct.unpack_from('<i', insn, 3)[0]
     if loc not in relocs:
         raise EvidenceError(f'Location {loc:#x} has no RELATIVE relocation')
     path_va = relocs[loc]
-    lo = va_to_off(secs, loc)
-    length, line, col = struct.unpack_from('<QII', data, lo + 8)
-    po = va_to_off(secs, path_va)
+    length, line, col = struct.unpack_from('<QII', bytes_in_section(data, secs, loc + 8, 16))
+    if length <= 0:
+        raise EvidenceError(f'panic path at {path_va:#x} has empty length')
+    try:
+        path = bytes_in_section(data, secs, path_va, length).decode()
+    except UnicodeDecodeError:
+        raise EvidenceError('panic location path is not valid UTF-8') from None
     return {'location': f'{loc:#x}', 'path_va': f'{path_va:#x}',
-            'path': data[po:po + length].decode(), 'line': line, 'column': col}
+            'path': path, 'line': line, 'column': col}
+
+
+def section_slice(data, secs, va, size):
+    """Return `(file_offset, bytes)` for a range that lies in one section.
+
+    `va_to_off` only checks that the first byte is mapped, so an anchor
+    straddling the end of its section would silently borrow the next
+    section's bytes; those bytes are not the function's evidence.
+    """
+    for s in secs.values():
+        if s['addr'] and s['addr'] <= va < s['addr'] + s['size']:
+            if va + size > s['addr'] + s['size']:
+                raise EvidenceError(f'range {va:#x}+{size} leaves its section')
+            off = s['offset'] + va - s['addr']
+            blob = data[off:off + size]
+            if len(blob) != size:
+                raise EvidenceError(f'range {va:#x}+{size} leaves the file')
+            return off, blob
+    raise EvidenceError(f'address {va:#x} is outside every section')
 
 
 def scan(data, expected_sha256=SHA256):
@@ -229,8 +315,8 @@ def scan(data, expected_sha256=SHA256):
             if not start <= va < end:
                 raise EvidenceError(f'{name}: anchor {va:#x} outside its FDE')
             want = bytes.fromhex(hexbytes)
-            o = va_to_off(secs, va)
-            if data[o:o + len(want)] != want:
+            o, got = section_slice(data, secs, va, len(want))
+            if got != want:
                 raise EvidenceError(f'{name}: bytes at {va:#x} are not {hexbytes}')
             rows.append({'va': f'{va:#x}', 'file_offset': f'{o:#x}', 'bytes': hexbytes, 'meaning': meaning})
         sites = direct_calls(tbytes, text['addr'], start)
@@ -295,9 +381,9 @@ def main(argv=None):
         print(f'bincode_varint: {e}', file=sys.stderr)
         return 1
     if a.output:
-        a.output.write_text(text)
+        a.output.write_text(text, encoding='utf-8', newline='\n')
     else:
-        sys.stdout.write(text)
+        sys.stdout.buffer.write(text.encode('utf-8'))
     return 0
 
 

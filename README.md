@@ -78,13 +78,12 @@ Start with [CONTRIBUTING.md](CONTRIBUTING.md), [scope](docs/SCOPE.md), the
 
 ## Get started
 
-Prerequisites: Git, Git LFS, Python 3.10+, ripgrep, GnuPG, GNU binutils and rustup.
-The retained-evidence tests use GNU `objdump` and `readelf`; put binutils ahead
-of Apple's tools on PATH. LLVM's `llvm-objdump` is useful for further disassembly.
-On macOS:
+Prerequisites: Git, Git LFS, Python 3.10+, ripgrep, GnuPG, GNU binutils
+(`objdump` and `readelf` on PATH) and rustup. LLVM's `llvm-objdump` is useful
+for further disassembly. On macOS, where `/usr/bin/objdump` is LLVM:
 
 ```sh
-brew install git-lfs ripgrep gnupg binutils llvm rustup
+brew install git-lfs ripgrep gnupg llvm binutils rustup
 export PATH="$(brew --prefix binutils)/bin:$(brew --prefix llvm)/bin:$PATH"
 git clone --recurse-submodules https://github.com/lalalune/hyperliquid-source.git
 cd hyperliquid-source
