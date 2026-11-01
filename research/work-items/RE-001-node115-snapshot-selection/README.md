@@ -19,10 +19,11 @@ Original ELF virtual addresses, half-open actual FDE ranges:
 | worker 3 | `0x22b7d50..0x22b8583` | 2,099 | 412 |
 | wrapper 0 | `0x273bb10..0x273bd19` | 521 | 137 |
 | wrapper 1 | `0x273bd20..0x273bf29` | 521 | 137 |
+| selected exit helper | `0x2308120..0x23082ff` | 479 | 135 |
 
-Denominator: **six full FDE bodies, 9,438 bytes / 1,922 native instructions**. No clone is submitted separately. Retained full native exports, file offsets/body hashes, raw FDE/CIE records and independent readelf confirmations cover each actual entry through end. No byte normalization, Rust compilation or reconstructed-binary comparison is performed.
+Denominator: **seven full FDE bodies, 9,917 bytes / 2,057 native instructions**. No clone is submitted separately. Retained full native exports, file offsets/body hashes, raw FDE/CIE records and independent readelf confirmations cover each actual entry through end. No byte normalization, Rust compilation or reconstructed-binary comparison is performed.
 
-The actual relocated Locations `0x642cd18` and `0x642cd30` reference `info_server/src/save_l4_snapshots.rs:51:45` and `:51:80`. Native LEAs in all six measured bodies bind this source association. This does not establish original function names. `spec.json` retains 122 direct calls, 78 RIP-relative bindings and six distinct relevant RELATIVE slots; its SHA-256 is pinned in the producer. Direct targets and source/import slots are checked individually, not hidden by a normalization mask. Indirect register/vtable calls and helper bodies remain unclosed.
+The actual relocated Locations `0x642cd18` and `0x642cd30` reference `info_server/src/save_l4_snapshots.rs:51:45` and `:51:80`. Native LEAs in the six source-associated wrapper/worker bodies bind this source association. This does not establish original function names. `spec.json` retains 124 direct calls, 84 RIP-relative bindings and six distinct relevant RELATIVE slots; its SHA-256 is pinned in the producer. Direct targets and source/import slots are checked individually, not hidden by a normalization mask. Indirect register/vtable calls and helper bodies remain unclosed.
 
 ## Inner raw selector and length gate
 
@@ -35,7 +36,7 @@ These are raw bit-pattern facts, not recovered Option/Result/enum discriminants.
 
 The explicit prefix loads a qword at input `+0x10`, compares it against sign-extended immediate **101**, then uses unsigned JAE to worker `+0x5da`. For valid input memory this is exactly count >=101. Counts 0..100 pass the local guard. They are **not** thereby proved to complete: the selected-collection helper and subsequent processing can fail or have additional constraints.
 
-The >=101 arm skips the selected-collection helper, handles the observed input ownership, prepares raw diagnostic word **0x158**, calls `0x2308120`, and exits the worker's measured normal route. Its whole error/public status representation and helper side effects are unknown. This packet calls it a diagnostic route, not an established returned HTTP error.
+The >=101 arm skips the selected-collection helper, handles the observed input ownership, prepares raw raw exit word **0x158**, calls `0x2308120`, and exits the worker's measured normal route. Its whole error/public status representation and helper side effects are unknown. This packet calls it a limit-exit route, not an established returned HTTP error.
 
 The all-collection prefix instead obtains its buffer/count from the context:
 
@@ -85,21 +86,50 @@ make reproduce
 
 The producer authenticates the full capture and retained spec before interpretation, output or native analysis. Native tools receive private byte-identical snapshots; full-body byte coverage and every recorded direct call/RIP binding instruction start are independently checked. Output is unnormalized UTF-8/LF. Wrong-release, same-size modified and truncated inputs are rejected before output creation.
 
-Six focused tests include the raw selector/NEG overflow relation, all count values 0..101 and u64 extremes, and three **actual operand** counterfactuals on all four workers:
+Seven focused tests include the raw selector/NEG overflow relation, all count values 0..101 and u64 extremes, and three **actual operand** counterfactuals on all four workers:
 
-- Comparison 101 ->102 changes count 101 from diagnostic to explicit preparation.
-- JNO ->JO flips which raw word takes the explicit route; the real 0x8000000000000000 case with count101 changes from all-collection to diagnostic.
+- Comparison 101 ->102 changes count 101 from limit exit to explicit preparation.
+- JNO ->JO flips which raw word takes the explicit route; the real 0x8000000000000000 case with count101 changes from all-collection to limit exit.
 - Mode comparison 1 ->2 changes the normalized mode1 output selection.
 
-Tests additionally corrupt actual branch displacements, context offsets/stride, diagnostic tag, wrapper TEST/normalization/sentinel/byte selectors, every direct call displacement, selected actual RIP bindings, six relocation addends, both source metadata records, and all six FDE extents. Counterfactuals are extracted branch equations, not target execution or an instruction emulator.
+Tests additionally corrupt actual branch displacements, context offsets/stride, raw exit tag, wrapper TEST/normalization/sentinel/byte selectors, every direct call displacement, selected actual RIP bindings, six relocation addends, both source metadata records, and all seven FDE extents. Counterfactuals are extracted branch equations, not target execution or an instruction emulator.
 
 Before: main has no digest-bound #115 packet tying these two wrapper and four worker selection routes together. After: their raw gate/dispatch relations and actual call targets are reproducible as one bounded family. All original artifacts/source pins, unlicensed inferred reference code and progress gates are untouched. New tools/docs are independently authored under root MIT. No captured node/emulator, API endpoint, snapshot write, wallet, signing, chain action, hosted CI or runtime equivalence is claimed.
 
 Next question: close one selected-collection helper and its output callback before assigning concrete request fields, asset membership or output/file effects.
 
-Observed local validation: **six focused tests passed in 137.904s**. The producer's
-binding checks were then reordered ahead of full unwind parsing for faster
-corruption rejection without changing retained evidence or semantics; the final
-`make doctor verify test catalogue-check` passed **437 tests in 183.364s**,
-including all six focused tests. `make reproduce` passed. Packet manifest and
-staged whitespace checks passed. No hosted-CI result is claimed.
+## Correction: raw exit word 0x158 does not establish a diagnostic
+
+The earlier packet named the >=101 branch a diagnostic route. That label went
+beyond the measured caller. This revision uses **limit-exit route** / **raw exit
+tag** and includes the full 479-byte helper FDE to resolve the selected path.
+The value is not assigned a public error enum, response status or message.
+
+For raw entry word 0x158, `0x2308124` zero-extends the input u16. The actual
+selected path is:
+
+1. CMP EAX,239 / JG at `0x230812c`: taken to `0x230815c`.
+2. CMP EAX,351 / JG at `0x2308161`: not taken.
+3. ADD EAX,-240 at `0x2308163`: the resulting u32 index is **104**.
+4. CMP EAX,25 / unsigned JA at `0x230816b`: taken to `0x2308274`.
+5. ADD RSP,8 / POP RBX / POP R14 / RET: normal epilogue.
+
+All comparisons and transfers are operand/destination-checked. The zero-extended
+u16 is below 2^31, so the first two signed JG comparisons have the stated
+positive integer meaning. **This selected helper path executes no internal
+call and no jump-table dispatch.** Therefore it supplies no evidence that the
+call emits a diagnostic. The surrounding worker's preceding ownership helper
+calls are not erased by this observation, and whole API behavior is still
+unproved. Other helper tags, its jump-table entries, nested cleanup helpers and
+exceptional behavior remain unclosed despite the retained full native body.
+
+The seventh focused test checks the actual selected branch equation and
+corrupts its real table-limit immediate from25 to104: the raw 0x158 case then
+leaves the proved epilogue route for unclosed table dispatch. It also attacks
+actual branch destinations and epilogue bytes. This is a static counterfactual;
+no modified capture is executed and no alternate-tag behavior is invented.
+
+Final validation for the selected-helper correction: **seven focused tests
+passed in 19.268s**. `make doctor verify test catalogue-check` passed **438 tests
+in 169.645s**; `make reproduce` passed. Packet manifest and staged whitespace
+checks passed. This replaces the earlier six-body validation denominator.
