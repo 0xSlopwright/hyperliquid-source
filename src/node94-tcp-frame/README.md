@@ -23,6 +23,12 @@ and the same inclusive gate to an LZ4 uncompressed-size prefix. `ChunkPlan`
 implements the verified decimal 4,000,000-byte cap without allocating a list;
 readers apply it to the payload and writers apply it to the complete frame.
 
+The writer compression policy is also exposed without I/O: compress at lengths
+at least 1,025 unless `(port & !1) == 3998`, which excludes ports 3998 and
+3999. Its checked sizing helpers preserve the observed `len * 110 / 100 + 20`
+output window, `+24` allocation, 65,535-byte hash-table switch, and truncating
+little-endian u32 size prefix.
+
 Build from the repository root with the pinned toolchain:
 
 ```sh
