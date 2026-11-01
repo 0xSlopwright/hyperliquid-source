@@ -64,6 +64,8 @@ def relocation(data, secs, slot):
     matches = []
     for section in secs:
         if section['type'] == 4:
+            if section['size'] % 24:
+                raise ValueError('Truncated relocation section')
             for p in range(section['offset'], section['offset']+section['size'], 24):
                 address, info, addend = struct.unpack_from('<QQq', data, p)
                 if address == slot:
