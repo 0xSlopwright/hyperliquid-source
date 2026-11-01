@@ -15,7 +15,7 @@ from foundation_millis import decode_export
 TARGET=ROOT/'artifacts/node/115/hl-node'
 PACKET=ROOT/'research/work-items/RE-001-node115-snapshot-selection'
 SHA='a6e2897cd051213d004802deca416e8eca62b7a8278fa39f249e98c3867b5301'
-SPEC_SHA='683a5e3355a6f25fc5b1fa38bf412c70d47d62ec2302b7023990e0bf7730bf4a'
+SPEC_SHA='e61de0886ddac9190bedd9fad03a55605cfb9f96e3918cfb0d63669b8f413de1'
 MAINS=[0x22b6490,0x22b6cd0,0x22b7510,0x22b7d50]
 WRAPPERS=[0x273bb10,0x273bd20]
 U64=(1<<64)-1
@@ -44,7 +44,7 @@ def parameters(data,a):
             'all_buffer_offset':struct.unpack('<i',read(data,a+0x35,4)[1])[0],
             'all_count_offset':struct.unpack('<i',read(data,a+0x3c,4)[1])[0],
             'all_stride':struct.unpack('<i',read(data,a+0x40,4)[1])[0],
-            'diagnostic_tag':struct.unpack('<H',read(data,a+0x5f3,2)[1])[0]}
+            'raw_exit_tag':struct.unpack('<H',read(data,a+0x5f3,2)[1])[0]}
 
 
 def local_route(p,word,count):
@@ -55,15 +55,41 @@ def local_route(p,word,count):
     elif p['condition']==0x80:explicit=overflow
     else:raise ValueError('unsupported NEG condition')
     if not explicit:return 'all-collection-route'
-    return 'diagnostic-route' if count>=p['threshold'] else 'explicit-selection-route'
+    return 'limit-exit-route' if count>=p['threshold'] else 'explicit-selection-route'
+
+
+def exit_helper_parameters(data):
+    for va,raw in [(0x2308124,'0fb707'),(0x2308127,'3d'),(0x230815c,'3d'),(0x2308163,'05'),(0x2308168,'83f8')]:
+        b=bytes.fromhex(raw)
+        if read(data,va,len(b))[1]!=b:raise ValueError('exit helper opcode changed')
+    return {'lower':struct.unpack('<I',read(data,0x2308128,4)[1])[0],
+            'upper':struct.unpack('<I',read(data,0x230815d,4)[1])[0],
+            'bias':struct.unpack('<i',read(data,0x2308164,4)[1])[0],
+            'table_last':struct.unpack('<b',read(data,0x230816a,1)[1])[0]&0xffffffff}
+
+
+def exit_helper_projection(p,tag):
+    if not 0<=tag<=0xffff:raise ValueError('outside raw u16 tag domain')
+    if p['lower']<tag<=p['upper'] and ((tag+p['bias'])&0xffffffff)>p['table_last']:
+        return 'return-without-internal-call'
+    return 'unclosed-other-tag-route'
 
 
 def analyze(data):
     spec=specification();params={}
+    helper=exit_helper_parameters(data)
+    if helper!={'lower':239,'upper':351,'bias':-240,'table_last':25}:
+        raise ValueError('exit helper relation changed')
+    for va,prefix,dst in [(0x230812c,b'\x7f',0x230815c),(0x2308161,b'\x7f',0x23081b6),(0x230816b,b'\x0f\x87',0x2308274)]:
+        code=read(data,va,len(prefix)+(1 if len(prefix)==1 else 4))[1]
+        delta=struct.unpack('<b' if len(prefix)==1 else '<i',code[len(prefix):])[0]
+        if code[:len(prefix)]!=prefix or va+len(code)+delta!=dst:raise ValueError('exit helper transfer changed')
+    if read(data,0x2308274,8)[1]!=bytes.fromhex('4883c4085b415ec3'):
+        raise ValueError('exit helper epilogue changed')
     for index,a in enumerate(MAINS):
         p=parameters(data,a);field=0x7c8 if index in [0,2] else 0x1338
         if p!={'condition':0x81,'threshold':101,'mode_equal':1,'all_buffer_offset':field,
-               'all_count_offset':field+8,'all_stride':0x510,'diagnostic_tag':0x158}:
+               'all_count_offset':field+8,'all_stride':0x510,'raw_exit_tag':0x158}:
             raise ValueError('snapshot selector relation changed')
         for off,prefix,dst in [(0x22,b'\x0f\x81',0x474),(0x47c,b'\x0f\x83',0x5da),(0x446,b'\x0f\x85',0x530)]:
             code=read(data,a+off,6)[1]
@@ -103,6 +129,7 @@ def analyze(data):
         owners.append({'start':hex(a),'end':hex(b),'bytes':b-a,'instructions':o['instructions'],
                        'file_offset':hex(offset),'sha256':o['sha256'],'frames':raw})
     return {'target_sha256':SHA,'spec_sha256':SPEC_SHA,'owners':owners,'parameters':params,
+            'exit_helper_parameters':helper,'selected_exit_helper_route':exit_helper_projection(helper,0x158),
             'wrapper_special_word':hex((1<<63)+1),'main_all_word':hex(1<<63),
             'wrapper_mode':'raw incoming R8d nonzero maps to1, zero maps to0; main compares received R8 qword to1',
             'dispatch':'wrapper0 byte+0x1a nonzero->main0, zero->main2; wrapper1 nonzero->main3, zero->main1; special word uses separate collection-builder path',
@@ -123,6 +150,7 @@ def generate(binary,output):
             frame_lines.extend(rows)
             asm=subprocess.check_output(['objdump','-d','-M','intel','--insn-width=16',f'--start-address={a:#x}',f'--stop-address={b:#x}',str(snapshot)],text=True)
             ins=decode_export(asm,a,b,read(data,a,b-a)[1]);required={int(v) for v in o['direct_calls']}|{int(v) for v in o['rip_bindings']}
+            if a==0x2308120:required|={0x2308124,0x2308127,0x230812c,0x230815c,0x2308161,0x2308163,0x2308168,0x230816b,0x2308274}
             if a in MAINS:required|={a+v for v in [0x1f,0x22,0x43b,0x446,0x478,0x47c]}
             if len(ins)!=o['instructions'] or not required<=set(ins):raise ValueError('native snapshot instruction disagreement')
             (output/f'{a:x}.objdump.txt').write_bytes(asm.replace(str(snapshot),'<authenticated-node115>').encode('utf-8'))

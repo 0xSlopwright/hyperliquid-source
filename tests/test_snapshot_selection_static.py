@@ -1,4 +1,4 @@
-"""Actual six-body selector/dispatch and semantic operand corruption controls."""
+"""Actual seven-body selector/dispatch and semantic operand corruption controls."""
 import hashlib
 import json
 from pathlib import Path
@@ -30,7 +30,7 @@ class SnapshotSelectionTests(unittest.TestCase):
 
     def test_full_native_regeneration_and_retained_records(self):
         self.assertEqual(self.report,json.loads((subject.PACKET/'records.json').read_text()))
-        self.assertEqual((sum(x['bytes'] for x in self.report['owners']),sum(x['instructions'] for x in self.report['owners'])),(9438,1922))
+        self.assertEqual((sum(x['bytes'] for x in self.report['owners']),sum(x['instructions'] for x in self.report['owners'])),(9917,2057))
         with tempfile.TemporaryDirectory() as directory:
             out=Path(directory);subject.generate(subject.TARGET,out)
             for p in out.iterdir():self.assertEqual(p.read_bytes(),(subject.PACKET/p.name).read_bytes(),p.name)
@@ -40,8 +40,8 @@ class SnapshotSelectionTests(unittest.TestCase):
             p=subject.parameters(self.data,a)
             for word in [0,1,(1<<63)-1,(1<<63)+1,subject.U64]:
                 for n in range(102):
-                    self.assertEqual(subject.local_route(p,word,n),'explicit-selection-route' if n<=100 else 'diagnostic-route')
-                self.assertEqual(subject.local_route(p,word,subject.U64),'diagnostic-route')
+                    self.assertEqual(subject.local_route(p,word,n),'explicit-selection-route' if n<=100 else 'limit-exit-route')
+                self.assertEqual(subject.local_route(p,word,subject.U64),'limit-exit-route')
             for n in [0,1,100,101,subject.U64]:
                 self.assertEqual(subject.local_route(p,1<<63,n),'all-collection-route')
             self.assertEqual(p['all_count_offset']-p['all_buffer_offset'],8)
@@ -51,7 +51,7 @@ class SnapshotSelectionTests(unittest.TestCase):
         for a in subject.MAINS:
             baseline=subject.parameters(self.data,a)
             changed=self.mutate(a+0x47b,102);p=subject.parameters(changed,a)
-            self.assertEqual(subject.local_route(baseline,0,101),'diagnostic-route')
+            self.assertEqual(subject.local_route(baseline,0,101),'limit-exit-route')
             self.assertEqual(subject.local_route(p,0,101),'explicit-selection-route')
             with self.assertRaisesRegex(ValueError,'relation changed'):subject.analyze(changed)
             changed=self.mutate(a+0x23,0x80);p=subject.parameters(changed,a)
@@ -77,7 +77,7 @@ class SnapshotSelectionTests(unittest.TestCase):
             site,row=next(iter(o['rip_bindings'].items()))
             with self.assertRaisesRegex(ValueError,'RIP binding changed'):subject.analyze(self.mutate(int(site)+len(bytes.fromhex(row['prefix']))))
 
-    def test_real_source_relocations_and_six_fde_bounds(self):
+    def test_real_source_relocations_and_seven_fde_bounds(self):
         sec=next(s for s in self.secs if s['name']=='.rela.dyn')
         offsets={struct.unpack_from('<Q',self.data,p)[0]:p for p in range(sec['offset'],sec['offset']+sec['size'],24)}
         for slot in self.spec['relocations']:
@@ -89,6 +89,17 @@ class SnapshotSelectionTests(unittest.TestCase):
         for o in self.report['owners']:
             fde=int(o['frames']['fde']['va'],16)
             with self.assertRaisesRegex(ValueError,'FDE changed'):subject.analyze(self.mutate(fde+12))
+
+    def test_selected_exit_helper_returns_without_internal_calls(self):
+        p=subject.exit_helper_parameters(self.data)
+        self.assertEqual(subject.exit_helper_projection(p,0x158),'return-without-internal-call')
+        self.assertEqual((0x158+p['bias'])&0xffffffff,104)
+        changed=self.mutate(0x230816a,104);q=subject.exit_helper_parameters(changed)
+        self.assertEqual(subject.exit_helper_projection(q,0x158),'unclosed-other-tag-route')
+        with self.assertRaisesRegex(ValueError,'exit helper relation changed'):subject.analyze(changed)
+        for va in [0x230812d,0x2308162,0x230816d]:
+            with self.assertRaisesRegex(ValueError,'exit helper transfer changed'):subject.analyze(self.mutate(va))
+        with self.assertRaisesRegex(ValueError,'epilogue changed'):subject.analyze(self.mutate(0x2308277))
 
     def test_public_identity_gate_precedes_outputs(self):
         with tempfile.TemporaryDirectory() as directory:
