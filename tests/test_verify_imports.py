@@ -1,15 +1,36 @@
 import contextlib
+
+
 import io
+
+
 import json
+
+
 from pathlib import Path
+
+
 import shutil
+
+
 import subprocess
+
+
 import sys
+
+
 import tempfile
+
+
 import unittest
+
+
 from unittest.mock import patch
 
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+
+
 import verify_imports
 
 
@@ -95,6 +116,55 @@ class VerifyImportsTests(unittest.TestCase):
             with self.assertRaises(ValueError) as caught:
                 verify_imports.verify(self.root)
         self.assertIn('Unreadable pinned source', str(caught.exception))
+
+    def test_hidden_untracked_source_is_rejected(self):
+        self.git('config', 'status.showUntrackedFiles', 'no')
+        with contextlib.redirect_stdout(io.StringIO()):
+            verify_imports.verify(self.root)
+        (self.sub / 'unexpected.rs').write_text('// Extra source, not in the pinned commit.\n')
+        # The user's display preference hides a file that source scans can read.
+        self.assertEqual(self.git('status', '--porcelain'), '')
+        with self.assertRaisesRegex(ValueError, 'Modified source reference: refs/sub'):
+            verify_imports.verify(self.root)
+
+    def check_index_flag(self, flag):
+        self.git('update-index', '--' + flag, '--', 'file')
+        with contextlib.redirect_stdout(io.StringIO()):
+            verify_imports.verify(self.root)
+        index = (self.sub / '.git/index').read_bytes()
+        marker = self.git('ls-files', '-v', '--', 'file')
+        (self.sub / 'file').write_text('y')
+        self.assertEqual(self.git('status', '--porcelain', '--untracked-files=all'), '')
+        with self.assertRaisesRegex(ValueError, 'Modified source reference: refs/sub'):
+            verify_imports.verify(self.root)
+        self.assertEqual((self.sub / '.git/index').read_bytes(), index)
+        self.assertEqual(self.git('ls-files', '-v', '--', 'file'), marker)
+        (self.sub / 'file').unlink()
+        with self.assertRaisesRegex(ValueError, 'Modified source reference: refs/sub'):
+            verify_imports.verify(self.root)
+        (self.sub / 'file').write_text('x')
+        with contextlib.redirect_stdout(io.StringIO()):
+            verify_imports.verify(self.root)
+        self.assertEqual(self.git('ls-files', '-v', '--', 'file'), marker)
+
+    def test_assume_unchanged_does_not_hide_modified_source(self):
+        self.check_index_flag('assume-unchanged')
+
+    def test_skip_worktree_does_not_hide_modified_source(self):
+        self.check_index_flag('skip-worktree')
+
+    def test_sources_manifest_must_list_repositories(self):
+        for payload in ('[]', '{}', '{"repositories":{}}', '{"repositories":"refs/sub"}'):
+            with self.subTest(payload=payload):
+                self.sources.write_text(payload)
+                with self.assertRaises(ValueError) as caught:
+                    verify_imports.verify(self.root)
+                self.assertEqual(str(caught.exception), 'Invalid sources manifest')
+
+    def test_empty_repository_list_passes(self):
+        self.sources.write_text(json.dumps({'repositories': []}))
+        with contextlib.redirect_stdout(io.StringIO()):
+            verify_imports.verify(self.root)
 
 
 class RepositoryManifestCoverageTests(unittest.TestCase):

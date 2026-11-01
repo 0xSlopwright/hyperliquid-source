@@ -148,7 +148,7 @@ def _unique_object(pairs):
 
 
 def load_check(path):
-    return json.loads(Path(path).read_text(), object_pairs_hook=_unique_object)
+    return json.loads(Path(path).read_text(encoding='utf-8'), object_pairs_hook=_unique_object)
 
 
 def inspect(path):

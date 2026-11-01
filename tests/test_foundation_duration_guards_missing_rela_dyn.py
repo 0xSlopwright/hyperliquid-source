@@ -119,7 +119,8 @@ def build_elf(with_rela):
     lines = []
     for lo, hi in zip(bounds, bounds[1:]):
         row = bytes(body[lo - START:hi - START])
-        lines.append(f"{lo:x}: {' '.join(f'{b:02x}' for b in row)} ")
+        # Synthetic instruction rows must be distinct from GNU byte-only continuations.
+        lines.append(f"{lo:x}: {' '.join(f'{b:02x}' for b in row)} fixture")
     records = {
         'target_sha256': guards.SHA256, 'start_va': hex(START),
         'end_va_exclusive': hex(END),

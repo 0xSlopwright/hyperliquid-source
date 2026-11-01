@@ -79,9 +79,17 @@ def partition():
 def decode_export(output,start,end,body):
     rows = []
     for line in output.splitlines():
-        match = re.match(r'^\s*([0-9a-f]+):\s*((?:[0-9a-f]{2}\s+)+)',line)
+        match = re.match(r'^\s*([0-9a-f]+):\s*((?:[0-9a-f]{2}\s+)+)(.*)$',line)
         if match:
-            rows.append((int(match[1],16),bytes.fromhex(match[2])))
+            address,raw = int(match[1],16),bytes.fromhex(match[2])
+            # GNU objdump wraps instructions longer than 7 bytes: the bytes
+            # past the seventh continue on an addressed row whose mnemonic
+            # field is empty. Merge such a row into the previous instruction
+            # instead of counting it as a separate instruction.
+            if rows and not match[3].strip() and address == rows[-1][0]+len(rows[-1][1]):
+                rows[-1] = (rows[-1][0],rows[-1][1]+raw)
+            else:
+                rows.append((address,raw))
     cursor = start
     for address,raw in rows:
         require(address == cursor, 'Off-by-one or noncontiguous disassembly')
@@ -90,7 +98,7 @@ def decode_export(output,start,end,body):
     return dict(rows)
 
 
-def analyze(data,records,objdump=None):
+def analyze(data,records,objdump=None,binary=TARGET):
     secs = sections(data); named = {s['name']:s for s in secs}
     # The dict above keeps only the last section of a given name, so a
     # duplicate would silently decide which bytes the pinned checks below
@@ -125,9 +133,9 @@ def analyze(data,records,objdump=None):
     require((pc,pc+struct.unpack_from('<I',fde,12)[0])==(start,end),'FDE range disagrees')
     if objdump:
         output = subprocess.check_output([objdump,'-d',f'--start-address={start:#x}',
-                                          f'--stop-address={end:#x}','artifacts/node/94/hl-node'],cwd=ROOT,text=True)
+                                          f'--stop-address={end:#x}',str(binary)],cwd=ROOT,text=True, encoding='utf-8')
     else:
-        output = (PACKET/'function.objdump.txt').read_text()
+        output = (PACKET/'function.objdump.txt').read_text(encoding='utf-8')
     instructions = decode_export(output,start,end,body)
 
     def exact(va,raw):
@@ -201,7 +209,7 @@ def _unique_object(pairs):
 
 
 def load_check(path):
-    return json.loads(Path(path).read_text(), object_pairs_hook=_unique_object)
+    return json.loads(Path(path).read_text(encoding='utf-8'), object_pairs_hook=_unique_object)
 
 
 def _unique_record_object(pairs):
@@ -214,13 +222,14 @@ def _unique_record_object(pairs):
 
 
 def load_records(path):
-    return json.loads(Path(path).read_text(), object_pairs_hook=_unique_record_object)
+    return json.loads(Path(path).read_text(encoding='utf-8'), object_pairs_hook=_unique_record_object)
 
 
 def inspect(path,objdump=None):
-    data = Path(path).read_bytes()
+    path = Path(path).resolve()
+    data = path.read_bytes()
     require(len(data)==91774280 and hashlib.sha256(data).hexdigest()==SHA256,'Expected exact node #94 size/SHA-256')
-    return analyze(data,load_records(PACKET/'records.json'),objdump)
+    return analyze(data,load_records(PACKET/'records.json'),objdump,binary=path)
 
 
 def main():

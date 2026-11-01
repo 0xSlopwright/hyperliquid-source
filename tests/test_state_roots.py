@@ -440,5 +440,15 @@ class ElfShstrtabTypeTests(unittest.TestCase):
                          ['', '.shstrtab', '.text'])
 
 
+
+class ElfHeaderTests(unittest.TestCase):
+    def test_elf_rejects_shstrndx_out_of_range(self):
+        data = bytearray(64)
+        data[:6] = b'\x7fELF\x02\x01'
+        struct.pack_into('<HHHHH', data, 0x36, 56, 0, 64, 0, 0)
+        with self.assertRaises(sr.EvidenceError):
+            sr.Elf(bytes(data))
+
+
 if __name__ == "__main__":
     unittest.main()
