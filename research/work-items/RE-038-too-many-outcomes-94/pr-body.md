@@ -54,6 +54,78 @@ The full repo test suite (one `unittest discover` over about 5,000 tests) needs 
 
 #### Targeted checks (commands + output)
 
-PENDING — to be filled with exact commands and output once the heavy slot is free (ASI run has it first).
+All checks below ran at head `6eac366b`. Output is verbatim; the full repository suite was not run (see above).
+
+head `6eac366b`:
+
+```text
+$ .venv/bin/python -I -B research/work-items/RE-038-too-many-outcomes-94/verify.py
+verify: key_insns=10 strings=1 direct_calls=0 errors=0
+[exit 0]
+```
+
+head `6eac366b`:
+
+```text
+$ .venv/bin/python -O -B research/work-items/RE-038-too-many-outcomes-94/verify.py
+verify: key_insns=10 strings=1 direct_calls=0 errors=0
+[exit 0]
+```
+
+head `6eac366b`:
+
+```text
+$ .venv/bin/python -I -B research/work-items/RE-038-too-many-outcomes-94/independent_verify.py
+PASS carve=444bf531ab17fbff ff15=3 strings=1 key_insns=10
+[exit 0]
+```
+
+head `6eac366b`:
+
+```text
+$ .venv/bin/python -O -B research/work-items/RE-038-too-many-outcomes-94/independent_verify.py
+PASS carve=444bf531ab17fbff ff15=3 strings=1 key_insns=10
+[exit 0]
+```
+
+head `6eac366b`:
+
+```text
+$ .venv/bin/python -m unittest tests.test_too_many_outcomes -v
+test_committed_json_pins (tests.test_too_many_outcomes.TooManyOutcomesStaticTests.test_committed_json_pins) ... ok
+test_error_string_bytes_verbatim (tests.test_too_many_outcomes.TooManyOutcomesStaticTests.test_error_string_bytes_verbatim) ... ok
+test_mutation_tamper_carve (tests.test_too_many_outcomes.TooManyOutcomesStaticTests.test_mutation_tamper_carve) ... ok
+test_mutation_tamper_cmp_imm (tests.test_too_many_outcomes.TooManyOutcomesStaticTests.test_mutation_tamper_cmp_imm) ... ok
+test_mutation_tamper_jbe_branch (tests.test_too_many_outcomes.TooManyOutcomesStaticTests.test_mutation_tamper_jbe_branch) ... ok
+test_negative_controls_per_rule (tests.test_too_many_outcomes.TooManyOutcomesStaticTests.test_negative_controls_per_rule) ... ok
+test_static_output_pin_and_expectations (tests.test_too_many_outcomes.TooManyOutcomesStaticTests.test_static_output_pin_and_expectations) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 82.154s
+
+OK
+[exit 0]
+```
+
+head `6eac366b`:
+
+```text
+$ .venv/bin/python tools/catalogue.py --check
+Stale catalogue: research/catalogue/components.json; run make catalogue
+[exit 1]
+```
+
+head `6eac366b` (packet manifest, before this documentation commit):
+
+```text
+$ sha256sum -c MANIFEST.sha256
+too_many_outcomes.json: OK
+verify.py: OK
+independent_verify.py: OK
+README.md: OK
+pr-body.md: OK
+```
+
+Note: `tools/catalogue.py --check` exits 1 here because of a pre-existing condition. The same command, run on an unmodified checkout of the base commit `cec50f68` (origin/main), prints the same "Stale catalogue: research/catalogue/components.json" message and also exits 1. This branch changes no catalogue file.
 
 <!-- run-receipt.mjs disclose: provider=Grok-Bot model=Grok-Bot client=Grok-Bot client-version=Grok-Bot -->
