@@ -12,5 +12,5 @@ f623b5102780863aefd706ca4f3cfe00bee836bd39347cb8e7d39916a2c39785  disasm/02-requ
 e1cbcaebebbd3447cc1b867abe197071e1094dfa583c61cebaa96555b63b1a5a  disasm/07-helper-3341af0.txt
 f9ca4743fac141e68357d2fa34661ebfbfc49907b05675735f5517c5653e8aae  tables.txt
 6f46b5d79a4416bfb9e6648875c8c016b5b665b3139285aae93c046b29b234c4  README.md
-65158a330366dc6757cabc0c105e81bc695c7e9bc189f08cd29897ef227120c8  ../../../tools/bridge_inventory.py
-9ddbefa4cda91ed5409cd2375454513900e79ae5e01887d3f8a1fbe9e17b9e1a  ../../../tests/test_bridge_inventory.py
+ab161f87b384a9da99bf1c687bfb66dcc0a3aca332bf385ef638364697525a29  ../../../tools/bridge_inventory.py
+9d2fc3a3c92ccc9583637f7dfc347a4416c124f98c743ae9686e9e03c562af36  ../../../tests/test_bridge_inventory.py

@@ -13,6 +13,7 @@ from pathlib import Path
 import shutil
 
 
+
 import subprocess
 
 
@@ -64,7 +65,9 @@ class VerifyImportsTests(unittest.TestCase):
             verify_imports.verify(self.root)
 
     def test_missing_submodule_names_the_fix(self):
-        shutil.rmtree(self.sub)
+        # A .git directory contains read-only object files on Windows; deleting
+        # it needs a permission reset, while renaming it does not.
+        self.sub.rename(self.root / 'refs/sub-removed')
         self.sub.mkdir()
         with self.assertRaises(ValueError) as caught:
             verify_imports.verify(self.root)

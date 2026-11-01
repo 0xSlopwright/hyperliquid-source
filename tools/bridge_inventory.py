@@ -499,6 +499,7 @@ def run(argv=None):
     report = {
         'release': f'node{args.release}',
         'artifact': artifact_name,
+
         'artifact_sha256': actual,
         'artifact_size': len(data),
         'coordinate_system': 'linked VA; file offset = VA - 0x1000 inside .text, '
@@ -535,7 +536,7 @@ def run(argv=None):
     text = json.dumps(report, indent=1, sort_keys=True) + '\n'
     if args.out:
         args.out.mkdir(parents=True, exist_ok=True)
-        (args.out / 'bridge-inventory.json').write_text(text)
+        (args.out / 'bridge-inventory.json').write_bytes(text.encode('utf-8'))
         for site in chain_sites:
             start = site['site_va'] - 16
             excerpt = mapping.read(data, start, site['length'] + 32)

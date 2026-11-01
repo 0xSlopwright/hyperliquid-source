@@ -161,6 +161,6 @@ def main():
 if __name__ == '__main__':
     try:
         raise SystemExit(main())
-    except (ValueError, OSError) as error:
+    except (ValueError, OSError, struct.error) as error:
         print(f'elf_index: {error}', file=sys.stderr)
         raise SystemExit(1)
