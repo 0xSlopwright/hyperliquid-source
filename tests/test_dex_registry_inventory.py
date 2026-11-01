@@ -1,7 +1,6 @@
 import hashlib
 import json
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -12,6 +11,9 @@ from tools import dex_registry_inventory as inv
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKET = ROOT / 'research/work-items/dex-registry-inventory-94'
+
+sys.path.insert(0, str(ROOT / 'tools'))
+from gnu_binutils import gnu_objdump, requires_gnu  # noqa: E402
 
 
 class RegistryInventoryTests(unittest.TestCase):
@@ -68,18 +70,20 @@ class RegistryInventoryTests(unittest.TestCase):
             slot = int(row['slot_va'], 16)
             self.assertEqual(self.elf.read(slot, 24).hex(), row['record_bytes'])
 
-    @unittest.skipUnless(shutil.which('objdump'), 'objdump unavailable')
+    @requires_gnu('objdump')
     def test_objdump_all_reserved_name_leas_and_threshold(self):
-        output = subprocess.run(['objdump', '-d', '--start-address=0x3330f30', '--stop-address=0x33315cd', str(inv.TARGET)], check=True, capture_output=True, text=True).stdout
+        objdump, _ = gnu_objdump()
+        output = subprocess.run([objdump, '-d', '--start-address=0x3330f30', '--stop-address=0x33315cd', str(inv.TARGET)], check=True, capture_output=True, text=True).stdout
         for name in self.result['reserved_names']:
             site, target = int(name['comparison_lea_va'], 16), int(name['anchor_va'], 16)
             self.assertRegex(output, rf'(?m)^\s*{site:x}:.*\blea\s+.*# {target:x}\b')
         self.assertRegex(output, r'(?m)^\s*3330f4f:.*cmpq\s+\$0x7cf,')
         self.assertRegex(output, r'(?m)^\s*3330f57:.*jbe\s+')
 
-    @unittest.skipUnless(shutil.which('objdump'), 'objdump unavailable')
+    @requires_gnu('objdump')
     def test_objdump_10000_candidate(self):
-        output = subprocess.run(['objdump', '-d', '--start-address=0x2744b2f', '--stop-address=0x2744b39', str(inv.TARGET)], check=True, capture_output=True, text=True).stdout
+        objdump, _ = gnu_objdump()
+        output = subprocess.run([objdump, '-d', '--start-address=0x2744b2f', '--stop-address=0x2744b39', str(inv.TARGET)], check=True, capture_output=True, text=True).stdout
         self.assertRegex(output, r'(?m)^\s*2744b2f:.*cmpq\s+\$0x2710,')
 
 

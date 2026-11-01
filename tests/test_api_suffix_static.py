@@ -40,6 +40,34 @@ class ApiSuffixTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     api.analyze(changed)
 
+    def test_duplicate_relative_relocation_rejected(self):
+        # A second RELATIVE entry for an already-bound slot must not silently
+        # decide which binding the checks below use (same guard as the
+        # foundation packets). Mutations are below the digest gate, in the
+        # style of the other corruption controls.
+        from elf_index import sections
+        section = next(s for s in sections(self.data) if s['name'] == '.rela.dyn')
+        entries = []
+        for pos in range(section['offset'], section['offset'] + section['size'], 24):
+            slot, info, addend = struct.unpack_from('<QQq', self.data, pos)
+            entries.append((pos, slot, info, addend))
+        slot = 0x566ab28  # source Location slot checked by analyze()
+        genuine = next(e for e in entries if e[1] == slot and e[2] & 0xffffffff == 8)
+        later = next(e for e in entries if e[0] > genuine[0]
+                     and e[1] not in (0x566ab28, 0x576eb70, 0x576f6d0, 0x576e040))
+        # Corrupt the genuine addend and let a later duplicate carry the
+        # expected one: without a duplicate guard this still passes.
+        changed = bytearray(self.data)
+        struct.pack_into('<q', changed, genuine[0] + 16, 0x1234)
+        struct.pack_into('<QQq', changed, later[0], slot, 8, genuine[3])
+        with self.assertRaisesRegex(ValueError, 'duplicate relative relocation'):
+            api.analyze(changed)
+        # An exact duplicate is rejected too: the table must bind a slot once.
+        changed = bytearray(self.data)
+        struct.pack_into('<QQq', changed, later[0], slot, 8, genuine[3])
+        with self.assertRaisesRegex(ValueError, 'duplicate relative relocation'):
+            api.analyze(changed)
+
     def test_fde_boundary_corruption_rejected(self):
         _, frames, _ = fde_extents(self.data)
         frame = next(f for f in frames if f['start'] == api.START)
