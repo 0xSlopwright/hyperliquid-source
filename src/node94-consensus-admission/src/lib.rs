@@ -10,10 +10,14 @@
 
 mod auth;
 mod error;
+mod stake;
 mod types;
 
 pub use auth::{AdmissionAuthenticator, AuthenticationError};
 pub use error::{AdmissionError, FatalAdmissionError};
+pub use stake::{
+    has_strict_two_thirds, Quorum, StakeHistory, StakeSnapshot, RECENT_ROUND_SPAN, STAKE_LAG_ROUNDS,
+};
 pub use types::{
     BlockHash, EventTime, Hardfork, Qc, QcVote, Round, SignatureBytes, SignedBlock, Tc,
     TimeoutVote, TransactionHash, ValidatorAddress,
