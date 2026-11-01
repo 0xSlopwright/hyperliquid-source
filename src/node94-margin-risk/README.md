@@ -69,11 +69,20 @@ notional, requirement, and unsigned magnitude. Isolated output saturating-adds
 signed notional to prior margin, clamps effective margin at zero, and retains
 the prior margin and computed requirement.
 
-Liquidation support ends at eligibility. Cross callers must supply the
-already-aggregated signed equity and unsigned maintenance requirement. Isolated
-callers use the position result directly. The requirement must fit the signed
-comparison path; surplus uses signed saturating subtraction and eligibility is
-exactly `surplus < 0`. Zero surplus is ineligible.
+Cross-account aggregation accepts explicit signed-equity and unsigned
+maintenance contributions and saturates each raw field independently. The
+caller's starting equity remains explicit because its account-state ownership
+is outside this component. Isolated surplus uses the position result directly.
+The requirement must fit the signed comparison path; surplus uses signed
+saturating subtraction and eligibility is exactly `surplus < 0`. Zero surplus
+is ineligible.
+
+Candidate admission returns either `CandidateAdmission::Admitted` or an
+explicit `Rejected` value. The admitted logical record retains the proved
+scope, signed surplus, opaque 20-byte subject, and isolated-only context word.
+Node #94 appends records at a 48-byte stride, but the Rust type is deliberately
+not an ABI mirror or serializer: four padding bytes and the ownership of the
+isolated context word remain unresolved.
 
 ## Evidence map
 
@@ -87,9 +96,11 @@ edge, source-location record, and arithmetic vector.
 | `src/tiers.rs` | tier admission `0x3335590..0x3335c40` |
 | `src/requirements.rs` | lookup `0x33331a0..0x3333276`, maintenance `0x3333670..0x33337f9`, initial `0x3333800..0x3333915` |
 | `src/position.rs` | position margin by mode `0x3717480..0x37179c5` |
-| `src/liquidation.rs` | candidate collection `0x37d7360..0x37d77d8`, surplus `0x37d77e0..0x37d79e0` |
+| `src/surplus.rs` | surplus `0x37d77e0..0x37d79e0` and the consumed aggregate pair from `0x37d79e0..0x37d7f0c` |
+| `src/candidate.rs` | negative-only candidate branches and fixed record writes in `0x37d7360..0x37d77d8` |
 | `tests/fixtures/*.tsv` | packet `boundaries.tsv` plus the five mode branches |
-| `tests/adversarial.rs` | bounded deterministic mutation controls over admitted public inputs |
+| `tests/boundary_contract.rs` | all 24 rows from the maintained packet `boundaries.tsv` |
+| `tests/adversarial.rs`, `tests/negative_controls.rs` | bounded input mutations and formula/admission mutants |
 
 The relevant RE-004 packets and `src/node94-fixed-point/` were reviewed for
 type compatibility. This path needs checked signed price-size multiplication,
@@ -101,17 +112,17 @@ crate, so no artificial dependency was introduced.
 Run from the repository root with at most two build jobs and test threads:
 
 ```sh
-CARGO_BUILD_JOBS=2 cargo build --offline --locked \
+CARGO_BUILD_JOBS=2 cargo +1.94.1 build --locked \
   --manifest-path src/node94-margin-risk/Cargo.toml
-CARGO_BUILD_JOBS=2 cargo build --offline --release --locked \
+CARGO_BUILD_JOBS=2 cargo +1.94.1 build --release --locked \
   --manifest-path src/node94-margin-risk/Cargo.toml
-CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=2 cargo test --offline --locked \
+CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=2 cargo +1.94.1 test --locked \
   --manifest-path src/node94-margin-risk/Cargo.toml
-CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=2 cargo test --offline --release --locked \
+CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=2 cargo +1.94.1 test --release --locked \
   --manifest-path src/node94-margin-risk/Cargo.toml
-CARGO_BUILD_JOBS=2 cargo clippy --offline --locked \
+CARGO_BUILD_JOBS=2 cargo +1.94.1 clippy --locked \
   --manifest-path src/node94-margin-risk/Cargo.toml --all-targets -- -D warnings
-cargo fmt --manifest-path src/node94-margin-risk/Cargo.toml -- --check
+cargo +1.94.1 fmt --manifest-path src/node94-margin-risk/Cargo.toml -- --check
 python3 -m unittest tests.test_margin_path_static -v
 ```
 
@@ -124,10 +135,10 @@ full-suite run.
 
 This component does not claim a complete risk engine, account aggregation,
 custom-table storage lookup, oracle conversion, decimal scaling, serialization,
-ABI or owned-layout equivalence, candidate record field ordering, candidate
-sorting, liquidation sizing, transfers, execution, persistence, or live node
-behavior. The 48-byte candidate append is established, but its fields are not,
-so this crate does not serialize a speculative candidate record.
+ABI or owned-layout equivalence, the meaning of the isolated context word,
+candidate ordering, liquidation sizing, transfers, execution, persistence, or
+live node behavior. The 48-byte candidate append and its bounded writes are
+established, but unresolved padding and ownership prevent serialization.
 
 Target panic and recorder paths are exposed as typed errors rather than
 reproducing abort payloads. No socket, signing, production state, or networking
