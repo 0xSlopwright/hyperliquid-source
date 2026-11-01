@@ -13,7 +13,7 @@
 
 The hyper-fork base is hyper 0.14.16. Its `connect/http.rs` is 42 lines longer, and four panic Locations fall in lines that upstream does not have. What do those lines do?
 
-**They add a URL-to-address pin, which is never enabled in #94 or #115 (see "Who fills the map").** `HttpConnector`'s `Config` gets a `BTreeMap<String, SocketAddr>`. For each connection, the destination URI string is tested against every key with `str::contains`:
+**They add a URL-to-address pin, for which no enabling writes were found in the audited #94/#115 constructors and `Arc::make_mut` users (see "Who fills the map").** `HttpConnector`'s `Config` gets a `BTreeMap<String, SocketAddr>`. For each connection, the destination URI string is tested against every key with `str::contains`:
 
 - If exactly one key matches, the connector prints `hyper-fork only trying <addr> on <uri>` to stdout and connects only to that `SocketAddr`. The DNS results are ignored.
 - If two keys match, it panics with `two matching urls <key1> <key2>`.
@@ -44,13 +44,13 @@ let addrs: Vec<SocketAddr> = match self.pin {
 
 ## Who fills the map: nothing, in both captures
 
-The pin code is compiled in, but **no code path stores `Some(map)`**. Every `HttpConnector` in #94 and #115 is built with the map `None`, so the matching loop never runs, and connections behave as upstream (apart from one extra `String` allocation per connect).
+The pin code is compiled in. **The audited constructors initialize the map to `None`, and the audited `Arc::make_mut` users do not store `Some(map)`.** On those observed paths the matching loop is skipped, leaving upstream connection behavior apart from one extra `String` allocation per connect. This bounded census does not establish that every possible runtime path leaves the map disabled.
 
 How this was established (`map_population` in the JSON):
 
 - **Layout.** `ArcInner<Config>` is 0xa0 bytes with `Config` at +0x10, so the map tag `Config+0x20` is `Arc+0x30`. The `Config` clone used by `Arc::make_mut` (#94 `0x14e6140`, #115 `0x15c2b10`) checks `cmpl $1,0x20(%rbx)` and clones the `BTreeMap` (#94 `call 0x14d8fb0`, which allocates 0x278-byte leaves) only when the tag is 1. So the field is `Option<BTreeMap<String, SocketAddr>>`.
 - **Every build has tag 0.** All `ArcInner<Config>` builds were found by a fingerprint: `mov $0xa0,%edi`, followed by the upstream `new_with_resolver` defaults (`connect_timeout` nanos `0x3b9aca00` at +0x58, `happy_eyeballs_timeout` 300 ms `0x11e1a300` at +0x68). #94 has 4 and #115 has 3. Each stores `movq $0x0,0x30(%rax)`, i.e. map `None`.
-- **No setter runs.** `&mut Config` comes only from `Arc::make_mut`, whose slow path calls the clone:
+- **No setter was found among audited `Arc::make_mut` users.** Its slow path calls the clone:
   - #94: the clone has exactly 4 direct callers, the 4 builders. After each unique check the only write is `movb $0,0x80(%reg)` (`Config+0x70`, `enforce_http(false)`) at `0x14390f3`, `0x14574c7`, `0x147a063` and `0x14b278e`.
   - #115: the clone is called from builder 1 (inlined `make_mut`, write `0x158d220`) and from `make_mut` `0x15ae6e0`. Its two callers (`0x15a035d`, `0x15a6925`) each write only `Config+0x70 = 0`.
 - **Inference.** The setter in the +10-line hunk is not present in either binary (no caller, so the linker dropped it). The map field, the matching loop and the `println!` remain because `ConnectingTcp::new` and `connect` are always compiled.
@@ -114,8 +114,8 @@ Not implemented. The Rust above is a description of the observed behavior, not a
 
 - Observation: 30 #94 anchors (bytes plus resolved targets), 3 helper identifications by string reference, and the #115 strings and Location references.
 - Inference: the Rust shape, the field names (`pin`, `dst`), and `SocketAddr` as the value type (from size, niche and V4/V6 tag use).
-- Not determined: the setter name and signature (dropped by the linker). `Config+0x20 == 1` is the `Some` tag of `Option<BTreeMap>`, per the clone. The map is never filled, so it has no contents in these captures.
-- Behavior notes for reviewers (dormant in #94/#115, but this is what a filled map would do): a pinned destination ignores the DNS results. All four `ConnectingTcpRemote::new` calls (`0x29c2722`, `0x29c28db`, `0x29c2a12`, `0x29c2a87`), including the Happy Eyeballs fallback ones, receive the same pin slot (`r9 = 0x1b0(%rsp)`). An ambiguous configuration panics the connecting task.
+- Not determined: the setter name and signature (not recovered by this audit). `Config+0x20 == 1` is the `Some` tag of `Option<BTreeMap>`, per the clone. No map contents are established by this static audit.
+- Behavior notes for reviewers (conditional on a filled map; reachability remains unproved): a pinned destination ignores the DNS results. All four `ConnectingTcpRemote::new` calls (`0x29c2722`, `0x29c28db`, `0x29c2a12`, `0x29c2a87`), including the Happy Eyeballs fallback ones, receive the same pin slot (`r9 = 0x1b0(%rsp)`). An ambiguous configuration panics the connecting task.
 - No progress gate is requested.
 
-Next question: does any later capture (after #115) call the setter, i.e. contain an `ArcInner<Config>` build or `make_mut` write with a non-zero tag at `+0x30`?
+Next question: can an enabling write be established in #94/#115 or a later capture, including paths outside the audited constructors and `make_mut` users?
