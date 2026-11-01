@@ -1,95 +1,106 @@
-# RE-001 follow-up: entrypoint membership and direct-call reach over the decoded FDE extents
+# RE-001 follow-up: entrypoint membership and raw-E8 candidates
 
-- Component ID: foundation (cross-component function map)
-- Target release and full SHA-256: node #94 `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`;
-  node #115 `a6e2897cd051213d004802deca416e8eca62b7a8278fa39f249e98c3867b5301` (separate target, reported apart)
-- Base commit / reference commit: repository `1f8c67c` (after #2), can1357 submodule `999556f6e0a474b8312db96ec3149e1c44e97c23`
-- Claim status: observation for every number; membership and reach are signals, not a call graph
-- Scope included: `e_entry`, `DT_INIT`, `DT_INIT_ARRAY`/`DT_FINI_ARRAY` slot resolution through `R_X86_64_RELATIVE`, and byte-level
-  rel32 `E8` target classification against the decoded extents and gaps. Excluded: CFG recovery, disassembly, symbol
-  identity, component ownership, any equivalence claim.
+- Component: foundation, cross-component unwind inventory; RE-001 remains open.
+- Node #94 SHA-256: `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`.
+- Separate node #115 SHA-256: `a6e2897cd051213d004802deca416e8eca62b7a8278fa39f249e98c3867b5301`.
+- Original PR #373 head: `4190e47bcb7a4c6c019c31b27f857078276cb5d4`.
+- Review base: `308e5127990217a9d6196992665da6ca1afd4b82`.
+- Scope: linked ELF entrypoint addresses, relative-relocated init/fini array slots,
+  and byte-level `E8` candidate targets classified against decoded FDE extents.
+  Static only; no captured program execution, CFG recovery or equivalence claim.
 
-Follow-up to #2 as requested in [the closing note on #5](https://github.com/lalalune/hyperliquid-source/pull/5#issuecomment-6521373038).
-It keeps #2's decoder untouched and adds the two measurements that were unique to #5.
+The original `node-*-entrypoints.json` and `node-*-other-byte-gaps.tsv` files
+remain byte-for-byte historical outputs. Their `direct_e8_call_targets` and
+`gaps_reached_by_direct_calls` field names overstate what the scan establishes:
+these are raw byte candidates, including bytes inside immediates or data.
+The new `node-*-entrypoint-candidates.json` reports use explicit candidate names.
+Every original census count reproduces unchanged; the new reports additionally
+identify the init/fini slots whose targets are not FDE starts.
 
 ## Reproduce
 
 ```sh
-./scripts/setup.sh
-make verify test catalogue-check
-make fde-index          # both nodes; summary carries entrypoints and E8 buckets
+python3 tools/entrypoint_candidates.py --release 94 --output-dir work/entrypoints-review
+python3 tools/entrypoint_candidates.py --release 115 --output-dir work/entrypoints-review
+python3 -m unittest discover -s tests -p test_entrypoint_candidates.py -v
+make verify catalogue-check reproduce
 ```
 
-Host for this run: macOS 15 arm64, Python 3.9.6. `make` is not installed here, so each recipe command was run directly
-(`python3 tools/fde_extents.py --release 94|115`). Static only: nothing is executed. The 6.3 MB extent TSVs stay in
-`work/index/`; the non-padding gap TSVs and the summaries are kept here. Both summaries are byte-identical on a second
-run. `readelf` and `llvm-objdump` are also absent on this host, so the binutils cross-checks other packets carry were not
-run here; the `objdump` that is present was used once, by hand, to name the CRT stubs in the `_start` cluster.
+`make fde-index` retains its existing behavior. The additive analysis lives in
+`tools/entrypoint_candidates.py`; the shared `tools/fde_extents.py` and its tests
+are unchanged from the review base so existing producer-source pins remain valid.
+The CLI authenticates each input against `provenance/artifacts.json`, including
+the exact snapshot consumed. Tables must have valid widths and complete file
+ranges; dynamic tags stop at `DT_NULL`; array address/size tags must be paired.
+Zero-length arrays stay empty. Duplicate tags or relocation destinations,
+unsupported array-slot relocations, partial ranges and explicit size-limit
+violations fail rather than silently producing a partial census. Limits are
+4,096 array entries and 65,536 dynamic records. RELATIVE addends are linked VAs;
+no runtime loader base is applied.
 
-The analysis is byte-based: every byte of every executable section is scanned for `0xe8`, the rel32 operand is added, and
-the target is bucketed by the section that holds it. An `0xe8` inside an immediate is therefore also a candidate, and no
-CFG is built. Sections without FDEs (`.plt`, `.init`, `.fini`) are a separate bucket so stub callers do not inflate the
-gap reach.
+## Observed counts
 
-## Evidence
-
-Coordinates are linked VAs; the ELF is a PIE and no loader rebase is applied.
-
-| | #94 | #115 |
+| Observation | #94 | #115 |
 | --- | ---: | ---: |
-| `e_entry`, in `.text`, on an FDE start | `0x1343c80`, yes, yes | `0x1419300`, yes, yes |
-| `DT_INIT` (`0x56600b0` / `0x63f0a00`), section, FDE start | `.init`, no | `.init`, no |
-| `DT_INIT_ARRAY` slots / relative-relocated / on an FDE start | 168 / 168 / 167 | 168 / 168 / 167 |
-| `DT_INIT_ARRAY` exception | `0x1343d60` | `0x14193e0` |
-| `DT_FINI_ARRAY[0]` | `0x1343d20`, not a start | `0x14193a0`, not a start |
-| E8 targets on an FDE start | 483,120 | 545,621 |
-| E8 targets inside an FDE | 7,671 | 11,460 |
-| E8 targets on a gap start / in a gap interior | 8 / 108 | 26 / 157 |
-| E8 targets in a section without FDEs (`.plt`) | 106,111 | 112,107 |
-| E8 targets outside any executable section | 102,044 | 131,078 |
-| Distinct gaps reached | 82 (61,876 B) | 151 (62,868 B) |
-| of those, non-padding | 3 (60,994 B) | 3 (61,393 B) |
+| `e_entry`, `.text`, FDE start | `0x1343c80`, yes | `0x1419300`, yes |
+| `DT_INIT`, `.init`, not FDE start | `0x56600b0` | `0x63f0a00` |
+| Init-array slots / relative-relocated / FDE starts | 168 / 168 / 167 | 168 / 168 / 167 |
+| Init-array exception target | `0x1343d60` | `0x14193e0` |
+| Fini-array sole target, not FDE start | `0x1343d20` | `0x14193a0` |
+| Raw E8 candidates targeting FDE starts | 483,120 | 545,621 |
+| Raw E8 candidates targeting FDE interiors | 7,671 | 11,460 |
+| Raw E8 candidates targeting gap starts / interiors | 8 / 108 | 26 / 157 |
+| Raw E8 candidates targeting executable sections without FDEs (`.plt`) | 106,111 | 112,107 |
+| Raw E8 candidates targeting outside executable sections | 102,044 | 131,078 |
+| Distinct gaps with candidate targets / aggregate bytes | 82 / 61,876 | 151 / 62,868 |
+| Of those, other-byte gaps / aggregate bytes | 3 / 60,994 | 3 / 61,393 |
 
-The `_start` cluster resolves. `e_entry` is the first byte of `.text`; the 195 B (#94) / 202 B (#115) gap at `0x1343ca6` /
-`0x1419326` begins 38 B after `_start` and holds, after 10 B of `cc`, the compiler-generated CRT stubs:
-`deregister_tm_clones` (`0x1343cb0`), `register_tm_clones` (`0x1343ce0`), `__do_global_dtors_aux` (`0x1343d20`) and
-`frame_dummy` (`0x1343d60`). #115 is the same layout at `0x1419330`, `0x1419360`, `0x14193a0`, `0x14193e0`.
-`DT_FINI_ARRAY[0]` is `__do_global_dtors_aux`, the `DT_INIT_ARRAY` exception is
-`frame_dummy`, and `0x1343cb0` is also the first E8 target in the gap. Neither of the first two stubs carries `endbr64`;
-the last two do. The rest of `_start`'s body, the `__libc_start_main` argument setup, also has no FDE.
+The byte scan includes every `E8` with four following bytes within a file-backed
+executable section, even inside another instruction. Signed rel32 addition wraps
+at 64 bits. Membership uses the union of overlapping FDE ranges. Gap byte totals
+are the sizes of the whole gaps containing targets, not recovered code sizes.
+`int3_only` and `other-byte` are byte classes, not padding/code classifications.
 
-Gap taxonomy for the 134 (#94) / 133 (#115) non-padding gaps, 65,584 / 65,949 B:
+## Independent native evidence and corrected interpretation
 
-- 3 gaps contain `endbr64` at all: the `_start` cluster above (its only `endbr64` at `frame_dummy`), `0x54a54dd`
-  (60,675 B, first `endbr64` after 35 B of `cc`) and `0x5631543` (2,493 B, after 61 B); #115: `0x1419326`,
-  `0x633a4d2` (61,070 B, after a multi-byte NOP and 430 B), `0x62e46c3` (2,493 B, after 61 B).
-- 73 (#94) / 74 (#115) gaps are 16 B or shorter and hold no `endbr64`: alignment filler between neighbours.
-- Only 4 gaps per node exceed 64 B. The reach concentrates: 116 (#94) / 183 (#115) targets touch 82 / 151 gaps, but only 3
-  per node are non-padding, and 2 of those are the large assembly regions.
+GNU binutils 2.47.20260726 provides fresh static disassembly, ELF headers, dynamic
+tags, relocations and unwind records. `reviewed-native-evidence.json` records exact
+commands, input identities, export hashes and selection rules. Complete startup
+windows, header/dynamic outputs and selected raw relocation/FDE lines are retained
+here; full relocation/unwind outputs and their hashes are in the review workspace.
+No normalized or regenerated output replaces the original PR reports.
 
-## Validation
+For #94, the FDE is `[0x1343c80, 0x1343ca6)`; for #115 it is
+`[0x1419300, 0x1419326)`. Each contains the complete 38-byte startup block,
+including register/stack argument setup, the indirect call through the relocation
+for `__libc_start_main@GLIBC_2.34`, and the following `HLT`. The original assertion
+that this argument setup has no FDE was incorrect. The gap begins after `HLT`.
 
-| Check | Result |
-| --- | --- |
-| `make verify` (both commands run directly) | 8 SHA-256 OK, 3 signatures valid, 37 imports + pins verified |
-| `tests/test_fde_extents.py` | 20 tests OK, including 3 new ones |
-| `make catalogue-check` | OK |
-| `make fde-index` twice | byte-identical summaries for both nodes |
+The following gap contains two `endbr64` instructions, at #94 `0x1343d20` and
+`0x1343d60` (#115 `0x14193a0` and `0x14193e0`), not just one. The former matches
+the fini-array target and includes a guarded `__cxa_finalize@plt` call; the latter
+matches the init-array exception and jumps to an earlier stub. Conventional names
+such as `__do_global_dtors_aux`, `frame_dummy`, `register_tm_clones` and
+`deregister_tm_clones` are pattern-based inferences, not recovered symbol names.
+The raw evidence supports these bounded instruction observations; it does not
+establish a complete CRT reconstruction or behavior outside these windows.
 
-New controls: a relocated `init_array` slot resolves through its addend; the same slot without the relocation reads the
-zero in place and reports no FDE start; call targets are bucketed by the section that holds them, so a stub caller does
-not inflate the gap reach. Full `make test` also runs 360 tests here; 16 of them fail on this host for a pre-existing
-reason (no `readelf`/`llvm-objdump`), none of them in `test_fde_extents`.
+The original descriptions of short gaps as alignment filler and large gaps as
+assembly without CFI are not conclusions of this census. Their instruction/data
+meaning remains unvalidated. Likewise, an interior E8 candidate is not evidence
+of a tail call. Decoding candidate source/target windows is separate future work.
 
-## Limitations
+## Validation and limits
 
-An FDE extent is still not a validated boundary, and none of this is a function census. Reach proves a `call`-shaped byte
-sequence points into a gap, not that the byte is a call or that the target is a function entry. The two 60 KB regions and
-`0x5631543`/`0x62e46c3` are assembly without CFI; a validated entry set there needs disassembly and xref review, not this
-scan. `DT_INIT` in `.init` and the `.plt` stubs carry no FDEs at all, so their counts are lower bounds. No gate changes:
-RE-001 stays open and every component stays 0/4.
+Both original-head producer runs reproduce all retained summary fields. The
+reviewed standalone tool reproduces both target reports and original counts.
+Controls cover `DT_NULL`, explicit zero sizes, missing/duplicate tags, table
+widths/types/truncation, ambiguous mappings, oversized arrays, unsupported and
+duplicate relocations, raw slots without relocations, immediate-embedded E8,
+section-end boundaries, NOBITS exclusion, 64-bit wrapping and overlapping FDEs.
+Target controls authenticate both full digests before comparing regenerated data.
 
-Next question: do `0x54a54dd` and `0x5631543` (#94) decode into self-contained routines whose entry is the `endbr64`, and
-which of the 7,671 interior call targets are tail calls into the next FDE rather than mid-body?
-
-All new code and docs are MIT and independently written.
+FDEs describe unwind ranges, not validated function boundaries. Raw E8 candidates
+establish neither decoded calls nor reachability. No component completion gate,
+function denominator, source equivalence or full node build is claimed. All new
+code and prose are independently written and MIT licensed.
