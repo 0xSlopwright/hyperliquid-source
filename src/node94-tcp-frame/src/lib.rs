@@ -5,5 +5,7 @@
 #![forbid(unsafe_code)]
 
 mod header;
+mod limits;
 
 pub use header::{HEADER_LEN, Header, HeaderError};
+pub use limits::{CHUNK_LEN, Chunk, ChunkPlan, FrameLimits, LengthError};

@@ -18,6 +18,11 @@ The initial public contract is the verified five-byte header:
 `Header::encode` preserves the original flag byte. `Header::from_payload_len`
 rejects lengths that cannot be represented by the wire u32.
 
+`FrameLimits` applies the reader's inclusive `declared <= max_len` admission
+and the same inclusive gate to an LZ4 uncompressed-size prefix. `ChunkPlan`
+implements the verified decimal 4,000,000-byte cap without allocating a list;
+readers apply it to the payload and writers apply it to the complete frame.
+
 Build from the repository root with the pinned toolchain:
 
 ```sh
