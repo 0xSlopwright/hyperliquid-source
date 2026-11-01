@@ -1,6 +1,6 @@
 {
   "target_sha256": "a6e2897cd051213d004802deca416e8eca62b7a8278fa39f249e98c3867b5301",
-  "spec_sha256": "683a5e3355a6f25fc5b1fa38bf412c70d47d62ec2302b7023990e0bf7730bf4a",
+  "spec_sha256": "e61de0886ddac9190bedd9fad03a55605cfb9f96e3918cfb0d63669b8f413de1",
   "owners": [
     {
       "start": "0x22b6490",
@@ -109,6 +109,24 @@
           "bytes_hex": "1c00000000000000017a504c5200017810079b11244b051b1b0c070890010000"
         }
       }
+    },
+    {
+      "start": "0x2308120",
+      "end": "0x23082ff",
+      "bytes": 479,
+      "instructions": 135,
+      "file_offset": "0x2307120",
+      "sha256": "ca07d60df5a750ca7938d7a0a929163c4ab6b2cf08ebead3354e6841e91e3f7b",
+      "frames": {
+        "fde": {
+          "va": "0x10f3a30",
+          "bytes_hex": "6800000030640b00e8462101df01000004e39f11ff420e10410e18410e2083038e02730e18410e10420e08420e2002ab0e18410e10420e08460e20620e18410e10420e08450e207e0e18410e10420e08410e20710e18410e10420e08450e20510e18410e10420e08450e2000"
+        },
+        "cie": {
+          "va": "0x103d604",
+          "bytes_hex": "1c00000000000000017a504c5200017810079b11244b051b1b0c070890010000"
+        }
+      }
     }
   ],
   "parameters": {
@@ -119,7 +137,7 @@
       "all_buffer_offset": 1992,
       "all_count_offset": 2000,
       "all_stride": 1296,
-      "diagnostic_tag": 344
+      "raw_exit_tag": 344
     },
     "0x22b6cd0": {
       "condition": 129,
@@ -128,7 +146,7 @@
       "all_buffer_offset": 4920,
       "all_count_offset": 4928,
       "all_stride": 1296,
-      "diagnostic_tag": 344
+      "raw_exit_tag": 344
     },
     "0x22b7510": {
       "condition": 129,
@@ -137,7 +155,7 @@
       "all_buffer_offset": 1992,
       "all_count_offset": 2000,
       "all_stride": 1296,
-      "diagnostic_tag": 344
+      "raw_exit_tag": 344
     },
     "0x22b7d50": {
       "condition": 129,
@@ -146,9 +164,16 @@
       "all_buffer_offset": 4920,
       "all_count_offset": 4928,
       "all_stride": 1296,
-      "diagnostic_tag": 344
+      "raw_exit_tag": 344
     }
   },
+  "exit_helper_parameters": {
+    "lower": 239,
+    "upper": 351,
+    "bias": -240,
+    "table_last": 25
+  },
+  "selected_exit_helper_route": "return-without-internal-call",
   "wrapper_special_word": "0x8000000000000001",
   "main_all_word": "0x8000000000000000",
   "wrapper_mode": "raw incoming R8d nonzero maps to1, zero maps to0; main compares received R8 qword to1",
