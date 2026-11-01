@@ -190,7 +190,7 @@ def main():
         if r is None or (r[1] & 0xFFFFFFFF) != rtype or r[2] != addend:
             failures.append("rela " + hex(slot))
     for obj in (0x574F020, 0x574F0E0):  # Address field at +0x10 (#550 layout)
-        if read_va(data, segs, obj + 0x10, 20) != bytes(19) + b"":
+        if read_va(data, segs, obj + 0x10, 20) != bytes(19) + b"\x06":
             failures.append("table address " + hex(obj))
     r = rela.get(0x576DFE0)
     if r is None or (r[1] & 0xFFFFFFFF) != 6:
