@@ -19,8 +19,7 @@
   "emu": {
     "ran": true,
     "requested": true,
-    "skipped": false,
-    "unicorn": true
+    "skipped": false
   },
   "extent": {
     "c3_offsets_in_carve": [

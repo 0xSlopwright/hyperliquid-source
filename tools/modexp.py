@@ -697,7 +697,6 @@ def analyse(data, check_sha=True, run_emu=True):
             "requested": want_emu,
             "ran": do_emu,
             "skipped": want_emu and not do_emu,
-            "unicorn": unicorn_available(),
         },
         "precompile_address": PRECOMPILE_ADDRESS,
         "component": "RE-028",

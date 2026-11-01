@@ -12,8 +12,8 @@ PACKET = ROOT / "research" / "work-items" / "RE-028-modexp-94"
 sys.path.insert(0, str(ROOT / "tools"))
 import modexp as tool  # noqa: E402
 
-OUTPUT_SHA256 = "5bbd4a0d75ac72b8c70e2ccecea5564fccf126037d8e17effb1765fd00a3b733"
-NO_EMU_OUTPUT_SHA256 = "ccd9c8d6f8b6244c6cef2f2a1f19f0f4b490c4e9ef7384081a56645f9f3b7ac0"
+OUTPUT_SHA256 = "20d1c278107e8688d04bd79ca27139606a4bcb88a942a5d288fd4d47dc843360"
+NO_EMU_OUTPUT_SHA256 = "e7fb0730df145fa34bc18534712ec4b4b5fa1bcf8769540f4b2b6d8cfdf4eced"
 HAS_UNICORN = importlib.util.find_spec("unicorn") is not None
 
 DATA = bytearray(tool.TARGET.read_bytes()) if tool.TARGET.exists() else None

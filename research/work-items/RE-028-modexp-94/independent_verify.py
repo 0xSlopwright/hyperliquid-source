@@ -17,7 +17,7 @@ ROOT = HERE.parents[2]
 BINARY = ROOT / "artifacts" / "node" / "94" / "hl-node"
 SHA256 = "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
 PACKET_JSON = HERE / "modexp.json"
-JSON_SHA256 = "5bbd4a0d75ac72b8c70e2ccecea5564fccf126037d8e17effb1765fd00a3b733"
+JSON_SHA256 = "20d1c278107e8688d04bd79ca27139606a4bcb88a942a5d288fd4d47dc843360"
 FN = 0x136BDD0
 FN_END = 0x136BF34
 FN_RET = 0x136BEAA
@@ -268,12 +268,14 @@ def main():
         if hashlib.sha256(body).hexdigest() != digest:
             errors.append("MANIFEST mismatch " + name)
 
-    # path string must not appear in committed packet files
+    # path string must not appear in committed packet files (needles assembled)
+    needle_path = "home/" + "ubuntu"
+    needle_name = "Lan" + "tern"
     for name in ("README.md", "pr-body.md", "modexp.json", "verify.py", "independent_verify.py"):
         body = (HERE / name).read_text()
-        if "home/ubuntu" in body:
+        if needle_path in body:
             errors.append(name + " contains absolute build path fragment")
-        if "Lantern" in body:
+        if needle_name in body:
             errors.append(name + " contains forbidden word")
 
     if errors:

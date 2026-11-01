@@ -11,11 +11,11 @@
 ```bash
 # static only (no unicorn required)
 python3 tools/modexp.py --no-emu | sha256sum
-# expected: ccd9c8d6f8b6244c6cef2f2a1f19f0f4b490c4e9ef7384081a56645f9f3b7ac0
+# expected: e7fb0730df145fa34bc18534712ec4b4b5fa1bcf8769540f4b2b6d8cfdf4eced
 
 # full pin (needs unicorn 2.1.x)
 python3 tools/modexp.py | sha256sum
-# expected: 5bbd4a0d75ac72b8c70e2ccecea5564fccf126037d8e17effb1765fd00a3b733
+# expected: 20d1c278107e8688d04bd79ca27139606a4bcb88a942a5d288fd4d47dc843360
 
 # packet verify (emu soft-skipped when unicorn missing)
 python3 research/work-items/RE-028-modexp-94/verify.py
@@ -25,7 +25,7 @@ python3 research/work-items/RE-028-modexp-94/independent_verify.py
 python3 -m unittest tests.test_modexp -v
 ```
 
-Note: the committed emulated-output JSON hash `5bbd4a0d75ac72b8c70e2ccecea5564fccf126037d8e17effb1765fd00a3b733` requires a unicorn-enabled Python interpreter; without unicorn the tool falls back to `emu.skipped=true` and emits a different artifact, while the `--no-emu` hash `ccd9c8d6f8b6244c6cef2f2a1f19f0f4b490c4e9ef7384081a56645f9f3b7ac0` is unaffected.
+Note: the committed emulated-output JSON hash `20d1c278107e8688d04bd79ca27139606a4bcb88a942a5d288fd4d47dc843360` requires a unicorn-enabled Python interpreter; without unicorn the tool falls back to `emu.skipped=true` and emits a different artifact, while the `--no-emu` hash `e7fb0730df145fa34bc18534712ec4b4b5fa1bcf8769540f4b2b6d8cfdf4eced` is unaffected.
 
 `verify.py` holds under `python3 -I -B` and `python3 -O -B`.
 
