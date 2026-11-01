@@ -57,8 +57,22 @@ done
 PYTHONHASHSEED=0 python3 -O -B tools/sha256_compress.py --no-emu | sha256sum
 ```
 
-`make verify test catalogue-check` has not been run for this packet yet; its
-output will be recorded here once it has.
+`make verify test catalogue-check` output:
+
+Head `f71a0486b8a7` (GNU objdump 2.44, Python 3.13):
+
+```text
+$ make verify test catalogue-check PYTHON=.venv/bin/python
+Ran 2129 tests in 663.058s
+OK (skipped=2)
+...
+Verified 0 imported files and all pinned source repositories.
+Verified 0 imported files and all pinned source repositories.
+{"call_sites": 6, "call_sites_with_exactly_one_sign_guard": 6, "constructors": 5, "guard_value_is_formatted_value": true, "lea_refs": 5, "ok_path_stores_unchanged": 4}
+.venv/bin/python tools/catalogue.py --check
+Catalogue and progress tables match pinned inputs.
+MAKE_EXIT=0
+```
 
 ## Evidence
 
