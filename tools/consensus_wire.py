@@ -156,6 +156,8 @@ class Elf:
                 name = table[sec[0]:end].decode()
             except UnicodeDecodeError as exc:
                 raise EvidenceError("section name is not valid UTF-8") from exc
+            if name in self.sections:
+                raise EvidenceError(f"Duplicate section: {name}")
             self.sections[name] = (sec[3], sec[4], sec[5])
 
     def section(self, name):
