@@ -1,9 +1,11 @@
 import importlib.util
+import sys
 import struct
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
 spec = importlib.util.spec_from_file_location(
     "exchange_dispatch", ROOT / "tools/exchange_dispatch.py")
 ed = importlib.util.module_from_spec(spec)

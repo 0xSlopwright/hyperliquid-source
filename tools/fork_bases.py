@@ -290,13 +290,23 @@ def compare(root, points):
 
 def check_upstream_points(upstream, points):
     """Offline control: committed upstream rows must cover exactly the regenerated fork points."""
+    expected = {(fork, capture): base + controls
+                for fork, capture, _, _, _, base, controls in UPSTREAM}
+    keys = [(row['fork'], row['capture']) for row in upstream]
+    if len(keys) != len(set(keys)) or set(keys) != set(expected):
+        raise EvidenceError('upstream comparison row set differs')
     for row in upstream:
+        revisions = [rev['revision'] for rev in row['revisions']]
+        if len(revisions) != len(set(revisions)) or set(revisions) != set(expected[row['fork'], row['capture']]):
+            raise EvidenceError('upstream comparison revision set differs')
         files = points[row['capture']].get(row['fork'], {})
         want = {f: len([p for p in v if p[0] > 2]) for f, v in files.items()
                 if row['fork'] != 'hyper-alloy-core-fork' or f.startswith('crates/')}
         for rev in row['revisions']:
             got = {f: e['points'] for f, e in rev['files'].items() if e.get('present')}
-            if any(got.get(f, want[f]) != n for f, n in want.items()) or set(got) - set(want):
+            # Explicitly absent upstream files are valid controls; omitted
+            # comparison entries are not equivalent to those observations.
+            if set(rev['files']) != set(want) or any(got[f] != want[f] for f in got):
                 raise EvidenceError(f"upstream {row['fork']} #{row['capture']} {rev['revision']}: point set differs")
 
 

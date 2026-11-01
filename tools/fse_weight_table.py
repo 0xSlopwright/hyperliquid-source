@@ -27,8 +27,19 @@ TARGET_SIZE = 91774280
 PRIMARY_START = 0x556fb60
 PRIMARY_END = 0x556fe63
 BODY_SHA256 = '8d7636d905df5188c3a5d0d495cf337bf1eca14949a373cc7e5393f5ae94484e'
-PROVIDER = Path('/usr/bin/x86_64-linux-gnu-objdump')
-PROVIDER_SHA256 = '96afb8521834982d0e711b5d6e9785252bf82129fb0106b93a6bd54d83fae11f'
+def provider_configuration():
+    """Keep the recorded provider unless a path and exact digest are selected."""
+    path = os.environ.get('FSE_OBJDUMP')
+    expected = os.environ.get('FSE_OBJDUMP_SHA256')
+    if path is None and expected is None:
+        return (Path('/usr/bin/x86_64-linux-gnu-objdump'),
+                '96afb8521834982d0e711b5d6e9785252bf82129fb0106b93a6bd54d83fae11f')
+    if not path or not Path(path).is_absolute() or not expected or re.fullmatch(r'[0-9a-f]{64}', expected) is None:
+        raise ValueError('FSE_OBJDUMP requires an absolute path and FSE_OBJDUMP_SHA256')
+    return Path(path), expected
+
+
+PROVIDER, PROVIDER_SHA256 = provider_configuration()
 # Every original instruction's offset/length/data-flow bytes; declared operand
 # fields below are decoded separately. None of these bytes enters rustc.
 ROW_SCHEMA = (

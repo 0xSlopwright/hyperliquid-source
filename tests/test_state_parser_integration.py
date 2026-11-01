@@ -1,10 +1,12 @@
 """Boundary controls for the composed ELF parser hardening changes."""
 import importlib.util
+import sys
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
 MODULES = []
 for name in ("consensus_wire", "state_roots", "info_request_path", "exchange_dispatch"):
     spec = importlib.util.spec_from_file_location(name, ROOT / "tools" / f"{name}.py")

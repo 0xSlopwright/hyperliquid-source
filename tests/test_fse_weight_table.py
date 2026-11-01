@@ -6,6 +6,7 @@ of the library. Its linked-client qualification is recorded separately.
 """
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import struct
@@ -24,6 +25,13 @@ ORACLE = PACKET / "independent-oracle"
 CONTROLS = PACKET / "independent-controls"
 VECTORS = ROOT / "src/node94-fse-weight-table"
 BODY_SHA256 = "8d7636d905df5188c3a5d0d495cf337bf1eca14949a373cc7e5393f5ae94484e"
+# As with other pinned native-provider checks, an unavailable default provider
+# is a reported skip. An explicitly selected provider must pass, not be skipped.
+NATIVE_SELECTED = ('FSE_OBJDUMP' in os.environ or
+                   (table.PROVIDER.is_file() and
+                    hashlib.sha256(table.PROVIDER.read_bytes()).hexdigest() == table.PROVIDER_SHA256))
+requires_native = unittest.skipUnless(
+    NATIVE_SELECTED, 'Pinned GNU provider unavailable; select FSE_OBJDUMP and its digest for native qualification')
 
 
 def load_json(path):
@@ -37,6 +45,18 @@ def changed(raw, offset, replacement):
 
 
 class FseAdmissionBoundaryTests(unittest.TestCase):
+    def test_explicit_provider_requires_absolute_path_and_digest(self):
+        for env in ({'FSE_OBJDUMP': '/tmp/reader'},
+                    {'FSE_OBJDUMP_SHA256': '0' * 64},
+                    {'FSE_OBJDUMP': 'reader', 'FSE_OBJDUMP_SHA256': '0' * 64},
+                    {'FSE_OBJDUMP': '/tmp/reader', 'FSE_OBJDUMP_SHA256': 'invalid'}):
+            with self.subTest(env=env), mock.patch.dict(os.environ, env, clear=True):
+                with self.assertRaisesRegex(ValueError, 'absolute path'):
+                    table.provider_configuration()
+        with mock.patch.dict(os.environ, {'FSE_OBJDUMP': '/tmp/reader',
+                                         'FSE_OBJDUMP_SHA256': '0' * 64}, clear=True):
+            self.assertEqual(table.provider_configuration(), (Path('/tmp/reader'), '0' * 64))
+
     def test_existing_output_precedes_admission_and_wrong_input_exports_nothing(self):
         with tempfile.TemporaryDirectory(prefix="fse-no-export-") as temporary:
             root = Path(temporary)
@@ -66,6 +86,9 @@ class FseAdmissionBoundaryTests(unittest.TestCase):
             with mock.patch.object(table, "PROVIDER", provider):
                 with self.assertRaisesRegex(table.EvidenceError, "provider unavailable"):
                     table.decode_span(b"\x90")
+        with mock.patch.object(table, "PROVIDER_SHA256", '0' * 64):
+            with self.assertRaisesRegex(table.EvidenceError, "provider unavailable"):
+                table.decode_span(b"\x90")
 
 
 class FseNativeRawTests(unittest.TestCase):
@@ -100,6 +123,7 @@ class FseNativeRawTests(unittest.TestCase):
             with self.assertRaisesRegex(table.EvidenceError, "complete 771"):
                 table.prove_table(raw)
 
+    @requires_native
     def test_actual_changed_native_rows_fail_below_the_whole_image_gate(self):
         design = load_json(CONTROLS / "NATIVE-CONTROL-DESIGN.json")
         self.assertEqual(design["body_sha256"], BODY_SHA256)
@@ -147,6 +171,7 @@ class FseNativeRawTests(unittest.TestCase):
                          table.prove_table(self.raw, self.listing))
 
 
+@requires_native
 class FseMetadataTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

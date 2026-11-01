@@ -64,6 +64,24 @@ class ForkBasesTests(unittest.TestCase):
         with self.assertRaises(mod.EvidenceError):
             mod.build(previous=bad)
 
+    def test_omitted_or_duplicate_comparison_entries_are_rejected(self):
+        points = {release: record['forks'] for release, record in self.committed['fork_locations'].items()}
+        for kind in ('row', 'duplicate row', 'revision', 'duplicate revision', 'file'):
+            bad = copy.deepcopy(self.committed['upstream'])
+            if kind == 'row':
+                bad.pop()
+            elif kind == 'duplicate row':
+                bad.append(copy.deepcopy(bad[0]))
+            elif kind == 'revision':
+                bad[0]['revisions'].pop()
+            elif kind == 'duplicate revision':
+                bad[0]['revisions'].append(copy.deepcopy(bad[0]['revisions'][0]))
+            else:
+                files = bad[0]['revisions'][0]['files']
+                del files[next(iter(files))]
+            with self.subTest(kind=kind), self.assertRaises(mod.EvidenceError):
+                mod.check_upstream_points(bad, points)
+
     def test_corrupted_helper_message_is_rejected(self):
         data, _ = mod.checked('visor')
         elf = mod.Elf(data)

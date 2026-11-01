@@ -81,3 +81,23 @@ The independent client then reuses the production rlib for three orders of
 48 requests, with no library recompilation. Full commands, compiler identity,
 raw logs, assumptions and exact case denominators are in the evidence packet.
 This measured experiment is not relabeled as a rebuilt later-main result.
+
+## Explicit static decoder selection
+
+The default static provider remains the recorded Linux GNU objdump and its
+exact digest. On another host, select an installed GNU objdump with both
+`FSE_OBJDUMP` (absolute path) and `FSE_OBJDUMP_SHA256` (its independently
+checked SHA-256). A partial selection is rejected. The collector still checks
+the executable digest before and after decoding and validates every instruction
+boundary and byte against the selected input. Its output records the actual
+provider identity; it does not become the historical Linux experiment.
+
+```sh
+FSE_OBJDUMP=/absolute/path/to/objdump \
+FSE_OBJDUMP_SHA256='<verified-sha256>' \
+python3 tools/fse_weight_table.py --output work/new-fse-static-record
+```
+
+The [integration review](../../research/work-items/RE-003-pr-integration-1153-1160/README.md)
+retains the original source/manifest and distinguishes the fresh host checks
+from the earlier fixed-source compiler experiment.
