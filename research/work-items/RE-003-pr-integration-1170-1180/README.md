@@ -1,4 +1,4 @@
-# RE-003: integration review of PRs #1170–#1181
+# RE-003: integration review of PRs #1170–#1184
 
 The requested merge batch begins at main
 `de089f488ddb7d381a2e0aaccde7a4a2e9ad9bac`. `reviewed-heads.json` records
@@ -87,3 +87,34 @@ before publication. Hosted CI success is not claimed. Raw test logs, native
 exports and the original Visor version-mismatch failure remain under ignored
 `work/merge-latest-1170-1180/`; the new regression controls and compact validation
 records are retained here.
+
+## Final two arrivals (#1182–#1183)
+
+After the first publication at `8e80259254c57d0834b34e738c6a3bc9fd18aa30`,
+the compact-string relocation reader receives the same minimal partial-record
+rejection. Both affected modules pass all 12 tests on authenticated node #94.
+The new action-delay static collector passes five tests, including original
+instruction, constant and relocation corruption controls. These reruns extend
+the fresh scope to 52 unittest modules / 672 tests, zero skips or failures.
+
+The independently authored action-delay Rust crate passes three integration
+tests on macOS aarch64 with actual Rust 1.94.1. Its release driver matches all
+332 statically grounded vectors at every retained stage. All four deliberate
+Rust mutants fail real tests. Original evidence and mutation records are
+preserved; fresh outputs and full failure logs remain under ignored work/.
+
+The locked, offline Linux x86-64 library build also passes using the already
+retained Linux standard library. Two fresh optimized object builds both hash
+to `985248f18d58430c3efd7d452153649e0aa95d6216883123756f8aaa4c28c4f6`, matching
+the submitted own-build record. Fresh GNU decoding matches all 147 instruction
+partitions across the five declared FDEs (665 bytes). Compiler/provider and
+standard-library hashes are recorded in `action-delay-rust-review.json`.
+This is own-build reproducibility and qualified logical arithmetic evidence;
+it is not captured-byte, original ABI or whole-node equality. The original
+FMA3/environment qualification, software fallback and caller gaps remain open.
+Only newly authored Rust executes; captured bytes are read statically.
+
+PR #1184 adds the same truncated-relocation guard to the separate Visor
+reader. Both affected modules pass on the authenticated Visor capture. The
+final fresh regression scope is 54 unittest modules / 684 tests,
+with zero skips or failures; the incremental combined inventory is 819 modules.

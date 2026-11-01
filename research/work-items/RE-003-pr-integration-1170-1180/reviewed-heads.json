@@ -94,5 +94,29 @@
     "baseRefName": "main",
     "isDraft": false,
     "url": "https://github.com/lalalune/hyperliquid-source/pull/1181"
+  },
+  {
+    "number": 1182,
+    "title": "fix(tooling): reject truncated relocation sections in compact_string_unwind",
+    "headRefOid": "381b6f318204a2321b861a6e9709de93d11a00b2",
+    "baseRefName": "main",
+    "isDraft": false,
+    "url": "https://github.com/lalalune/hyperliquid-source/pull/1182"
+  },
+  {
+    "number": 1183,
+    "title": "RE-004: reconstruct the qualified node94 action-delay FMA kernel",
+    "headRefOid": "7dbb33c17ba442f9cee47eb66cc8537e8156d2e7",
+    "baseRefName": "main",
+    "isDraft": false,
+    "url": "https://github.com/lalalune/hyperliquid-source/pull/1183"
+  },
+  {
+    "number": 1184,
+    "title": "fix(tooling): reject truncated relocation sections in visor_rust_unwind",
+    "headRefOid": "34b4236454e9029287ed64b8594c5cba5739ccfa",
+    "baseRefName": "main",
+    "isDraft": false,
+    "url": "https://github.com/lalalune/hyperliquid-source/pull/1184"
   }
 ]

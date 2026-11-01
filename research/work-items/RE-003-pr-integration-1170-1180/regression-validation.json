@@ -1,12 +1,12 @@
 {
   "baseline": "de089f488ddb7d381a2e0aaccde7a4a2e9ad9bac",
   "baseline_record": "research/work-items/RE-003-pr-integration-1153-1160/repository-validation.json",
-  "method": "Reuse the already completed 805-module baseline at the exact parent tree; rerun all new modules and the conservative transitive word-reference closure of changed tools in isolated Python 3.13.2 subprocesses (six workers, then two late modules sequentially). This is incremental validation, not a new full make test invocation.",
-  "fresh_modules": 49,
-  "fresh_reported_tests": 655,
+  "method": "Reuse the already completed 805-module baseline at the exact parent tree; rerun all new modules and the conservative transitive word-reference closure of changed tools in isolated Python 3.13.2 subprocesses (six workers, then two late modules sequentially). This is incremental validation, not a new full make test invocation. After the first publication, two additional PRs add three affected/new module reruns, three real Rust integration tests, a 332-vector release-driver comparison and four actual Rust mutation failures. Rust tests/vectors are reported separately from unittest counts. The last Visor relocation fix is rerun with both affected modules on the authenticated Visor.",
+  "fresh_modules": 54,
+  "fresh_reported_tests": 684,
   "fresh_skips": 0,
-  "combined_inventory_modules": 816,
-  "combined_reported_tests": 12954,
+  "combined_inventory_modules": 819,
+  "combined_reported_tests": 12965,
   "combined_reported_skips": 51,
   "unresolved_test_failures": 0,
   "results": [
@@ -401,6 +401,44 @@
       "skips": 0,
       "seconds": 0.358,
       "log_sha256": "dc87e0ef66d0a67753baa8980cd78aa72deb7378a8a58ff7a4876547556a0376"
+    },
+    {
+      "module": "test_compact_string_unwind.py",
+      "returncode": 0,
+      "tests": 9,
+      "skips": 0,
+      "log_sha256": "3fe3041d9b788d4efb16f084685eee1b0fd279f596b7cfe6cb20324ad4ef322c",
+      "scope": "Actual current parser plus all affected modules, or new FMA static controls; shared log counts parsed by exact unittest IDs."
+    },
+    {
+      "module": "test_compact_string_unwind_relocation_truncation.py",
+      "returncode": 0,
+      "tests": 3,
+      "skips": 0,
+      "log_sha256": "3fe3041d9b788d4efb16f084685eee1b0fd279f596b7cfe6cb20324ad4ef322c",
+      "scope": "Actual current parser plus all affected modules, or new FMA static controls; shared log counts parsed by exact unittest IDs."
+    },
+    {
+      "module": "test_action_delay_fma_rust.py",
+      "returncode": 0,
+      "tests": 5,
+      "skips": 0,
+      "log_sha256": "c8fcfc923f05ed69c5c802142d286e1d53d9eb141e985c6e5a68462ff0c9e96f",
+      "scope": "Actual current parser plus all affected modules, or new FMA static controls; shared log counts parsed by exact unittest IDs."
+    },
+    {
+      "module": "test_visor_rust_unwind.py",
+      "returncode": 0,
+      "tests": 9,
+      "skips": 0,
+      "log_sha256": "7306e8440270b96714e62dcdc033731035b324f911f706fff7dcf70a1a6369c7"
+    },
+    {
+      "module": "test_visor_rust_unwind_relocation_truncation.py",
+      "returncode": 0,
+      "tests": 3,
+      "skips": 0,
+      "log_sha256": "7306e8440270b96714e62dcdc033731035b324f911f706fff7dcf70a1a6369c7"
     }
   ]
 }
