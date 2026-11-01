@@ -21,6 +21,10 @@ No component ownership or function equivalence follows from this index.
 extents, checks them against that index and lists uncovered `.text` gaps. An
 FDE extent is still not a validated function boundary; see
 [RE-001 FDE extents](../research/work-items/RE-001-fde-extents/README.md).
+The separate `python3 tools/entrypoint_candidates.py --release 94` command
+resolves entrypoint-array membership and classifies raw `E8` byte candidates.
+These are not decoded calls or reachability evidence; see the
+[entrypoint census](../research/work-items/RE-001-entrypoints/README.md).
 
 `ghidra_plan.py` prints a static import command for a fresh, digest-named
 project under `work/ghidra/`. Set `GHIDRA_HOME` when Ghidra is not discovered.
