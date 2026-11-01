@@ -148,8 +148,10 @@ validate the observations; they do not automatically prove the argument above.
 The predicate has earlier exits, file/configuration checks, logging, panic and
 unwind paths. This packet does not assert complete caller-state semantics,
 monotonic elapsed time, exact behavior under clock changes, absence of side
-effects, child supervision correctness or update security. No target execution,
-network, child process or live filesystem update was performed.
+effects, child supervision correctness or update security. No captured target,
+emulator or supervisor-launched child ran. No target network access or live
+runtime filesystem update was performed; the native analysis processes only
+read captured bytes and write offline analysis files.
 
 Next question: qualify the timestamp producer and the calendar addition domain,
 including day rollover and out-of-range dates, before claiming a full
