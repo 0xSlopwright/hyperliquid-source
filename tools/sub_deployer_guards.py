@@ -330,16 +330,18 @@ def analyse(data: bytes, check_sha: bool = True) -> dict:
         },
         "fallback_from": {
             "note": (
-                "GATE on closed/open PRs #969/#413/#650: open PR #969 "
-                "already claims the deployer trading-fee-share setter at "
-                "0x27512f0 (cap 0x186a0 / the three fee-share strings). "
-                "RE-032 was dropped; this packet builds scout candidate "
-                "#3 (sub-deployer set guards) instead. #413 MERGED is "
-                "quote-token enable (different rule); #650 MERGED is "
-                "spot-meta inventory (different rule)."
+                "GATE on PRs #969/#413/#650: #969 MERGED "
+                "2026-11-01T05:10:18Z claims the deployer "
+                "trading-fee-share setter at 0x27512f0 (cap 0x186a0 / "
+                "the three fee-share strings) — THIS rule, so RE-032 "
+                "was dropped. This packet builds scout candidate #3 "
+                "(sub-deployer set guards) instead. #413 MERGED "
+                "2026-11-01T03:00:55Z is quote-token enable (different "
+                "rule); #650 MERGED 2026-11-01T03:00:54Z is spot-meta "
+                "inventory (different rule)."
             ),
             "dropped": "RE-032",
-            "reason": "open_pr_969_covers_fee_share_setter",
+            "reason": "merged_pr_969_is_fee_share_setter_rule",
         },
         "got_addend_match": got_addend_match,
         "got_rela": got_rela,

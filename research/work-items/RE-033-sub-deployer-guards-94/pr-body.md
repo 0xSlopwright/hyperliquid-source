@@ -25,14 +25,17 @@ Unicorn emulation. Claims the set RULES only.
 
 Fell back from RE-032 (fee-share @ `0x27512f0`) because:
 
-- **#969 OPEN** (not merged/closed). Body pins the exact fee-share setter
-  `0x27512f0` + copies + cap 100000 / the three fee-share strings. Building
-  RE-032 would duplicate that open claim.
-- **#413 MERGED** 2026-11-01T03:00:55Z — quote-token enable book gate
-  (different rule; fee-share appears only as a token-row field / "must be
-  0" side-effect, not the ≤100% guard).
-- **#650 MERGED** 2026-11-01T03:00:54Z — spot-meta inventory (different
-  rule; `0x27512f0` appears only as an FDE boundary).
+- **#969 MERGED** `mergedAt`/`closedAt` 2026-11-01T05:10:18Z (UTC). Body
+  pins the exact fee-share setter `0x27512f0` + copies + cap 100000 / the
+  three fee-share strings. MERGED content IS THIS rule — the GATE drop
+  trigger. (Observed OPEN at first GATE fetch; re-checked MERGED before
+  handoff.)
+- **#413 MERGED** `mergedAt`/`closedAt` 2026-11-01T03:00:55Z (UTC) —
+  quote-token enable book gate (different rule; fee-share appears only as
+  a token-row field / "must be 0" side-effect, not the ≤100% guard).
+- **#650 MERGED** `mergedAt`/`closedAt` 2026-11-01T03:00:54Z (UTC) —
+  spot-meta inventory (different rule; `0x27512f0` appears only as an FDE
+  boundary).
 
 This packet is scout candidate #3 (sub-deployer set guards).
 
