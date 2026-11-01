@@ -115,7 +115,10 @@ class Image:
         self.sections = {}
         for row in rows:
             end = blob.index(b"\0", names + row[0])
-            self.sections[blob[names + row[0]:end].decode()] = {"addr": row[3], "offset": row[4], "size": row[5]}
+            name = blob[names + row[0]:end].decode()
+            if name in self.sections:
+                raise EvidenceError(f"duplicate section name {name}")
+            self.sections[name] = {"addr": row[3], "offset": row[4], "size": row[5]}
         self.text = self.sections[".text"]
         self.starts, self.fdes = self.fde_table()
 
