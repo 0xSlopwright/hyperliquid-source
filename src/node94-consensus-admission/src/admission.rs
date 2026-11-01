@@ -57,9 +57,10 @@ pub fn verify_block<A: AdmissionAuthenticator>(
         verify_tc(history, authenticator, tc)?;
     }
 
-    if !block_snapshot.stakes.contains_key(&block.proposer)
-        || authenticator.verify_block_signature(block).is_err()
-    {
+    if !block_snapshot.stakes.contains_key(&block.proposer) {
+        return Err(AdmissionError::Signature.into());
+    }
+    if authenticator.recover_block_signer(block).as_ref() != Ok(&block.proposer) {
         return Err(AdmissionError::Signature.into());
     }
 
@@ -76,7 +77,7 @@ mod tests {
     use super::*;
     use crate::{
         AuthenticationError, BlockHash, Hardfork, Qc, QcVote, SignatureBytes, StakeSnapshot, Tc,
-        TimeoutVote, TransactionHash, ValidatorAddress,
+        TransactionHash, ValidatorAddress,
     };
 
     struct TracingAuth {
@@ -94,30 +95,42 @@ mod tests {
             self.proposer
         }
 
-        fn verify_qc_vote(&self, _qc: &Qc, vote: &QcVote) -> Result<(), AuthenticationError> {
+        fn recover_qc_vote_signer(
+            &self,
+            _qc: &Qc,
+            signature: &SignatureBytes,
+        ) -> Result<ValidatorAddress, AuthenticationError> {
             self.calls.borrow_mut().push("qc");
-            if vote.signature.0[0] == vote.signer.0[0] {
-                Ok(())
-            } else {
+            if signature.0[0] == 0xff {
                 Err(AuthenticationError::QcVoteSignature)
+            } else {
+                Ok(address(signature.0[0]))
             }
         }
 
-        fn verify_timeout_vote(&self, vote: &TimeoutVote) -> Result<(), AuthenticationError> {
+        fn recover_timeout_vote_signer(
+            &self,
+            _qc: &Qc,
+            _round: Round,
+            signature: &SignatureBytes,
+        ) -> Result<ValidatorAddress, AuthenticationError> {
             self.calls.borrow_mut().push("timeout");
-            if vote.signature.0[0] == vote.signer.0[0] {
-                Ok(())
-            } else {
+            if signature.0[0] == 0xff {
                 Err(AuthenticationError::TimeoutVoteSignature)
+            } else {
+                Ok(address(signature.0[0]))
             }
         }
 
-        fn verify_block_signature(&self, block: &SignedBlock) -> Result<(), AuthenticationError> {
+        fn recover_block_signer(
+            &self,
+            block: &SignedBlock,
+        ) -> Result<ValidatorAddress, AuthenticationError> {
             self.calls.borrow_mut().push("block");
-            if block.signature.0[0] == block.proposer.0[0] {
-                Ok(())
-            } else {
+            if block.signature.0[0] == 0xff {
                 Err(AuthenticationError::BlockSignature)
+            } else {
+                Ok(address(block.signature.0[0]))
             }
         }
     }
@@ -262,5 +275,35 @@ mod tests {
             ))
         );
         assert!(auth.calls.borrow().is_empty());
+    }
+
+    #[test]
+    fn recovered_address_must_equal_the_claimed_block_proposer() {
+        let auth = auth();
+        let mut substituted = block();
+        substituted.signature = signature(2);
+        assert_eq!(
+            verify_block(&history(), &auth, &substituted),
+            Err(VerificationFailure::Rejected(AdmissionError::Signature))
+        );
+    }
+
+    #[test]
+    fn proposer_rule_errors_preserve_an_authenticated_target_tag() {
+        let auth = TracingAuth {
+            proposer: Err(AuthenticationError::proposer(Some(0x10))),
+            calls: RefCell::new(Vec::new()),
+        };
+        let error = verify_block(&history(), &auth, &block()).unwrap_err();
+        assert_eq!(
+            error,
+            VerificationFailure::Rejected(AdmissionError::Authentication(
+                AuthenticationError::proposer(Some(0x10))
+            ))
+        );
+        let VerificationFailure::Rejected(error) = error else {
+            unreachable!()
+        };
+        assert_eq!(error.target_tag(), Some(0x10));
     }
 }

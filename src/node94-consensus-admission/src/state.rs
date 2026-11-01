@@ -200,7 +200,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        AuthenticationError, Hardfork, Qc, QcVote, SignatureBytes, StakeSnapshot, Tc, TimeoutVote,
+        AuthenticationError, Hardfork, Qc, QcVote, SignatureBytes, StakeSnapshot, Tc,
         ValidatorAddress,
     };
 
@@ -215,20 +215,28 @@ mod tests {
             Ok(address(1))
         }
 
-        fn verify_qc_vote(&self, _qc: &Qc, vote: &QcVote) -> Result<(), AuthenticationError> {
-            (vote.signature.0[0] == vote.signer.0[0])
-                .then_some(())
-                .ok_or(AuthenticationError::QcVoteSignature)
+        fn recover_qc_vote_signer(
+            &self,
+            _qc: &Qc,
+            signature: &SignatureBytes,
+        ) -> Result<ValidatorAddress, AuthenticationError> {
+            Ok(address(signature.0[0]))
         }
 
-        fn verify_timeout_vote(&self, _vote: &TimeoutVote) -> Result<(), AuthenticationError> {
-            Ok(())
+        fn recover_timeout_vote_signer(
+            &self,
+            _qc: &Qc,
+            _round: Round,
+            signature: &SignatureBytes,
+        ) -> Result<ValidatorAddress, AuthenticationError> {
+            Ok(address(signature.0[0]))
         }
 
-        fn verify_block_signature(&self, block: &SignedBlock) -> Result<(), AuthenticationError> {
-            (block.signature.0[0] == block.proposer.0[0])
-                .then_some(())
-                .ok_or(AuthenticationError::BlockSignature)
+        fn recover_block_signer(
+            &self,
+            block: &SignedBlock,
+        ) -> Result<ValidatorAddress, AuthenticationError> {
+            Ok(address(block.signature.0[0]))
         }
     }
 

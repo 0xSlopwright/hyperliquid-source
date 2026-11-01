@@ -59,11 +59,13 @@ The following native behavior remains unresolved in the retained evidence:
 - block/QC/timeout digest construction at `0x454c050`;
 - signature recovery at `0x14c6f50`.
 
-`AdmissionAuthenticator` isolates those operations. It receives the complete
-typed message and returns a structured `Result`; no API accepts a caller's
-`is_valid` boolean. This boundary is not a claim of end-to-end cryptographic
-verification. An embedding implementation must authenticate the supplied block
-identity consistently with its recovered digest implementation.
+`AdmissionAuthenticator` isolates those operations. It receives typed signing
+fields and opaque signatures and returns recovered validator identities, which
+this crate compares with the claimed addresses and selected stake set. No API
+accepts a caller's `is_valid` boolean. This boundary is not a claim of
+end-to-end cryptographic verification. An embedding implementation must
+authenticate the supplied block identity consistently with its recovered
+digest implementation.
 
 The crate also does not implement networking, proposal construction, commit
 walking, transaction execution, persistence, timers, or the already-existing

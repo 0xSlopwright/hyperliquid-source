@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use node94_consensus_admission::{AdmissionError, BlockHash, Hardfork, Round, ValidatorAddress};
 
@@ -8,6 +9,10 @@ const TARGET_SHA256: &str = "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d
 fn packet() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../research/work-items/RE-008-block-admission-94")
+}
+
+fn repository_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
 fn read(name: &str) -> String {
@@ -63,6 +68,19 @@ fn retained_packet_has_the_qualified_target_identity_and_counts() {
     assert_eq!(data_rows(&read("functions.tsv")), 15);
     assert_eq!(data_rows(&read("gates.tsv")), 22);
     assert_eq!(data_rows(&read("qc-tc-gates.tsv")), 29);
+}
+
+#[test]
+fn captured_executable_matches_the_packet_digest() {
+    let target = repository_root().join("artifacts/node/94/hl-node");
+    let output = Command::new("shasum")
+        .args(["-a", "256"])
+        .arg(&target)
+        .output()
+        .expect("shasum is required by repository verification policy");
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).expect("shasum output is UTF-8");
+    assert_eq!(stdout.split_whitespace().next(), Some(TARGET_SHA256));
 }
 
 #[test]

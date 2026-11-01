@@ -57,7 +57,7 @@ impl AdmissionError {
             Self::DuplicateBlockRound { .. } => Some(0x0e),
             Self::TimeoutRoundMismatch { .. } => Some(0x0f),
             Self::MissingValidatorSetRound(_) => Some(0x28),
-            Self::Authentication(_) => None,
+            Self::Authentication(error) => error.target_tag(),
         }
     }
 }

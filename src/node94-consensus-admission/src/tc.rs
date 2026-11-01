@@ -63,8 +63,13 @@ fn verify_timeout_vote<A: AdmissionAuthenticator>(
     if with_qc {
         verify_qc(history, authenticator, &vote.qc)?;
     }
-    if !snapshot.stakes.contains_key(&vote.signer)
-        || authenticator.verify_timeout_vote(vote).is_err()
+    if !snapshot.stakes.contains_key(&vote.signer) {
+        return Err(AdmissionError::Signature.into());
+    }
+    if authenticator
+        .recover_timeout_vote_signer(&vote.qc, vote.round, &vote.signature)
+        .as_ref()
+        != Ok(&vote.signer)
     {
         return Err(AdmissionError::Signature.into());
     }
@@ -95,28 +100,40 @@ mod tests {
             eligible
                 .first()
                 .copied()
-                .ok_or(AuthenticationError::ProposerSelection)
+                .ok_or(AuthenticationError::proposer(None))
         }
 
-        fn verify_qc_vote(&self, _qc: &Qc, vote: &QcVote) -> Result<(), AuthenticationError> {
-            if vote.signature.0[0] == vote.signer.0[0] {
-                Ok(())
-            } else {
+        fn recover_qc_vote_signer(
+            &self,
+            _qc: &Qc,
+            signature: &SignatureBytes,
+        ) -> Result<ValidatorAddress, AuthenticationError> {
+            if signature.0[0] == 0xff {
                 Err(AuthenticationError::QcVoteSignature)
-            }
-        }
-
-        fn verify_timeout_vote(&self, vote: &TimeoutVote) -> Result<(), AuthenticationError> {
-            self.timeout_checks.set(self.timeout_checks.get() + 1);
-            if vote.signature.0[0] == vote.signer.0[0] {
-                Ok(())
             } else {
-                Err(AuthenticationError::TimeoutVoteSignature)
+                Ok(address(signature.0[0]))
             }
         }
 
-        fn verify_block_signature(&self, _block: &SignedBlock) -> Result<(), AuthenticationError> {
-            Ok(())
+        fn recover_timeout_vote_signer(
+            &self,
+            _qc: &Qc,
+            _round: Round,
+            signature: &SignatureBytes,
+        ) -> Result<ValidatorAddress, AuthenticationError> {
+            self.timeout_checks.set(self.timeout_checks.get() + 1);
+            if signature.0[0] == 0xff {
+                Err(AuthenticationError::TimeoutVoteSignature)
+            } else {
+                Ok(address(signature.0[0]))
+            }
+        }
+
+        fn recover_block_signer(
+            &self,
+            _block: &SignedBlock,
+        ) -> Result<ValidatorAddress, AuthenticationError> {
+            unreachable!()
         }
     }
 
@@ -282,6 +299,21 @@ mod tests {
         assert_eq!(
             verify_tc(&history(), &auth, &certificate),
             Err(VerificationFailure::Rejected(AdmissionError::TcNoQuorum))
+        );
+    }
+
+    #[test]
+    fn recovered_address_must_equal_the_claimed_timeout_signer() {
+        let auth = auth();
+        let mut substituted = timeout(1, 990, true);
+        substituted.signature = signature(2);
+        let certificate = Tc {
+            votes: vec![substituted, timeout(2, 991, true), timeout(3, 992, true)],
+            round: Round(999),
+        };
+        assert_eq!(
+            verify_tc(&history(), &auth, &certificate),
+            Err(VerificationFailure::Rejected(AdmissionError::Signature))
         );
     }
 }

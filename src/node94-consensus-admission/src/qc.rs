@@ -20,8 +20,14 @@ pub fn verify_qc<A: AdmissionAuthenticator>(
         Ok(snapshot) => {
             let mut vote_error = None;
             for vote in &qc.votes {
-                if !snapshot.stakes.contains_key(&vote.signer)
-                    || authenticator.verify_qc_vote(qc, vote).is_err()
+                if !snapshot.stakes.contains_key(&vote.signer) {
+                    vote_error = Some(AdmissionError::QcVoteSignature);
+                    break;
+                }
+                if authenticator
+                    .recover_qc_vote_signer(qc, &vote.signature)
+                    .as_ref()
+                    != Ok(&vote.signer)
                 {
                     vote_error = Some(AdmissionError::QcVoteSignature);
                     break;
@@ -74,7 +80,7 @@ mod tests {
     use super::*;
     use crate::{
         AuthenticationError, BlockHash, Hardfork, QcVote, Round, SignatureBytes, SignedBlock,
-        StakeSnapshot, TimeoutVote, ValidatorAddress,
+        StakeSnapshot, ValidatorAddress,
     };
 
     struct DeterministicAuth;
@@ -88,23 +94,35 @@ mod tests {
             eligible
                 .first()
                 .copied()
-                .ok_or(AuthenticationError::ProposerSelection)
+                .ok_or(AuthenticationError::proposer(None))
         }
 
-        fn verify_qc_vote(&self, _qc: &Qc, vote: &QcVote) -> Result<(), AuthenticationError> {
-            if vote.signature.0[0] == vote.signer.0[0] {
-                Ok(())
-            } else {
+        fn recover_qc_vote_signer(
+            &self,
+            _qc: &Qc,
+            signature: &SignatureBytes,
+        ) -> Result<ValidatorAddress, AuthenticationError> {
+            if signature.0[0] == 0xff {
                 Err(AuthenticationError::QcVoteSignature)
+            } else {
+                Ok(address(signature.0[0]))
             }
         }
 
-        fn verify_timeout_vote(&self, _vote: &TimeoutVote) -> Result<(), AuthenticationError> {
-            Ok(())
+        fn recover_timeout_vote_signer(
+            &self,
+            _qc: &Qc,
+            _round: Round,
+            _signature: &SignatureBytes,
+        ) -> Result<ValidatorAddress, AuthenticationError> {
+            unreachable!()
         }
 
-        fn verify_block_signature(&self, _block: &SignedBlock) -> Result<(), AuthenticationError> {
-            Ok(())
+        fn recover_block_signer(
+            &self,
+            _block: &SignedBlock,
+        ) -> Result<ValidatorAddress, AuthenticationError> {
+            unreachable!()
         }
     }
 
@@ -184,6 +202,19 @@ mod tests {
                 &qc(vec![vote(1), vote(1)])
             ),
             Err(VerificationFailure::Rejected(AdmissionError::QcNoQuorum))
+        );
+    }
+
+    #[test]
+    fn recovered_address_must_equal_the_claimed_qc_signer() {
+        let auth = DeterministicAuth;
+        let mut substituted = vote(1);
+        substituted.signature.0[0] = 2;
+        assert_eq!(
+            verify_qc(&history(&[(1, 10)]), &auth, &qc(vec![substituted])),
+            Err(VerificationFailure::Rejected(
+                AdmissionError::QcVoteSignature
+            ))
         );
     }
 
