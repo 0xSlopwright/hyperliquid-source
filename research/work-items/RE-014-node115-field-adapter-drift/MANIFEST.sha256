@@ -1,5 +1,5 @@
 d0b179045b7ca38916d7d92d7a8e920c581ddbfd5009561868a1d13e22b8a951  research/work-items/RE-014-node115-field-adapter-drift/CACHED-308-SOURCE-REVIEW.json
-b8bbb504b2e1eb8cde489dad1cc2cba9925dcf75e1dbbe8572f2269782c62fb2  research/work-items/RE-014-node115-field-adapter-drift/CURRENT-BASE-REBIND.json
+fadeb55632dd163d92635a89e48b48356901327e91f0e4a0cb9c2e5b564dc59a  research/work-items/RE-014-node115-field-adapter-drift/CURRENT-BASE-REBIND.json
 e62aba7c50f58dc53140ec1be62f92d98a8edade971d8a067b65bdc13f50ab2e  research/work-items/RE-014-node115-field-adapter-drift/FDE-LENGTH-BEFORE-ACCEPTANCE.json
 495c0500a4ce8a2690a4054a98979cae7455620eb7a73c1a78759206a29ccffd  research/work-items/RE-014-node115-field-adapter-drift/FDE-LENGTH-CORRECTION.json
 92c1c8e459c540b943a3feda21cb4784a6f8f64744f23bbc523f0779bfcbb883  research/work-items/RE-014-node115-field-adapter-drift/FDE-LENGTH-CORRECTION.patch
@@ -41,7 +41,7 @@ a036d716e2006f194368cbed51c26869393f2171a244b0981b583dcade5b69e7  research/work-
 41848d4080cc84dc5c4bb3b98de57f9236ef811493dc1dd8773fcdd78acab6a4  research/work-items/RE-014-node115-field-adapter-drift/PYTHON-O-TEST-RESULT.json
 565aa71211f7903115d85d6c407d2a1fdfc387cd1481d6445fcb3085794ab46d  research/work-items/RE-014-node115-field-adapter-drift/PYTHON-O-TEST.stderr
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  research/work-items/RE-014-node115-field-adapter-drift/PYTHON-O-TEST.stdout
-6f04c4cda2cb570c317c695467a4da66bc625471744026938669bf431db85c45  research/work-items/RE-014-node115-field-adapter-drift/README.md
+ce36c8af352f4af39f25b632879c24f5c053b04e419f18b24d47890a3915691d  research/work-items/RE-014-node115-field-adapter-drift/README.md
 172020dbfd5b53a226dfde77616190a48dcff519b0bc0e6deb91a8450782c4af  research/work-items/RE-014-node115-field-adapter-drift/RUST-COPYRIGHT
 62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a  research/work-items/RE-014-node115-field-adapter-drift/RUST-LICENSE-APACHE
 b71bd43a069ca0641a9ecfe585ca7b3c53b5cc1608f8b68321168698e28b5ea1  research/work-items/RE-014-node115-field-adapter-drift/RUST-LICENSE-MIT
@@ -52,7 +52,7 @@ b6f9f5e6559490b69ff7380872148c67ac18b7a622f760a5b8823ee7f2da9e0b  research/work-
 16d8cff933aa00cd201cdbd5b31c4c6109b3335c2554b261b651ebbdecba22f9  research/work-items/RE-014-node115-field-adapter-drift/STATIC-REPRODUCTION.json
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  research/work-items/RE-014-node115-field-adapter-drift/STATIC-REPRODUCTION.stderr
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  research/work-items/RE-014-node115-field-adapter-drift/STATIC-REPRODUCTION.stdout
-66d9adce137ad91d94b5a8412c675bfc436b27c1315f76d29bbe789c7173a632  research/work-items/RE-014-node115-field-adapter-drift/VALIDATION-STATUS.json
+af6792b1e07e1a045ef2b79d2904247b35e8a3fafb22f3f92bd9772347d0d6cf  research/work-items/RE-014-node115-field-adapter-drift/VALIDATION-STATUS.json
 1c021109e6dc81029b3d7993895b5448d311c1863a87854ba505e70a767515e8  research/work-items/RE-014-node115-field-adapter-drift/VTABLE-PREPARATION-CORRECTION.json
 ac48db86e79b7461e313771ca65028bf8d61d926cbf9ad1054118a879ac4a83b  research/work-items/RE-014-node115-field-adapter-drift/observed/records.json
 ae145e3fb0bc7863efd7c1486d06340fbdfcf5fd85c17b293605b4a41b5e4c29  tests/test_node115_field_adapter_drift.py

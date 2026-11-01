@@ -143,7 +143,10 @@ back to the exact historical source hashes without changing this producer.
 No source build, original-byte
 reconstruction, Rust implementation, full-suite or hosted-CI success is
 implied. Current-base cleared checks are reported separately in the draft PR;
-full `make test` remains pending explicit authorization. No gate is requested.
+full `make test` was not run at packet freeze. All 73 audited offline
+evaluator families are now explicitly authorized; the complete suite awaits
+sequential memory isolation and scheduling. Native captured binaries, live
+networking and chain actions remain excluded. No gate is requested.
 
 The next bounded question is to account for the 630B adapter's actual changed
 control/data paths before deciding whether any #94 protocol can transfer.
