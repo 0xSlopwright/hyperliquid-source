@@ -110,7 +110,7 @@ def slot_refs(data, segs, slot):
     for base, off, filesz in segs:
         code = data[off : off + filesz]
         i = 0
-        while i < len(code) - 6:
+        while i <= len(code) - 6:
             va = base + i
             if code[i] == 0xFF and code[i + 1] in (0x15, 0x25):
                 tgt = va + 6 + struct.unpack_from("<i", code, i + 2)[0]
@@ -135,7 +135,7 @@ def iteration_count(exp_bytes):
 
 def gas_eip2565(base, exp, mod):
     words = (max(len(mod), len(base)) + 7) // 8
-    return max(200, words * words * iteration_count(exp) // 3)
+    return max(200, words * words * max(iteration_count(exp), 1) // 3)
 
 
 def gas_eip198(base, exp, mod):
@@ -146,12 +146,7 @@ def gas_eip198(base, exp, mod):
         mc = x * x // 4 + 96 * x - 3072
     else:
         mc = x * x // 16 + 480 * x - 199680
-    it = iteration_count(exp)
-    if len(exp) == 0 or int.from_bytes(exp, "big") == 0:
-        adj = 0
-    else:
-        adj = max(it, 1)
-    return mc * max(adj, 1) // 20
+    return mc * max(iteration_count(exp), 1) // 20
 
 
 def ref_modexp(base, exp, mod):
@@ -159,7 +154,7 @@ def ref_modexp(base, exp, mod):
         return b""
     m = int.from_bytes(mod, "big")
     if m == 0:
-        return b""
+        return bytes(len(mod))
     r = pow(
         int.from_bytes(base or b"\x00", "big"),
         int.from_bytes(exp or b"\x00", "big"),

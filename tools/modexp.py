@@ -15,7 +15,8 @@ Standalone. From the pinned node #94 binary only, it recovers:
     0x5776ee0 (imul/shr-2 mid band and 0x14 divisor);
   * GOT slot 0x576e530 RELATIVE addend 0x136bdd0; exactly 2 ff15 refs
     (0x4e92664 Berlin, 0x4e92f6d Byzantium), 0 direct e8/e9;
-  * no CPUID / SIMD in the core closure;
+  * no hits for the five searched CPUID/ADX/MULX byte patterns; native XMM
+    instructions are present (see REVIEW.md);
   * external calls in the closure: jemalloc malloc 0x54c06b0 via GOT
     0x576dfd8, jemalloc size-product allocator 0x54c0780 (scout name realloc)
     via GOT 0x576e298, jemalloc sized free 0x54c8cb0 via GOT 0x576e010,
@@ -41,6 +42,8 @@ import struct
 import sys
 from pathlib import Path
 
+from crypto_emulation_guard import run_bounded
+
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT / "artifacts" / "node" / "94" / "hl-node"
 BINARY_SHA256 = "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
@@ -53,7 +56,7 @@ PAD = (0x136BF34, 0x136BF40)  # int3 padding before next fn
 CARVED_LEN = FN_END - FN
 CARVED_SHA256 = "ee1f99abba09a6804f55da289130166de868f339c6294ea29a3e81bc7e4c3252"
 
-# Named functions in the core arithmetic closure (SIMD scan + documentation).
+# Initial arithmetic cluster (legacy feature-pattern scan; not a complete closure).
 # Contiguous cluster 0x13686a0..0x136bf34; carve itself is the entry FDE only.
 CALLEES = [
     (0x13686A0, 0x1368A76, "to_be_bytes (result convert)"),
@@ -206,7 +209,7 @@ def slot_refs(text_chunks, slot):
     refs = []
     for base, code in text_chunks:
         i = 0
-        while i < len(code) - 6:
+        while i <= len(code) - 6:
             va = base + i
             if code[i] == 0xFF and code[i + 1] in (0x15, 0x25):
                 tgt = va + 6 + struct.unpack_from("<i", code, i + 2)[0]
@@ -217,13 +220,28 @@ def slot_refs(text_chunks, slot):
                 continue
             i += 1
     for base, code in text_chunks:
-        for i in range(len(code) - 7):
-            if code[i] == 0x48 and code[i + 1] == 0x8B and (code[i + 2] & 0xC7) == 0x05:
+        for i in range(max(0, len(code) - 6)):
+            if code[i] in (0x48, 0x4C) and code[i + 1] == 0x8B and (code[i + 2] & 0xC7) == 0x05:
                 va = base + i
                 tgt = va + 7 + struct.unpack_from("<i", code, i + 3)[0]
                 if tgt == slot:
                     refs.append(("mov", va))
     return refs
+
+
+def direct_candidates(chunks, target):
+    """Raw E8/E9 candidates only; native decoding establishes instruction sites."""
+    sites = []
+    for base, code in chunks:
+        for opcode in (b"\xe8", b"\xe9"):
+            offset = code.find(opcode)
+            while offset >= 0:
+                if offset + 5 <= len(code):
+                    displacement = struct.unpack_from("<i", code, offset + 1)[0]
+                    if base + offset + 5 + displacement == target:
+                        sites.append(base + offset)
+                offset = code.find(opcode, offset + 1)
+    return sites
 
 
 def iteration_count(exp_bytes: bytes) -> int:
@@ -239,7 +257,7 @@ def iteration_count(exp_bytes: bytes) -> int:
 
 def gas_eip2565(base: bytes, exp: bytes, mod: bytes) -> int:
     words = (max(len(mod), len(base)) + 7) // 8
-    return max(200, words * words * iteration_count(exp) // 3)
+    return max(200, words * words * max(iteration_count(exp), 1) // 3)
 
 
 def gas_eip198(base: bytes, exp: bytes, mod: bytes) -> int:
@@ -250,12 +268,7 @@ def gas_eip198(base: bytes, exp: bytes, mod: bytes) -> int:
         mc = x * x // 4 + 96 * x - 3072
     else:
         mc = x * x // 16 + 480 * x - 199680
-    it = iteration_count(exp)
-    if len(exp) == 0 or int.from_bytes(exp, "big") == 0:
-        adj = 0
-    else:
-        adj = max(it, 1)
-    return mc * max(adj, 1) // 20
+    return mc * max(iteration_count(exp), 1) // 20
 
 
 def enc_input(base: bytes, exp: bytes, mod: bytes) -> bytes:
@@ -274,7 +287,7 @@ def ref_modexp(base: bytes, exp: bytes, mod: bytes) -> bytes:
         return b""
     m = int.from_bytes(mod, "big")
     if m == 0:
-        return b""
+        return bytes(len(mod))
     r = pow(
         int.from_bytes(base or b"\x00", "big"),
         int.from_bytes(exp or b"\x00", "big"),
@@ -312,155 +325,229 @@ MEMCPY_STUB = 0x61000000
 MEMSET_STUB = 0x61000100
 
 
+# Actual FDE bounds independently checked against GNU readelf/objdump.
+# Native allocator, panic, unwind, memmove and resize paths are excluded.
+FIXTURE_CODE_RANGES = tuple((a, b) for a, b, _ in CALLEES) + (
+    (FN, FN_END), (BERLIN, BERLIN_END), (BYZ, BYZ_END),
+    (BERLIN_GAS, 0x4E9326F), (BYZ_GAS, 0x4E9345F),
+    (0x136BF40, 0x136BF98), (0x136BFA0, 0x136C033),
+    (0x136C040, 0x136C0AF), (0x4E93460, 0x4E93593),
+    (0x4E935E0, 0x4E94D71), (0x565F5A0, 0x565F666),
+    (0x565F7F0, 0x565F8B5),
+)
+FIXTURE_MUTATIONS = (
+    (BERLIN_DIV3_IMM_VA, "48c744244803000000", "48c744244804000000"),
+    (BERLIN_FLOOR200_VA, "b8c8000000", "b8c9000000"),
+    (BYZ_DIV20_IMM_VA, "48c744244014000000", "48c744244015000000"),
+)
+
+
+def validate_fixture(wrapper_va, inp, gas_limit):
+    if wrapper_va not in (BERLIN, BYZ):
+        raise ValueError("fixture wrapper is outside the two reviewed entries")
+    if type(gas_limit) is not int or not 0 <= gas_limit <= 10_000_000:
+        raise ValueError("fixture gas limit outside bounds")
+    if not isinstance(inp, bytes) or not 96 <= len(inp) <= 864:
+        raise ValueError("fixture input size outside bounds")
+    lengths = tuple(int.from_bytes(inp[i:i + 32], "big") for i in (0, 32, 64))
+    if any(n > 256 for n in lengths) or len(inp) != 96 + sum(lengths):
+        raise ValueError("fixture requires complete fields of at most 256 bytes")
+    return lengths
+
+
+def authenticate_fixture_image(data):
+    if hashlib.sha256(data).hexdigest() == BINARY_SHA256:
+        return
+    segs = segments(data)
+    # Only one of the three predeclared in-memory immediate changes is allowed.
+    for va, old, new in FIXTURE_MUTATIONS:
+        off = va_to_off(segs, va)
+        if data[off:off + len(new) // 2].hex() != new:
+            continue
+        restored = bytearray(data)
+        restored[off:off + len(old) // 2] = bytes.fromhex(old)
+        if hashlib.sha256(restored).hexdigest() == BINARY_SHA256:
+            return
+    raise ValueError("fixture image is not node94 or an allowed immediate mutation")
+
+
+class FixtureMemory:
+    """Bound host callbacks too: Unicorn guest-write hooks do not cover mem_write."""
+    MAX_OPERATION = 0x10000
+    HEAP_SIZE = 0x400000
+
+    def __init__(self, mu, readable, writable):
+        self.mu = mu
+        self.readable = tuple(readable)
+        self.writable = tuple(writable)
+        self.next_heap = HEAP
+        self.allocations = 0
+
+    @staticmethod
+    def contains(ranges, address, size):
+        return (type(address) is int and type(size) is int and size >= 0
+                and any(a <= address and address + size <= b for a, b in ranges))
+
+    def read(self, address, size):
+        if not 0 <= size <= self.MAX_OPERATION:
+            raise ValueError("host read size outside fixture bound")
+        if size == 0:
+            return b""
+        if not self.contains(self.readable, address, size):
+            raise ValueError("host read outside fixture memory")
+        return bytes(self.mu.mem_read(address, size))
+
+    def write(self, address, body):
+        if len(body) > self.MAX_OPERATION:
+            raise ValueError("host write size outside fixture bound")
+        if not body:
+            return
+        if not self.contains(self.writable, address, len(body)):
+            raise ValueError("host write outside fixture memory")
+        self.mu.mem_write(address, body)
+
+    def allocate(self, size):
+        if type(size) is not int or not 0 <= size <= self.MAX_OPERATION:
+            raise ValueError("allocation size outside fixture bound")
+        end = self.next_heap + ((max(size, 1) + 15) & ~15)
+        if end > HEAP + self.HEAP_SIZE or self.allocations >= 4096:
+            raise ValueError("fixture heap exhausted")
+        ptr = self.next_heap
+        self.next_heap = end
+        self.allocations += 1
+        self.write(ptr, bytes(size))
+        return ptr
+
+    def copy(self, dst, src, size):
+        self.write(dst, self.read(src, size))
+
+    def fill(self, dst, value, size):
+        if type(size) is not int or not 0 <= size <= self.MAX_OPERATION:
+            raise ValueError("fill size outside fixture bound")
+        self.write(dst, bytes([value & 255]) * size)
+
+
 def emulate_wrapper(data, segs, rela, wrapper_va: int, inp: bytes, gas_limit: int = 10_000_000):
-    from unicorn import UC_ARCH_X86, UC_HOOK_CODE, UC_MODE_64, UC_PROT_ALL, Uc, UcError
+    """Explicitly authorized fixtures only; never launches the captured node."""
+    lengths = validate_fixture(wrapper_va, inp, gas_limit)
+    authenticate_fixture_image(data)
+    # Do not trust caller-supplied mappings or relocation tuples.
+    segs, rela = segments(data), rela_dyn(data)
+    from unicorn import UC_ARCH_X86, UC_HOOK_CODE, UC_MODE_64, UC_PROT_ALL, Uc
     from unicorn.x86_const import (
-        UC_X86_REG_FS_BASE, UC_X86_REG_RDI, UC_X86_REG_RDX, UC_X86_REG_RIP,
+        UC_X86_REG_RDI, UC_X86_REG_RDX, UC_X86_REG_RIP,
         UC_X86_REG_RSI, UC_X86_REG_RSP, UC_X86_REG_RAX,
     )
 
     mu = Uc(UC_ARCH_X86, UC_MODE_64)
     page = 0x1000
+    pages = set()
 
     def map_span(va, size):
-        start = va & ~(page - 1)
-        end = (va + size + page - 1) & ~(page - 1)
-        try:
-            mu.mem_map(start, end - start, UC_PROT_ALL)
-        except UcError:
-            for p in range(start, end, page):
-                try:
-                    mu.mem_map(p, page, UC_PROT_ALL)
-                except UcError:
-                    pass
+        first = va & ~(page - 1)
+        last = (va + size + page - 1) & ~(page - 1)
+        pending = None
+        for address in range(first, last + page, page):
+            if address < last and address not in pages:
+                if pending is None:
+                    pending = address
+                pages.add(address)
+            elif pending is not None:
+                mu.mem_map(pending, address - pending, UC_PROT_ALL)
+                pending = None
 
     for base, off, filesz, memsz in segs:
         map_span(base, memsz)
-        mu.mem_write(base, data[off : off + filesz] + bytes(max(0, memsz - filesz)))
+        mu.mem_write(base, data[off:off + filesz])  # new mappings are zero-filled
     relocs = 0
     for r_offset, r_info, r_addend in rela:
         if r_info & 0xFFFFFFFF == R_X86_64_RELATIVE:
             mu.mem_write(r_offset, struct.pack("<Q", r_addend))
             relocs += 1
 
-    map_span(0x61000000, 0x1000)
-    mu.mem_write(MEMCPY_STUB, b"\xc3")
-    mu.mem_write(MEMSET_STUB, b"\xc3")
+    map_span(MEMCPY_STUB, 0x1000)
+    stubs = (MALLOC, REALLOC, FREE, MEMCPY_STUB, MEMSET_STUB)
+    for address in stubs:
+        mu.mem_write(address, b"\xc3")  # intercepted synthetic stubs, not allocator code
     mu.mem_write(MEMCPY_SLOT, struct.pack("<Q", MEMCPY_STUB))
     mu.mem_write(MEMSET_SLOT, struct.pack("<Q", MEMSET_STUB))
-
-    STACK, IO, STOP, TLS = 0x7FFF00000000, 0x60000000, 0x600000000, 0x7F0000000000
-    for va, sz in ((STACK, 0x100000), (IO, 0x20000), (STOP, 0x1000), (TLS, 0x2000), (HEAP, 0x400000)):
-        map_span(va, sz)
-    mu.reg_write(UC_X86_REG_FS_BASE, TLS + 0x1000)
-    mu.mem_write(STOP, b"\xf4")
-
-    traps = (
-        ALLOC_ERR, PANIC, 0x157B64F, 0x157B480, 0x157B520, 0x157B4A0, 0x157B440,
-        0x157A6F0, 0x157A9F0, 0x157B4E0, 0x157B460, UNWIND_RESUME_PLT, 0x1345E2A,
-    )
-    for va in traps:
-        mu.mem_write(va, b"\xf4")
-
+    STACK, IO, STOP = 0x7FFF00000000, 0x60000000, 0x600000000
+    for va, size in ((STACK, 0x100000), (IO, 0x20000), (STOP, 0x1000), (HEAP, FixtureMemory.HEAP_SIZE)):
+        map_span(va, size)
     OUT, INP, BYTES = IO + 0x100, IO + 0x1000, IO + 0x200
     mu.mem_write(INP, inp)
     mu.mem_write(BYTES, struct.pack("<QQQ", 0, INP, len(inp)))
-
-    bump = [HEAP]
+    code_ranges = FIXTURE_CODE_RANGES + tuple((a, a + 1) for a in stubs)
+    writable = ((STACK, STACK + 0x100000), (OUT, OUT + 0x28), (HEAP, HEAP + FixtureMemory.HEAP_SIZE))
+    readable = tuple((a, a + n) for a, _, _, n in segs) + (
+        (STACK, STACK + 0x100000), (IO, IO + 0x20000), (HEAP, HEAP + FixtureMemory.HEAP_SIZE))
+    memory = FixtureMemory(mu, readable, writable)
     allocs = []
 
-    def on_alloc(uc, address, size, _user):
+    def return_from_stub(uc):
         sp = uc.reg_read(UC_X86_REG_RSP)
-        ret = struct.unpack("<Q", uc.mem_read(sp, 8))[0]
-        if address == MALLOC:
-            req = uc.reg_read(UC_X86_REG_RDI)
-            p = bump[0]
-            bump[0] += (max(req, 1) + 15) & ~15
-            uc.mem_write(p, bytes(req))
-            allocs.append({"op": "malloc", "size": req})
-            uc.reg_write(UC_X86_REG_RAX, p)
-        elif address == REALLOC:
+        if not memory.contains(((STACK, STACK + 0x100000),), sp, 8):
+            raise ValueError("stub return stack outside synthetic stack")
+        ret = struct.unpack("<Q", memory.read(sp, 8))[0]
+        if ret != STOP and not memory.contains(code_ranges, ret, 1):
+            raise ValueError("stub return target outside reviewed code")
+        uc.reg_write(UC_X86_REG_RSP, sp + 8)
+        uc.reg_write(UC_X86_REG_RIP, ret)
+
+    def on_stub(uc, address, size, _user):
+        if address in (MALLOC, REALLOC):
             a = uc.reg_read(UC_X86_REG_RDI)
-            b = uc.reg_read(UC_X86_REG_RSI)
-            req = a * b if a and b else max(a, b)
-            p = bump[0]
-            bump[0] += (max(req, 1) + 15) & ~15
-            uc.mem_write(p, bytes(req))
-            allocs.append({"op": "realloc_bump", "a": a, "b": b, "size": req})
-            uc.reg_write(UC_X86_REG_RAX, p)
+            b = uc.reg_read(UC_X86_REG_RSI) if address == REALLOC else 1
+            # Native size-product allocator multiplies; zero operands are not max().
+            ptr = memory.allocate(a * b)
+            uc.reg_write(UC_X86_REG_RAX, ptr)
+            allocs.append({"op": "malloc" if address == MALLOC else "size_product", "size": a * b})
         elif address == FREE:
-            allocs.append({"op": "free"})
-        uc.reg_write(UC_X86_REG_RSP, sp + 8)
-        uc.reg_write(UC_X86_REG_RIP, ret)
+            allocs.append({"op": "free_noop"})
+        else:
+            dst = uc.reg_read(UC_X86_REG_RDI)
+            src_or_value = uc.reg_read(UC_X86_REG_RSI)
+            count = uc.reg_read(UC_X86_REG_RDX)
+            if address == MEMCPY_STUB:
+                memory.copy(dst, src_or_value, count)
+            elif address == MEMSET_STUB:
+                memory.fill(dst, src_or_value, count)
+            else:
+                raise ValueError("unrecognized fixture stub")
+            uc.reg_write(UC_X86_REG_RAX, dst)
+        return_from_stub(uc)
 
-    def on_memcpy(uc, address, size, _user):
-        sp = uc.reg_read(UC_X86_REG_RSP)
-        ret = struct.unpack("<Q", uc.mem_read(sp, 8))[0]
-        dst = uc.reg_read(UC_X86_REG_RDI)
-        src = uc.reg_read(UC_X86_REG_RSI)
-        n = uc.reg_read(UC_X86_REG_RDX)
-        if 0 < n < 0x100000:
-            uc.mem_write(dst, bytes(uc.mem_read(src, n)))
-        uc.reg_write(UC_X86_REG_RAX, dst)
-        uc.reg_write(UC_X86_REG_RSP, sp + 8)
-        uc.reg_write(UC_X86_REG_RIP, ret)
-
-    def on_memset(uc, address, size, _user):
-        sp = uc.reg_read(UC_X86_REG_RSP)
-        ret = struct.unpack("<Q", uc.mem_read(sp, 8))[0]
-        dst = uc.reg_read(UC_X86_REG_RDI)
-        val = uc.reg_read(UC_X86_REG_RSI) & 0xFF
-        n = uc.reg_read(UC_X86_REG_RDX)
-        if 0 < n < 0x100000:
-            uc.mem_write(dst, bytes([val]) * n)
-        uc.reg_write(UC_X86_REG_RAX, dst)
-        uc.reg_write(UC_X86_REG_RSP, sp + 8)
-        uc.reg_write(UC_X86_REG_RIP, ret)
-
-    mu.hook_add(UC_HOOK_CODE, on_alloc, begin=MALLOC, end=MALLOC)
-    mu.hook_add(UC_HOOK_CODE, on_alloc, begin=REALLOC, end=REALLOC)
-    mu.hook_add(UC_HOOK_CODE, on_alloc, begin=FREE, end=FREE)
-    mu.hook_add(UC_HOOK_CODE, on_memcpy, begin=MEMCPY_STUB, end=MEMCPY_STUB)
-    mu.hook_add(UC_HOOK_CODE, on_memset, begin=MEMSET_STUB, end=MEMSET_STUB)
-
+    handles = [mu.hook_add(UC_HOOK_CODE, on_stub, begin=a, end=a) for a in stubs]
     rsp = STACK + 0x100000 - 0x2000 - 8
     mu.mem_write(rsp, struct.pack("<Q", STOP))
     mu.reg_write(UC_X86_REG_RSP, rsp)
     mu.reg_write(UC_X86_REG_RDI, OUT)
     mu.reg_write(UC_X86_REG_RSI, BYTES)
     mu.reg_write(UC_X86_REG_RDX, gas_limit)
-
-    fault = None
     try:
-        mu.emu_start(wrapper_va, STOP, timeout=120_000_000, count=200_000_000)
-    except UcError as e:
-        fault = str(e)
-    rip = mu.reg_read(UC_X86_REG_RIP)
-    out = bytes(mu.mem_read(OUT, 0x28))
+        run_bounded(mu, wrapper_va, STOP, code_ranges=code_ranges,
+                    writable_ranges=writable, timeout=120_000_000, count=200_000_000)
+    finally:
+        for handle in handles:
+            mu.hook_del(handle)
+    out = memory.read(OUT, 0x28)
     q = struct.unpack("<5Q", out)
-    res = {
-        "allocs": len(allocs),
-        "fault": fault,
-        "relocs_applied": relocs,
-        "returned": fault is None and rip == STOP,
-        "out_hex": out.hex(),
-    }
+    res = {"allocs": len(allocs), "fault": None, "relocs_applied": relocs,
+           "returned": True, "out_hex": out.hex()}
     if q[0] != 0:
-        res["kind"] = "ok"
-        res["len"] = q[2]
-        res["gas_used"] = q[4]
-        res["output_hex"] = bytes(mu.mem_read(q[1], q[2])).hex() if q[2] <= 0x200 else None
+        if q[2] > lengths[2] or q[4] > gas_limit:
+            raise ValueError("returned output length or gas outside fixture bounds")
+        res.update(kind="ok", len=q[2], gas_used=q[4], output_hex=memory.read(q[1], q[2]).hex())
     else:
         res["kind"] = "err"
     return res
-
 
 def va_plus_disp(data, segs, va, ilen, disp_at):
     insn = read_va(data, segs, va, ilen)
     return va + ilen + struct.unpack_from("<i", insn, disp_at)[0]
 
 
-def analyse(data, check_sha=True, run_emu=True):
+def analyse(data, check_sha=True, run_emu=False):
     if check_sha:
         got = hashlib.sha256(data).hexdigest()
         if got != BINARY_SHA256:
@@ -593,6 +680,8 @@ def analyse(data, check_sha=True, run_emu=True):
     }
 
     want_emu = bool(run_emu)
+    if want_emu and not unicorn_available():
+        raise RuntimeError("Unicorn is required for explicitly requested captured emulation")
     do_emu = want_emu and unicorn_available()
     vectors_out = {}
     for name, (b, e, m) in sorted(VECTORS.items()):
@@ -647,7 +736,8 @@ def analyse(data, check_sha=True, run_emu=True):
                 for base, off, filesz, _mm in segs:
                     if base <= va < base + filesz:
                         fo = off + va - base
-                        assert bytes(mut_data[fo:fo + len(old_hx) // 2]).hex() == old_hx
+                        if bytes(mut_data[fo:fo + len(old_hx) // 2]).hex() != old_hx:
+                            raise ValueError("mutation source bytes mismatch")
                         mut_data[fo:fo + len(new_hx) // 2] = bytes.fromhex(new_hx)
                         break
             md = bytes(mut_data)
@@ -682,7 +772,7 @@ def analyse(data, check_sha=True, run_emu=True):
         "slot_refs": [{"kind": k, "va": hex(v)} for k, v in sorted(refs, key=lambda x: x[1])],
         "slot_ref_counts": ref_counts,
         "slot_ref_counts_match": ref_counts == SLOT_REFS_EXPECTED,
-        "direct_calls": 0,
+        "direct_calls": len(direct_candidates(chunks, FN)),
         "wrappers": wrappers,
         "gas_immediates": gas_immediates,
         "stubs": stubs,
@@ -771,8 +861,13 @@ def expectation_errors(result):
         errs.append("SIMD/feature pattern present")
     if result["precompile_address"] != PRECOMPILE_ADDRESS:
         errs.append("precompile address mismatch")
+    if result["emu"]["requested"] and not result["emu"]["ran"]:
+        errs.append("requested emulation did not run")
     if result["emu"]["ran"]:
         for name, v in result["vectors"].items():
+            for fork in ("berlin", "byzantium"):
+                if not v.get(fork, {}).get("returned") or v.get(fork, {}).get("kind") != "ok":
+                    errs.append(name + " " + fork + " incomplete or unsuccessful return")
             if not v.get("berlin", {}).get("output_match"):
                 errs.append(name + " berlin output mismatch")
             if not v.get("berlin", {}).get("gas_match"):
@@ -782,6 +877,8 @@ def expectation_errors(result):
             if not v.get("byzantium", {}).get("gas_match"):
                 errs.append(name + " byzantium gas mismatch")
         for label, m in result["mutations"].items():
+            if not m.get("returned"):
+                errs.append(label + " mutation did not complete")
             if not m.get("broke_expectation"):
                 errs.append(label + " mutation did not break")
     return errs
@@ -794,11 +891,13 @@ def render(result):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="RE-028 modexp static + emu recovery")
     ap.add_argument("-o", "--output", type=Path, default=None)
-    ap.add_argument("--no-emu", action="store_true")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--no-emu", action="store_true", help="static mode (default)")
+    mode.add_argument("--emulate", action="store_true", help="requires separate explicit authorization")
     ap.add_argument("--binary", type=Path, default=TARGET)
     args = ap.parse_args(argv)
     data = args.binary.read_bytes()
-    result = analyse(data, check_sha=args.binary == TARGET, run_emu=not args.no_emu)
+    result = analyse(data, check_sha=True, run_emu=args.emulate)
     text = render(result)
     errors = expectation_errors(result)
     if args.output:

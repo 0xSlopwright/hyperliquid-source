@@ -2,6 +2,7 @@
 import hashlib
 import importlib.util
 import json
+import os
 import struct
 import sys
 import unittest
@@ -14,7 +15,8 @@ import modexp as tool  # noqa: E402
 
 OUTPUT_SHA256 = "20d1c278107e8688d04bd79ca27139606a4bcb88a942a5d288fd4d47dc843360"
 NO_EMU_OUTPUT_SHA256 = "e7fb0730df145fa34bc18534712ec4b4b5fa1bcf8769540f4b2b6d8cfdf4eced"
-HAS_UNICORN = importlib.util.find_spec("unicorn") is not None
+HAS_UNICORN = (os.environ.get("HL_ALLOW_CAPTURED_MODEXP_EMULATION") == "1"
+               and importlib.util.find_spec("unicorn") is not None)
 
 DATA = bytearray(tool.TARGET.read_bytes()) if tool.TARGET.exists() else None
 SEGS = tool.segments(bytes(DATA)) if DATA is not None else None
@@ -145,7 +147,7 @@ class ModexpStaticTests(unittest.TestCase):
 
 
 @unittest.skipIf(DATA is None, "node #94 binary not present")
-@unittest.skipUnless(HAS_UNICORN, "unicorn not installed")
+@unittest.skipUnless(HAS_UNICORN, "captured modexp emulation not explicitly enabled or Unicorn absent")
 class ModexpEmuTests(unittest.TestCase):
     def test_emu_output_pin(self):
         r = tool.analyse(bytes(DATA), run_emu=True)

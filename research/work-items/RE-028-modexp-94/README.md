@@ -1,5 +1,9 @@
 # RE-028: modexp precompile (EVM 0x05) @ 0x136bdd0 (node #94)
 
+Review status: captured-execution receipts below are historical contributor results.
+See [REVIEW.md](REVIEW.md) for native corrections, bounded harness changes and the
+pending execution gate. The maintainer has not executed this packet.
+
 - Component ID: RE-028 (`RE-028-modexp-94`); no `docs/COMPONENTS.md` progress change is claimed
 - Target release and full SHA-256: node #94 `artifacts/node/94/hl-node`, `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`
 - Source commit / reference commit: repository base `308e5127990217a9d6196992665da6ca1afd4b82`; `references/can1357-hl` not consulted; no radare2 revision (r2 not used)
@@ -14,18 +18,18 @@ python3 tools/modexp.py --no-emu | sha256sum
 # expected: e7fb0730df145fa34bc18534712ec4b4b5fa1bcf8769540f4b2b6d8cfdf4eced
 
 # full pin (needs unicorn 2.1.x)
-python3 tools/modexp.py | sha256sum
+python3 tools/modexp.py --emulate | sha256sum
 # expected: 20d1c278107e8688d04bd79ca27139606a4bcb88a942a5d288fd4d47dc843360
 
-# packet verify (emu soft-skipped when unicorn missing)
+# packet verify (static default; --emulate requires separate authorization)
 python3 research/work-items/RE-028-modexp-94/verify.py
 python3 research/work-items/RE-028-modexp-94/independent_verify.py
 
-# unit tests (emu tests soft-skip without unicorn)
+# unit tests (captured tests require explicit authorization and environment opt-in)
 python3 -m unittest tests.test_modexp -v
 ```
 
-Note: the committed emulated-output JSON hash `20d1c278107e8688d04bd79ca27139606a4bcb88a942a5d288fd4d47dc843360` requires a unicorn-enabled Python interpreter; without unicorn the tool falls back to `emu.skipped=true` and emits a different artifact, while the `--no-emu` hash `e7fb0730df145fa34bc18534712ec4b4b5fa1bcf8769540f4b2b6d8cfdf4eced` is unaffected.
+Note: the committed emulated-output JSON hash `20d1c278107e8688d04bd79ca27139606a4bcb88a942a5d288fd4d47dc843360` requires a unicorn-enabled Python interpreter; explicit `--emulate` fails when Unicorn is absent. Default static mode has the `--no-emu` hash `e7fb0730df145fa34bc18534712ec4b4b5fa1bcf8769540f4b2b6d8cfdf4eced` is unaffected.
 
 `verify.py` holds under `python3 -I -B` and `python3 -O -B`.
 
@@ -44,7 +48,7 @@ Note: the committed emulated-output JSON hash `20d1c278107e8688d04bd79ca27139606
 | Alloc stubs | jemalloc malloc `0x54c06b0` via GOT `0x576dfd8`; jemalloc size-product allocator `0x54c0780` (scout name realloc; sites pass nmemb=1) via GOT `0x576e298`; jemalloc sized free `0x54c8cb0` via GOT `0x576e010` |
 | memcpy / memset | GLOB_DAT GOT `0x576dfe0` / `0x576e1f8` |
 | Traps | alloc-error `0x1346068`, panic `0x157b810`, `_Unwind_Resume@plt` `0x5660110` |
-| SIMD / CPUID | none in the core closure |
+| Feature patterns | five searched CPUID/XGETBV/ADX/MULX byte patterns absent; XMM instructions are present, see REVIEW.md |
 | Crate | aurora-engine-modexp `arith.rs` (absolute build path in `.rodata`, described in words only; never quoted in this packet) |
 
 ### Carve-extent reconciliation
@@ -58,7 +62,7 @@ The hash-pinned carve is the entry FDE only (`0x136bdd0`..`0x136bf34`). The prim
 | EIP-198 example 1 (`3^(p−1) mod p`) | 1360 | 13056 | 32-byte `…0001` |
 | Large (48/40/64-byte base/exp/mod) | 6677 | 64102 | 64-byte residue (pinned) |
 | Even modulus (`2^3 mod 8`) | 200 | 0 | `00` |
-| Zero modulus | 200 | 0 | empty |
+| Zero-length modulus | 200 | 0 | empty |
 | Small `3^5 mod 7` | 200 | 0 | `05` |
 | Wrong base `5^5 mod 7` (negative) | 200 | 0 | `03` (differs) |
 
@@ -73,7 +77,7 @@ Unicorn maps all PT_LOAD, applies every `R_X86_64_RELATIVE`, sets a stack and RE
 - memcpy / memset = real copy / fill
 - alloc-error / panic / unwind = `hlt`
 
-The calls stubbed in the core closure are those three jemalloc helpers, memcpy and memset (the libc externals, via GLOB_DAT), plus the trap helpers, of which only a representative set is named above (soft-int helpers at PLT targets reached via GOT remain executable and are not stubbed). The proof covers the function **with those stubs in place**; it is not a fully self-contained emulation. The trap helpers above are a representative list, not a complete one: several distinct panic / bounds-check helpers sit in `0x157a000`–`0x157c000` and only `0x157b810` is named, and some GOT-indirect calls go to internal in-binary code rather than libc externals. None of them is reached on valid inputs.
+The calls stubbed in the core closure are those three jemalloc helpers, memcpy and memset (the libc externals, via GLOB_DAT), plus the trap helpers, of which only a representative set is named above (internal compiler-runtime integer helpers reached via GOT remain executable and are not stubbed). The proof covers the function **with those stubs in place**; it is not a fully self-contained emulation. The trap helpers above are a representative list, not a complete one: several distinct panic / bounds-check helpers sit in `0x157a000`–`0x157c000` and only `0x157b810` is named, and some GOT-indirect calls go to internal in-binary code rather than libc externals. Their absence from the retained fixture paths has not been independently reproduced. The corrected harness fails closed on excluded paths, including native resize and memmove; see REVIEW.md.
 
 #550 (RE-021, Blake2b) is prior table-layout work only: it pins the precompile table object layout used here to read Address `0x05`. It is not evidence for this function.
 
@@ -82,7 +86,7 @@ The calls stubbed in the core closure are those three jemalloc helpers, memcpy a
 - The proof covers the Berlin / Byzantium wrappers and the core with jemalloc malloc / size-product allocator / free replaced by bump / bump / no-op stubs, plus memcpy and memset hooked to real copy/fill. It is not a fully self-contained emulation; the allocator itself is not executed.
 - Static identity is weaker than the bn254 packets (no unique field modulus). Behaviour on the published vectors + exact gas + mutation controls carries the identification.
 - Short / exotic input shapes beyond the listed vectors are not claimed; the zero-modulus and even-modulus paths are exercised, but not every padding corner.
-- No SIMD or CPU-feature branch exists in the recovered closure, so there is no second path to cover.
+- The original no-SIMD claim is corrected: the core cluster contains 117 XMM instruction rows. A narrow feature-pattern scan does not establish full path coverage.
 - Does not assert anything about other node builds or unpinned binaries.
 - `make verify test catalogue-check` ran at head `40dd6dd7` (results in the PR body); later commits change only README / PR-body text.
 
