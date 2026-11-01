@@ -87,6 +87,12 @@ let stable_text = book.snapshot()?.render();
 | parent/peer/children and depth-first cascade | `RE-006-order-relation-transitions-94` |
 | partial-fill caller subtraction | `RE-006-node94-orderbook-94/partial-fill-caller.tsv` |
 
+`RE-006-order-request-view-94` and `RE-006-open-order-view-94` were reviewed
+but are not implementation inputs for this bounded mutation engine. In
+particular, `OrderView` is a safe projection of the live Rust slot, not the
+target's `0xa8` client-facing record, and it makes no claim about target float
+scaling, timestamps, trigger text, or child view construction.
+
 The implementation packet records exact target coordinates, source/base pins,
 commands, limitations, and the distinction between observations and safe
 component policies.

@@ -62,6 +62,12 @@ modifying them:
 | `RE-006-user-book-cancel-94` | collect first, unsigned sort/deduplicate, then cancel in ascending order; user and slab layouts |
 | `RE-006-order-relation-transitions-94` | parent/peer/children fields; reciprocal peers; child-first depth-first cascade |
 
+The request/view packets `RE-006-order-request-view-94` and
+`RE-006-open-order-view-94` were reviewed but are not consumed by this mutation
+component. The Rust `OrderView` is an internal safe projection, not the
+target's `0xa8` client record; no float scaling, timestamp, trigger-text, or
+client-view equivalence is claimed.
+
 ### Bounded partial-fill follow-up
 
 The match packet proves the returned fill quantity. The implementation also
