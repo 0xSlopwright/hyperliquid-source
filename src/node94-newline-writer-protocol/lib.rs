@@ -48,3 +48,36 @@ mod tests {
         assert_eq!(cases, 3023, "the native-derived protocol corpus must be present");
     }
 }
+
+
+/// A chosen shared writer proxy with distinct byte and character operations.
+///
+/// These are request/status boundaries, not a recovered formatter ABI. A proxy
+/// bridging native code must bind the cached destination/table and resolve the
+/// current method at each operation; normal callbacks may change `flag` and the
+/// proxy's later character behavior. Raw status bytes do not establish valid
+/// discriminants of an original `fmt::Result`.
+pub trait CharacterRequests {
+    fn write_bytes(&mut self, bytes: &[u8], flag: &Cell<u8>) -> u8;
+    fn write_character(&mut self, character: char, flag: &Cell<u8>) -> u8;
+}
+
+/// Request one character, with four spaces if the initial flag is nonzero.
+///
+/// Indentation failure returns 1 without a controller flag store. Otherwise
+/// the LF predicate is stored before the character callback, whose raw status
+/// and flag effects survive. This safe API requires valid Rust references and
+/// characters, role/frame separation and normally returning callbacks; it does
+/// not encode UTF8, recover native types/layouts, or cover unwinding/aliases.
+pub fn write_indented_character<W: CharacterRequests + ?Sized>(
+    character: char,
+    flag: &Cell<u8>,
+    writer: &mut W,
+) -> u8 {
+    if flag.get() > 0 && writer.write_bytes(b"    ", flag) != 0 {
+        return 1;
+    }
+    flag.set(u8::from(character == '\n'));
+    writer.write_character(character, flag)
+}
+

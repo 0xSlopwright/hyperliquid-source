@@ -77,4 +77,33 @@ semantic mutants and own-library raw rebuild comparisons are recorded in the
 [sibling Rust packet](../../research/work-items/RE-005-diagnostic-writer-rust-94/README.md).
 They do not execute/emulate the captured node, establish original compiler/byte
 identity, qualify physical memory accesses from Cell values, or complete a
-component gate. All 19 original #1030 files and prior failures are preserved.
+component gate. That earlier qualification preserved the 19 original #1030
+files and prior failures; its receipts remain historical records.
+
+## Character request extension
+
+`CharacterRequests` and `write_indented_character` implement the separate
+95-byte normal-callback relation at node #94 `0x157cfa0`. The existing byte
+operation, driver and 3,023 byte fixtures remain unchanged. Character input is
+a valid Rust `char`; there is no UTF8 encoder or renderer in this library.
+
+The chosen proxy supplies separate byte and character request methods over
+shared state. If the entry flag is nonzero, the controller first requests
+exactly four spaces. A nonzero indentation status returns one before an owned
+flag store. Otherwise it stores `character == '\n'` before requesting the
+character; the character callback's raw `u8` status and flag edits survive.
+This differs from the byte operation's error normalization. Arbitrary raw proxy
+statuses do not establish valid discriminants of an original `fmt::Result`.
+
+The proxy bridge must bind entry-cached destination/table and fixed flag roles,
+while dispatching each operation with current method behavior. The normal
+callback, separated-role/frame and valid-reference premises are stronger than
+arbitrary raw native pointer admission. No original vtable, ABI, type, upper
+register value, unwind or complete-formatter contract is implemented.
+
+`character_tests.rs` is a separate external `--extern` test client; the old
+byte-only cfg(test) program remains intact. `character_input_only.rs` receives
+only scripted callback inputs and prints actual requests/state/status. The
+[character packet](../../research/work-items/RE-001-pad-character-protocol-94/README.md)
+retains the independently frozen 320-case oracle, raw witnesses and qualification
+commands. The original byte build remains usable independently.
