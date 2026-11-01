@@ -190,3 +190,14 @@ is only one census-selected unwind extent. PR status was not queried offline.
 No claim is made for gossip_config, gossip_rpc, gossip_rpc_client, startup,
 hl_node, local_abci_state, consensus, slack_alert, spot_meta, spot_clearinghouse,
 evm_kvs, nv_stream, tokio, networking internals or generic foundation helpers.
+
+## Integration rebind (2026-10-31)
+
+The original packet and sources are preserved byte-for-byte under
+`../RE-001-shaw-new-review-20261031/original-1138/`. Regeneration on the reviewed
+integration tree changes only the two ELF/FDE helper source hashes and the
+previous hasher-packet hash in `inventory.json`; every target observation,
+instruction, range, diagnostic, edge and generated metric is unchanged.
+`source_commit` retains the original submission baseline; the producer hash
+map identifies the currently used files. Original negative results remain
+available in the preserved submission and review logs.
