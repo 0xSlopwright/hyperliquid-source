@@ -11,7 +11,7 @@
 
 ## Why this packet
 
-The component map asks to map small helpers and distinguish library code from private helpers. A reference label or a matching string cannot establish that mapping. This packet binds one small, previously unclaimed window whose round-up-division rule reads directly from its own bytes: take a count from a small helper, and divide the second argument by it, rounded up. It is the ninth packet from the calls category's single-call slice: like the earlier calls packets, its rule is stated over its inputs and the callee call, with the callee itself explicitly excluded. It establishes a concrete small entrypoint for further reconstruction without declaring the component mapped.
+The component map asks to map small helpers and distinguish library code from private helpers. A reference label or a matching string cannot establish that mapping. This packet binds one small, previously unclaimed window whose round-up-division rule reads directly from its own bytes: take a count from a small helper, add its bias with 64-bit wrap, and divide; the result rounds up only when that addition does not wrap. It is the ninth packet from the calls category's single-call slice: like the earlier calls packets, its rule is stated over its inputs and the callee call, with the callee itself explicitly excluded. It establishes a concrete small entrypoint for further reconstruction without declaring the component mapped.
 
 This window was checked for overlap before building: no work-item, tool, test, or doc in the tree mentions `0x4f9ee90`, and a full-corpus byte comparison against every FDE body of 20 bytes or more finds no body sharing 60% or more of this window's bytes under either measure (max-length best 0.448 against `0x5417110`, a 29-byte call-and-store window with a wholly different rule; 0.171 against the cached-pointer-refresh window, the rest lower, none against the older claimed corpus); its mnemonic skeleton (`endbr64, push, mov, call, xor, mov, lea, add, pop, div, ret`) is a singleton among 31,898 single-call FDE windows (20–150 bytes), under both the raw and the ret-truncated skeleton. The window is not a member of a repeated-window population.
 
@@ -74,10 +74,10 @@ Decoded from the FDE start, the window is:
 | `0x4f9eeab` | `ret` | Return the quotient |
 
 - The callee at `0x4f9ee80` IS an FDE start (11 bytes, `.eh_frame+0x0028ac68`, CIE `0x00000000`, the same CIE as the window), and its entire body is exactly `endbr64; mov 0x40(%rdi), %eax; add $0x1, %eax; ret` — it returns the dword at `[rdi + 0x40]` plus one, with 32-bit wrap. Five `int3` bytes pad it to the window start. The callee's behavior beyond those 11 bytes is excluded.
-- The rule, over object pointer (`rdi`) and second argument (`rsi`, called x), is: let t = (the dword at `[rdi + 0x40]` + 1) mod 2^32; return (x + (t - 1) mod 2^32) / t, as an unsigned 64-bit division, with the quotient in `rax` and the remainder in `rdx` (discarded by the caller-facing rule, since the window returns only `rax`).
+- The rule, over object pointer (`rdi`) and second argument (`rsi`, called x), is: let t = (the dword at `[rdi + 0x40]` + 1) mod 2^32; return ((x + ((t - 1) mod 2^32)) mod 2^64) / t, as an unsigned division with a zero high dividend half, with the quotient in `rax` and the remainder in `rdx` (discarded by the caller-facing rule, since the window returns only `rax`).
 - When t > 0 and the sum x + (t - 1) does not overflow 64 bits, that quotient is exactly ceil(x / t): x = 0 gives 0, t = 1 gives x, x = 25 with t = 10 gives 3, x = 20 with t = 10 gives 2. All four are recorded as edges.
 - The 32-bit wrap edge is recorded: a field of `0xfffffffe` gives t = `0xffffffff`, and x = 5 gives (5 + `0xfffffffe`) / `0xffffffff` = 1 remainder 4.
-- The two fault edges are recorded, not executed: a field of `0xffffffff` gives t = 0, so the `div` faults (#DE, no quotient); x = `0xffffffffffffffff` with t = 2 makes the dividend x + (t - 1) overflow 64 bits, so the `div` faults (#DE) as well. These are architectural consequences of the `div` encoding, stated as limits, not as observed executions.
+- The divisor-zero fault edge is recorded, not executed: a field of `0xffffffff` gives t = 0, so `div` faults (#DE, no quotient). For x = `0xffffffffffffffff` and t = 2, the preceding `add rbx, rax` wraps `rax` to zero. Its carry is not propagated to `rdx`, which stays zero; division therefore returns quotient 0 and remainder 0. For every nonzero t the zero high dividend half prevents quotient overflow. These are static architectural consequences of the pinned instructions, not observed executions.
 - The window writes nothing: it stores nothing, and the single pushed register is popped on the only path, so the stack is balanced.
 - The single direct caller is `0x4f9aaed` (FDE `0x4f9aab0..0x4f9ac00`, CIE `0x006205d0`), verified as an `e8` instruction start inside its containing FDE; it calls the window with `rdi` = its own entry `rdi` and `rsi` = its own entry `rsi`, and it also calls the callee directly elsewhere in the same FDE. What the caller does with the quotient is not established.
 
@@ -90,7 +90,7 @@ Decoded from the FDE start, the window is:
 
 - The source-level name and types of this window, its object, and its field at offset `0x40`.
 - What the second argument counts, and what the caller does with the quotient.
-- Whether the fault edges are reachable in practice; the field value that would make t = 0 is not known to occur.
+- Whether the divisor-zero edge or addition wrap is reachable in practice; the field value that would make t = 0 is not known to occur.
 - The disassembly's nearest-symbol annotation carries a large offset and is not an identification of this window.
 
 ## Excluded

@@ -226,18 +226,15 @@ def evaluate_edge(edge):
             if t != 0:
                 raise ValueError(
                     f"edge {edge['note']}: div-by-zero edge needs t == 0")
-        elif edge["fault"] == "div-overflow":
-            if x + (t - 1) < (1 << 64):
-                raise ValueError(
-                    f"edge {edge['note']}: div-overflow edge needs a 64-bit sum overflow")
         else:
             raise ValueError(f"edge {edge['note']}: unknown fault kind")
         return
     if t == 0:
         raise ValueError(f"edge {edge['note']}: t == 0 must be a fault edge")
-    dividend = x + ((t - 1) & 0xFFFFFFFF)
-    if dividend >= (1 << 64):
-        raise ValueError(f"edge {edge['note']}: dividend overflows 64 bits")
+    # ADD writes only RAX; its carry is not propagated into the zeroed RDX.
+    # Thus the 128-bit dividend is zero:wrapped_rax. For t > 0 the
+    # quotient always fits u64, even when the preceding addition carries.
+    dividend = (x + ((t - 1) & 0xFFFFFFFF)) & 0xFFFFFFFFFFFFFFFF
     q, r = divmod(dividend, t)
     if q != u64(edge["q"]):
         raise ValueError(

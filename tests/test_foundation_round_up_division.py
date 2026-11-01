@@ -8,7 +8,7 @@ The checker is exercised on the real evidence plus in-memory corruption
 controls: each control mutates one recorded fact and must make the checker
 fail, so a passing suite means the checker actually locks the bytes, the
 callee, the padding, the caller list, the FDE records, and every rule edge
-including the two div-fault edges.
+including divisor-zero and wrapped-addition edges.
 """
 
 import importlib.util
@@ -89,10 +89,30 @@ class TestRoundUpDivision(unittest.TestCase):
         self.assertEqual(edge["fault"], "div-by-zero")
         self.assertEqual(edge["t"], "0x0")
 
-    def test_div_overflow_edge_is_fault(self):
+    def test_dividend_add_wraps_before_division(self):
+        CHECKER.evaluate_edge({
+            "field": "0x1", "x": "0xffffffffffffffff", "t": "0x2",
+            "q": "0x0", "r": "0x0", "note": "carry is discarded before div",
+        })
+
+    def test_wrapped_dividend_retains_remainder(self):
+        CHECKER.evaluate_edge({
+            "field": "0x9", "x": "0xffffffffffffffff", "t": "0xa",
+            "q": "0x0", "r": "0x8", "note": "wrapped numerator is eight",
+        })
+
+    def test_add_carry_is_not_a_divide_fault(self):
+        with self.assertRaises(ValueError):
+            CHECKER.evaluate_edge({
+                "field": "0x1", "x": "0xffffffffffffffff", "t": "0x2",
+                "fault": "div-overflow", "note": "rdx remains zero",
+            })
+
+    def test_retained_overflow_edge(self):
         ev = good_evidence()
         edge = ev["rule"]["edges"][7]
-        self.assertEqual(edge["fault"], "div-overflow")
+        self.assertNotIn("fault", edge)
+        self.assertEqual((edge["q"], edge["r"]), ("0x0", "0x0"))
 
     def test_one_direct_caller_recorded(self):
         ev = good_evidence()
