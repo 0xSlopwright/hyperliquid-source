@@ -341,7 +341,7 @@ class Controls(unittest.TestCase):
 
 class Packet(unittest.TestCase):
     def test_folder_holds_exactly_the_generated_set(self):
-        names = {path.name for path in FOLDER.iterdir()}
+        names = {path.name for path in FOLDER.iterdir() if path.name not in {"original-submission", "review-original-overflow.json", "review-regeneration.json"}}
         self.assertEqual(names, {"README.md", "MANIFEST.sha256", "evidence.json", "function-rows.tsv", "arm-rows.tsv", "amount-ladder.tsv", "pins.tsv", "texts.tsv", "serde.tsv", "slots.tsv", "constants.tsv", "reference.tsv", "wire.tsv", "outcomes.tsv"})
 
     def test_manifest_matches(self):
@@ -366,6 +366,84 @@ class Packet(unittest.TestCase):
         text = (ROOT / "tools" / "reserve_accumulator_vote.py").read_text()
         self.assertNotIn("subprocess", text)
         self.assertNotIn("os.system", text)
+
+
+class MultiplyOverflow(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.image = tool.load_image()
+
+    def test_native_decimal_imul_drives_jo(self):
+        # These instruction starts/bytes were checked against native objdump.
+        for va in (0x1515000, 0x151A6FF):
+            read = lambda at, size: self.image.blob[self.image.offset(at):self.image.offset(at) + size]
+            imul = tool.decode(read, va)
+            jump = tool.decode(read, imul.next)
+            self.assertEqual((imul.op, imul.width), ("imul3" if va == 0x1515000 else "imul2", 8))
+            self.assertEqual((jump.op, jump.cc), ("jcc", 0))
+            for value in ((2**63 - 1) // 10, (2**63 - 1) // 10 + 1,
+                          -(2**63 // 10), -(2**63 // 10) - 1):
+                with self.subTest(va=hex(va), value=value):
+                    machine = tool.Machine(self.image)
+                    if imul.op == "imul3":
+                        machine.regs[tool.RSI] = value & tool.MASK[8]
+                    else:
+                        machine.regs[tool.RAX] = value & tool.MASK[8]
+                        machine.regs[tool.R8] = tool.STACK_TOP - 0x40
+                        machine.regs[tool.RDX] = 0
+                        machine.memory.write(tool.STACK_TOP - 0x40, 8, 10)
+                    overflow = not -(2**63) <= value * 10 < 2**63
+                    machine.cf = machine.of = not overflow
+                    machine.step(imul)
+                    self.assertEqual((machine.cf, machine.of), (overflow, overflow))
+                    self.assertEqual(machine.step(jump), jump.target if overflow else jump.next)
+
+    def test_signed_imul_operand_widths_and_flag_clearing(self):
+        # Independently encoded instructions; only the Python model is run.
+        for prefix, width in ((b"\x66", 2), (b"", 4), (b"\x48", 8)):
+            for tail, op in ((bytes.fromhex("6bf60a"), "imul3"),
+                             (bytes.fromhex("0faff7"), "imul2")):
+                raw = prefix + tail + b"\x90" * 16
+                ins = tool.decode(lambda va, count: raw[va:va + count], 0)
+                self.assertEqual((ins.op, ins.width), (op, width))
+                bound = 1 << (8 * width - 1)
+                for a, b in ((0, 10), ((bound - 1) // 10, 10),
+                             ((bound - 1) // 10 + 1, 10), (-bound, -1)):
+                    if op == "imul3" and b != 10:
+                        continue
+                    with self.subTest(width=width, op=op, a=a, b=b):
+                        machine = tool.Machine(self.image)
+                        machine.regs[tool.RSI] = a & tool.MASK[width]
+                        machine.regs[tool.RDI] = b & tool.MASK[width]
+                        overflow = not -bound <= a * b < bound
+                        machine.cf = machine.of = not overflow
+                        machine.step(ins)
+                        self.assertEqual(machine.regs[tool.RSI] & tool.MASK[width], a * b & tool.MASK[width])
+                        self.assertEqual((machine.cf, machine.of), (overflow, overflow))
+
+    def test_wrapping_year_is_rejected_by_row_and_pair_readers(self):
+        for pair, entries in ((False, tool.ROW_READ), (True, tool.PAIR_READ)):
+            for entry in entries:
+                for year in (2**64, 2**64 + 1, 2**64 + 2023):
+                    text = tool.J_TIME.replace(b"2026-07-19T01:02:03.004", f"+{year}-11-14T22:13:20".encode())
+                    if pair:
+                        text = b"[[9," + text + b"]]"
+                    got = tool.Harness(self.image).run(tool.Case("wrapping_year", kind="read_pairs" if pair else "read_row", fn=entry, text=text))
+                    with self.subTest(pair=pair, entry=hex(entry), year=year):
+                        self.assertEqual(got["result"][:3], ("error", 0, b"input is out of range"))
+
+    def test_valid_explicit_year_retains_its_value(self):
+        for pair, entries in ((False, tool.ROW_READ), (True, tool.PAIR_READ)):
+            for entry in entries:
+                results = []
+                for year in ("2023", "+2023"):
+                    text = tool.J_TIME.replace(b"2026-07-19T01:02:03.004", f"{year}-11-14T22:13:20".encode())
+                    if pair:
+                        text = b"[[9," + text + b"]]"
+                    results.append(tool.Harness(self.image).run(tool.Case("valid_year", kind="read_pairs" if pair else "read_row", fn=entry, text=text))["result"])
+                with self.subTest(pair=pair, entry=hex(entry)):
+                    self.assertEqual(results[0][0], "end" if pair else "row")
+                    self.assertEqual(results[0], results[1])
 
 
 if __name__ == "__main__":

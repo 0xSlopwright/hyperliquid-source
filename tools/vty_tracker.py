@@ -810,7 +810,13 @@ class Machine:
             self.regs[RDX] = (product >> 64) & MASK[8]
             self.cf = self.of = not -(1 << 63) <= product < (1 << 63)
         elif op == "imul3":
-            self.put(row.a, width, self.get(row.b, width) * row.target)
+            bits = 8 * width
+            left, right = self.get(row.b, width), row.target & MASK[width]
+            left -= (left >> (bits - 1)) << bits
+            right -= (right >> (bits - 1)) << bits
+            product = left * right
+            self.cf = self.of = not -SIGN[width] <= product < SIGN[width]
+            self.put(row.a, width, product)
         elif op in ("shl", "shr", "sar"):
             count = (self.regs[RCX] if row.b[0] == "r" else row.b[1]) & (63 if width == 8 else 31)
             value = self.get(row.a, width)
@@ -837,7 +843,13 @@ class Machine:
         elif op == "cdqe":
             self.regs[RAX] = (self.regs[RAX] & MASK[4]) | (MASK[8] ^ MASK[4] if self.regs[RAX] & SIGN[4] else 0)
         elif op == "imul2":
-            self.put(row.a, width, self.get(row.a, width) * self.get(row.b, width))
+            bits = 8 * width
+            left, right = self.get(row.a, width), self.get(row.b, width)
+            left -= (left >> (bits - 1)) << bits
+            right -= (right >> (bits - 1)) << bits
+            product = left * right
+            self.cf = self.of = not -SIGN[width] <= product < SIGN[width]
+            self.put(row.a, width, product)
         elif op == "nop":
             pass
         elif op == "bswap":
@@ -1049,10 +1061,16 @@ class Machine:
 
 
 def fdiv(left, right):
+    # Masked SSE2 DIVSD: Intel SDM vol1 Table4-7 and Table11-1.
+    # Preserve NaN sign/payload; quiet an SNaN. First NaN operand wins.
+    one, two = to_bits(left), to_bits(right)
+    for bits in (one, two):
+        if bits & 0x7FFFFFFFFFFFFFFF > 0x7FF0000000000000:
+            return to_float(bits | 0x0008000000000000)
+    if (left == 0 and right == 0) or (math.isinf(left) and math.isinf(right)):
+        return to_float(0xFFF8000000000000)
     if right == 0:
-        if left == 0 or left != left:
-            return struct.unpack("<d", bytes.fromhex("000000000000f8ff"))[0]
-        return math.copysign(math.inf, math.copysign(1.0, left) * math.copysign(1.0, right))
+        return to_float(((one ^ two) & (1 << 63)) | 0x7FF0000000000000)
     return left / right
 
 
@@ -1495,9 +1513,17 @@ def to_i32(word):
 
 
 def fdiv_spec(left, right):
+    # Independent scalar rule: masked invalid division yields x86 indefinite,
+    # while a NaN input retains its sign and payload with the quiet bit set.
+    if math.isnan(left):
+        return to_float(to_bits(left) | 0x0008000000000000)
+    if math.isnan(right):
+        return to_float(to_bits(right) | 0x0008000000000000)
+    if math.isinf(left) and math.isinf(right):
+        return INDEFINITE
     if right == 0:
-        if left == 0 or left != left:
-            return INDEFINITE if left == left else left
+        if left == 0:
+            return INDEFINITE
         return math.copysign(math.inf, math.copysign(1.0, left) * math.copysign(1.0, right))
     return left / right
 
@@ -1547,7 +1573,11 @@ def seconds_since(now, then):
     if nanos < 0:
         gap -= 1
         nanos += 10 ** 9
-    return float(gap * 10 ** 6 + nanos // 1000) / 1e6
+    micros = gap * 10 ** 6 + nanos // 1000
+    # Native IMUL/JO and ADD/SETO reject an i64 microsecond overflow.
+    if micros > (1 << 63) - 1:
+        return 0.0
+    return float(micros) / 1e6
 
 
 def millis_of(when):

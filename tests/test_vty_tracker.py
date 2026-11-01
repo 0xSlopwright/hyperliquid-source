@@ -389,5 +389,104 @@ class Evidence(unittest.TestCase):
         self.assertEqual(data["mutations"]["killed"] + data["mutations"]["survived"], data["mutations"]["total"])
 
 
+class ReviewBoundaries(unittest.TestCase):
+    def test_native_elapsed_multiply_overflow_drives_jo(self):
+        read = lambda at, size: IMAGE.blob[IMAGE.offset(at):IMAGE.offset(at) + size]
+        imul = tool.decode(read, 0x1447181)
+        clear = tool.decode(read, imul.next)
+        jump = tool.decode(read, clear.next)
+        self.assertEqual((imul.op, imul.width, imul.target), ("imul3", 8, 1000000))
+        self.assertEqual((jump.va, jump.op, jump.cc, jump.target), (0x144718C, "jcc", 0, 0x14471CE))
+        for value in ((2**63 - 1) // 1000000, (2**63 - 1) // 1000000 + 1,
+                      -(2**63 // 1000000), -(2**63 // 1000000) - 1):
+            machine = tool.Machine(IMAGE)
+            machine.regs[tool.RSI] = value & TOP
+            overflow = not -2**63 <= value * 1000000 < 2**63
+            machine.cf = machine.of = not overflow
+            machine.step(imul)
+            machine.step(clear)  # XORPD does not overwrite integer flags.
+            self.assertEqual((machine.cf, machine.of), (overflow, overflow))
+            self.assertEqual(machine.step(jump), jump.target if overflow else jump.next)
+
+    def test_native_divsd_exact_special_value_bits(self):
+        # Intel SDM vol1 Tables4-7/11-1: masked exceptions, DAZ/FTZ off.
+        # Read the actual scalar xmm0/xmm6 division from the selector.
+        read = lambda at, size: IMAGE.blob[IMAGE.offset(at):IMAGE.offset(at) + size]
+        ins = tool.decode(read, 0x3930CF2)
+        self.assertEqual((ins.op, ins.a, ins.b), ("divsd", ("x", 0), ("x", 6)))
+        posinf, neginf = 0x7FF0000000000000, 0xFFF0000000000000
+        posone, negone = 0x3FF0000000000000, 0xBFF0000000000000
+        negzero, indefinite = 0x8000000000000000, 0xFFF8000000000000
+        cases = [(a, b, indefinite) for a in (posinf, neginf) for b in (posinf, neginf)]
+        cases += [(a, b, indefinite) for a in (0, negzero) for b in (0, negzero)]
+        cases += [(posone, 0, posinf), (posone, negzero, neginf),
+                  (negone, 0, neginf), (negone, negzero, posinf),
+                  (0, negone, negzero), (negzero, negone, 0),
+                  (posone, neginf, negzero), (negone, neginf, 0),
+                  (0x7FF8000000000123, posone, 0x7FF8000000000123),
+                  (posone, 0xFFF8000000000456, 0xFFF8000000000456),
+                  (0xFFF0000000000123, posone, 0xFFF8000000000123),
+                  (posone, 0x7FF0000000000456, 0x7FF8000000000456),
+                  (0xFFF8000000000123, 0x7FF8000000000456, 0xFFF8000000000123),
+                  (0x7FF0000000000123, 0xFFF8000000000456, 0x7FF8000000000123)]
+        for a, b, expected in cases:
+            with self.subTest(a=hex(a), b=hex(b)):
+                machine = tool.Machine(IMAGE)
+                machine.xmm[0] = (0x123456789ABCDEF0 << 64) | a
+                machine.xmm[6] = b
+                machine.step(ins)
+                self.assertEqual(machine.xmm[0], (0x123456789ABCDEF0 << 64) | expected)
+                self.assertEqual(tool.to_bits(tool.fdiv_spec(tool.to_float(a), tool.to_float(b))), expected)
+
+    def test_indefinite_sign_changes_total_order_selection(self):
+        rows = (Row(math.inf, math.inf, 30.0, 40), Row(0.25, 1.0, 30.0, 40))
+        for mode, expected in ((0, 0xFFF8000000000000), (1, 0x3FE0000000000000)):
+            result = run(Case("review_divsd_total_order", kind="select", rows=rows, mode=mode))
+            self.assertTrue(result["some"])
+            self.assertEqual(result["value"], expected)
+
+    def test_microsecond_multiply_and_add_overflow_in_record_path(self):
+        # Dates are built by the captured chrono constructor in the abstract model.
+        # All dates lie in the accepted chrono range; no target process runs.
+        now = (250000 * 365 * 86400, 0)
+        cases = [("multiply_overflow", (-250000 * 365 * 86400, 0), 0.0),
+                 ("largest_micros", (now[0] - 9223372036854 - 1, 224192001), float(2**63 - 1) / 1e6),
+                 ("add_overflow", (now[0] - 9223372036854 - 1, 224192000), 0.0)]
+        for name, then, elapsed in cases:
+            case = Case(name, tracks=((7, Track(samples=[((now[0]-30, 0), 100.0)],
+                        rows=[Row(1.0, 1.0, 30.0, 100, then)])),), steps=((7, now, 101.0),))
+            result = run(case)
+            self.assertFalse(result["panic"])
+            self.assertEqual(tool.seconds_since(now, then), elapsed)
+            num, denom, decay, count = words(result["trackers"][7]["rows"][0])
+            if elapsed:
+                self.assertEqual((num, denom, decay, count), (0.0, 0.0, 30.0, 0))
+            else:
+                self.assertEqual((num, denom, decay, count), (1 - 1/30.0, 1 - 1/30.0, 30.0, 101))
+
+    def test_signed_imul_operand_widths_and_flag_clearing(self):
+        # Independently encoded instructions; only the Python model is run.
+        for prefix, width in ((b"\x66", 2), (b"", 4), (b"\x48", 8)):
+            for tail, op in ((bytes.fromhex("6bf60a"), "imul3"),
+                             (bytes.fromhex("0faff7"), "imul2")):
+                raw = prefix + tail + b"\x90" * 16
+                ins = tool.decode(lambda va, count: raw[va:va + count], 0)
+                self.assertEqual((ins.op, ins.width), (op, width))
+                bound = 1 << (8 * width - 1)
+                for a, b in ((0, 10), ((bound - 1) // 10, 10),
+                             ((bound - 1) // 10 + 1, 10), (-bound, -1)):
+                    if op == "imul3" and b != 10:
+                        continue
+                    with self.subTest(width=width, op=op, a=a, b=b):
+                        machine = tool.Machine(IMAGE)
+                        machine.regs[tool.RSI] = a & tool.MASK[width]
+                        machine.regs[tool.RDI] = b & tool.MASK[width]
+                        overflow = not -bound <= a * b < bound
+                        machine.cf = machine.of = not overflow
+                        machine.step(ins)
+                        self.assertEqual(machine.regs[tool.RSI] & tool.MASK[width], a * b & tool.MASK[width])
+                        self.assertEqual((machine.cf, machine.of), (overflow, overflow))
+
+
 if __name__ == "__main__":
     unittest.main()

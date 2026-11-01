@@ -43,10 +43,10 @@ The default last bucket is day 365 of the Unix epoch: `0x3930ff0` makes a date f
 
 1. Map miss: format the label, build the default, insert. The insert splits a full leaf through real code.
 2. If a newest sample exists and `now < newest + 1 s`: return, nothing stored. `NaiveDateTime + TimeDelta` overflow panics at the last chrono date.
-3. `elapsed = seconds(now, oldest)`, truncated to whole microseconds, 0 if `now` is earlier.
+3. `elapsed = seconds(now, oldest)`, truncated to whole microseconds, 0 if `now` is earlier or the signed i64 microsecond conversion overflows.
 4. `elapsed <= 20`: skip to the push and keep the queue. `elapsed > 100`: pop the oldest, no update. Otherwise update, then pop the oldest. So the queue is cut by age, not by capacity; a full young queue doubles.
 5. Update: `m = mark / (old + 1e-20) - 1`, `v = m * m / elapsed`; `v > 1` becomes 1, except that infinity stays. NaN passes through.
-6. Each row: `gap` is 1.0 with no last time, else seconds since it, 0 for a future time. If `gap > decay` the row resets: `num = denom = 0`, `decay = max(10, decay)`, `n_samples = 0`, date word 0, seconds and fraction left as they were, and this sample is not added. Otherwise `keep = 1 - 1/decay`, `num = v*gap + keep*num`, `denom = gap + keep*denom`, `n_samples` saturating +1, last time = now. `gap == decay` updates.
+6. Each row: `gap` is 1.0 with no last time, else seconds since it, 0 for a future time or a signed i64 microsecond conversion overflow. If `gap > decay` the row resets: `num = denom = 0`, `decay = max(10, decay)`, `n_samples = 0`, date word 0, seconds and fraction left as they were, and this sample is not added. Otherwise `keep = 1 - 1/decay`, `num = v*gap + keep*num`, `denom = gap + keep*denom`, `n_samples` saturating +1, last time = now. `gap == decay` updates.
 7. `n_updates` and `n_bucket_updates` rise, saturating. If `n_updates > 20`, `select_rate` mode 0 stores `val.min` and mode 1 stores `val.max`; a row set with no valid row keeps the old value.
 8. Push `(now, mark)`. `bucket = max(0, unix ms) / width`. If `bucket > last`, store it. The metric call `0x33750f0` gets the name `deterministic_vty_alert_n_bucket_samples`, bounds 0.01 and 0.05, and the flag. Real rows at its head clear `n_bucket_updates` when the flag byte is 1 and leave it otherwise (`logger-head.tsv`). The record step returns nothing.
 
@@ -91,3 +91,45 @@ not yet implemented. There is no Rust code in this packet. The rule list in `too
 - A row of the `rsp` frame is never edited, and constants in `.rodata` are held by `constants.tsv` plus three edited image tests.
 - Rule text is checked on the cases run, not proved for all f64 inputs. The bit keys and all edges in `select-edges.tsv` are exact.
 - Unresolved: what fills the key set of the fold; whether the label is read outside logs; who else reads `val.min`. `+0x50`, `+0x58` as `alert_bucket_guard` is inference from the metric call arguments. The cell behind the `0x577ab98` state is not read by these rows; the hook only records the call.
+
+## Review correction: scalar division and elapsed-time overflow
+
+The original submission is retained byte for byte in `original-submission/`,
+including its source, tests and manifest; `source-binding.json` binds that archive
+to PR #1141 head `b1525738ce8cbae4f7288ed938f6b2c9ab19b466`.
+The original 63-test run on macOS arm64 / Python 3.14.6 failed two stored-output
+checks. Its full generation completed but produced different signed NaN bits in
+selector outputs; all 13 raw files remain in `original-host-regeneration/`, with
+original-versus-host hashes in `review-original-host-regeneration.json`.
+These are host evaluator results, not observations of captured node execution.
+
+The decoder's `DIVSD` transfer and the separate scalar rule now explicitly model
+masked x86 invalid division, instead of relying on the host's `inf / inf` NaN
+sign. Actual `DIVSD xmm0,xmm6` at `0x3930cf2` is tested with literal result bits:
+invalid `0/0` and `inf/inf` produce `0xfff8000000000000`; NaN inputs retain sign
+and payload while signaling inputs are quieted; the first NaN source wins.
+Signed zero and infinity controls also preserve the upper destination lane.
+These rules use Intel SDM volume 1, Tables 4-7 and 11-1 and section 4.9.1.3
+([December 2024 edition](https://cdrdv2-public.intel.com/843827/253665-sdm-vol-1-dec-24.pdf)).
+The comparison assumes masked exceptions, round-to-nearest and DAZ/FTZ off;
+it does not establish the node's runtime MXCSR or cover every floating-point
+operation/input. The selector still compares exact bits; no NaN normalization
+was added to make these checks pass.
+
+A separate stale-OF defect affected `IMUL` at `0x1447181` followed by `JO` at
+`0x144718c`; the intervening `XORPD` does not change integer flags. Two- and
+three-operand IMUL now set CF/OF from the signed product at the decoded width.
+The independently written elapsed rule now also returns zero when converting
+a positive duration to signed i64 microseconds would overflow. The target helper
+has both an IMUL/JO check and an ADD/SETO check. The original counterexample uses
+valid chrono dates across approximately 500,000 years: stale OF allowed a wrapped
+negative elapsed value to change stored EMA fields. Exact original and corrected
+IMUL-only results, including raw bytes, remain in
+`review-original-counterexamples.json`.
+
+Five added tests cover those decoded native transfers, all signed IMUL widths,
+NaN total-order selection, and the largest accepted microsecond value plus both
+multiply and add overflow through the complete record path. Original generated
+exports remain untouched; `review-regeneration.json` records their comparison
+with a fresh corrected generation. No captured target instruction or process was
+executed, and no whole-node or unrestricted f64 equivalence is claimed.

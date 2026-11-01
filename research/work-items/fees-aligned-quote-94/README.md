@@ -35,13 +35,13 @@ Coordinates are virtual addresses in the ELF above. Every generated number comes
 | 5 | fee body | 0x3742460 | class changes the rate, the aligned byte picks a multiplier |
 | 6 | perp | 0x37130b0, 0x37153f0 | the same 3 words, chosen by clearinghouse +0x58 |
 
-### Boundaries
+### Examined instruction ranges
 
 | Address | End | Role | Decoded / stepped |
 |---|---|---|---|
 | 0x274db00 | 0x274e1b2 | writer | 375 / 366 |
 | 0x27e61a0 | 0x27e6422 | collect | 166 / 101 |
-| 0x257d2f0 | 0x257d3d3 | filter | 49 / 48 |
+| 0x257d2f0 | 0x257d3d3 | filter head | 49 / 48 |
 | 0x372f020 | 0x372f23e | wrapper | 135 / 132 |
 | 0x3726360 | 0x3726746 | mint | 226 / 202 |
 | 0x3726980 | 0x3726ecf | burn | 307 / 261 |
@@ -51,7 +51,7 @@ Coordinates are virtual addresses in the ELF above. Every generated number comes
 | 0x4d6ea40 | 0x4d6f0f2 | writer third | 375 / 366 |
 | 0x3742460 | 0x374301c | fee body, real, not mutated | 662 / 322 |
 
-The stats and loop rows are ranges that end after the call to the fee body. The second and third writers run every writer vector and are not mutated. The second differs from the first only in callee and literal addresses. The third also reads the dex list at +0x1040, +0x1048 instead of +0x5c0, +0x5c8.
+The `end` values above and in `evidence.json` under `functions` delimit the examined ranges. The filter head ends at `0x257d3d3`; its actual FDE ends at `0x257d8d5`. The stats range ends at `0x372e2f5` inside the FDE ending at `0x372ee5b`, and the loop range starts inside its host. These are partial ranges, not whole-function extents. The stats and loop rows end after the call to the fee body. The second and third writers run every writer vector and are not mutated. The second differs from the first only in callee and literal addresses. The third also reads the dex list at +0x1040, +0x1048 instead of +0x5c0, +0x5c8.
 
 ### Writer 0x274db00
 
@@ -135,3 +135,10 @@ Unresolved:
 - Whether a byte other than 0 or 1 can reach value +0x2c. This writer stores only 0 and 1.
 
 Next question: the fill host loop in 0x372b9d0, and who debits the spot fee after the record: 0x372c13e onward.
+
+## Review clarification
+
+PR #1054 originally named the partial filter range simply `filter` in its boundary
+table. The scope now explicitly states the examined head and the actual FDE end.
+No tool or generated export changed. `original-submission/` preserves the original
+README and manifest with their source binding.

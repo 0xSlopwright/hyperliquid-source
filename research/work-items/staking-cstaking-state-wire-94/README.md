@@ -133,3 +133,24 @@ Not yet implemented. The rule list in `tools/cstaking_state_wire.py` (`STRUCTS`,
 - Reader bytes after the first value are left to callers not run here.
 
 Next question: which function writes `proposals` and reads `Proposal.category`, and which route and reader handle `abci_state` with `Ip` rows.
+
+## Review correction: signed multiply overflow
+
+The original PR #1129 head `0384f6e2c3f7e64188488ffd9716eb1e21bac461` left CF/OF unchanged after IMUL2 and IMUL3.
+Native instruction starts and operands show 64-bit IMUL3 at `0x1515000` followed
+by JO at `0x1515004`, and IMUL2 at `0x151a6ff` followed by JO at `0x151a704`.
+GNU objdump 2.47.20260726 checked these against the target digest above.
+
+The submitted evaluator accepted `+18446744073709553639-11-14T22:13:20` as year2023.
+The corrected Python evaluator sets CF and OF from the full signed product at
+the decoded width; overflowing years now return `input is out of range`.
+This was an evaluator error, not an observation that node94 accepts those years.
+`review-original-overflow.json` retains the original counterexamples and corrected
+abstract results. `original-submission/` preserves the exact original source,
+tests, README, manifest and exports with source binding. No captured target ran.
+
+Four added tests cover both native IMUL/JO pairs, decoded16/32/64-bit multiply
+boundaries and flag clearing, every relevant reader copy rejecting wrapped years,
+and unchanged valid explicit +2023. `review-regeneration.json` records fresh
+corrected export hashes beside their original hashes. Original schema and valid
+fixture conclusions remain bounded by the limitations above.
