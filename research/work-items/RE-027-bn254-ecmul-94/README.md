@@ -48,6 +48,8 @@ python3 -I -B research/work-items/RE-027-bn254-ecmul-94/independent_verify.py
 python3 -B -m unittest tests.test_bn254_ecmul -v
 ```
 
+Note: the committed emulated-output JSON hash `ae212bc9791ccdd53cc48dff1446aec74f07693be008b62746d83a601af3b980` requires a unicorn-enabled Python interpreter; without unicorn the tool falls back to `emu_skipped=true` and emits a different artifact `a9cf7c1d3136ace67fa5d276f9806f9ea59943514a5b9fe8bd3ef8c0e2ac0347`, while the `--no-emu` hash `79149c497481d1f9daff231044ca8d2ca135af3907086a0f63393209208322f4` is unaffected.
+
 Seed / optim determinism (byte-identical stdout, expected sha256
 `79149c497481d1f9daff231044ca8d2ca135af3907086a0f63393209208322f4`):
 
