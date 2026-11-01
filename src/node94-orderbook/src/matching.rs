@@ -1,5 +1,5 @@
 use crate::book::Book;
-use crate::types::{BookError, CancelReason, OrderId, Side, SlotId, UserId};
+use crate::types::{BookError, OrderId, Side, SlotId, UserId};
 
 /// Inclusive target ceiling observed before the fill-record notional write.
 pub const MAX_SUPPORTED_NOTIONAL: u64 = 0x7fff_ffff_ffff_fffe;
@@ -218,7 +218,7 @@ impl Book {
 
         let maker_remaining = maker.quantity - amount;
         if maker_remaining == 0 {
-            self.remove_slot(maker_slot, CancelReason::Internal)?;
+            self.remove_slot(maker_slot)?;
         } else {
             self.occupied_mut(maker_slot)?.quantity = maker_remaining;
             self.aggregate_quantity = self.aggregate_quantity.saturating_sub(amount);

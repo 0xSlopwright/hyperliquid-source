@@ -162,7 +162,13 @@ impl Book {
         slot: SlotId,
         reason: CancelReason,
     ) -> Result<CancelRecord, BookError> {
-        self.remove_slot(slot, reason)
+        let removed = self.remove_slot(slot)?;
+        Ok(CancelRecord {
+            slot,
+            order_id: removed.order_id,
+            reason,
+            removed_quantity: removed.quantity,
+        })
     }
 
     pub fn cancel_order(
@@ -175,7 +181,7 @@ impl Book {
             .get(&order_id)
             .copied()
             .ok_or(BookError::OrderNotFound(order_id))?;
-        self.remove_slot(slot, reason)
+        self.cancel(slot, reason)
     }
 
     /// Collects the user's live order IDs first, sorts/deduplicates them, then
@@ -307,11 +313,7 @@ impl Book {
         Ok(())
     }
 
-    pub(crate) fn remove_slot(
-        &mut self,
-        slot: SlotId,
-        reason: CancelReason,
-    ) -> Result<CancelRecord, BookError> {
+    pub(crate) fn remove_slot(&mut self, slot: SlotId) -> Result<OrderSlot, BookError> {
         let removed = self.occupied(slot)?.clone();
         let key = removed.side.signed_price_key(removed.price)?;
         let level = self
@@ -379,12 +381,7 @@ impl Book {
         self.order_index.remove(&removed.order_id);
         self.aggregate_quantity = self.aggregate_quantity.saturating_sub(removed.quantity);
         self.free(slot)?;
-        Ok(CancelRecord {
-            slot,
-            order_id: removed.order_id,
-            reason,
-            removed_quantity: removed.quantity,
-        })
+        Ok(removed)
     }
 
     fn clear_relations_before_remove(&mut self, removed: &OrderSlot) -> Result<(), BookError> {

@@ -3,7 +3,7 @@
 - Component ID: `orderbook`.
 - Target release and full SHA-256: node #94,
   `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`.
-- Source commit: upstream base `546081f30a3ebe6af1dadb6f90869f01bd08e1e4`;
+- Source commit: upstream base `6d727b9ea2ca4dc497c96a2de35cfba064e14dcc`;
   implementation commits are listed in the final PR. Reference lead pin:
   `can1357-hl` `999556f6e0a474b8312db96ec3149e1c44e97c23`.
 - Claim status: observations are inherited from the four merged digest-bound
