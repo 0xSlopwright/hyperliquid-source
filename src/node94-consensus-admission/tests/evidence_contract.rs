@@ -2,7 +2,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use node94_consensus_admission::{AdmissionError, BlockHash, Hardfork, Round, ValidatorAddress};
+use node94_consensus_admission::{
+    AdmissionError, BlockHash, Hardfork, Round, ValidatorAddress, OUTBOUND_BLOCK_TAG,
+    UNKNOWN_TRANSACTION_TAG,
+};
 
 const TARGET_SHA256: &str = "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f";
 
@@ -229,4 +232,13 @@ fn unresolved_crypto_edges_remain_explicit_in_the_packet() {
     assert!(stubs.contains("0x454c050\tdirect call\tsigning digest:"));
     assert!(stubs.contains("0x576fe58\tdata slot\tsignature recover:"));
     assert!(stubs.contains("0x5773628\tdata slot\tproposer rule:"));
+}
+
+#[test]
+fn registration_tags_match_the_native_rows() {
+    assert_eq!(OUTBOUND_BLOCK_TAG, 0x8000_0000_0000_0000);
+    assert_eq!(UNKNOWN_TRANSACTION_TAG, 0x8000_0000_0000_0001);
+    let gates = read("gates.tsv");
+    assert!(gates.contains("tag 0x8000000000000001"));
+    assert!(gates.contains("word 0x8000000000000000"));
 }

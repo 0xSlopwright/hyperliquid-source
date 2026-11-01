@@ -27,7 +27,7 @@ pub use stake::{
 pub use state::{
     admit_and_register, admit_verified_block, register_admitted_block, AdmittedBlock,
     ConsensusState, ForwardChannel, ForwardDisposition, OutboundBlock, RegisteredBlock,
-    RegistrationOutcome, TransactionRecord,
+    RegistrationOutcome, TransactionRecord, OUTBOUND_BLOCK_TAG, UNKNOWN_TRANSACTION_TAG,
 };
 pub use tc::verify_tc;
 pub use types::{

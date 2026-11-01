@@ -5,6 +5,9 @@ use crate::{
     StakeHistory, TransactionHash, VerificationFailure, VerifiedBlock,
 };
 
+pub const OUTBOUND_BLOCK_TAG: u64 = 0x8000_0000_0000_0000;
+pub const UNKNOWN_TRANSACTION_TAG: u64 = 0x8000_0000_0000_0001;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TransactionRecord {
     Known,
