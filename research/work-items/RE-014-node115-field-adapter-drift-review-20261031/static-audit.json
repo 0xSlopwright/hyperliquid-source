@@ -1,0 +1,467 @@
+{
+  "archive_sha256": "ca804049dc84fa29d47c1ceb7012c7688a6848b5c858bd598ba484a0652ab256",
+  "execution": "static only; no captured or generated object execution",
+  "fresh_record_exact_equal": true,
+  "head": "0d08a3323b8e61d4bcff608e0d655b3d223338ad",
+  "manifest_files_authenticated": [
+    "research/work-items/RE-014-node115-field-adapter-drift/CACHED-308-SOURCE-REVIEW.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/CURRENT-BASE-REBIND.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/FDE-LENGTH-BEFORE-ACCEPTANCE.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/FDE-LENGTH-CORRECTION.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/FDE-LENGTH-CORRECTION.patch",
+    "research/work-items/RE-014-node115-field-adapter-drift/FIRST-POSITIVE-FAILURE.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/FIRST-POSITIVE-FAILURE.stderr",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-INDEPENDENT-TEST-HANDOFF.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-NORMAL-INPUTS-AFTER.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-NORMAL-INPUTS-BEFORE.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-NORMAL-TEST-RESULT.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-NORMAL-TEST.stderr",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-NORMAL-TEST.stdout",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-PYTHON-O-INPUTS-AFTER.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-PYTHON-O-INPUTS-BEFORE.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-PYTHON-O-TEST-RESULT.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-PYTHON-O-TEST.stderr",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-PYTHON-O-TEST.stdout",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-RECORDS.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-STATIC-REPRODUCTION.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-STATIC-REPRODUCTION.stderr",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-STATIC-REPRODUCTION.stdout",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-RECORDS-923F.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-SOURCE-PATCH-REPLAY.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-SUCCESS-923F.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/INDEPENDENT-CONTROL-DESIGN-REFINED.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/INDEPENDENT-CONTROL-DESIGN.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/INDEPENDENT-DESIGN-ONLY-STIMULI.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/INDEPENDENT-EXPECTED-DRIFT.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/INDEPENDENT-TEST-HANDOFF.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/INTAKE-HISTORY.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/NORMAL-INPUTS-AFTER.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/NORMAL-INPUTS-BEFORE.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/NORMAL-TEST-RESULT.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/NORMAL-TEST.stderr",
+    "research/work-items/RE-014-node115-field-adapter-drift/NORMAL-TEST.stdout",
+    "research/work-items/RE-014-node115-field-adapter-drift/PREPARATION-SOURCE-CORRECTION.patch",
+    "research/work-items/RE-014-node115-field-adapter-drift/PROVIDER.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/PYTHON-O-INPUTS-AFTER.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/PYTHON-O-INPUTS-BEFORE.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/PYTHON-O-TEST-RESULT.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/PYTHON-O-TEST.stderr",
+    "research/work-items/RE-014-node115-field-adapter-drift/PYTHON-O-TEST.stdout",
+    "research/work-items/RE-014-node115-field-adapter-drift/README.md",
+    "research/work-items/RE-014-node115-field-adapter-drift/RUST-COPYRIGHT",
+    "research/work-items/RE-014-node115-field-adapter-drift/RUST-LICENSE-APACHE",
+    "research/work-items/RE-014-node115-field-adapter-drift/RUST-LICENSE-MIT",
+    "research/work-items/RE-014-node115-field-adapter-drift/SLOT-FOOTPRINT-BEFORE-ACCEPTANCE.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/SLOT-FOOTPRINT-CORRECTION.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/SLOT-FOOTPRINT-CORRECTION.patch",
+    "research/work-items/RE-014-node115-field-adapter-drift/SOURCE-SYMBOL-PRECHECK.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/STATIC-REPRODUCTION.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/STATIC-REPRODUCTION.stderr",
+    "research/work-items/RE-014-node115-field-adapter-drift/STATIC-REPRODUCTION.stdout",
+    "research/work-items/RE-014-node115-field-adapter-drift/VALIDATION-STATUS.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/VTABLE-PREPARATION-CORRECTION.json",
+    "research/work-items/RE-014-node115-field-adapter-drift/observed/records.json",
+    "tests/test_node115_field_adapter_drift.py",
+    "tools/node115_field_adapter_drift.py"
+  ],
+  "member_sha256": "57ca580737b890eebfb33d5d66c6a24e3e6d6e8c7d71ac11695252d6f0032d13",
+  "native_anchors": [
+    {
+      "bytes": 390,
+      "end": "0x167dad6",
+      "fde": {
+        "cie": 13266648,
+        "end": 23583446,
+        "fde": 13380516,
+        "lsda": null,
+        "start": 23583056
+      },
+      "file_offset": 23578960,
+      "instruction_count": 109,
+      "sha256": "31186c955933babc770b727c75061c5e270efac7fd0a308eb4520e1ae5033569",
+      "start": "0x167d950"
+    },
+    {
+      "bytes": 630,
+      "end": "0x1686e46",
+      "fde": {
+        "cie": 13266648,
+        "end": 23621190,
+        "fde": 13383332,
+        "lsda": null,
+        "start": 23620560
+      },
+      "file_offset": 23616464,
+      "instruction_count": 173,
+      "sha256": "fc968173616031f08d0a0e77dedca4e6cc4b81ddd1f7cb57e74b10cfae20cb2d",
+      "start": "0x1686bd0"
+    }
+  ],
+  "number": 1149,
+  "original_files": [
+    {
+      "bytes": 3281,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/CACHED-308-SOURCE-REVIEW.json",
+      "sha256": "d0b179045b7ca38916d7d92d7a8e920c581ddbfd5009561868a1d13e22b8a951"
+    },
+    {
+      "bytes": 1335,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/CURRENT-BASE-REBIND.json",
+      "sha256": "fadeb55632dd163d92635a89e48b48356901327e91f0e4a0cb9c2e5b564dc59a"
+    },
+    {
+      "bytes": 1469,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/FDE-LENGTH-BEFORE-ACCEPTANCE.json",
+      "sha256": "e62aba7c50f58dc53140ec1be62f92d98a8edade971d8a067b65bdc13f50ab2e"
+    },
+    {
+      "bytes": 602,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/FDE-LENGTH-CORRECTION.json",
+      "sha256": "495c0500a4ce8a2690a4054a98979cae7455620eb7a73c1a78759206a29ccffd"
+    },
+    {
+      "bytes": 2071,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/FDE-LENGTH-CORRECTION.patch",
+      "sha256": "92c1c8e459c540b943a3feda21cb4784a6f8f64744f23bbc523f0779bfcbb883"
+    },
+    {
+      "bytes": 1336,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/FIRST-POSITIVE-FAILURE.json",
+      "sha256": "f6616fb9764dd5b7593b25213f722f71e0905d94f5b424cd967efd94d05f4e1f"
+    },
+    {
+      "bytes": 1096,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/FIRST-POSITIVE-FAILURE.stderr",
+      "sha256": "ed186e89436af1c4fffad8233dd4fa5d0d19cd8090b731e750e158cf0f18c052"
+    },
+    {
+      "bytes": 7156,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-INDEPENDENT-TEST-HANDOFF.json",
+      "sha256": "11a6993c56ed91986234b449ed086bc489d53c0d7fdb29b5fa133fc752b31132"
+    },
+    {
+      "bytes": 1802,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-NORMAL-INPUTS-AFTER.json",
+      "sha256": "3c4043641ee3e64b24efa4f32b29b1c4feeb1a06f6c703af0ba5c1271b3590f7"
+    },
+    {
+      "bytes": 1802,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-NORMAL-INPUTS-BEFORE.json",
+      "sha256": "3c4043641ee3e64b24efa4f32b29b1c4feeb1a06f6c703af0ba5c1271b3590f7"
+    },
+    {
+      "bytes": 1094,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-NORMAL-TEST-RESULT.json",
+      "sha256": "beea922c650e87c21f15a6b992834d3d40c2e18625537046648eaec88c1f91f1"
+    },
+    {
+      "bytes": 2001,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-NORMAL-TEST.stderr",
+      "sha256": "c59101442bf527a7c5e465632fc1990ae6e31dacb13ef936fa54b2f777ed94b3"
+    },
+    {
+      "bytes": 0,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-NORMAL-TEST.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 1802,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-PYTHON-O-INPUTS-AFTER.json",
+      "sha256": "3c4043641ee3e64b24efa4f32b29b1c4feeb1a06f6c703af0ba5c1271b3590f7"
+    },
+    {
+      "bytes": 1802,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-PYTHON-O-INPUTS-BEFORE.json",
+      "sha256": "3c4043641ee3e64b24efa4f32b29b1c4feeb1a06f6c703af0ba5c1271b3590f7"
+    },
+    {
+      "bytes": 1110,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-PYTHON-O-TEST-RESULT.json",
+      "sha256": "d2e396a8709102a23edcd3d7052174f5412064bd5e172ea9e13dbaa9bc223690"
+    },
+    {
+      "bytes": 2001,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-PYTHON-O-TEST.stderr",
+      "sha256": "565aa71211f7903115d85d6c407d2a1fdfc387cd1481d6445fcb3085794ab46d"
+    },
+    {
+      "bytes": 0,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-PYTHON-O-TEST.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 22405,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-RECORDS.json",
+      "sha256": "8835fe993817868632119b31d84b17145fd712c8b57948a80628b78774bf7ca1"
+    },
+    {
+      "bytes": 3023,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-STATIC-REPRODUCTION.json",
+      "sha256": "8ceebc9002b77a33c7b9b6cdc9943007ab9bf67157af516f7fbe7d9e37ac6371"
+    },
+    {
+      "bytes": 0,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-STATIC-REPRODUCTION.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 0,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-A410-STATIC-REPRODUCTION.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 22147,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-RECORDS-923F.json",
+      "sha256": "7c08af5285048de35dc1f04318b4c5cc641e8b22cd00b7a242d761accb6a4b24"
+    },
+    {
+      "bytes": 2043,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-SOURCE-PATCH-REPLAY.json",
+      "sha256": "f23ddc84edc912176eea47afe6cee92211dccbceb78cf67f928adeb6d1dcc06c"
+    },
+    {
+      "bytes": 1336,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/HISTORICAL-SUCCESS-923F.json",
+      "sha256": "14ae7692a926556d5a52e4e40bdf01a23dec3bd821d6301c11ce52b047dda26c"
+    },
+    {
+      "bytes": 3517,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/INDEPENDENT-CONTROL-DESIGN-REFINED.json",
+      "sha256": "ab41026e40c8cdfe80fac3f2c65700164f185f48d98305d0fa372d0ecae882bf"
+    },
+    {
+      "bytes": 2789,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/INDEPENDENT-CONTROL-DESIGN.json",
+      "sha256": "827b7b88d5bac024b33bdc4bc548e5157c5a94c526d24469c35275cd7372869b"
+    },
+    {
+      "bytes": 11318,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/INDEPENDENT-DESIGN-ONLY-STIMULI.json",
+      "sha256": "71baf637a567268275e7c2c25ac2a8d4ac6926d006a643ba95dd8f43b1035155"
+    },
+    {
+      "bytes": 22675,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/INDEPENDENT-EXPECTED-DRIFT.json",
+      "sha256": "a1a19e1cd34f3cb00dc6967eebf57826bb058801f53887b5ec070168e87a583c"
+    },
+    {
+      "bytes": 8275,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/INDEPENDENT-TEST-HANDOFF.json",
+      "sha256": "4e81012d99d74005a8e170a0cea0b396706a226c3ca59154d1e70bd660b796c8"
+    },
+    {
+      "bytes": 757,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/INTAKE-HISTORY.json",
+      "sha256": "90c2bf5fab00e33be13e076a8fa8a8522c3202f0105ff80193d7eeb32110250f"
+    },
+    {
+      "bytes": 8829,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/MANIFEST.sha256",
+      "sha256": "259d2497e1dcd0e1148a269c36365e95b81a302f634901c62b4b399eec007cd0"
+    },
+    {
+      "bytes": 1802,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/NORMAL-INPUTS-AFTER.json",
+      "sha256": "1a010787c3674a340efb8d240893ade51859a9f20c598fdda7cafda264b4235c"
+    },
+    {
+      "bytes": 1802,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/NORMAL-INPUTS-BEFORE.json",
+      "sha256": "1a010787c3674a340efb8d240893ade51859a9f20c598fdda7cafda264b4235c"
+    },
+    {
+      "bytes": 1094,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/NORMAL-TEST-RESULT.json",
+      "sha256": "87a791914e1cd1f86cd619a141f037906097c4c6ce3af5604497a4bc5a942101"
+    },
+    {
+      "bytes": 2001,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/NORMAL-TEST.stderr",
+      "sha256": "b65d1cc93dac1fcf7600dcd2675e4b2e78b495356d93bea7924698bfcc3a3794"
+    },
+    {
+      "bytes": 0,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/NORMAL-TEST.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 1263,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/PREPARATION-SOURCE-CORRECTION.patch",
+      "sha256": "a036d716e2006f194368cbed51c26869393f2171a244b0981b583dcade5b69e7"
+    },
+    {
+      "bytes": 1796,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/PROVIDER.json",
+      "sha256": "2aa921a9f2749be53648255451f13c2827bc15c38227103a46cbd55af4f233a6"
+    },
+    {
+      "bytes": 1802,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/PYTHON-O-INPUTS-AFTER.json",
+      "sha256": "1a010787c3674a340efb8d240893ade51859a9f20c598fdda7cafda264b4235c"
+    },
+    {
+      "bytes": 1802,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/PYTHON-O-INPUTS-BEFORE.json",
+      "sha256": "1a010787c3674a340efb8d240893ade51859a9f20c598fdda7cafda264b4235c"
+    },
+    {
+      "bytes": 1110,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/PYTHON-O-TEST-RESULT.json",
+      "sha256": "41848d4080cc84dc5c4bb3b98de57f9236ef811493dc1dd8773fcdd78acab6a4"
+    },
+    {
+      "bytes": 2001,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/PYTHON-O-TEST.stderr",
+      "sha256": "565aa71211f7903115d85d6c407d2a1fdfc387cd1481d6445fcb3085794ab46d"
+    },
+    {
+      "bytes": 0,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/PYTHON-O-TEST.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 9312,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/README.md",
+      "sha256": "ce36c8af352f4af39f25b632879c24f5c053b04e419f18b24d47890a3915691d"
+    },
+    {
+      "bytes": 1571,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/RUST-COPYRIGHT",
+      "sha256": "172020dbfd5b53a226dfde77616190a48dcff519b0bc0e6deb91a8450782c4af"
+    },
+    {
+      "bytes": 9723,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/RUST-LICENSE-APACHE",
+      "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+    },
+    {
+      "bytes": 1068,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/RUST-LICENSE-MIT",
+      "sha256": "b71bd43a069ca0641a9ecfe585ca7b3c53b5cc1608f8b68321168698e28b5ea1"
+    },
+    {
+      "bytes": 1106,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/SLOT-FOOTPRINT-BEFORE-ACCEPTANCE.json",
+      "sha256": "b11201e3ddc8c1590860f898eae5e4b45946259809bc7dc298b7cb6684e9402e"
+    },
+    {
+      "bytes": 717,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/SLOT-FOOTPRINT-CORRECTION.json",
+      "sha256": "0095965f2e118de854817e09f454e9feb95c1e34c703e356b93b3853be031b9e"
+    },
+    {
+      "bytes": 722,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/SLOT-FOOTPRINT-CORRECTION.patch",
+      "sha256": "b6f9f5e6559490b69ff7380872148c67ac18b7a622f760a5b8823ee7f2da9e0b"
+    },
+    {
+      "bytes": 621,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/SOURCE-SYMBOL-PRECHECK.json",
+      "sha256": "00b9713eb26f75262e088cc350f631a0dec1377527d62742f59ae05236f4fe51"
+    },
+    {
+      "bytes": 5141,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/STATIC-REPRODUCTION.json",
+      "sha256": "16d8cff933aa00cd201cdbd5b31c4c6109b3335c2554b261b651ebbdecba22f9"
+    },
+    {
+      "bytes": 0,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/STATIC-REPRODUCTION.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 0,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/STATIC-REPRODUCTION.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 1768,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/VALIDATION-STATUS.json",
+      "sha256": "af6792b1e07e1a045ef2b79d2904247b35e8a3fafb22f3f92bd9772347d0d6cf"
+    },
+    {
+      "bytes": 846,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/VTABLE-PREPARATION-CORRECTION.json",
+      "sha256": "1c021109e6dc81029b3d7993895b5448d311c1863a87854ba505e70a767515e8"
+    },
+    {
+      "bytes": 22901,
+      "file": "research/work-items/RE-014-node115-field-adapter-drift/observed/records.json",
+      "sha256": "ac48db86e79b7461e313771ca65028bf8d61d926cbf9ad1054118a879ac4a83b"
+    },
+    {
+      "bytes": 17865,
+      "file": "tests/test_node115_field_adapter_drift.py",
+      "sha256": "ae145e3fb0bc7863efd7c1486d06340fbdfcf5fd85c17b293605b4a41b5e4c29"
+    },
+    {
+      "bytes": 22547,
+      "file": "tools/node115_field_adapter_drift.py",
+      "sha256": "be144319213e86575535976eb9649b963bc720aaa1f47a182c66300db5f7b8b9"
+    }
+  ],
+  "repository_checks": {
+    "command": [
+      "make",
+      "verify",
+      "catalogue-check",
+      "reproduce"
+    ],
+    "exit": 0,
+    "log": "repository-checks.log",
+    "seconds": 94.3282879999997
+  },
+  "target_release": 115,
+  "target_sha256": "a6e2897cd051213d004802deca416e8eca62b7a8278fa39f249e98c3867b5301",
+  "tests": [
+    {
+      "command": [
+        "[REVIEW_HOME]/.local/share/uv/python/cpython-3.10.18-macos-aarch64-none/bin/python3.10",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_node115_field_adapter_drift.py",
+        "-v"
+      ],
+      "exit": 0,
+      "log": "provider-normal-repeat.log",
+      "seconds": 7.135366542000156
+    },
+    {
+      "command": [
+        "[REVIEW_HOME]/.local/share/uv/python/cpython-3.10.18-macos-aarch64-none/bin/python3.10",
+        "-O",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_node115_field_adapter_drift.py",
+        "-v"
+      ],
+      "exit": 0,
+      "log": "provider-optimized.log",
+      "seconds": 5.572849000000133
+    },
+    {
+      "command": [
+        "[REVIEW_HOME]/.local/share/uv/python/cpython-3.10.18-macos-aarch64-none/bin/python3.10",
+        "-B",
+        "tools/node115_field_adapter_drift.py",
+        "--libcore",
+        "[AUTHENTICATED_PROVIDER_CACHE]/selected/libcore-e60dd2ab51fbc7de.rlib",
+        "--output",
+        "[REVIEW_OUTPUT]/fresh-cli"
+      ],
+      "exit": 0,
+      "log": "fresh-cli.log",
+      "seconds": 0.48121337499924266
+    }
+  ]
+}

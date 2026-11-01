@@ -1,0 +1,39 @@
+{
+  "automatic_download_install_or_execution": false,
+  "exact_original_license_files": [
+    {
+      "archive_member": "rust-std-1.94.1-x86_64-unknown-linux-gnu/LICENSE-MIT",
+      "bytes": 1068,
+      "path": "RUST-LICENSE-MIT",
+      "sha256": "b71bd43a069ca0641a9ecfe585ca7b3c53b5cc1608f8b68321168698e28b5ea1"
+    },
+    {
+      "archive_member": "rust-std-1.94.1-x86_64-unknown-linux-gnu/LICENSE-APACHE",
+      "bytes": 9723,
+      "path": "RUST-LICENSE-APACHE",
+      "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+    },
+    {
+      "archive_member": "rust-std-1.94.1-x86_64-unknown-linux-gnu/COPYRIGHT",
+      "bytes": 1571,
+      "path": "RUST-COPYRIGHT",
+      "sha256": "172020dbfd5b53a226dfde77616190a48dcff519b0bc0e6deb91a8450782c4af"
+    }
+  ],
+  "full_archive_member_or_target_copied_to_packet": false,
+  "libcore": {
+    "archive_relative_path": "rust-std-1.94.1-x86_64-unknown-linux-gnu/rust-std-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/lib/libcore-e60dd2ab51fbc7de.rlib",
+    "bytes": 2917630,
+    "exact_licensed_payload_rebound_from_std_archive": true,
+    "member": "core-e60dd2ab51fbc7de.core.61a85662de008515-cgu.0.rcgu.o",
+    "member_sha256": "57ca580737b890eebfb33d5d66c6a24e3e6d6e8c7d71ac11695252d6f0032d13",
+    "sha256": "ca804049dc84fa29d47c1ceb7012c7688a6848b5c858bd598ba484a0652ab256"
+  },
+  "role": "Official compiled Rust artifact used as byte/metadata correspondence input; not original compiler/source identity. No compiler is run.",
+  "schema": "explicit-compatibility-provider-v1",
+  "std_archive": {
+    "bytes": 29846424,
+    "sha256": "74109ee2c19098f1d7122087dd338a8f643203b3ce678c9d58169db733e17a03",
+    "url": "https://static.rust-lang.org/dist/rust-std-1.94.1-x86_64-unknown-linux-gnu.tar.xz"
+  }
+}

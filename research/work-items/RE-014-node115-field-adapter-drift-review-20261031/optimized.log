@@ -1,0 +1,8 @@
+skipped 'Set HL_RE014_LIBCORE to the explicitly supplied pinned official archive; no download or qualification is implied.'
+test_existing_output_precedes_input_reads_and_failures_export_nothing (test_node115_field_adapter_drift.AdmissionAndPublicationControls) ... ok
+test_wrong_full_input_identities_are_not_evidence (test_node115_field_adapter_drift.AdmissionAndPublicationControls) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.007s
+
+OK (skipped=1)

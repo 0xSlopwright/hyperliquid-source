@@ -1,0 +1,63 @@
+{
+  "actual_typed_fields": 9,
+  "adapter_compared_bytes": 0,
+  "additional_module_or_semantic_grid": false,
+  "argv": [
+    "python3",
+    "-B",
+    "tools/node115_field_adapter_drift.py",
+    "--binary",
+    "/tmp/hl-node115-field-drift-20261101/checkout/artifacts/node/115/hl-node",
+    "--libcore",
+    "/tmp/hl-rem-rust-1.94.1-20261031/prefix/lib/rustlib/x86_64-unknown-linux-gnu/lib/libcore-e60dd2ab51fbc7de.rlib",
+    "--output",
+    "/tmp/hl-node115-peer-20261101/final-static/observed"
+  ],
+  "cwd": "/tmp/hl-node115-field-drift-20261101/checkout",
+  "elapsed_seconds": 0.3030331719783135,
+  "environment": {
+    "LANG": "C",
+    "LC_ALL": "C",
+    "PATH": "/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONHASHSEED": "0",
+    "TMPDIR": "/tmp/hl-node115-peer-20261101/final-static/tmp"
+  },
+  "exact_extents": [
+    390,
+    630
+  ],
+  "exit_code": 0,
+  "headroom_before_bytes": 2073362432,
+  "inputs_before_after_equal": {
+    "/tmp/hl-node115-field-drift-20261101/checkout/artifacts/node/115/hl-node": {
+      "bytes": 105896032,
+      "sha256": "a6e2897cd051213d004802deca416e8eca62b7a8278fa39f249e98c3867b5301"
+    },
+    "/tmp/hl-rem-rust-1.94.1-20261031/prefix/lib/rustlib/x86_64-unknown-linux-gnu/lib/libcore-e60dd2ab51fbc7de.rlib": {
+      "bytes": 2917630,
+      "sha256": "ca804049dc84fa29d47c1ceb7012c7688a6848b5c858bd598ba484a0652ab256"
+    }
+  },
+  "literal_bytes_with_repeat": 14,
+  "literal_references": 6,
+  "no_compiler_native_evaluator_or_captured_code_execution": true,
+  "observed_records_bytes": 22405,
+  "observed_records_path": "/tmp/hl-node115-peer-20261101/final-static/observed/records.json",
+  "observed_records_sha256": "8835fe993817868632119b31d84b17145fd712c8b57948a80628b78774bf7ca1",
+  "parent_nonRELA_equal_denominator": 354,
+  "raw_logs": {
+    "stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "source622_mask_or_behavior_transferred": false,
+  "source_helpers_tests_before_after_equal": {
+    "tests/test_node115_field_adapter_drift.py": "891ca8be4bda35d9f3117737da79befc63fc49cc12a0a3515a510072d04556e2",
+    "tools/build_provenance.py": "4a0832dc1e2e09c129d69f4e81d44ff4bed8b3422f99d70c7db0ec9b10af61f3",
+    "tools/elf_index.py": "9191b647e2df52bf38bb167267ad4c698b3f7e8f7f324631d86357a2a864dcc7",
+    "tools/node115_field_adapter_drift.py": "a4106b0baaaf2576771fa64bc506f4be93b832682192a84c68e559472d393fdd"
+  },
+  "status": "PASS_ONE_INDEPENDENT_FINAL_STATIC_CLI",
+  "typed_pointers": 3,
+  "vtable_bytes": 48
+}

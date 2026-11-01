@@ -1,0 +1,8 @@
+{
+  "actual_before_proof_sha256": "e62aba7c50f58dc53140ec1be62f92d98a8edade971d8a067b65bdc13f50ab2e",
+  "corrected_source_sha256": "a4106b0baaaf2576771fa64bc506f4be93b832682192a84c68e559472d393fdd",
+  "correction": "Read lengthfirst, require at least13payloadbytes enclosing full17B supported zRheader, then require augmentation-length0inside thatrecord.",
+  "new_full_target_or_compiler_job_run_yet": false,
+  "peer_finding": "Used selected-FDE reads were not enclosed in declaredrecordlength.",
+  "preserved_before_source_sha256": "923f3387dc13dbe04c1bb7607a3471d6463b3f536e88b029a52091b6aeb7007e"
+}

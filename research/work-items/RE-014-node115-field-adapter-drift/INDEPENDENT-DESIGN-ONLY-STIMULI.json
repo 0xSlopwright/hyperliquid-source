@@ -1,0 +1,303 @@
+{
+  "controls": [
+    {
+      "after_hex": "00000000",
+      "before_hex": "0a0edffe",
+      "executed": false,
+      "expected_relation": "real referenced data/GOT/vtable relation must refuse below full target identity",
+      "file_offset": 23579053,
+      "input": "target",
+      "name": "parent-displacement-93"
+    },
+    {
+      "after_hex": "00000000",
+      "before_hex": "000edffe",
+      "executed": false,
+      "expected_relation": "real referenced data/GOT/vtable relation must refuse below full target identity",
+      "file_offset": 23579060,
+      "input": "target",
+      "name": "parent-displacement-100"
+    },
+    {
+      "after_hex": "00000000",
+      "before_hex": "cf0ddffe",
+      "executed": false,
+      "expected_relation": "real referenced data/GOT/vtable relation must refuse below full target identity",
+      "file_offset": 23579114,
+      "input": "target",
+      "name": "parent-displacement-154"
+    },
+    {
+      "after_hex": "00000000",
+      "before_hex": "9c0ddffe",
+      "executed": false,
+      "expected_relation": "real referenced data/GOT/vtable relation must refuse below full target identity",
+      "file_offset": 23579167,
+      "input": "target",
+      "name": "parent-displacement-207"
+    },
+    {
+      "after_hex": "00000000",
+      "before_hex": "889ed804",
+      "executed": false,
+      "expected_relation": "real referenced data/GOT/vtable relation must refuse below full target identity",
+      "file_offset": 23579244,
+      "input": "target",
+      "name": "parent-displacement-284"
+    },
+    {
+      "after_hex": "00000000",
+      "before_hex": "2626e604",
+      "executed": false,
+      "expected_relation": "real referenced data/GOT/vtable relation must refuse below full target identity",
+      "file_offset": 23579254,
+      "input": "target",
+      "name": "parent-displacement-294"
+    },
+    {
+      "after_hex": "00000000",
+      "before_hex": "340ddffe",
+      "executed": false,
+      "expected_relation": "real referenced data/GOT/vtable relation must refuse below full target identity",
+      "file_offset": 23579269,
+      "input": "target",
+      "name": "parent-displacement-309"
+    },
+    {
+      "after_hex": "00000000",
+      "before_hex": "0826e604",
+      "executed": false,
+      "expected_relation": "real referenced data/GOT/vtable relation must refuse below full target identity",
+      "file_offset": 23579284,
+      "input": "target",
+      "name": "parent-displacement-324"
+    },
+    {
+      "after_hex": "00000000",
+      "before_hex": "fc0cdffe",
+      "executed": false,
+      "expected_relation": "real referenced data/GOT/vtable relation must refuse below full target identity",
+      "file_offset": 23579330,
+      "input": "target",
+      "name": "parent-displacement-370"
+    },
+    {
+      "after_hex": "2d",
+      "before_hex": "2c",
+      "executed": false,
+      "expected_relation": "full actual source literal equality must refuse",
+      "file_offset": 4646843,
+      "input": "target",
+      "name": "literal-93"
+    },
+    {
+      "after_hex": "21",
+      "before_hex": "20",
+      "executed": false,
+      "expected_relation": "full actual source literal equality must refuse",
+      "file_offset": 4646840,
+      "input": "target",
+      "name": "literal-100"
+    },
+    {
+      "after_hex": "3b",
+      "before_hex": "3a",
+      "executed": false,
+      "expected_relation": "full actual source literal equality must refuse",
+      "file_offset": 4646845,
+      "input": "target",
+      "name": "literal-154"
+    },
+    {
+      "after_hex": "21",
+      "before_hex": "20",
+      "executed": false,
+      "expected_relation": "full actual source literal equality must refuse",
+      "file_offset": 4646847,
+      "input": "target",
+      "name": "literal-207"
+    },
+    {
+      "after_hex": "3b",
+      "before_hex": "3a",
+      "executed": false,
+      "expected_relation": "full actual source literal equality must refuse",
+      "file_offset": 4646845,
+      "input": "target",
+      "name": "literal-309"
+    },
+    {
+      "after_hex": "2d",
+      "before_hex": "2c",
+      "executed": false,
+      "expected_relation": "full actual source literal equality must refuse",
+      "file_offset": 4646850,
+      "input": "target",
+      "name": "literal-370"
+    },
+    {
+      "after_hex": "5d000000000000000100000003030000fcffffffffffffff",
+      "before_hex": "5d000000000000000200000003030000fcffffffffffffff",
+      "executed": false,
+      "expected_relation": "legitimate8BdataRELA kind cannot become a4B code-field exclusion",
+      "file_offset": 2166582,
+      "input": "archive",
+      "name": "source-kind-93"
+    },
+    {
+      "after_hex": "6400000000000000010000000d030000fcffffffffffffff",
+      "before_hex": "6400000000000000020000000d030000fcffffffffffffff",
+      "executed": false,
+      "expected_relation": "legitimate8BdataRELA kind cannot become a4B code-field exclusion",
+      "file_offset": 2166606,
+      "input": "archive",
+      "name": "source-kind-100"
+    },
+    {
+      "after_hex": "9a00000000000000010000000e030000fcffffffffffffff",
+      "before_hex": "9a00000000000000020000000e030000fcffffffffffffff",
+      "executed": false,
+      "expected_relation": "legitimate8BdataRELA kind cannot become a4B code-field exclusion",
+      "file_offset": 2166630,
+      "input": "archive",
+      "name": "source-kind-154"
+    },
+    {
+      "after_hex": "cf00000000000000010000000f030000fcffffffffffffff",
+      "before_hex": "cf00000000000000020000000f030000fcffffffffffffff",
+      "executed": false,
+      "expected_relation": "legitimate8BdataRELA kind cannot become a4B code-field exclusion",
+      "file_offset": 2166654,
+      "input": "archive",
+      "name": "source-kind-207"
+    },
+    {
+      "after_hex": "1c01000000000000010000000c030000fcffffffffffffff",
+      "before_hex": "1c01000000000000020000000c030000fcffffffffffffff",
+      "executed": false,
+      "expected_relation": "legitimate8BdataRELA kind cannot become a4B code-field exclusion",
+      "file_offset": 2166678,
+      "input": "archive",
+      "name": "source-kind-284"
+    },
+    {
+      "after_hex": "260100000000000001000000f1040000fcffffffffffffff",
+      "before_hex": "260100000000000009000000f1040000fcffffffffffffff",
+      "executed": false,
+      "expected_relation": "legitimate8BdataRELA kind cannot become a4B code-field exclusion",
+      "file_offset": 2166702,
+      "input": "archive",
+      "name": "source-kind-294"
+    },
+    {
+      "after_hex": "3501000000000000010000000e030000fcffffffffffffff",
+      "before_hex": "3501000000000000020000000e030000fcffffffffffffff",
+      "executed": false,
+      "expected_relation": "legitimate8BdataRELA kind cannot become a4B code-field exclusion",
+      "file_offset": 2166726,
+      "input": "archive",
+      "name": "source-kind-309"
+    },
+    {
+      "after_hex": "440100000000000001000000f1040000fcffffffffffffff",
+      "before_hex": "440100000000000009000000f1040000fcffffffffffffff",
+      "executed": false,
+      "expected_relation": "legitimate8BdataRELA kind cannot become a4B code-field exclusion",
+      "file_offset": 2166750,
+      "input": "archive",
+      "name": "source-kind-324"
+    },
+    {
+      "after_hex": "72010000000000000100000005030000fcffffffffffffff",
+      "before_hex": "72010000000000000200000005030000fcffffffffffffff",
+      "executed": false,
+      "expected_relation": "legitimate8BdataRELA kind cannot become a4B code-field exclusion",
+      "file_offset": 2166774,
+      "input": "archive",
+      "name": "source-kind-370"
+    },
+    {
+      "after_hex": "26010000000000000900000017000000fcffffffffffffff",
+      "before_hex": "260100000000000009000000f1040000fcffffffffffffff",
+      "executed": false,
+      "expected_relation": "correctly bounded defined otherFUNC must fail selected adapter association, not only wholeSHA",
+      "file_offset": 2166702,
+      "input": "archive",
+      "name": "source-wrong-defined-function-294"
+    },
+    {
+      "after_hex": "44010000000000000900000017000000fcffffffffffffff",
+      "before_hex": "440100000000000009000000f1040000fcffffffffffffff",
+      "executed": false,
+      "expected_relation": "correctly bounded defined otherFUNC must fail selected adapter association, not only wholeSHA",
+      "file_offset": 2166750,
+      "input": "archive",
+      "name": "source-wrong-defined-function-324"
+    },
+    {
+      "after_hex": "10794006000000000100000000000000d06b680100000000",
+      "before_hex": "10794006000000000800000000000000d06b680100000000",
+      "executed": false,
+      "expected_relation": "wrong relocation kind refuses even though8Bslot remainsmapped",
+      "file_offset": 135816,
+      "input": "target",
+      "name": "target-pointer-type-24"
+    },
+    {
+      "after_hex": "10794006000000000800000001000000d06b680100000000",
+      "before_hex": "10794006000000000800000000000000d06b680100000000",
+      "executed": false,
+      "expected_relation": "nonzero dynamic symbol refuses forRELATIVE",
+      "file_offset": 135816,
+      "input": "target",
+      "name": "target-pointer-symbol-24"
+    },
+    {
+      "after_hex": "18794006000000000100000000000000706b680100000000",
+      "before_hex": "18794006000000000800000000000000706b680100000000",
+      "executed": false,
+      "expected_relation": "wrong relocation kind refuses even though8Bslot remainsmapped",
+      "file_offset": 135840,
+      "input": "target",
+      "name": "target-pointer-type-32"
+    },
+    {
+      "after_hex": "18794006000000000800000001000000706b680100000000",
+      "before_hex": "18794006000000000800000000000000706b680100000000",
+      "executed": false,
+      "expected_relation": "nonzero dynamic symbol refuses forRELATIVE",
+      "file_offset": 135840,
+      "input": "target",
+      "name": "target-pointer-symbol-32"
+    },
+    {
+      "after_hex": "2079400600000000010000000000000010aa680100000000",
+      "before_hex": "2079400600000000080000000000000010aa680100000000",
+      "executed": false,
+      "expected_relation": "wrong relocation kind refuses even though8Bslot remainsmapped",
+      "file_offset": 135864,
+      "input": "target",
+      "name": "target-pointer-type-40"
+    },
+    {
+      "after_hex": "2079400600000000080000000100000010aa680100000000",
+      "before_hex": "2079400600000000080000000000000010aa680100000000",
+      "executed": false,
+      "expected_relation": "nonzero dynamic symbol refuses forRELATIVE",
+      "file_offset": 135864,
+      "input": "target",
+      "name": "target-pointer-symbol-40"
+    }
+  ],
+  "design_sha256": "ab41026e40c8cdfe80fac3f2c65700164f185f48d98305d0fa372d0ecae882bf",
+  "expectations_sha256": "a1a19e1cd34f3cb00dc6967eebf57826bb058801f53887b5ec070168e87a583c",
+  "limits": [
+    "Target record bytes are exact encoded stimuli derived from sealed intake metadata, not new target reads.",
+    "No originalinput or wholeimage/member is written.",
+    "No test results are claimed until the real producer receives these actualserialized mutations.",
+    "Opaquevalidpointer/630body changes remain acceptedunqualified observations, separate fromthese rejectioncontrols."
+  ],
+  "schema": "independent-node115-drift-counterfactual-stimuli-v1",
+  "source_archive_sha256": "ca804049dc84fa29d47c1ceb7012c7688a6848b5c858bd598ba484a0652ab256",
+  "status": "DESIGN_ONLY_NOT_EXECUTED"
+}
