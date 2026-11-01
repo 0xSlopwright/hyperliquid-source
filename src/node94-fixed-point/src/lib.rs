@@ -7,8 +7,13 @@
 
 mod arithmetic;
 mod quantity;
+mod scale;
+mod spot_wire;
 
 pub use arithmetic::{ArithmeticOutcome, ArithmeticStatus};
 pub use quantity::{
-    AdmissionError, BigNotional, Notional, QuantityKind, SignedNotional, SignedSize, Size, Wei,
+    AdmissionError, BigNotional, Notional, Price, QuantityKind, SignedNotional, SignedSize, Size,
+    Wei,
 };
+pub use scale::{ScaleError, TokenDecimals, checked_pow10};
+pub use spot_wire::{SpotWireError, parse_spot_wire_price, parse_spot_wire_size};
