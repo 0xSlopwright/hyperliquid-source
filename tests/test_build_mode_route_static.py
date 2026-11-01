@@ -8,6 +8,7 @@ import tempfile
 import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 from artifacts import ROOT,check
+from gnu_binutils import requires_gnu
 import build_mode_route_static as packet
 from build_mode_route_static import CONTROLS,LITERALS,RELATIVE,controls,read_va,relocations
 
@@ -71,7 +72,7 @@ if not os.path.exists(marker):
 os.execv({readelf!r},['readelf']+sys.argv[1:])
 '''
 
-@unittest.skipUnless(shutil.which('readelf') and shutil.which('objdump'),'GNU binutils required')
+@requires_gnu('readelf', 'objdump')
 @unittest.skipUnless((ROOT/'artifacts/node/94/hl-node').stat().st_size==91774280,'materialize the pinned node94 capture')
 class DecoderBindingTests(unittest.TestCase):
     def test_packet_stays_bound_to_admitted_bytes(self):

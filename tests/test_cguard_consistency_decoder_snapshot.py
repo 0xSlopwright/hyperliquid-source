@@ -48,7 +48,7 @@ class DecoderSnapshotTests(unittest.TestCase):
 
         real_check_output = tool.subprocess.check_output
 
-        def fake_check_output(cmd, text=True):
+        def fake_check_output(cmd, text=True, encoding=None):
             if not swapped:
                 binary.write_bytes(SWAPPED)
                 swapped.append(True)

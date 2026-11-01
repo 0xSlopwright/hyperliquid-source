@@ -113,6 +113,7 @@ def run(binary, output):
     with tempfile.TemporaryDirectory() as temporary:
         snapshot = Path(temporary) / 'node94.elf'
         snapshot.write_bytes(data)
+        check(snapshot, item)  # Authenticate the exact bytes the decoders reopen.
         frames = subprocess.check_output(['readelf', '-wf', str(snapshot)], text=True, encoding='utf-8')
         ranges = frame_ranges(frames)
         for pair in [(START, END), (CALLER_START, CALLER_END), (HELPER_START, HELPER_END)]:

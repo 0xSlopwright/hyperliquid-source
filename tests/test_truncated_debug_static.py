@@ -95,7 +95,7 @@ if not os.path.exists(marker):
 os.execv({readelf!r},['readelf']+sys.argv[1:])
 '''
 
-@unittest.skipUnless(shutil.which('readelf') and shutil.which('objdump'),'GNU binutils required')
+@requires_gnu('readelf', 'objdump')
 @unittest.skipUnless((ROOT/'artifacts/node/94/hl-node').stat().st_size==91774280,'materialize the pinned node94 capture')
 class DecoderBindingTests(unittest.TestCase):
     def test_packet_stays_bound_to_admitted_bytes(self):

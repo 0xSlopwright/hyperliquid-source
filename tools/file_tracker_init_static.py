@@ -48,6 +48,7 @@ def generate(binary,output):
     import tempfile
     with tempfile.TemporaryDirectory() as temporary:
         snapshot=Path(temporary)/'node94.elf';snapshot.write_bytes(data)
+        check(snapshot, identity)  # Authenticate the exact bytes the decoders reopen.
         frames=subprocess.check_output(['readelf','-wf',str(snapshot)],text=True, encoding='utf-8')
         fdes=[(int(a,16),int(b,16))for a,b in re.findall(r'FDE[^\n]*pc=([0-9a-f]+)\.\.([0-9a-f]+)',frames)]
         output.mkdir(parents=True,exist_ok=True);ranges={}
