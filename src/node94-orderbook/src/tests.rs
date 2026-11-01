@@ -191,6 +191,38 @@ fn partial_fill_updates_slot_and_global_quantity() {
 }
 
 #[test]
+fn zero_budget_and_same_user_take_the_verified_early_exits() {
+    let mut zero = Book::new();
+    zero.insert(order(1, Side::Ask, 100, 10)).unwrap();
+    assert_eq!(
+        zero.match_best_once(taker(2, Side::Bid, 100, 0), MatchLimits::PERMISSIVE)
+            .unwrap(),
+        MatchOutcome::NoFill {
+            status: MatchStatus::None,
+            reported_budget: 0,
+            reason: MatchReason::CONTINUE,
+        }
+    );
+
+    let mut same = Book::new();
+    let mut maker = order(1, Side::Ask, 100, 10);
+    maker.user = user(9);
+    same.insert(maker).unwrap();
+    let mut incoming = taker(2, Side::Bid, 100, 5);
+    incoming.user = user(9);
+    assert_eq!(
+        same.match_best_once(incoming, MatchLimits::PERMISSIVE)
+            .unwrap(),
+        MatchOutcome::NoFill {
+            status: MatchStatus::None,
+            reported_budget: 5,
+            reason: MatchReason::SELF_CROSS,
+        }
+    );
+    assert_eq!(same.aggregate_quantity(), 10);
+}
+
+#[test]
 fn full_fill_removes_level_and_slot_can_be_reused() {
     let mut book = Book::new();
     let maker = book.insert(order(1, Side::Ask, 100, 4)).unwrap();
@@ -420,6 +452,34 @@ fn deterministic_snapshot_has_stable_level_and_slot_order() {
     assert_eq!(first, second);
     assert!(first.starts_with("occupied=3 aggregate=15 next_free=3\nbid key=-101 price=101"));
     assert!(first.contains("queue=[0, 1]"));
+}
+
+#[test]
+fn long_deterministic_lifecycle_keeps_all_invariants() {
+    let mut book = Book::new();
+    let mut state = 94u64;
+    let mut next_id = 1u64;
+    let mut live = Vec::new();
+    for step in 0..750 {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        if live.is_empty() || state & 3 != 0 {
+            let side = if state & 4 == 0 { Side::Bid } else { Side::Ask };
+            let price = 1 + (state >> 8) % 17;
+            let quantity = (state >> 24) % 100;
+            let slot = book.insert(order(next_id, side, price, quantity)).unwrap();
+            live.push((next_id, slot));
+            next_id += 1;
+        } else {
+            let index = (state as usize) % live.len();
+            let (_, slot) = live.swap_remove(index);
+            book.cancel(slot, CancelReason::Canceled).unwrap();
+        }
+        book.check_consistency()
+            .unwrap_or_else(|error| panic!("step {step}: {error}"));
+        assert_eq!(book.occupied_count() as usize, live.len());
+    }
 }
 
 #[test]
