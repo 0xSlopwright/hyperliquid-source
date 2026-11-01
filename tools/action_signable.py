@@ -201,6 +201,8 @@ class Elf:
         self.sections = {}
         for s in secs:
             name = data[stro + s[0]:data.index(b'\0', stro + s[0])].decode()
+            if name in self.sections:
+                raise EvidenceError(f"Duplicate section: {name}")
             self.sections[name] = (s[3], s[4], s[5])      # (addr, offset, size)
         for required in ('.text', '.rodata', '.data.rel.ro', '.rela.dyn', '.eh_frame_hdr',
                          '.dynsym', '.dynstr'):
