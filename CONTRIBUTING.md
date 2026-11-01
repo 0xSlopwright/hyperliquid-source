@@ -105,6 +105,13 @@ Once measured function windows exist, report raw-equal, normalized-only and
 unmatched counts over an explicit denominator. Do not substitute source-file,
 line-count, unwind-index or string coverage for these counts.
 
+Register selected compiled-code comparisons in `research/byte-windows.json`,
+including target and source hashes, reviewed bounds, original evidence and any
+actual relocation records. `make catalogue` rechecks the bytes and generates
+`research/catalogue/byte-coverage.json` and the tables. Count overlapping or
+alternative candidates once per target. These selected-window percentages do
+not supply a whole-module denominator or advance any acceptance gate.
+
 ## Licensing, execution and review
 
 New code/docs use MIT. Imported sources and binaries retain upstream rights;

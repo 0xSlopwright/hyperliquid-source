@@ -195,6 +195,11 @@ class CatalogueTests(unittest.TestCase):
             dest = root / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes((self.root / rel).read_bytes())
+        # Synthetic ELF fixtures do not contain the real compiled-byte windows.
+        progress_path = root / 'research/progress.json'
+        metadata = json.loads(progress_path.read_text())
+        metadata.pop('byte_window_registry', None)
+        progress_path.write_text(json.dumps(metadata))
         inv = json.loads((root / 'research/imported/hl-node-94.inventory.json').read_text())
         crate = sorted(inv['first_party_files'])[0]
         src = root / 'references/can1357-hl' / crate / 'src' / inv['first_party_files'][crate][0]

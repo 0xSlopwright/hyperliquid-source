@@ -1,0 +1,298 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-11-01",
+  "scope": "Selected compiled-code comparison windows; no full-module byte denominator or whole-node equivalence.",
+  "attribution": "Shared libcore and Zstandard dependency comparisons are tracked once under the foundation research work area. This is not exclusive first-party base ownership or a completed module.",
+  "canonical_candidates": "One candidate per target interval; the reviewed ThinLTO adapter supersedes the older native artifact for that interval. Old non-relocation differences remain in prior_candidate and original evidence. Rebuild repetitions, negative controls, cross-release duplicates and overlapping semantic packets add no denominator credit.",
+  "targets": {
+    "node94": {
+      "path": "artifacts/node/94/hl-node",
+      "sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
+    },
+    "node115": {
+      "path": "artifacts/node/115/hl-node",
+      "sha256": "a6e2897cd051213d004802deca416e8eca62b7a8278fa39f249e98c3867b5301"
+    }
+  },
+  "evidence_sha256": {
+    "research/work-items/RE-001-pad-character-protocol-94/official-body.hex": "ceae7a533d048ce70286cbbf146d36f6f16119d45504d28abcb11568f406a0c8",
+    "research/work-items/RE-001-pad-character-protocol-94/static-qualification/records.json": "cfeebc31edcc9031f7377323433c60391b9c16834167781b4e47f8fd4c44dfdb",
+    "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/REPORT.json": "0a5bed3c5185accf3dc79ebc5fb0e88efca6b89ae73e3c9306025237ac278977",
+    "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/official/decimal.bin": "c9eedc0d8a8eb1015e22952ed5a41218efbadde30a514e7cf1f8a60df18be8f0",
+    "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/official/parent.bin": "54c4f94913786f3c9e838dff75328a261eda2ad5939fee1d941affa4dc9fc1f7",
+    "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/official/supporting-panic61.bin": "038efe360c4882da2b401423972cfc7b5b34d0eb10cd4ace2e7342ca5d217e19",
+    "research/work-items/RE-002-libcore-pad-codegen-review-20261031/originals/research/work-items/RE-002-libcore-pad-codegen/fixtures/generated-adapter622.bin": "ab7fc88e156c3ef084ae3db3f3de8bbbccfbcf711365c253d3bb4251e8196086",
+    "research/work-items/RE-002-libcore-pad-codegen-review-20261031/supplemental/container-output/thin300/report.json": "11973c429b0f6a254ff8c2a9d18cabc3b656e9984fd1fc9cde442c00b277af70",
+    "research/work-items/RE-002-libcore-write-fmt448/fixtures/official.hex": "806f2493c0872671039a7db6ab0ffa5c17878b1e0de1ed37fd0d990f283bf42b",
+    "research/work-items/RE-002-zstd-asm-correspondence/evidence/collector/REPORT.json": "77afb91272e5d11e8bf6dfb31e84377916f6b59d381b35047151303bfc26212e",
+    "research/work-items/RE-002-zstd-asm-correspondence/evidence/collector/positive-1/text.bin": "6d6fa64d8848a212cedad6ad4092b2477924c53da6dec111f87d3b3c3c81b72a",
+    "research/work-items/RE-003-pr-integration-1185-1241/libcore-review.json": "7b482ff05c752d1add22b431ba1e978ebc9918efa6d4ab5d144549b9664b89a0",
+    "research/work-items/RE-014-node115-field-adapter-drift/observed/records.json": "ac48db86e79b7461e313771ca65028bf8d61d926cbf9ad1054118a879ac4a83b"
+  },
+  "windows": [
+    {
+      "id": "node94-libcore-parent",
+      "label": "DebugStruct field",
+      "component": "foundation",
+      "target": "node94",
+      "start": 22486864,
+      "end": 22487254,
+      "target_body_sha256": "e6aec76f57413451c7a873712558e50e18c6f30b2001b6777c3fd29fda32388d",
+      "source": {
+        "path": "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/official/parent.bin",
+        "encoding": "binary",
+        "offset": 0,
+        "body_sha256": "54c4f94913786f3c9e838dff75328a261eda2ad5939fee1d941affa4dc9fc1f7"
+      },
+      "source_kind": "published-artifact",
+      "boundary_basis": "Exact unique FDE and complete source FUNC section",
+      "evidence": "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/REPORT.json",
+      "relocations": {
+        "path": "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/REPORT.json",
+        "pointer": [
+          "bodies",
+          0,
+          "comparison",
+          "relocations"
+        ]
+      }
+    },
+    {
+      "id": "node94-pad-str",
+      "label": "PadAdapter write_str (ThinLTO)",
+      "component": "foundation",
+      "target": "node94",
+      "start": 22532096,
+      "end": 22532718,
+      "target_body_sha256": "d62080d0724a750e0162d6a0563c7a056ae76e2212fd48310f89bcf8809dfde4",
+      "source": {
+        "path": "research/work-items/RE-002-libcore-pad-codegen-review-20261031/originals/research/work-items/RE-002-libcore-pad-codegen/fixtures/generated-adapter622.bin",
+        "encoding": "binary",
+        "offset": 0,
+        "body_sha256": "ab7fc88e156c3ef084ae3db3f3de8bbbccfbcf711365c253d3bb4251e8196086"
+      },
+      "source_kind": "published-bitcode rebuild",
+      "boundary_basis": "Exact FDE and complete source ET_REL section",
+      "evidence": "research/work-items/RE-002-libcore-pad-codegen-review-20261031/supplemental/container-output/thin300/report.json",
+      "relocations": {
+        "path": "research/work-items/RE-002-libcore-pad-codegen-review-20261031/supplemental/container-output/thin300/report.json",
+        "pointer": [
+          "recipes",
+          "thin",
+          "candidates",
+          1,
+          "comparison",
+          "actual_relocations"
+        ]
+      },
+      "prior_candidate": {
+        "evidence": "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/REPORT.json",
+        "raw_equal_bytes": 616,
+        "bytes": 622,
+        "non_relocation_differences": [
+          464,
+          467
+        ]
+      }
+    },
+    {
+      "id": "node94-libcore-decimal",
+      "label": "Unsigned decimal inner",
+      "component": "foundation",
+      "target": "node94",
+      "start": 22479984,
+      "end": 22480428,
+      "target_body_sha256": "bfb36d8c87aa851a74c630c9c02413d987ad0a348cd1e8cd5655c44b089bde3f",
+      "source": {
+        "path": "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/official/decimal.bin",
+        "encoding": "binary",
+        "offset": 0,
+        "body_sha256": "c9eedc0d8a8eb1015e22952ed5a41218efbadde30a514e7cf1f8a60df18be8f0"
+      },
+      "source_kind": "published-artifact",
+      "boundary_basis": "Exact unique FDE and complete source FUNC section",
+      "evidence": "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/REPORT.json",
+      "relocations": {
+        "path": "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/REPORT.json",
+        "pointer": [
+          "bodies",
+          2,
+          "comparison",
+          "relocations"
+        ]
+      }
+    },
+    {
+      "id": "node94-panic61",
+      "label": "Supporting panic callee",
+      "component": "foundation",
+      "target": "node94",
+      "start": 22525519,
+      "end": 22525580,
+      "target_body_sha256": "cb6d0ec6b0c533100c4f83299598ed8ecf6496f7cb7e221337ed732e4c633e43",
+      "source": {
+        "path": "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/official/supporting-panic61.bin",
+        "encoding": "binary",
+        "offset": 0,
+        "body_sha256": "038efe360c4882da2b401423972cfc7b5b34d0eb10cd4ace2e7342ca5d217e19"
+      },
+      "source_kind": "published-artifact",
+      "boundary_basis": "Exact unique FDE and complete source FUNC section",
+      "evidence": "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/REPORT.json",
+      "relocations": {
+        "path": "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/REPORT.json",
+        "pointer": [
+          "supporting_callee",
+          "comparison",
+          "relocations"
+        ]
+      }
+    },
+    {
+      "id": "node94-pad-char",
+      "label": "PadAdapter write_char",
+      "component": "foundation",
+      "target": "node94",
+      "start": 22532000,
+      "end": 22532095,
+      "target_body_sha256": "ebacfa0c280712ec53cd0331b22b9cd93e91d4bf23781451b30f1a62b952fda6",
+      "source": {
+        "path": "research/work-items/RE-001-pad-character-protocol-94/official-body.hex",
+        "encoding": "hex",
+        "offset": 0,
+        "body_sha256": "fd006118da76e482db9f31d9efcc30c58fa883291d6a6dd56642d6fa79470791"
+      },
+      "source_kind": "published-artifact",
+      "boundary_basis": "Selected complete FDE and complete source FUNC section",
+      "evidence": "research/work-items/RE-001-pad-character-protocol-94/static-qualification/records.json",
+      "relocations": {
+        "path": "research/work-items/RE-001-pad-character-protocol-94/static-qualification/records.json",
+        "pointer": [
+          "code_RELA"
+        ]
+      }
+    },
+    {
+      "id": "node94-fmt-write448",
+      "label": "libcore fmt::write",
+      "component": "foundation",
+      "target": "node94",
+      "start": 22486416,
+      "end": 22486864,
+      "target_body_sha256": "1d04ea71bff68d24b04f11ccfc52b1341ef49aabea0b199d73e0c2f7edd43561",
+      "source": {
+        "path": "research/work-items/RE-002-libcore-write-fmt448/fixtures/official.hex",
+        "encoding": "hex",
+        "offset": 0,
+        "body_sha256": "1d04ea71bff68d24b04f11ccfc52b1341ef49aabea0b199d73e0c2f7edd43561"
+      },
+      "source_kind": "published-artifact",
+      "boundary_basis": "Selected complete FDE and complete source FUNC section",
+      "evidence": "research/work-items/RE-003-pr-integration-1185-1241/libcore-review.json",
+      "relocations": null
+    },
+    {
+      "id": "node94-zstd-A",
+      "label": "Zstandard HUF A",
+      "component": "foundation",
+      "target": "node94",
+      "start": 90379648,
+      "end": 90380797,
+      "target_body_sha256": "2ad5e86209996d34c689f686461158e32c45f792f0cb3f37fd7c8f15e8d48560",
+      "source": {
+        "path": "research/work-items/RE-002-zstd-asm-correspondence/evidence/collector/positive-1/text.bin",
+        "encoding": "binary",
+        "offset": 0,
+        "body_sha256": "2ad5e86209996d34c689f686461158e32c45f792f0cb3f37fd7c8f15e8d48560"
+      },
+      "source_kind": "licensed-assembly build",
+      "boundary_basis": "Source labels and complete .text endpoint; no FDE/function-size claim",
+      "evidence": "research/work-items/RE-002-zstd-asm-correspondence/evidence/collector/REPORT.json",
+      "relocations": null
+    },
+    {
+      "id": "node94-zstd-B",
+      "label": "Zstandard HUF B",
+      "component": "foundation",
+      "target": "node94",
+      "start": 90380797,
+      "end": 90382066,
+      "target_body_sha256": "00933a9b47d97b4ac90e7845469b6a4b0e3d76357432bf6e86f65d7bd215c425",
+      "source": {
+        "path": "research/work-items/RE-002-zstd-asm-correspondence/evidence/collector/positive-1/text.bin",
+        "encoding": "binary",
+        "offset": 1149,
+        "body_sha256": "00933a9b47d97b4ac90e7845469b6a4b0e3d76357432bf6e86f65d7bd215c425"
+      },
+      "source_kind": "licensed-assembly build",
+      "boundary_basis": "Source labels and complete .text endpoint; no FDE/function-size claim",
+      "evidence": "research/work-items/RE-002-zstd-asm-correspondence/evidence/collector/REPORT.json",
+      "relocations": null
+    },
+    {
+      "id": "node115-zstd-A",
+      "label": "Zstandard HUF A",
+      "component": "foundation",
+      "target": "node115",
+      "start": 103696128,
+      "end": 103697277,
+      "target_body_sha256": "2ad5e86209996d34c689f686461158e32c45f792f0cb3f37fd7c8f15e8d48560",
+      "source": {
+        "path": "research/work-items/RE-002-zstd-asm-correspondence/evidence/collector/positive-1/text.bin",
+        "encoding": "binary",
+        "offset": 0,
+        "body_sha256": "2ad5e86209996d34c689f686461158e32c45f792f0cb3f37fd7c8f15e8d48560"
+      },
+      "source_kind": "licensed-assembly build",
+      "boundary_basis": "Source labels and complete .text endpoint; no FDE/function-size claim",
+      "evidence": "research/work-items/RE-002-zstd-asm-correspondence/evidence/collector/REPORT.json",
+      "relocations": null
+    },
+    {
+      "id": "node115-zstd-B",
+      "label": "Zstandard HUF B",
+      "component": "foundation",
+      "target": "node115",
+      "start": 103697277,
+      "end": 103698546,
+      "target_body_sha256": "00933a9b47d97b4ac90e7845469b6a4b0e3d76357432bf6e86f65d7bd215c425",
+      "source": {
+        "path": "research/work-items/RE-002-zstd-asm-correspondence/evidence/collector/positive-1/text.bin",
+        "encoding": "binary",
+        "offset": 1149,
+        "body_sha256": "00933a9b47d97b4ac90e7845469b6a4b0e3d76357432bf6e86f65d7bd215c425"
+      },
+      "source_kind": "licensed-assembly build",
+      "boundary_basis": "Source labels and complete .text endpoint; no FDE/function-size claim",
+      "evidence": "research/work-items/RE-002-zstd-asm-correspondence/evidence/collector/REPORT.json",
+      "relocations": null
+    },
+    {
+      "id": "node115-libcore-parent",
+      "label": "DebugStruct field",
+      "component": "foundation",
+      "target": "node115",
+      "start": 23583056,
+      "end": 23583446,
+      "target_body_sha256": "31186c955933babc770b727c75061c5e270efac7fd0a308eb4520e1ae5033569",
+      "source": {
+        "path": "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/official/parent.bin",
+        "encoding": "binary",
+        "offset": 0,
+        "body_sha256": "54c4f94913786f3c9e838dff75328a261eda2ad5939fee1d941affa4dc9fc1f7"
+      },
+      "source_kind": "published-artifact",
+      "boundary_basis": "Selected complete FDE and complete source FUNC section",
+      "evidence": "research/work-items/RE-014-node115-field-adapter-drift/observed/records.json",
+      "relocations": {
+        "path": "research/work-items/RE-002-libcore-fmt-correspondence/evidence/collected/REPORT.json",
+        "pointer": [
+          "bodies",
+          0,
+          "comparison",
+          "relocations"
+        ]
+      }
+    }
+  ]
+}

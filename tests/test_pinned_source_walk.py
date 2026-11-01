@@ -35,6 +35,12 @@ def source_view(binary, versioned=True):
             target = root / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, target)
+        # Isolate source membership from the separately tested compiled-byte
+        # registry, whose evidence packets are not part of this fixture.
+        progress = root / 'research/progress.json'
+        metadata = json.loads(progress.read_text())
+        metadata.pop('byte_window_registry', None)
+        progress.write_text(json.dumps(metadata))
         target = root / 'artifacts/node/94/hl-node'
         target.parent.mkdir(parents=True)
         target.write_bytes(binary)

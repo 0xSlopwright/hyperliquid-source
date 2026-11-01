@@ -298,5 +298,6 @@
       "normalized_only_bodies": 0,
       "total_function_windows": null
     }
-  }
+  },
+  "byte_window_registry": "research/byte-windows.json"
 }

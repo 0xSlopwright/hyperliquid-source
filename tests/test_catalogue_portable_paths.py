@@ -21,6 +21,12 @@ class CataloguePortablePaths(unittest.TestCase):
                          'artifacts/visor/captured/hl-visor', 'provenance/artifacts.json'):
                 target=stage/name;target.parent.mkdir(parents=True,exist_ok=True)
                 shutil.copyfile(ROOT/name,target)
+            # This fixture isolates native path classification, without the
+            # compiled comparison packets covered by test_byte_progress.
+            progress=stage/'research/progress.json'
+            metadata=json.loads(progress.read_text())
+            metadata.pop('byte_window_registry',None)
+            progress.write_text(json.dumps(metadata))
             path=stage/'references/can1357-hl/base/duration.rs'
             path.parent.mkdir(parents=True);path.write_bytes(source)
             try:result=catalogue.generate(stage)
