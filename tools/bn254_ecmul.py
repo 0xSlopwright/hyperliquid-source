@@ -147,8 +147,8 @@ KEY_INSNS = [
 ]
 
 G = (1, 2)
-C3_OFFSETS = None
-FIELD_COUNTS = {}
+C3_OFFSETS = ["0x4e973c1"]  # the only c3 byte in the carve is the primary ret
+FIELD_COUNTS = {"p_limbs_in_run_mul": [4, 4, 1, 3], "r_limbs_in_run_mul": [1, 1, 1, 3], "inv_limbs_in_run_mul": [1, 1], "inv_r_limbs_in_run_mul": [1, 1], "r_mod_p_limbs_in_run_mul": [2, 2, 2, 2], "r2_mod_r_limbs_in_run_mul": [1, 1, 1, 1]}  # r limb2/limb3 equal p limb2/limb3
 
 
 def enc(*xs):
