@@ -131,6 +131,13 @@ class Reader:
     def __init__(self, data):
         self.data = data
         self.sections = sections(data)
+        # by_name keeps only the last same-named section, so a duplicate
+        # would silently decide which bytes the pinned checks read. Refuse
+        # it for the names this reader looks up, mirroring read()'s
+        # exactly-one-match rule for VA mappings.
+        for name in ('.eh_frame', '.rela.dyn', '.text'):
+            require(sum(s['name'] == name for s in self.sections) <= 1,
+                    'Duplicate section: ' + name)
         self.by_name = {s['name']: s for s in self.sections}
 
     def read(self, va, size):
