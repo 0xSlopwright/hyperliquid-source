@@ -54,7 +54,7 @@ class SnapshotAdmissionTests(unittest.TestCase):
 
             def before_decode(command, **kwargs):
                 self.assertNotEqual(Path(command[-1]), binary)
-                self.assertEqual(Path(command[-1]).read_bytes(), self.data)
+                self.assertEqual(hashlib.sha256(Path(command[-1]).read_bytes()).hexdigest(), SHA94)
                 raise StopBeforeDecode()
 
             with mock.patch.object(tool, 'check', side_effect=admit), \
