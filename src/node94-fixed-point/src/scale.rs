@@ -2,6 +2,41 @@ use core::fmt;
 
 use crate::{Size, Wei};
 
+/// Spot-token decimal admission failures observed at node #94 call sites.
+///
+/// The range and deploy predicates are intentionally separate. The retained
+/// evidence does not establish that one request necessarily passes through
+/// both call paths.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SpotTokenDecimalError {
+    /// The general metadata guard requires `size_decimals <= wei_decimals <= 10`.
+    RangeViolation { size_decimals: u8, wei_decimals: u8 },
+    /// The deploy path checks this condition before its wei-decimal minimum.
+    DeploySizeDecimalsTooLarge { size_decimals: u8 },
+    /// The deploy path requires at least five more wei decimals than size decimals.
+    DeployWeiDecimalsTooSmall {
+        size_decimals: u8,
+        wei_decimals: u8,
+        required_wei_decimals: u8,
+    },
+}
+
+impl fmt::Display for SpotTokenDecimalError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::RangeViolation { .. } => {
+                formatter.write_str("must have szDecimals <= weiDecimals <= 10")
+            }
+            Self::DeploySizeDecimalsTooLarge { .. } => formatter.write_str("szDecimals too large"),
+            Self::DeployWeiDecimalsTooSmall { .. } => {
+                formatter.write_str("weiDecimals must be at least szDecimals + 5")
+            }
+        }
+    }
+}
+
+impl std::error::Error for SpotTokenDecimalError {}
+
 /// Decimal-scale failures established by the spot quantity family.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ScaleError {
@@ -68,6 +103,43 @@ impl TokenDecimals {
             size_decimals,
             wei_decimals,
         }
+    }
+
+    /// Applies the general spot-token metadata range guard.
+    ///
+    /// This admits exactly `size_decimals <= wei_decimals <= 10`.
+    pub const fn validate_range(self) -> Result<Self, SpotTokenDecimalError> {
+        if self.size_decimals > self.wei_decimals || self.wei_decimals > 10 {
+            Err(SpotTokenDecimalError::RangeViolation {
+                size_decimals: self.size_decimals,
+                wei_decimals: self.wei_decimals,
+            })
+        } else {
+            Ok(self)
+        }
+    }
+
+    /// Applies the separately observed spot-token deploy guard.
+    ///
+    /// The target first rejects size decimals above five. Only after that
+    /// succeeds does it require `wei_decimals >= size_decimals + 5`.
+    pub const fn validate_deploy(self) -> Result<Self, SpotTokenDecimalError> {
+        if self.size_decimals > 5 {
+            return Err(SpotTokenDecimalError::DeploySizeDecimalsTooLarge {
+                size_decimals: self.size_decimals,
+            });
+        }
+
+        // The preceding bound proves this addition cannot overflow u8.
+        let required_wei_decimals = self.size_decimals + 5;
+        if self.wei_decimals < required_wei_decimals {
+            return Err(SpotTokenDecimalError::DeployWeiDecimalsTooSmall {
+                size_decimals: self.size_decimals,
+                wei_decimals: self.wei_decimals,
+                required_wei_decimals,
+            });
+        }
+        Ok(self)
     }
 
     /// Returns 10^(wei_decimals - size_decimals), or an explicit rejection.
@@ -160,5 +232,47 @@ mod tests {
             TokenDecimals::new(0, 1).size_to_wei(Size::from_raw(u64::MAX)),
             Err(ScaleError::MultiplicationOverflow)
         );
+    }
+
+    #[test]
+    fn range_validation_matches_the_full_byte_domain() {
+        let mut admitted = 0_u32;
+        for size_decimals in u8::MIN..=u8::MAX {
+            for wei_decimals in u8::MIN..=u8::MAX {
+                let decimals = TokenDecimals::new(size_decimals, wei_decimals);
+                let expected = size_decimals <= wei_decimals && wei_decimals <= 10;
+                assert_eq!(decimals.validate_range().is_ok(), expected);
+                admitted += u32::from(expected);
+            }
+        }
+        assert_eq!(admitted, 66);
+    }
+
+    #[test]
+    fn deploy_validation_preserves_guard_order_and_full_domain() {
+        assert_eq!(
+            TokenDecimals::new(6, 0).validate_deploy(),
+            Err(SpotTokenDecimalError::DeploySizeDecimalsTooLarge { size_decimals: 6 })
+        );
+        assert_eq!(
+            TokenDecimals::new(5, 9).validate_deploy(),
+            Err(SpotTokenDecimalError::DeployWeiDecimalsTooSmall {
+                size_decimals: 5,
+                wei_decimals: 9,
+                required_wei_decimals: 10,
+            })
+        );
+
+        let mut admitted = 0_u32;
+        for size_decimals in u8::MIN..=u8::MAX {
+            for wei_decimals in u8::MIN..=u8::MAX {
+                let decimals = TokenDecimals::new(size_decimals, wei_decimals);
+                let expected =
+                    size_decimals <= 5 && wei_decimals >= size_decimals.saturating_add(5);
+                assert_eq!(decimals.validate_deploy().is_ok(), expected);
+                admitted += u32::from(expected);
+            }
+        }
+        assert_eq!(admitted, 1_491);
     }
 }

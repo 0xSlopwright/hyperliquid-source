@@ -18,7 +18,7 @@ pub use quantity::{
     AdmissionError, BigNotional, InternalAmount, Notional, Price, QuantityKind, SignedNotional,
     SignedSize, Size, Wei,
 };
-pub use scale::{ScaleError, TokenDecimals, checked_pow10};
+pub use scale::{ScaleError, SpotTokenDecimalError, TokenDecimals, checked_pow10};
 pub use spot_wire::{SpotWireError, parse_spot_wire_price, parse_spot_wire_size};
 pub use tick::{
     Tick, TickError, is_tick_divisible, next_tick, perp_tick, require_tick_divisible,

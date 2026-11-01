@@ -1,9 +1,10 @@
 use node94_fixed_point::{
     AdmissionError, ArithmeticOutcome, ArithmeticStatus, EvmAmountError,
     INTERNAL_AMOUNT_EXCLUSIVE_MAX, InternalAmount, Notional, Price, QuantityKind, ScaleError,
-    SignedSize, Size, SpotWireError, Tick, TickError, TokenDecimals, U256, Wei, checked_pow10,
-    evm_amount_to_internal, next_tick, parse_spot_wire_price, parse_spot_wire_size, perp_tick,
-    require_tick_divisible, round_down_to_tick, significant_tick, spot_tick,
+    SignedSize, Size, SpotTokenDecimalError, SpotWireError, Tick, TickError, TokenDecimals, U256,
+    Wei, checked_pow10, evm_amount_to_internal, next_tick, parse_spot_wire_price,
+    parse_spot_wire_size, perp_tick, require_tick_divisible, round_down_to_tick, significant_tick,
+    spot_tick,
 };
 
 #[test]
@@ -95,6 +96,46 @@ fn decimal_power_table_matches_all_admitted_packet_rows() {
             Err(ScaleError::ExponentOutOfRange { exponent })
         );
     }
+}
+
+#[test]
+fn spot_token_decimal_guards_match_both_independent_packet_predicates() {
+    // RE-004-spot-token-decimals-94 gives two independently observed paths.
+    // Do not turn their 21-pair intersection into a single target rule.
+    let mut range_count = 0_u32;
+    let mut deploy_count = 0_u32;
+    let mut intersection_count = 0_u32;
+
+    for size_decimals in u8::MIN..=u8::MAX {
+        for wei_decimals in u8::MIN..=u8::MAX {
+            let decimals = TokenDecimals::new(size_decimals, wei_decimals);
+            let range_expected = size_decimals <= wei_decimals && wei_decimals <= 10;
+            let deploy_expected = size_decimals <= 5 && wei_decimals >= size_decimals + 5;
+            let range_admitted = decimals.validate_range().is_ok();
+            let deploy_admitted = decimals.validate_deploy().is_ok();
+
+            assert_eq!(range_admitted, range_expected);
+            assert_eq!(deploy_admitted, deploy_expected);
+            range_count += u32::from(range_admitted);
+            deploy_count += u32::from(deploy_admitted);
+            intersection_count += u32::from(range_admitted && deploy_admitted);
+        }
+    }
+
+    assert_eq!(range_count, 66);
+    assert_eq!(deploy_count, 1_491);
+    assert_eq!(intersection_count, 21);
+    assert_eq!(
+        TokenDecimals::new(255, 255).validate_range(),
+        Err(SpotTokenDecimalError::RangeViolation {
+            size_decimals: 255,
+            wei_decimals: 255,
+        })
+    );
+    assert_eq!(
+        TokenDecimals::new(6, 255).validate_deploy(),
+        Err(SpotTokenDecimalError::DeploySizeDecimalsTooLarge { size_decimals: 6 })
+    );
 }
 
 #[test]
