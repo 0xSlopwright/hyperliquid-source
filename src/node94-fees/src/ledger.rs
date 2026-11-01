@@ -174,12 +174,37 @@ impl FeeLedger {
         self.values.len()
     }
 
+    /// Applies a fill after resolving all required offline recipient addresses.
+    /// Structurally unresolved input returns an error without changing state.
     pub fn apply(
         &mut self,
         payer: Address,
         token: u64,
         record: FillFeeRecord,
     ) -> Result<Computation<LedgerApplication>, FeeError> {
+        // Missing addresses are an offline input error, not a target ledger
+        // transition. Resolve both before any credit so a retry cannot apply
+        // the payer or referrer part of the fill twice.
+        let referrer = if record.referrer.tag as u32 == 1 {
+            Some(
+                record
+                    .referrer
+                    .address
+                    .ok_or(FeeError::MissingLedgerRecipient("referrer"))?,
+            )
+        } else {
+            None
+        };
+        let builder = if record.builder.tag as u8 != 0 && record.builder.amount != 0 {
+            Some(
+                record
+                    .builder
+                    .address
+                    .ok_or(FeeError::MissingLedgerRecipient("builder"))?,
+            )
+        } else {
+            None
+        };
         let mut events = Vec::new();
         let mut application = LedgerApplication::default();
 
@@ -192,11 +217,7 @@ impl FeeLedger {
             &mut events,
         );
 
-        if record.referrer.tag as u32 == 1 {
-            let address = record
-                .referrer
-                .address
-                .ok_or(FeeError::MissingLedgerRecipient("referrer"))?;
+        if let Some(address) = referrer {
             let after_rebate = floor_sub(
                 record.gross,
                 record.rebate,
@@ -233,11 +254,7 @@ impl FeeLedger {
             );
         }
 
-        if record.builder.tag as u8 != 0 && record.builder.amount != 0 {
-            let address = record
-                .builder
-                .address
-                .ok_or(FeeError::MissingLedgerRecipient("builder"))?;
+        if let Some(address) = builder {
             self.ensure_value(address, token, &mut application);
             self.add_value(
                 address,

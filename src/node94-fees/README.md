@@ -39,7 +39,10 @@ Perp-to-ledger conversion checks every target multiplication by 100.
 `FeeEngine` owns a `FeeSchedule` and offline `FeeProfile` map. Callers provide a
 typed `PerpFill` or `SpotFill` and receive `Computation<...>`, which contains the
 fee output and arithmetic events. `FeeLedger::apply` mutates the typed ledger
-and reports record creation plus arithmetic events. `volume_conversion` and
+and reports record creation plus arithmetic events. It validates required
+recipient addresses before mutation; an unresolved address leaves the ledger
+unchanged, so a corrected retry applies the fill once. This is an offline input
+contract, not an additional native transition. `volume_conversion` and
 `validate_rate_grid_point` expose the two bounded supporting calculations.
 
 The conservative field names `multiplier_90`, `multiplier_98`, `row_tag`, and
