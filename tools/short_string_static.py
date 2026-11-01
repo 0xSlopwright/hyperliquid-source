@@ -104,60 +104,67 @@ def generate(binary, output):
     check(binary, identity)
     data = binary.read_bytes()
     byte_controls, relocs = controls(data), relevant_relocations(data)
-    frames_text = subprocess.check_output(['readelf', '-wf', str(binary)], text=True, encoding='utf-8')
-    fdes = [(int(a, 16), int(b, 16)) for a, b in
-            re.findall(r'FDE[^\n]*pc=([0-9a-fA-F]+)\.\.([0-9a-fA-F]+)', frames_text)]
-    scope = list(RANGES.values()) + [(begin, end) for _, begin, end in CALLERS]
-    for pair in scope:
-        if fdes.count(pair) != 1:
-            raise ValueError(f'Expected one exact FDE range: {pair}')
-    references = []
-    with subprocess.Popen(['objdump', '-d', '-j', '.text', str(binary)],
-                          stdout=subprocess.PIPE, text=True, encoding='utf-8') as process:
-        for line in process.stdout:
-            ref = decoded_reference(line)
-            if ref and ((ref[1] == 'GOT' and ref[2] in SLOTS) or
-                        (ref[1] == 'direct' and ref[2] in {a for a, _ in RANGES.values()})):
-                references.append({'site_va': hex(ref[0]), 'kind': ref[1], 'target_va': hex(ref[2])})
-        if process.wait() != 0:
-            raise ValueError('Complete .text disassembly failed')
-    constructor_sites = [int(r['site_va'], 16) for r in references
-                         if r['kind'] == 'GOT' and int(r['target_va'], 16) == 0x576E798]
-    if constructor_sites != [site for site, _, _ in CALLERS]:
-        raise ValueError('Constructor GOT caller set changed')
-    output.mkdir(parents=True, exist_ok=True)
-    rela_text = subprocess.check_output(['readelf', '-rW', str(binary)], text=True, encoding='utf-8')
-    slots = {int(row['slot_va'], 16) for row in relocs}
-    rela_rows = [line for line in rela_text.splitlines()
-                 if re.match(r'^[0-9a-f]+\s', line) and int(line.split()[0], 16) in slots]
-    if len(rela_rows) != len(slots):
-        raise ValueError('Independent readelf relocation row count differs')
-    (output / 'relocations.txt').write_text('\n'.join(rela_rows) + '\n', encoding='utf-8', newline='\n')
-    ranges = {}
-    for name, (begin, end) in RANGES.items():
-        offset, body = read_va(data, begin, end - begin)
-        ranges[name] = {'start_va': hex(begin), 'end_va': hex(end), 'file_offset': hex(offset),
-                        'bytes': len(body), 'sha256': hashlib.sha256(body).hexdigest()}
-        text = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
-                                        f'--stop-address={end:#x}', str(binary)], text=True, encoding='utf-8')
-        (output / f'{name}.objdump.txt').write_text(text.replace(str(binary), '<authenticated-node94>'), encoding='utf-8', newline='\n')
-    for site, begin, end in CALLERS:
-        # Retain caller context without claiming its opaque calls are closed.
-        text = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
-                                        f'--stop-address={end:#x}', str(binary)], text=True, encoding='utf-8')
-        (output / f'caller-{site:x}.objdump.txt').write_text(text.replace(str(binary), '<authenticated-node94>'), encoding='utf-8', newline='\n')
-    (output / 'frames.txt').write_text('\n'.join(line for line in frames_text.splitlines()
-        if 'FDE' in line and any(f'pc={a:016x}..{b:016x}' in line for a, b in scope)) + '\n', encoding='utf-8', newline='\n')
-    records = {'target_sha256': identity['sha256'], 'target_bytes': len(data),
-               'ranges': ranges, 'decoded_fde_count': len(fdes), 'instruction_controls': byte_controls,
-               'relocations': relocs, 'decoded_references': references,
-               'constructor_caller_fdes': [{'site_va': hex(a), 'start_va': hex(b), 'end_va': hex(c)}
-                                           for a, b, c in CALLERS],
-               'carrier_observation': 'P(i) = byte[i] OR (P(i+1) << 8); P(length)=0; checked 128-bit shift. Constructor starts at i=0.',
-               'captured_binary_executed': False,
-               'limits': 'Static constructor/packer/alias control flow; hash-feed, cache, allocation, panic and lock callees not closed. No full alias algorithm, struct/serialization ABI, runtime equivalence or gate.'}
-    (output / 'records.json').write_text(json.dumps(records, indent=2) + '\n', encoding='utf-8', newline='\n')
-    return records
+    # Bind external decoder input to the same bytes using a private snapshot:
+    # readelf/objdump reopen their argument, so decoding the admitted path
+    # would bind this packet to whatever the path serves at decode time.
+    import tempfile
+    with tempfile.TemporaryDirectory() as temporary:
+        snapshot = Path(temporary) / 'node94.elf'
+        snapshot.write_bytes(data)
+        frames_text = subprocess.check_output(['readelf', '-wf', str(snapshot)], text=True, encoding='utf-8')
+        fdes = [(int(a, 16), int(b, 16)) for a, b in
+                re.findall(r'FDE[^\n]*pc=([0-9a-fA-F]+)\.\.([0-9a-fA-F]+)', frames_text)]
+        scope = list(RANGES.values()) + [(begin, end) for _, begin, end in CALLERS]
+        for pair in scope:
+            if fdes.count(pair) != 1:
+                raise ValueError(f'Expected one exact FDE range: {pair}')
+        references = []
+        with subprocess.Popen(['objdump', '-d', '-j', '.text', str(snapshot)],
+                              stdout=subprocess.PIPE, text=True, encoding='utf-8') as process:
+            for line in process.stdout:
+                ref = decoded_reference(line)
+                if ref and ((ref[1] == 'GOT' and ref[2] in SLOTS) or
+                            (ref[1] == 'direct' and ref[2] in {a for a, _ in RANGES.values()})):
+                    references.append({'site_va': hex(ref[0]), 'kind': ref[1], 'target_va': hex(ref[2])})
+            if process.wait() != 0:
+                raise ValueError('Complete .text disassembly failed')
+        constructor_sites = [int(r['site_va'], 16) for r in references
+                             if r['kind'] == 'GOT' and int(r['target_va'], 16) == 0x576E798]
+        if constructor_sites != [site for site, _, _ in CALLERS]:
+            raise ValueError('Constructor GOT caller set changed')
+        output.mkdir(parents=True, exist_ok=True)
+        rela_text = subprocess.check_output(['readelf', '-rW', str(snapshot)], text=True, encoding='utf-8')
+        slots = {int(row['slot_va'], 16) for row in relocs}
+        rela_rows = [line for line in rela_text.splitlines()
+                     if re.match(r'^[0-9a-f]+\s', line) and int(line.split()[0], 16) in slots]
+        if len(rela_rows) != len(slots):
+            raise ValueError('Independent readelf relocation row count differs')
+        (output / 'relocations.txt').write_text('\n'.join(rela_rows) + '\n', encoding='utf-8', newline='\n')
+        ranges = {}
+        for name, (begin, end) in RANGES.items():
+            offset, body = read_va(data, begin, end - begin)
+            ranges[name] = {'start_va': hex(begin), 'end_va': hex(end), 'file_offset': hex(offset),
+                            'bytes': len(body), 'sha256': hashlib.sha256(body).hexdigest()}
+            text = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
+                                            f'--stop-address={end:#x}', str(snapshot)], text=True, encoding='utf-8')
+            (output / f'{name}.objdump.txt').write_text(text.replace(str(snapshot), '<authenticated-node94>'), encoding='utf-8', newline='\n')
+        for site, begin, end in CALLERS:
+            # Retain caller context without claiming its opaque calls are closed.
+            text = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
+                                            f'--stop-address={end:#x}', str(snapshot)], text=True, encoding='utf-8')
+            (output / f'caller-{site:x}.objdump.txt').write_text(text.replace(str(snapshot), '<authenticated-node94>'), encoding='utf-8', newline='\n')
+        (output / 'frames.txt').write_text('\n'.join(line for line in frames_text.splitlines()
+            if 'FDE' in line and any(f'pc={a:016x}..{b:016x}' in line for a, b in scope)) + '\n', encoding='utf-8', newline='\n')
+        records = {'target_sha256': identity['sha256'], 'target_bytes': len(data),
+                   'ranges': ranges, 'decoded_fde_count': len(fdes), 'instruction_controls': byte_controls,
+                   'relocations': relocs, 'decoded_references': references,
+                   'constructor_caller_fdes': [{'site_va': hex(a), 'start_va': hex(b), 'end_va': hex(c)}
+                                               for a, b, c in CALLERS],
+                   'carrier_observation': 'P(i) = byte[i] OR (P(i+1) << 8); P(length)=0; checked 128-bit shift. Constructor starts at i=0.',
+                   'captured_binary_executed': False,
+                   'limits': 'Static constructor/packer/alias control flow; hash-feed, cache, allocation, panic and lock callees not closed. No full alias algorithm, struct/serialization ABI, runtime equivalence or gate.'}
+        (output / 'records.json').write_text(json.dumps(records, indent=2) + '\n', encoding='utf-8', newline='\n')
+        return records
 
 
 if __name__ == '__main__':
