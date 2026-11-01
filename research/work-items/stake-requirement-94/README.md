@@ -7,11 +7,11 @@
   reference lead `references/can1357-hl/l1/exchange/stake_requirement.rs`
   (unlicensed reference lead only; search guidance for mathematical formulas; zero implementation copied)
 - Claim status:
-  - Observation for byte-level disassembly of 4 FDEs totaling 1,936 bytes:
-    - `0x2512770..0x2512ad0` (864 B): `collect_requirements_spot`
+  - Observation for byte-level disassembly of 4 FDEs totaling 1,906 bytes:
+    - `0x2512770..0x2512ac8` (856 B): `collect_requirements_spot`
     - `0x26b58d0..0x26b59e0` (272 B): `RequirementIterator::next_spot`
-    - `0x487ccd0..0x487cee0` (528 B): `collect_requirements_perp`
-    - `0x47bcea0..0x47bcfb0` (272 B): `RequirementIterator::next_perp`
+    - `0x487ccd0..0x487ced1` (513 B): `collect_requirements_perp`
+    - `0x47bcea0..0x47bcfa9` (265 B): `RequirementIterator::next_perp`
   - Observation for exact 4x4 multiplier matrix in `.rodata` (`0x3f0994`) and `.data.rel.ro` (`0x5732f60`),
     state tier byte offsets (`+0x8f2` for Spot, `+0x1372` for Perp), and source panic records at `0x56b81b0`, `0x5713008`, `0x571f590`
     mapping to `/home/ubuntu/hl/code_Mainnet/l1/src/exchange/stake_requirement.rs:5:62`.
@@ -20,14 +20,14 @@
 - Scope included and excluded:
   - Included:
     - Four FDE extents:
-      - `0x2512770..0x2512ad0` (864 B; file offset `0x2511770..0x2511ad0`).
+      - `0x2512770..0x2512ac8` (856 B; file offset `0x2511770..0x2511ac8`).
       - `0x26b58d0..0x26b59e0` (272 B; file offset `0x26b48d0..0x26b49e0`).
-      - `0x487ccd0..0x487cee0` (528 B; file offset `0x487bcd0..0x487bee0`).
-      - `0x47bcea0..0x47bcfb0` (272 B; file offset `0x47bbea0..0x47bbfb0`).
+      - `0x487ccd0..0x487ced1` (513 B; file offset `0x487bcd0..0x487bed1`).
+      - `0x47bcea0..0x47bcfa9` (265 B; file offset `0x47bbea0..0x47bbfa9`).
     - Numeric bounds and constants:
       - `N_STAKE_REQUIREMENT_KINDS = 4`.
-      - `N_STAKE_TIERS = 4`.
-      - Hard bounds: index check `cmp rcx, 0x4` and kind boundary `cmp r14, 0x3`.
+      - Four selected table cells per row; a tier-byte range check is not present in these iterator bodies.
+      - Iterator count bounds (not a tier-byte check): index check `cmp rcx, 0x4` and kind boundary `cmp r14, 0x3`.
       - Saturating count addition: `cmovae` / `cmovb` against `0xffffffffffffffff`.
       - Multiplication and overflow detection: `mul QWORD PTR [...]` followed by `jo`.
     - Exact 4x4 multiplier values (raw staking units):
@@ -44,6 +44,8 @@
     - No live trading network, validator signing keys, or consensus execution harness.
     - Node #115 and visor targets excluded.
 
+Original padded spans and exports are preserved in `../RE-001-nxtlvlfirm-review-20261031/original-submissions/241/`; this packet supersedes their FDE labels.
+
 ## Reproduce
 
 Working directory: repository root. Platform used: Linux x86-64 / Windows, Python 3.12+, GNU objdump 2.42+.
@@ -57,10 +59,10 @@ python3 -c "import hashlib; assert hashlib.sha256(open('artifacts/node/94/hl-nod
 (cd research/work-items/stake-requirement-94 && sha256sum -c MANIFEST.sha256)
 
 # Optional human cross-check: disassemble the 4 FDE extents
-objdump -d -M intel --start-address=0x2512770 --stop-address=0x2512ad0 artifacts/node/94/hl-node
+objdump -d -M intel --start-address=0x2512770 --stop-address=0x2512ac8 artifacts/node/94/hl-node
 objdump -d -M intel --start-address=0x26b58d0 --stop-address=0x26b59e0 artifacts/node/94/hl-node
-objdump -d -M intel --start-address=0x487ccd0 --stop-address=0x487cee0 artifacts/node/94/hl-node
-objdump -d -M intel --start-address=0x47bcea0 --stop-address=0x47bcfb0 artifacts/node/94/hl-node
+objdump -d -M intel --start-address=0x487ccd0 --stop-address=0x487ced1 artifacts/node/94/hl-node
+objdump -d -M intel --start-address=0x47bcea0 --stop-address=0x47bcfa9 artifacts/node/94/hl-node
 ```
 
 ## Evidence
@@ -72,13 +74,13 @@ Coordinates are ELF virtual addresses (VA). `.rodata` VA equals file offset; `.t
 
 | Routine | ELF VA Range | File Offset | Size | SHA-256 |
 | --- | --- | --- | ---: | --- |
-| `collect_requirements_spot` | `0x2512770..0x2512ad0` | `0x2511770..0x2511ad0` | 864 B | `eb51363fd6627bce69d11e4daec39870628d9cb4401cf14fa74cb0a136a6660a` |
+| `collect_requirements_spot` | `0x2512770..0x2512ac8` | `0x2511770..0x2511ac8` | 856 B | `4b198eb18d175d64eec2f5b94bb91862bae95df787a7e758b61fcef0ad94c3cb` |
 | `RequirementIterator::next_spot` | `0x26b58d0..0x26b59e0` | `0x26b48d0..0x26b49e0` | 272 B | `ba2138bba3abe52183363f9f0ca5ca6fe5da70cd49f2c5e1885dd6a0a93f637f` |
-| `collect_requirements_perp` | `0x487ccd0..0x487cee0` | `0x487bcd0..0x487bee0` | 528 B | `fe2f8e7202c88c2e4b4c3efa30cced50a327cbecd016c1eb5918537a94d5b1fd` |
-| `RequirementIterator::next_perp` | `0x47bcea0..0x47bcfb0` | `0x47bbea0..0x47bbfb0` | 272 B | `569310416da297a16740f8f350b852eec0e194d1eb9762dc6373b6105ffcd350` |
+| `collect_requirements_perp` | `0x487ccd0..0x487ced1` | `0x487bcd0..0x487bed1` | 513 B | `c4b3b2a81799472eac225ba61d6a822eb8f584d8ab7c6dacbef89d2708b3a933` |
+| `RequirementIterator::next_perp` | `0x47bcea0..0x47bcfa9` | `0x47bbea0..0x47bbfa9` | 265 B | `c778cafb52d52b0621aec4466b0bac8dcd2457682919ec701f9f2b87f82b16c4` |
 
 #### A. Monomorphized Iterator Dispatch
-- The iterator is hard-bounded to 4 entries (`0..=3`).
+- The iterator is hard-bounded to 4 entries (`0..=3`). The loaded tier byte has no local bounds check; validity of its upstream domain remains unresolved.
 - In `0x26b58d0` (Spot), the state tier byte is loaded from `[r15 + 0x8f2]`.
   The multiplier table is resolved via four signed 32-bit displacements at `0x3f0994` pointing into `.rodata` base.
 - In `0x47bcea0` (Perp), the state tier byte is loaded from `[r15 + 0x1372]`.
@@ -92,7 +94,7 @@ Coordinates are ELF virtual addresses (VA). `.rodata` VA equals file offset; `.t
 #### B. Caller Collection & Aggregation
 - `0x2512770` and `0x487ccd0` invoke their respective iterator monomorphs in a loop.
 - They allocate heap storage for up to 4 elements (capacity 4, elements 0..4, initial buffer size 0x20 = 32 bytes) and collect results into a `Vec<u64>` vector.
-- The requirements are summed using checked addition with saturation behavior.
+- The caller loops use checked addition and overflow handling; opaque helper behavior and whole-caller equivalence are not established.
 
 ---
 
@@ -111,7 +113,7 @@ The following high-level role models are inferred based on search leads from `re
 Not yet implemented in clean-room Rust.
 An independent clean-room Rust implementation must:
 1. Enforce the exact 4x4 multiplier table values matching both Spot and Perp monomorphs.
-2. Read the appropriate state tier index (`0..=3`) according to the active exchange scope.
+2. Establish the upstream tier-byte domain before implementing unchecked table indexing.
 3. Detect `u64` multiplication overflow with fail-closed error handling.
 4. Correctly aggregate requirements across the 4 kinds.
 5. Be independently authored under MIT license without copying from unlicensed reference repositories.
@@ -120,7 +122,7 @@ An independent clean-room Rust implementation must:
 ## Results and limitations
 
 - Metrics (explicit denominators):
-  - FDE extents validated: 4/4 (1,936 B total).
+  - FDE extents validated: 4/4 (1,906 B total).
   - Multiplier tables verified across both monomorphs: 16/16 cells (100% agreement).
   - Panic source records mapped: 3/3 (`/home/ubuntu/hl/code_Mainnet/l1/src/exchange/stake_requirement.rs:5:62`).
 - Limitations & Inferences:

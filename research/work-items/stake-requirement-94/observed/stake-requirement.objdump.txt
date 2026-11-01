@@ -1,7 +1,7 @@
 ================================================================================
-=== FDE 0x2512770..0x2512ad0: exchange::stake_requirement::collect_requirements_spot (864 B)
+=== FDE 0x2512770..0x2512ac8: exchange::stake_requirement::collect_requirements_spot (856 B)
 ================================================================================
-C:\Users\ashhb\OpenBot\Shared\hyperliquid-source\artifacts\node\94\hl-node:     file format elf64-x86-64
+artifacts/node/94/hl-node:     file format elf64-x86-64
 
 
 Disassembly of section .text:
@@ -218,19 +218,11 @@ Disassembly of section .text:
  2512aba:	48 89 df             	mov    rdi,rbx
  2512abd:	e8 4e d6 14 03       	call   5660110 <_Unwind_Resume@plt>
  2512ac2:	ff 15 60 b6 25 03    	call   QWORD PTR [rip+0x325b660]        # 576e128 <__register_atfork@plt+0x10cee8>
- 2512ac8:	cc                   	int3
- 2512ac9:	cc                   	int3
- 2512aca:	cc                   	int3
- 2512acb:	cc                   	int3
- 2512acc:	cc                   	int3
- 2512acd:	cc                   	int3
- 2512ace:	cc                   	int3
- 2512acf:	cc                   	int3
 
 ================================================================================
 === FDE 0x26b58d0..0x26b59e0: exchange::stake_requirement::RequirementIterator::next_spot (272 B)
 ================================================================================
-C:\Users\ashhb\OpenBot\Shared\hyperliquid-source\artifacts\node\94\hl-node:     file format elf64-x86-64
+artifacts/node/94/hl-node:     file format elf64-x86-64
 
 
 Disassembly of section .text:
@@ -312,9 +304,9 @@ Disassembly of section .text:
  26b59db:	e8 30 a7 fa 02       	call   5660110 <_Unwind_Resume@plt>
 
 ================================================================================
-=== FDE 0x487ccd0..0x487cee0: exchange::stake_requirement::collect_requirements_perp (528 B)
+=== FDE 0x487ccd0..0x487ced1: exchange::stake_requirement::collect_requirements_perp (513 B)
 ================================================================================
-C:\Users\ashhb\OpenBot\Shared\hyperliquid-source\artifacts\node\94\hl-node:     file format elf64-x86-64
+artifacts/node/94/hl-node:     file format elf64-x86-64
 
 
 Disassembly of section .text:
@@ -453,26 +445,11 @@ Disassembly of section .text:
  487cec3:	ff 15 47 11 ef 00    	call   QWORD PTR [rip+0xef1147]        # 576e010 <__register_atfork@plt+0x10cdd0>
  487cec9:	48 89 df             	mov    rdi,rbx
  487cecc:	e8 3f 32 de 00       	call   5660110 <_Unwind_Resume@plt>
- 487ced1:	cc                   	int3
- 487ced2:	cc                   	int3
- 487ced3:	cc                   	int3
- 487ced4:	cc                   	int3
- 487ced5:	cc                   	int3
- 487ced6:	cc                   	int3
- 487ced7:	cc                   	int3
- 487ced8:	cc                   	int3
- 487ced9:	cc                   	int3
- 487ceda:	cc                   	int3
- 487cedb:	cc                   	int3
- 487cedc:	cc                   	int3
- 487cedd:	cc                   	int3
- 487cede:	cc                   	int3
- 487cedf:	cc                   	int3
 
 ================================================================================
-=== FDE 0x47bcea0..0x47bcfb0: exchange::stake_requirement::RequirementIterator::next_perp (272 B)
+=== FDE 0x47bcea0..0x47bcfa9: exchange::stake_requirement::RequirementIterator::next_perp (265 B)
 ================================================================================
-C:\Users\ashhb\OpenBot\Shared\hyperliquid-source\artifacts\node\94\hl-node:     file format elf64-x86-64
+artifacts/node/94/hl-node:     file format elf64-x86-64
 
 
 Disassembly of section .text:
@@ -551,11 +528,4 @@ Disassembly of section .text:
  47bcf9c:	66 c7 03 c0 00       	mov    WORD PTR [rbx],0xc0
  47bcfa1:	48 89 c7             	mov    rdi,rax
  47bcfa4:	e8 67 31 ea 00       	call   5660110 <_Unwind_Resume@plt>
- 47bcfa9:	cc                   	int3
- 47bcfaa:	cc                   	int3
- 47bcfab:	cc                   	int3
- 47bcfac:	cc                   	int3
- 47bcfad:	cc                   	int3
- 47bcfae:	cc                   	int3
- 47bcfaf:	cc                   	int3
 

@@ -26,7 +26,7 @@ class StakeRequirementStaticTests(unittest.TestCase):
         analysis = srs.analyse(data)
         self.assertEqual(len(analysis["fdes"]), 4)
         total_bytes = sum(f["bytes"] for f in analysis["fdes"])
-        self.assertEqual(total_bytes, 1936)
+        self.assertEqual(total_bytes, 1906)
 
     def test_multiplier_matrix(self):
         data = BINARY.read_bytes()

@@ -1,44 +1,5 @@
 #!/usr/bin/env python3
-"""RE/SubAccount: Node #94 sub-account lifecycle, capacity tiers, and serde static verification tool.
-
-Static, offline verification tool. Zero execution of captured binaries.
-Zero external network calls. Standard Python library only.
-
-Target:
-    artifacts/node/94/hl-node (SHA-256: 3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f)
-
-Scope:
-    1. Verification of binary byte extents for 11 sub-account FDEs (6,992 B total):
-       - FDE 1 (0x36f3610..0x36f3c20, 1552 B): SubAccounts::create_sub_account_with_address
-       - FDE 2 (0x36f3c20..0x36f3ed0, 688 B): SubAccountAddressDeriver::derive_sub_account_user
-       - FDE 3 (0x36f3ed0..0x36f3fe0, 272 B): SubAccounts::lookup_master
-       - FDE 4 (0x36f3fe0..0x36f40d0, 240 B): SubAccounts::is_sub_account_user
-       - FDE 5 (0x36f40d0..0x36f43c0, 752 B): SubAccounts::modify_sub_account_name
-       - FDE 6 (0x36f43c0..0x36f4630, 624 B): SubAccounts::validate_new_name
-       - FDE 7 (0x36f4630..0x36f4970, 832 B): SubAccountEntry::serialize (JSON)
-       - FDE 8 (0x36f4970..0x36f4c50, 736 B): SubAccountEntry::serialize (MsgPack)
-       - FDE 9 (0x36f4c50..0x36f4df0, 416 B): SubAccountEntry visitor
-       - FDE 10 (0x36f4df0..0x36f4e80, 144 B): SubAccountEntry helper
-       - FDE 11 (0x36f4e80..0x36f5160, 736 B): SubAccounts::serialize (JSON)
-    2. Verification of mapped source panic record in .data.rel.ro / .rela.dyn:
-       - 0x56f1c38: line 69, col 13 in /home/ubuntu/hl/code_Mainnet/l1/src/sub_account.rs
-    3. Verification of literal domain string and serde keys in .rodata:
-       - 0x2035a0: "createSubAccount" (16 B)
-       - 0x598011: "n" (SERDE_FIELD_NAME)
-       - 0x598335: "s" (SERDE_FIELD_SUB_ACCOUNT)
-       - 0x5983a1: "m" (SERDE_FIELD_MASTER)
-       - 0x59854e: "user_to_sub_accounts" (SERDE_FIELD_USER_TO_SUB_ACCOUNTS)
-       - 0x598562: "sub_account_to_master" (SERDE_FIELD_SUB_ACCOUNT_TO_MASTER)
-    4. Verification of numeric constants:
-       - 0x20a960: 100.0 (display USD divisor)
-       - MIN_CREATE_EQUITY_RAW = 10,000,000 (0x989680)
-       - SUB_ACCOUNT_CAP_EQUITY_STEP_RAW = 10,000,000_000
-       - SUB_ACCOUNT_CAP_BASE = 10 (0xa)
-       - SUB_ACCOUNT_CAP_MAX_BONUS = 40 (0x28)
-       - MAX_NAME_BYTES = 16 (0x10)
-       - MAX_WIRE_NAME_BYTES = 100 (0x64)
-    5. Verification of 24 exact opcode controls for error codes (214, 215, 216, 217, 220, 221, 323, 390).
-"""
+'Node #94 sub-account selected static observations. Actual FDE extents are decoded; names and error labels remain inferred. Local models cover only explicitly documented predicates.'
 
 import argparse
 import bisect
@@ -85,9 +46,9 @@ FDES = [
     {
         'name': 'SubAccounts::create_sub_account_with_address',
         'start': 0x36f3610,
-        'end': 0x36f3c20,
-        'size': 1552,
-        'sha256': 'b29d7ae9f9ead60e3ec556691b1ee77505961c849bd97a47643c9fceec671fc8',
+        'end': 0x36f3c15,
+        'size': 1541,
+        'sha256': '57d9433443acfdcd5eaaa3836cd47709b12214b865da557db5ed977b9ac3f068',
     },
     {
         'name': 'SubAccountAddressDeriver::derive_sub_account_user',
@@ -99,65 +60,65 @@ FDES = [
     {
         'name': 'SubAccounts::lookup_master',
         'start': 0x36f3ed0,
-        'end': 0x36f3fe0,
-        'size': 272,
-        'sha256': '2f6656ca99969c889d100c0a93054970562610047efdfdd75bc8fb8f24ea4af6',
+        'end': 0x36f3fd1,
+        'size': 257,
+        'sha256': '7173ed32bc1c068900e1a756332a573f32acdb8039d90fa99af844c4ac73ba51',
     },
     {
         'name': 'SubAccounts::is_sub_account_user',
         'start': 0x36f3fe0,
-        'end': 0x36f40d0,
-        'size': 240,
-        'sha256': 'a3e460b0212059b9eb5338d77f1dcd090517a4411632fc6907d93c3bf81d9a7a',
+        'end': 0x36f40cd,
+        'size': 237,
+        'sha256': '86c57d73478a3158a4f600af534816cbfb65cbf0b53acce61125d06de8728e8a',
     },
     {
         'name': 'SubAccounts::modify_sub_account_name',
         'start': 0x36f40d0,
-        'end': 0x36f43c0,
-        'size': 752,
-        'sha256': '3dee0465c560f389fcb87c3057710fbdf0a619fb2e0549429f298d585cc10ef2',
+        'end': 0x36f43bc,
+        'size': 748,
+        'sha256': 'fc0504af35fef45e5e3dd2381eda4382f7654760ac495de84876f587810d2248',
     },
     {
         'name': 'SubAccounts::validate_new_name',
         'start': 0x36f43c0,
-        'end': 0x36f4630,
-        'size': 624,
-        'sha256': '5297cc093a2558a1e1f5a547190d13e7b9af1a25219c659711fe41b0114665a1',
+        'end': 0x36f4627,
+        'size': 615,
+        'sha256': '20479604d0e6d4fd5ea2de0cef68d10e6183721bcf8bbb4343a0127554338b3f',
     },
     {
         'name': 'SubAccountEntry::serialize_json',
         'start': 0x36f4630,
-        'end': 0x36f4970,
-        'size': 832,
-        'sha256': 'b1ec27196c2c7258b74633ffb89c4a7e788ca4887a67a75cd2d68dc9743a11b9',
+        'end': 0x36f4964,
+        'size': 820,
+        'sha256': '1dfdfbbdd41c15ea5c2437e235516de65be1794cfadb50c63722336c510dba5a',
     },
     {
         'name': 'SubAccountEntry::serialize_msgpack',
         'start': 0x36f4970,
-        'end': 0x36f4c50,
-        'size': 736,
-        'sha256': '2aa2e768b58cc1eae94e399aebf44f28386da11da822d4f13dd09106b9916366',
+        'end': 0x36f4c46,
+        'size': 726,
+        'sha256': '5e970148cb0466c05991731a3010fa735315d81b15b35ab78ae61095b4138331',
     },
     {
         'name': 'SubAccountEntry::serialize_visitor',
         'start': 0x36f4c50,
-        'end': 0x36f4df0,
-        'size': 416,
-        'sha256': '3175166b73d3b18b06534927755a0a66f29db8d36acc5bbfc8c7a285262d319b',
+        'end': 0x36f4dec,
+        'size': 412,
+        'sha256': '72a6376223f9eb1b84c904324eeb8a975e76317bcbf78c5ad964e0652c5220a2',
     },
     {
         'name': 'SubAccountEntry::serialize_helper',
         'start': 0x36f4df0,
-        'end': 0x36f4e80,
-        'size': 144,
-        'sha256': '24203dad306ca68cdd630676d95d744d44603c427d3df5a56d0cf99e0a0dd7d9',
+        'end': 0x36f4e73,
+        'size': 131,
+        'sha256': 'cc35c4e1b912086cf40b2b6f9d89bb340e549c9091230046aed6e21965a49e83',
     },
     {
         'name': 'SubAccounts::serialize_json',
         'start': 0x36f4e80,
-        'end': 0x36f5160,
-        'size': 736,
-        'sha256': '07b493799790bf68246163af3b7880a6078673aacc526cb90148b8dc7fe933b0',
+        'end': 0x36f5158,
+        'size': 728,
+        'sha256': 'cef7adb6007357d1e653746e007bfe31a3831e865f2f5dab7971fc4b47152df1',
     },
 ]
 
@@ -342,11 +303,18 @@ CONTROLS = [
 
 
 def max_sub_accounts_for_equity(equity_raw: int) -> int:
+    """Capacity arithmetic only, for an unsigned 64-bit equity value."""
+    if type(equity_raw) is not int or not 0 <= equity_raw < 1 << 64:
+        raise ValueError("equity_raw must be u64")
     bonus = equity_raw // SUB_ACCOUNT_CAP_EQUITY_STEP_RAW
     return SUB_ACCOUNT_CAP_BASE + min(bonus, SUB_ACCOUNT_CAP_MAX_BONUS)
 
 
 def validate_create_eligibility(count: int, equity_raw: int) -> int:
+    """Equity/count predicates only; name and address uniqueness remain separate."""
+    if type(count) is not int or not 0 <= count < 1 << 64:
+        raise ValueError("count must be u64")
+    max_sub_accounts_for_equity(equity_raw)
     if equity_raw < MIN_CREATE_EQUITY_RAW:
         return ERR_SUB_ACCOUNTS_NOT_ELIGIBLE
     if count >= max_sub_accounts_for_equity(equity_raw):
@@ -355,6 +323,7 @@ def validate_create_eligibility(count: int, equity_raw: int) -> int:
 
 
 def validate_sub_account_name(name: str) -> int:
+    # This checks only byte length, not name uniqueness or the full create path.
     name_bytes = name.encode('utf-8')
     if len(name_bytes) == 0 or len(name_bytes) > MAX_NAME_BYTES:
         return ERR_SUB_ACCOUNT_INVALID_NAME
@@ -416,6 +385,16 @@ class Image:
 
 def analyse(data: bytes):
     image = Image(data)
+
+    from elf_index import sections as elf_sections
+    from fde_extents import eh_frame_records
+    _, actual_fdes = eh_frame_records(data, elf_sections(data))
+    actual_ends = {f['start']: f['end'] for f in actual_fdes}
+    for declared in FDES:
+        start = declared.get('start', declared.get('start_va'))
+        end = declared.get('end', declared.get('end_va'))
+        if actual_ends.get(start) != end or declared['size'] != end - start:
+            raise EvidenceError(f'actual FDE extent mismatch at {start:#x}')
 
     fde_findings = []
     for fde in FDES:
@@ -568,9 +547,9 @@ def generate_packet(data: bytes):
         'objdump', '-d', '--no-show-raw-insn',
         f"--start-address={hex(FDES[0]['start'])}",
         f"--stop-address={hex(FDES[-1]['end'])}",
-        str(ROOT / BINARY_REL),
+        BINARY_REL,
     ]
-    res = subprocess.run(objdump_cmd, capture_output=True, text=True, check=True)
+    res = subprocess.run(objdump_cmd, capture_output=True, text=True, check=True, cwd=ROOT)
     with open(PACKET / 'observed' / 'sub-account.objdump.txt', 'w', newline='\n', encoding='utf-8') as f:
         f.write(res.stdout)
 
@@ -583,6 +562,8 @@ def generate_packet(data: bytes):
 
 Static verification evidence packet for `l1/src/sub_account.rs` extracted from `artifacts/node/94/hl-node`
 (SHA-256: `{EXPECTED_SHA256}`). Zero binary execution; offline ELF analysis only.
+
+Names and error labels are inferred; numeric bytes and local predicates are observed. The models cover only equity/count and UTF-8 byte-length predicates, not full admission or uniqueness. Original padded spans and exports are preserved in `../RE-001-nxtlvlfirm-review-20261031/original-submissions/615/`.
 
 ## Subsystem Extents
 Total verified routine footprint: **11 FDEs**, **{sum(f['size'] for f in FDES):,} bytes**.
@@ -607,17 +588,17 @@ Total verified routine footprint: **11 FDEs**, **{sum(f['size'] for f in FDES):,
 - `MAX_NAME_BYTES`: `16` (`0x10` at `0x36f43d1`)
 - `MAX_WIRE_NAME_BYTES`: `100` (`0x64` at `0x36f390c`)
 
-## Status Codes Ground Truth
+## Observed codes and inferred labels
 - `SUCCESS_CODE = 390` (`0x186`)
 - `ERR_TOO_MANY_SUB_ACCOUNTS = 214` (`0xd6`)
 - `ERR_SUB_ACCOUNT_NAME_NOT_UNIQUE = 215` (`0xd7`)
 - `ERR_DUPLICATE_SUB_ACCOUNT_USER = 216` (`0xd8`)
 - `ERR_SUB_ACCOUNT_INVALID_NAME = 217` (`0xd9`)
-- `ERR_SUB_ACCOUNT_TRANSFER_NOT_ALLOWED = 218` (`0xda`)
-- `ERR_SUB_ACCOUNT_NOT_ALLOWED = 219` (`0xdb`)
+- Unverified reference label outside these controls: `ERR_SUB_ACCOUNT_TRANSFER_NOT_ALLOWED = 218` (`0xda`)
+- Unverified reference label outside these controls: `ERR_SUB_ACCOUNT_NOT_ALLOWED = 219` (`0xdb`)
 - `ERR_SUB_ACCOUNT_NOT_REGISTERED = 220` (`0xdc`)
 - `ERR_SUB_ACCOUNTS_NOT_ELIGIBLE = 221` (`0xdd`)
-- `ERR_SELF_TRANSFER = 222` (`0xde`)
+- Unverified reference label outside these controls: `ERR_SELF_TRANSFER = 222` (`0xde`)
 - `ERR_FULL_NAME_TOO_LONG = 323` (`0x143`)
 """
     with open(PACKET / 'README.md', 'w', newline='\n', encoding='utf-8') as f:

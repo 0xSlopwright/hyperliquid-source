@@ -76,9 +76,9 @@ the `.eh_frame_hdr` search table (121,299 entries) plus each FDE's own
    27 direct `call rel32` sites reach the 9 visitor constructor FDEs across 9 unique caller functions
    (9 calls for u64, 9 for i64, 9 for intermediate_u64; 0 direct calls for NonZeroU64 vtable methods).
    The 9 caller functions comprise:
-   - Set 1 (JSON/text format, 1733 bytes each): `0x2812c00..0x28132c5`, `0x2813320..0x28139e5`, `0x2813af0..0x28141b5`
+   - Set 1 (inferred text-decoder family, 1733 bytes each): `0x2812c00..0x28132c5`, `0x2813320..0x28139e5`, `0x2813af0..0x28141b5`
    - Set 2 (MessagePack/binary integer decoder, 896 bytes each): `0x2e625e0..0x2e62960`, `0x2e957e0..0x2e95b60`, `0x2ee1ec0..0x2ee2240`
-   - Set 3 (Bincode/compact wire visitor, 1733 bytes each): `0x35938d0..0x3593f95`, `0x3593fa0..0x3594665`, `0x35947f0..0x3594eb5`
+   - Set 3 (another inferred text-decoder family, 1733 bytes each): `0x35938d0..0x3593f95`, `0x3593fa0..0x3594665`, `0x35947f0..0x3594eb5`
    Every single caller function contains all three visitor error constructor call sites.
 
 4. Multi-step admission predicate.
@@ -91,11 +91,9 @@ the `.eh_frame_hdr` search table (121,299 entries) plus each FDE's own
      Combined admission: strictly positive values (`value > 0`, range `1..i64::MAX`).
 
 5. Accepted value preservation.
-   On the accepted path, the validated value is stored unchanged to `[rdi+8]` and tag byte `9` (`Ok(NonZeroU64)`)
-   is written to `[rdi]` without clamping, scaling, or rounding.
+   In the 896-byte caller family the accepted value is stored to `[rdi+8]` and tag byte `9` to `[rdi]`. The 1,733-byte families instead return the value in `rdx` with `eax = 0`. These are local carriers; inferred Rust type names and decoded helper semantics are not proven.
 
-Analysis is complete for the declared scope (full `.text` scan for LEAs and direct calls;
-full caller FDEs scanned for guards and branches).
+The tool performs a full raw `.text` candidate scan. Independent GNU disassembly confirms the 27 reported calls are instruction-aligned and the selected 9 caller and 12 constructor extents match actual FDE records. The tool does not prove absence of indirect references or symbol ownership. Local sign/zero branches support the integer predicates; the sample vectors alone do not establish them.
 
 ## Implementation and comparison
 
@@ -114,7 +112,7 @@ An independent clean-room Rust implementation must:
   - FDE-bounded constructors: 12/12.
   - Caller functions: 9/9.
   - Direct call sites: 27/27.
-  - Predicate sample vectors verified: 190/190.
+  - Self-derived predicate sample vectors evaluated: 190/190 (not an independent oracle).
 - Unit tests:
   - `tests/test_pxpriv_admission.py` (8/8 passing): input digest mismatch refusal,
     missing artifact rejection, synthetic direct call decoding, admission models,

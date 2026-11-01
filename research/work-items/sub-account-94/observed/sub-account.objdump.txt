@@ -1,5 +1,5 @@
 
-C:\Users\ashhb\OpenBot\Shared\hyperliquid-source\artifacts\node\94\hl-node:     file format elf64-x86-64
+artifacts/node/94/hl-node:     file format elf64-x86-64
 
 
 Disassembly of section .text:
@@ -1767,11 +1767,3 @@ Disassembly of section .text:
  36f5145:	call   *0x2078fcd(%rip)        # 576e118 <__register_atfork@plt+0x10ced8>
  36f514b:	lea    0x1ffe316(%rip),%rdi        # 56f3468 <__register_atfork@plt+0x92228>
  36f5152:	call   *0x2078ff8(%rip)        # 576e150 <__register_atfork@plt+0x10cf10>
- 36f5158:	int3
- 36f5159:	int3
- 36f515a:	int3
- 36f515b:	int3
- 36f515c:	int3
- 36f515d:	int3
- 36f515e:	int3
- 36f515f:	int3

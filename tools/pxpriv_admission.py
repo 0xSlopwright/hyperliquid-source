@@ -89,24 +89,24 @@ class EvidenceError(Exception):
     pass
 
 
-def load_expected_artifact(root=ROOT, rel_path=BINARY_REL):
-    art_path = root / 'provenance' / 'artifacts.json'
-    if not art_path.is_file():
-        raise EvidenceError(f'artifacts manifest not found: {art_path}')
+def load_expected_artifact(root=ROOT, rel_path=BINARY_REL) -> dict:
+    from artifacts import load_manifest
     try:
-        manifest = json.loads(art_path.read_text(encoding='utf-8'))
-    except Exception as exc:
-        raise EvidenceError(f'failed to parse {art_path}: {exc}') from exc
-    for item in manifest.get('files', []):
-        if item.get('path') == rel_path:
-            return item
-    raise EvidenceError(f'{rel_path} not listed in {art_path}')
+        manifest = load_manifest(root)
+    except (ValueError, OSError) as exc:
+        raise EvidenceError(str(exc)) from exc
+    entries = [entry for entry in manifest['files'] if entry['path'] == rel_path]
+    if len(entries) != 1:
+        raise EvidenceError(f'expected one artifact entry for {rel_path}')
+    return entries[0]
 
 
 def check_digest(data, root=ROOT, rel_path=BINARY_REL):
     item = load_expected_artifact(root, rel_path)
     expected_hash = item['sha256']
     expected_size = item['size']
+    if rel_path != BINARY_REL or (expected_hash, expected_size) != (EXPECTED_SHA256, EXPECTED_SIZE):
+        raise EvidenceError('manifest identity differs from the selected node94 baseline')
 
     if len(data) != expected_size:
         raise EvidenceError(f'binary size mismatch: {len(data)} != {expected_size}')

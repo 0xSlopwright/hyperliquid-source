@@ -4,6 +4,8 @@ import hashlib
 from pathlib import Path
 import sys
 import unittest
+import tempfile
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
@@ -63,7 +65,7 @@ class SubAccountStaticTests(unittest.TestCase):
                 fde['sha256'],
                 f"Digest mismatch in FDE {fde['name']} ({hex(fde['start'])}..{hex(fde['end'])})"
             )
-        self.assertEqual(total_bytes, 6992)
+        self.assertEqual(total_bytes, 6903)
 
     def test_panic_records(self):
         image = Image(self.data)
@@ -170,16 +172,14 @@ class SubAccountStaticTests(unittest.TestCase):
             self.assertEqual(actual_sha, expected_sha, f'Hash mismatch on {rel_path}')
 
     def test_packet_regeneration(self):
-        generate_packet(self.data)
-        manifest_path = PACKET / 'MANIFEST.sha256'
-        lines = manifest_path.read_text(encoding='utf-8').strip().split('\n')
-        for line in lines:
-            if not line.strip():
-                continue
-            expected_sha, rel_path = line.split(maxsplit=1)
-            file_path = PACKET / rel_path
-            actual_sha = hashlib.sha256(file_path.read_bytes()).hexdigest()
-            self.assertEqual(actual_sha, expected_sha, f'Hash mismatch after regeneration on {rel_path}')
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            with patch('sub_account_static.PACKET', output):
+                generate_packet(self.data)
+            for line in (PACKET / 'MANIFEST.sha256').read_text().splitlines():
+                expected_sha, rel_path = line.split(maxsplit=1)
+                self.assertEqual((PACKET / rel_path).read_bytes(), (output / rel_path).read_bytes())
+                self.assertEqual(hashlib.sha256((output / rel_path).read_bytes()).hexdigest(), expected_sha)
 
 
 if __name__ == '__main__':

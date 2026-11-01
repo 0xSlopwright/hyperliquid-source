@@ -1,7 +1,7 @@
 {
   "status": "VERIFIED",
   "fde_count": 11,
-  "total_fde_bytes": 6992,
+  "total_fde_bytes": 6903,
   "panic_count": 1,
   "rodata_constants_count": 7,
   "controls_count": 24,
