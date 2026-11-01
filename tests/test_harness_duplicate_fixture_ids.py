@@ -23,8 +23,8 @@ class DuplicateFixtureIdsTests(unittest.TestCase):
 
     def test_duplicate_fixture_id_rejected(self):
         req = self._request()
-        req['fixture_ids'] = ['syn-94-pos-equal-window-v1',
-                              'syn-94-pos-equal-window-v1']
+        req['fixture_ids'] = ['94-pos-equal-window-v1',
+                              '94-pos-equal-window-v1']
         with self.assertRaisesRegex(ValueError, 'duplicate fixture_id'):
             hp.validate_request(req, self.fixtures)
 
@@ -32,11 +32,11 @@ class DuplicateFixtureIdsTests(unittest.TestCase):
         plan = hp.validate_request(self._request(), self.fixtures)
         self.assertEqual(plan['status'], 'planned')
         self.assertEqual(plan['fixture_ids'],
-                         ['syn-94-pos-equal-window-v1'])
+                         ['94-pos-equal-window-v1'])
 
     def test_two_distinct_fixtures_still_planned(self):
         req = self._request()
-        req['fixture_ids'] = ['syn-94-pos-equal-window-v1',
+        req['fixture_ids'] = ['94-pos-equal-window-v1',
                               'syn-94-neg-corrupt-byte-v1']
         plan = hp.validate_request(req, self.fixtures)
         self.assertEqual(plan['status'], 'planned')

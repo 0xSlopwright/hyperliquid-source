@@ -35,7 +35,7 @@ class FixturesDigestTypeTests(unittest.TestCase):
         fixtures = hp.validate_fixtures(
             hp.load_json(PACKET / 'fixture-identities.json'), protocol
         )
-        self.assertIn('syn-94-pos-equal-window-v1', fixtures)
+        self.assertIn('94-pos-equal-window-v1', fixtures)
 
 
 if __name__ == '__main__':
