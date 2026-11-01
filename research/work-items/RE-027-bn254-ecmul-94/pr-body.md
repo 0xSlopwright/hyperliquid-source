@@ -53,7 +53,52 @@ on the table, not evidence for this function. RE-026 recovered the sibling `run_
 
 ### make verify test catalogue-check output
 
-PLACEHOLDER: `make verify test catalogue-check` has not been run for this
-packet yet; its output will be recorded here.
+GNU objdump 2.44, head `f237758f1043`:
+
+```text
+$ make verify test catalogue-check PYTHON=.venv/bin/python
+Ran 2137 tests in 726.597s
+OK (skipped=2)
+...
+{
+  "path": "x",
+  "sha256": "y",
+  "provider_id": "z"
+}
+Catalogue and progress tables regenerated.
+Catalogue and progress tables match pinned inputs.
+Verified 1 imported files and all pinned source repositories.
+Verified 1 imported files and all pinned source repositories.
+Verified 0 imported files and all pinned source repositories.
+Verified 0 imported files and all pinned source repositories.
+{"call_sites": 6, "call_sites_with_exactly_one_sign_guard": 6, "constructors": 5, "guard_value_is_formatted_value": true, "lea_refs": 5, "ok_path_stores_unchanged": 4}
+.venv/bin/python tools/catalogue.py --check
+Catalogue and progress tables match pinned inputs.
+MAKE_EXIT=0
+```
+
+LLVM objdump shim (`PATH=llvmshim:$PATH`); same 46 errors and 88 skips as origin/main 308e5127 under the same shim, 0 new, 0 gone, head `f237758f1043`:
+
+```text
+$ make verify test catalogue-check PYTHON=.venv/bin/python
+Ran 2029 tests in 645.624s
+FAILED (errors=46, skipped=88)
+...
+{"all_sites_one_tied_guard": true, "call_sites": 34, "call_sites_with_exactly_one_sign_guard": 34, "caller_functions": 34, "constructors": 16, "guard_value_is_formatted_value": 34, "jns_guards": 23, "js_guards": 11, "lea_refs": 16, "mismatch_vs_message_predicate": 0, "narrow_guards": 21, "narrow_mismatch_vs_message_predicate": 0, "ok_path_stores_unchanged": 11, "unexplained_error_entries": 0}
+{
+  "path": "x",
+  "sha256": "y",
+  "provider_id": "z"
+}
+Catalogue and progress tables regenerated.
+Catalogue and progress tables match pinned inputs.
+Verified 1 imported files and all pinned source repositories.
+Verified 1 imported files and all pinned source repositories.
+Verified 0 imported files and all pinned source repositories.
+Verified 0 imported files and all pinned source repositories.
+{"call_sites": 6, "call_sites_with_exactly_one_sign_guard": 6, "constructors": 5, "guard_value_is_formatted_value": true, "lea_refs": 5, "ok_path_stores_unchanged": 4}
+make: *** [Makefile:17: test] Error 1
+MAKE_EXIT=2
+```
 
 <!-- run-receipt.mjs disclose: Grok-Bot -->
