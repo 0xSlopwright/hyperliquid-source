@@ -1,4 +1,4 @@
-# RE-003: integration review of PRs #1153–#1167
+# RE-003: integration review of PRs #1153–#1169
 
 Target: Linux x86-64 node #94, SHA-256
 `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`.
@@ -84,8 +84,8 @@ live network/chain action, progress promotion or hosted CI success is claimed.
 ## Additional submissions received during review
 
 PRs #1161–#1163 add only new packet, tool and test files. Their tests run
-separately while the original complete 796-file inventory continues; the final
-validation inventory includes all 803 modules after the later additions. `reviewed-heads.json` records
+separately while the original complete 796-file inventory continues; the validation
+inventory reached 803 modules at the first publication and 805 after #1168–#1169. `reviewed-heads.json` records
 the additional exact heads.
 
 The u128 division collector was rerun against the already retained, fully
@@ -140,3 +140,26 @@ reader. Its minimal guard is reviewed with all four affected test modules:
 53 tests pass with zero skips, including real target transitions and existing
 relocation/FDE corruption controls. Those reruns replace the earlier parser
 results in the final aggregate. All original PR heads remain merge ancestors.
+
+## Validator state and resting-order parser (#1168–#1169)
+
+These two submissions arrived after the first publication at
+`ef9226639e3162396b762aef518ab791825072dc`. The validator-state contribution
+adds only its own tool, test and evidence packet. All 21 tests pass without
+skips. One fresh generation reproduces all 15 generated files exactly,
+including 476 named cases, 30 generated states and 179 sampled mutants
+(139 killed and 40 surviving). Its 16-entry manifest verifies. The independent
+GNU provider also matches the bytes and instruction boundaries of all 9,610
+retained rows in 40 FDE bodies; this checks decoder boundaries, not all-input
+behavior. The packet's limits remain: partial helper scope, unclassified
+survivors, incomplete outcome-variant acceptance and empty signature rows.
+
+The resting-order parser change rejects duplicate ELF section names. The
+three affected modules are rerun together on the materialized node #94,
+including the original target packet reproduction and existing duplicate-FDE
+controls. Their exact results replace the earlier module results in the final
+aggregate. The new regression controls and the validator-state module bring
+the discovery inventory to 805 modules; no unchanged module was counted twice.
+The original 803-module results are retained through Git history. All reviewed
+source pins, artifact identities and component completion gates are unchanged
+except the explicitly added validator tool and modified resting-order parser.

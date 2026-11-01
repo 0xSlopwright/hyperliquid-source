@@ -76,6 +76,16 @@
       "head": "4d05f806eea831058a973ee5dabae059253cea29",
       "title": "fix(tooling): reject duplicate section names in order_relation_transitions Image",
       "originally_draft": false
+    },
+    "1168": {
+      "head": "8bb29ec304da5d6867d13155ff729f156ed0fe81",
+      "title": "staking: pin node #94 validator state wire both ways: Staking epochs, L1 vote key enum and tracker, stream tracker, defaults",
+      "originally_draft": false
+    },
+    "1169": {
+      "head": "b71c00c44bd2b0399a4e48485945128ea6b6d607",
+      "title": "fix(tooling): reject duplicate section names in match_resting_order Image",
+      "originally_draft": false
     }
   }
 }

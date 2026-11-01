@@ -17,6 +17,9 @@
   "tests/test_fork_bases.py": "84dc89c3d3c6b3524acb16658e05f83b80df69df12ef3eff8d6b33a0df3b0d6f",
   "tests/test_fse_weight_table.py": "196ceba288d43cd5e097c4442e42760fd510cc534b334fe6dab6931d33e230fc",
   "tests/test_funding_config_writers.py": "7828a2b63ba0a4bcc7087fedb0bf23e728ac718e64d42e63c170ca80599c6ffb",
+  "tests/test_match_resting_order.py": "f4e33ba71f55e33aced9868c34d6c783ab4a59d501b28b4cade12c8cd0b98807",
+  "tests/test_match_resting_order_duplicate_fde.py": "c212e1414d27d7bc1186517b71dfe91cdcd54d343f28aaf6807702a328325fc0",
+  "tests/test_match_resting_order_duplicate_section.py": "43160a3b8835b928f85230d22c9f99c68b223f0c5853a25e0c4e720c4be856b8",
   "tests/test_order_relation_duplicate_section.py": "ebbc7bde4e07be63919976924126538680b8c666a2a96aee7dd9641844cc9f40",
   "tests/test_run_tests.py": "ba1be9cbe9d3e90f629eca8333d8ada1693b383d0dab9ad066446dc13f3a1d64",
   "tests/test_spot_balance_ledger.py": "f3652534e6f63de5d646a858ce56fea1050b57e5c00fb59ad6eaccd65690f86d",
@@ -25,6 +28,7 @@
   "tests/test_state_parser_integration.py": "cc57f3e00a4ae1a40b333f96f604e01b1178f61e655aff358b03e9f965e97cb2",
   "tests/test_stream_msg_static.py": "e82677b6303c9faca4afd50be90fa97da1f08fd182fb51b76502ff3b5093c67c",
   "tests/test_u128_division_leaf.py": "3aa2701613a47335188b7489772474fe7cd40574ff5b20823de7f8740646a87e",
+  "tests/test_validator_state_wire.py": "a18efd2395b8c317d8f3ac953afe9bc70112e19ed796d12e0f3ea1949dba5561",
   "tests/test_vote_timeout_path.py": "b92b598dfba8229b96907bebbde755c3fca5bd18b5d4c48434583e9725277159",
   "tools/action_signable.py": "c47d1788e47c62605b3fa7bd0c6ef0d6d7e43bb787effcb440ec00e0aa6fbee1",
   "tools/bridge_user_signed_types.py": "d4cec6b7d3e37995bfa05734d38455f80363ded5fbf9ddb883d4a4cc2ddf0134",
@@ -35,6 +39,7 @@
   "tools/fse_weight_table_reference.py": "ec9c5bbe29d740e103433e418a49007c8ac3e2ac00205c3acff0b140b8e648f3",
   "tools/fse_weight_table_rust.py": "82faec2d30c58ee60c152ac3f910bbbd40ffc804feac4a5e19056098e749a0cc",
   "tools/funding_config_writers.py": "cc3a3df993eedbd8671bed69db4c50d20c083c30a8f14e0aea1ade40e5c56181",
+  "tools/match_resting_order.py": "a666200625831aac807993a10bd4201bada2c6676f155d7252fec6f122849c29",
   "tools/order_relation_transitions.py": "9997e6fb38b4de4ae900a40feb404c19d5fef8b28c459bd896c87be7579a700b",
   "tools/run_tests.py": "069c4ab945b4014642fb871b92de6cf216e0ddb31ea62394a9e511a87b9b9e31",
   "tools/spot_balance_ledger.py": "6fce9913d940c4287e7d51e917d887ce821a06d03612be5e6ad7e50cfb21608f",
@@ -42,5 +47,6 @@
   "tools/staking_vote_arms.py": "52b51734e8b0a89e6d4224a0a2a457f48cde735638f6a2c9e1b5a8d254304a16",
   "tools/stream_msg_static.py": "a6726f75a6f3c02d5262603e2913bdeec6e303ea44b4480d2f3fda69c44e50df",
   "tools/u128_division_leaf.py": "9fbb7d965c4a91612f60d32d4965be3b654dd97a6dcad016a4bd75bfcdd9fe20",
+  "tools/validator_state_wire.py": "9957da275ecb1a50a8ab5c9b18716914af5c953f664bdeb27b1239c2044a536b",
   "tools/vote_timeout_path.py": "4ad07709b2b34ec9ad09a4c44bd9b497a218ce1b5dab821b4f2a28c77aa2ab54"
 }

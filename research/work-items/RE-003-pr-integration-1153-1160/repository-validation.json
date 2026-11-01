@@ -15,14 +15,16 @@
     1164,
     1165,
     1166,
-    1167
+    1167,
+    1168,
+    1169
   ],
-  "modules": 803,
-  "reported_tests": 12779,
+  "modules": 805,
+  "reported_tests": 12803,
   "reported_skips": 51,
   "unresolved_failures": 0,
   "python": "3.13.2 | packaged by Anaconda, Inc. | (main, Feb  6 2025, 12:55:35) [Clang 14.0.6 ]",
-  "method": "Complete original 796-module discovery inventory, one file per subprocess with eight workers; seven later-added modules run separately. GNU binutils on PATH. FSE native module rerun with an explicit hash-pinned provider, replacing default-provider skips in the aggregate. The changed action-signable parser and its original module were rerun together (32 tests, zero skips). Actual new sequential launcher additionally exercised through its real-process tests and all six repaired parser modules. This is not a single sequential make test invocation.",
+  "method": "Complete original 796-module discovery inventory, one file per subprocess with eight workers; nine later-added modules run separately. GNU binutils on PATH. FSE native module rerun with an explicit hash-pinned provider, replacing default-provider skips in the aggregate. Changed action-signable, order-relation and match-resting-order parsers were rerun with their affected modules; exact testcase counts replace the earlier results. Actual new sequential launcher additionally exercised through its real-process tests and all six repaired parser modules. This is not a single sequential make test invocation.",
   "local_static_checks": [
     "make doctor verify catalogue-check reproduce",
     "incoming manifest verification",
@@ -3162,13 +3164,19 @@
       "module": "test_match_resting_order.py",
       "tests": 34,
       "reported_skips": 0,
-      "log_sha256": "41a5100cf4eb7b46bb07648628043e8d1a36fa433cedaa405b9424ff97cab8c5"
+      "log_sha256": "29006674108d3e8022cc6bc7f822f135fe2a4323e0251ca9f086544fa00c2f0c"
     },
     {
       "module": "test_match_resting_order_duplicate_fde.py",
       "tests": 4,
       "reported_skips": 0,
-      "log_sha256": "1ad7f6fc7ae1e912bd41ff852f715efd624af1d9eba09aea4f8cc429f09e910e"
+      "log_sha256": "29006674108d3e8022cc6bc7f822f135fe2a4323e0251ca9f086544fa00c2f0c"
+    },
+    {
+      "module": "test_match_resting_order_duplicate_section.py",
+      "tests": 3,
+      "reported_skips": 0,
+      "log_sha256": "29006674108d3e8022cc6bc7f822f135fe2a4323e0251ca9f086544fa00c2f0c"
     },
     {
       "module": "test_materializer_call_abi.py",
@@ -4597,6 +4605,12 @@
       "tests": 55,
       "reported_skips": 0,
       "log_sha256": "c6f4ccbb169870f5f9f1fe60fce5cc0249d039c800a1b84dc8a06818982f2ab5"
+    },
+    {
+      "module": "test_validator_state_wire.py",
+      "tests": 21,
+      "reported_skips": 0,
+      "log_sha256": "2d68428a47b265355540cf28bd94a37b4d399ca14a749c7702d82a4e3832f581"
     },
     {
       "module": "test_vault_equity_views.py",
