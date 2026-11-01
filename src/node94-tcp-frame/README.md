@@ -57,6 +57,12 @@ must fit a u32, and `EncodedFrame::chunks` plans decimal 4,000,000-byte writes
 over the header plus payload. Allocation failure and the target's precise panic
 or error construction for impossible oversized writer inputs are not claimed.
 
+The integration tests roundtrip complete frames at 0/1 bytes, on both sides of
+the 1,025-byte compression threshold, on both sides of the 65,535-byte table
+switch, and on both sides of the 4,000,000-byte reader/writer chunk boundaries.
+Independent negative controls mutate header lengths, compression flags, prefix
+endianness, match offsets, and every truncation point of a raw frame.
+
 Build from the repository root with the pinned toolchain:
 
 ```sh
