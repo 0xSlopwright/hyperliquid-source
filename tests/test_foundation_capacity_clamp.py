@@ -48,34 +48,43 @@ class TestCapacityClamp(unittest.TestCase):
     def test_edge_count(self):
         self.assertEqual(len(self.ev["rule"]["edges"]), 11)
 
+    def test_cmovbe_selects_larger_unsigned_operand(self):
+        # 0x4f050b8: cmp rsi, rcx; 0x4f050bb: cmovbe rsi, rcx.
+        # req+1 = 6, doubled capacity = 20: CF=1, so copy 20.
+        self.assertEqual(checker.newcap(10, 5), 20)
+        # req+1 = 101: CF=ZF=0, so retain 101.
+        self.assertEqual(checker.newcap(10, 100), 101)
+
     def test_formula_ordinary(self):
-        self.assertEqual(checker.newcap(10, 5), 6)
+        self.assertEqual(checker.newcap(10, 5), 20)
 
-    def test_formula_upper_clamp(self):
-        self.assertEqual(checker.newcap(10, 100), 20)
+    def test_formula_request_exceeds_doubled_capacity(self):
+        self.assertEqual(checker.newcap(10, 100), 101)
 
-    def test_formula_upper_clamp_equality(self):
+    def test_formula_equal_candidates(self):
         self.assertEqual(checker.newcap(10, 19), 20)
 
     def test_formula_floor(self):
         self.assertEqual(checker.newcap(0, 0), 4)
-        self.assertEqual(checker.newcap(1, 100), 4)
-        self.assertEqual(checker.newcap(3, 2), 4)
+        self.assertEqual(checker.newcap(1, 100), 101)
+        self.assertEqual(checker.newcap(3, 2), 6)
 
     def test_formula_floor_boundary(self):
-        self.assertEqual(checker.newcap(3, 4), 5)
-        self.assertEqual(checker.newcap(3, 3), 4)
+        self.assertEqual(checker.newcap(2, 4), 5)
+        self.assertEqual(checker.newcap(2, 3), 4)
 
     def test_formula_wraps(self):
-        self.assertEqual(checker.newcap(0xFFFFFFFFFFFFFFFF, 0), 4)
-        self.assertEqual(checker.newcap(10, 0xFFFFFFFFFFFFFFFF), 4)
+        self.assertEqual(checker.newcap(0xFFFFFFFFFFFFFFFF, 0), 0xFFFFFFFFFFFFFFFE)
+        self.assertEqual(checker.newcap(10, 0xFFFFFFFFFFFFFFFF), 20)
+        self.assertEqual(checker.newcap(1 << 63, 0), 4)
+        self.assertEqual(checker.newcap(1 << 63, 4), 5)
 
     def test_flag_paths(self):
         edge_set = copy.deepcopy(self.ev["rule"]["edges"][2])
         result, pair, stored = checker.evaluate_edge(edge_set)
         self.assertEqual(result, 0x8000000000000001)
         self.assertIsNone(pair)
-        self.assertEqual(stored, {"cap": "0x6", "ptr": "0x3000"})
+        self.assertEqual(stored, {"cap": "0x14", "ptr": "0x3000"})
         edge_pair = copy.deepcopy(self.ev["rule"]["edges"][0])
         result, pair, stored = checker.evaluate_edge(edge_pair)
         self.assertEqual(result, 0x3000)

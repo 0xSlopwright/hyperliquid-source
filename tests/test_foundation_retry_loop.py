@@ -15,6 +15,7 @@ import json
 import os
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import foundation_retry_loop as checker
@@ -47,6 +48,21 @@ class TestRetryLoop(unittest.TestCase):
 
     def test_edge_count(self):
         self.assertEqual(len(self.ev["rule"]["edges"]), 8)
+
+    def test_instruction_rows_cover_complete_target_body(self):
+        # GNU --insn-width=16 shows one 15-byte NOP at 0x3cbefe1;
+        # the default seven-byte display wraps it across three lines.
+        body = b"".join(bytes.fromhex(checker.INSTR[va])
+                        for va in sorted(checker.INSTR))
+        target = checker.read_va(self.binary, self.sections, 0x3CBEFB0, 115)
+        self.assertEqual(body, target)
+
+    def test_instruction_gap_is_rejected(self):
+        truncated = dict(checker.INSTR)
+        truncated[0x3CBEFE1] = "6666666666662e"
+        with mock.patch.object(checker, "INSTR", truncated):
+            with self.assertRaises(ValueError):
+                checker.check_window(self.ev, self.binary, self.sections)
 
     def test_simulate_zero_attempts(self):
         self.assertEqual(checker.simulate(0, []), (0, 0))

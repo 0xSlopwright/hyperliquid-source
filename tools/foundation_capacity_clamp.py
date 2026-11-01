@@ -217,8 +217,12 @@ def check_callers(ev, binary, sections, packet_dir):
 
 
 def newcap(oldcap, req):
-    """The clamp exactly as the window computes it, over wrapping u64."""
-    return max(4, min((req + 1) & MASK, (2 * oldcap) & MASK))
+    """Unsigned maximum then floor, after the two wrapping operations.
+
+    cmp rsi, rcx; cmovbe rsi, rcx copies rcx when rsi <= rcx.
+    Therefore the selected value is the larger operand, not the smaller.
+    """
+    return max(4, (req + 1) & MASK, (2 * oldcap) & MASK)
 
 
 def evaluate_edge(edge):

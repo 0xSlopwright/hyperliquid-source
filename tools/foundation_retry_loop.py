@@ -41,7 +41,7 @@ INSTR = {
     0x3CBEFCE: "488b2dabf7aa01",
     0x3CBEFD5: "4c8d3571b452fc",
     0x3CBEFDC: "4c8d7c2408",
-    0x3CBEFE1: "6666666666662e",
+    0x3CBEFE1: "6666666666662e0f1f840000000000",
     0x3CBEFF0: "4c896c2408",
     0x3CBEFF5: "48896c2410",
     0x3CBEFFA: "4889df",
@@ -117,12 +117,18 @@ def check_window(ev, binary, sections):
         raise ValueError(f"body length {len(body)} != {fn['bytes']}")
     if hashlib.sha256(body).hexdigest() != fn["sha256"]:
         raise ValueError("body sha256 mismatch")
-    for va, hexbytes in INSTR.items():
+    cursor = start
+    for va, hexbytes in sorted(INSTR.items()):
+        if va != cursor:
+            raise ValueError(f"instruction table gap or overlap at {hex(cursor)}")
         want = bytes.fromhex(hexbytes)
         got = read_va(binary, sections, va, len(want))
         if got != want:
             raise ValueError(
                 f"instruction bytes at {hex(va)}: {got.hex()} != {hexbytes}")
+        cursor += len(want)
+    if cursor != end:
+        raise ValueError("instruction table does not cover the full FDE window")
 
 
 def check_padding(ev, binary, sections):

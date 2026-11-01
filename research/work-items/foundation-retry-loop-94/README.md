@@ -17,6 +17,14 @@ This window was checked for overlap before building: no work-item, tool, test, o
 
 ## Reproduce
 
+Integration review corrected the instruction table at `0x3cbefe1`: GNU's
+default seven-byte display wraps one 15-byte NOP over three lines. The original
+table retained only its first seven bytes. The full-body SHA-256 already pinned
+all 115 bytes; the instruction table now also covers them without gaps or
+overlap. Two regressions fail before the correction and pass afterward.
+[Original records and failing logs](../RE-003-pr-integration-1242-1262/README.md)
+are preserved. Raw exports and the retry-loop rule are unchanged.
+
 Working directory: repository root. Platform used: Linux x86-64, Python 3.12.3, GNU objdump 2.42 (Binutils for Ubuntu). The checker and tests use Python's standard library only. No llvm-objdump, Ghidra, or Java was used; GNU `--dwarf=frames` output supplies the retained frame records.
 
 Materialize the pinned submodules and LFS objects as described in CONTRIBUTING, then run:
@@ -73,7 +81,7 @@ Decoded from the FDE start, the window is:
 | `0x3cbefce` | `mov rbp, [rip + 0x1aaf7ab]` | Slot second qword: global at 0x576e780 |
 | `0x3cbefd5` | `lea r14, [rip - 0x3ad4b8f]` | Fixed callee rsi: address 0x1ea44d |
 | `0x3cbefdc` | `lea r15, [rsp + 8]` | Stack slot address for callee rdx |
-| `0x3cbefe1` | `nop` (7 bytes) | Alignment padding before the loop |
+| `0x3cbefe1` | `nop` (15 bytes, including prefixes) | Alignment padding before the loop |
 | `0x3cbeff0` | `mov [rsp + 8], r13` | Slot[0] = struct + 0x20 address |
 | `0x3cbeff5` | `mov [rsp + 0x10], rbp` | Slot[1] = global qword |
 | `0x3cbeffa` | `mov rdi, rbx` | Callee rdi = struct pointer |
