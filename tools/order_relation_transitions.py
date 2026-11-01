@@ -166,6 +166,8 @@ class Image:
         for at in range(rela["offset"], rela["offset"] + rela["size"], 24):
             slot, info, addend = struct.unpack_from("<QQq", self.blob, at)
             if slot in wanted:
+                if slot in found:
+                    raise EvidenceError("duplicate relocation slot: %#x" % slot)
                 name = ""
                 if info >> 32:
                     pointer = struct.unpack_from("<I", self.blob, dynsym["offset"] + 24 * (info >> 32))[0]
