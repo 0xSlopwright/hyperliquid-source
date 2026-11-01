@@ -1,5 +1,6 @@
 """exchange_dispatch.Elf must refuse repeated section names instead of keeping the last one."""
 import struct
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -9,7 +10,7 @@ import exchange_dispatch as tool  # noqa: E402
 
 
 def synthetic_elf(text_rows, name='.rela.dyn'):
-    """Minimal ELF64 with one PT_LOAD, .shstrtab and the given (address, size) rows named `name` rows."""
+    """Minimal ELF64 with one PT_LOAD, .shstrtab and the given (address, size) rows named `name`."""
     names = b"\0.shstrtab\0" + name.encode() + b"\0"
     phoff, shoff = 64, 128
     shnum = 2 + len(text_rows)
@@ -25,10 +26,20 @@ def synthetic_elf(text_rows, name='.rela.dyn'):
 
 class DuplicateSectionNameTests(unittest.TestCase):
     def test_duplicate_consumed_section_rejected_in_either_order(self):
-        for rows in ([(0x1000, 0x10), (0x2000, 0x20)], [(0x2000, 0x20), (0x1000, 0x10)]):
-            with self.subTest(rows=rows):
-                with self.assertRaisesRegex(tool.EvidenceError, r"duplicate section name \.rela\.dyn"):
-                    tool.Elf(synthetic_elf(rows))
+        for name in ('.eh_frame_hdr', '.rela.dyn'):
+            for rows in ([(0x1000, 0x10), (0x2000, 0x20)], [(0x2000, 0x20), (0x1000, 0x10)]):
+                with self.subTest(name=name, rows=rows):
+                    with self.assertRaisesRegex(tool.EvidenceError, "duplicate section name " + re.escape(name)):
+                        tool.Elf(synthetic_elf(rows, name=name))
+
+    def test_identical_duplicate_consumed_section_is_still_ambiguous(self):
+        for name in ('.eh_frame_hdr', '.rela.dyn'):
+            with self.subTest(name=name), self.assertRaisesRegex(tool.EvidenceError, "duplicate section name " + re.escape(name)):
+                tool.Elf(synthetic_elf([(0x1000, 0x10), (0x1000, 0x10)], name=name))
+
+    def test_repeated_empty_names_are_not_consumed_sections(self):
+        elf = tool.Elf(synthetic_elf([(0x1000, 0x10), (0x2000, 0x20)], name=""))
+        self.assertEqual(elf.section(""), (0x2000, 0, 0x20))
 
     def test_single_section_still_parses(self):
         elf = tool.Elf(synthetic_elf([(0x1000, 0x10)]))
