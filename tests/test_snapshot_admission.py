@@ -64,4 +64,15 @@ class SnapshotAdmissionTests(unittest.TestCase):
             with self.assertRaises(ValueError):tool.replay(self.image,case,1,-1,0)
         with self.assertRaisesRegex(ValueError,'SHA-256'):tool.build(self.data[:-1])
 
+    def test_cmp_imm8_is_sign_extended_to_dword(self):
+        for case in tool.CASES:
+            # 83 /7 compares a dword to a sign-extended imm8. FF therefore
+            # selects raw tag FFFFFFFF, not raw tag FF.
+            changed=self.changed(case['start']+0x1c,b'\xff')
+            image=tool.Image(changed)
+            for tag,expected in ((0xffffffff,'freeze'),(0xff,'skip')):
+                with self.subTest(start=hex(case['start']),tag=hex(tag)):
+                    self.assertEqual(tool.replay(image,case,tag,1,1),expected)
+            with self.assertRaisesRegex(ValueError,'owner changed'):tool.observe(changed)
+
 if __name__=='__main__':unittest.main()

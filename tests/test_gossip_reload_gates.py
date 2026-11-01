@@ -36,6 +36,16 @@ class GossipReloadTests(unittest.TestCase):
         changed=self.changed(0x47412c6,b'\x87')
         self.assertNotEqual(tool.replay_throttle(tool.Image(changed),1,0.,0.),tool.replay_throttle(self.image,1,0.,0.))
         with self.assertRaisesRegex(ValueError,'owner changed'):tool.observe(changed)
+    def test_cmp_register_and_memory_operands_are_independent(self):
+        # Original first CMP is EBP,[R14+0x90]. Changing its displacement
+        # retains EBP=new[0]; changing its register retains old[0].
+        new,old=(0,10,0),(1,5,0)
+        for va,raw,expected in ((0x4741323,b'\x94\x00\x00\x00',False),
+                                (0x4741320,b'\x45\x3b\xbe',True)):
+            with self.subTest(va=hex(va)):
+                changed=self.changed(va,raw)
+                self.assertEqual(tool.replay_newer(tool.Image(changed),new,old),expected)
+                with self.assertRaisesRegex(ValueError,'owner changed'):tool.observe(changed)
     def test_refresh_parse_and_cached_store_controls(self):
         for va,raw in ((0x47412c6,b'\x87'),(0x47412d3,b'\x90'),(0x474136a,b'\x03'),
                        (0x47414e6,b'\x90'),(0x4741513,b'\x90'),(0x4741530,b'\x90')):

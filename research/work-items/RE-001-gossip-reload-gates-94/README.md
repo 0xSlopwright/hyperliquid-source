@@ -50,6 +50,15 @@ unverified seeds, not this bounded comparator; afterward it has original owner
 exports and explicit conditional evidence. This is not a source-equivalence
 comparison, recovered Rust or a fixed live defect.
 
+Review added two independent-operand mutation controls. Changing the first CMP
+from `EBP,[R14+0x90]` to `EBP,[R14+0x94]` must retain the first new field while
+selecting the second cached field. With new `(0,10,0)` and old `(1,5,0)`, this
+comparison rejects replacement. The original replay incorrectly selected both
+operands from the memory displacement and accepted it. The decoder now selects
+the register and memory operands independently; a separate register mutation
+control covers the converse. Captured instruction semantics, `records.json`,
+`owners.capstone.txt`, and the original validation output below are unchanged.
+
 ## Results and limitations
 
 Focused controls: 6 tests PASS in 3.453 seconds (controls.txt).

@@ -43,7 +43,8 @@ def replay(image,case,tag,height,freeze_height):
         if raw[:2]==b'\x83\xbf':
             offset=struct.unpack_from('<i',raw,2)[0]
             require(offset==case['tag'],'unexpected state offset')
-            cf,zf=compare(tag,raw[6]);pc+=7
+            immediate=int.from_bytes(raw[6:7],'little',signed=True)&0xffffffff
+            cf,zf=compare(tag,immediate);pc+=7
         elif raw[:3]==b'\x48\x8b\x83':
             require(struct.unpack_from('<i',raw,3)[0]==case['tag']+8,'unexpected freeze offset')
             regs[0]=freeze_height;pc+=7

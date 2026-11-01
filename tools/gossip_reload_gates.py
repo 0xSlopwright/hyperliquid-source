@@ -26,9 +26,10 @@ def replay_newer(image,new,old):
         require(0x4741320<=pc<0x474134e,'newer gate escaped selected range')
         raw=image.read(pc,7)
         if raw[:3] in (b'\x41\x3b\xae',b'\x45\x3b\xbe',b'\x45\x3b\xa6'):
-            offset=struct.unpack_from('<I',raw,3)[0];index=(offset-0x90)//4
+            register_index=(b'\x41\x3b\xae',b'\x45\x3b\xbe',b'\x45\x3b\xa6').index(raw[:3])
+            offset=struct.unpack_from('<I',raw,3)[0];memory_index=(offset-0x90)//4
             require(offset in (0x90,0x94,0x98),'unexpected cached field')
-            a,b=new[index],old[index];cf=a<b;zf=a==b;sg=signed(a)>signed(b);pc+=7
+            a,b=new[register_index],old[memory_index];cf=a<b;zf=a==b;sg=signed(a)>signed(b);pc+=7
         elif raw[:3] in (b'\x0f\x9f\xc0',b'\x0f\x97\xc0'):
             require(cf is not None,'unset flags');al=sg if raw[1]==0x9f else not cf and not zf;pc+=3
         elif raw[:2]==b'\x84\xc0':

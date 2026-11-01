@@ -62,6 +62,13 @@ and real rotation/branch mutations which change the interpreted answer. Full
 body bindings reject those mutations; label/identity/domain/decoder controls fail
 closed. These are synthetic-state comparisons, not native execution.
 
+Review added sign-extension controls for the tag comparison's `83 /7` imm8.
+An encoded `FF` compares against dword `FFFFFFFF`, not dword `000000FF`.
+The original replay treated this immediate as unsigned; it now sign-extends it
+to the operand width. Six controls cover both tag values in all three lanes.
+The captured immediate is `01`, so the recorded admission results and raw
+disassembly are unchanged. The original validation output remains below.
+
 Focused controls: 6 tests PASS in 5.906 seconds (controls.txt).
 Required Makefile-equivalent Python checks ran because Make is unavailable.
 Full suite on base 308e5127990217a9d6196992665da6ca1afd4b82 with these files: 2003 tests in
