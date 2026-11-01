@@ -1,0 +1,3 @@
+Compiled libcore excerpt copyright The Rust Project Contributors.
+MIT option retained in LICENSE-MIT; captured bytes retain separate ownership.
+No Rust/unlicensed inferred source copied; no new compiler/build.
