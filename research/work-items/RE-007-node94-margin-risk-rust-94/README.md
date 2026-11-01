@@ -64,6 +64,24 @@ CARGO_BUILD_JOBS=2 cargo +1.94.1 clippy --locked \
 cargo +1.94.1 fmt --manifest-path src/node94-margin-risk/Cargo.toml -- --check
 ```
 
+## Qualification on 2026-11-01
+
+- `make verify`, `make catalogue-check`, and `make reproduce` passed.
+- `make doctor` reported `analysis_ready: true` with GNU binutils on `PATH`;
+  whole-node `exact_rebuild_ready` remains false as expected.
+- The margin-risk crate passed 40 tests in debug and 40 in release, plus locked
+  build, rustfmt, and clippy with warnings denied.
+- The five relevant RE-007 suites passed 136 tests. The retained liquidate and
+  handover evaluators reported 441 and 203 cases with zero mismatches.
+- Eight supporting RE-004 evidence suites passed 274 tests. The existing
+  `node94-fixed-point` crate passed 37 tests, build, rustfmt, and clippy.
+- The complete `make test` inventory was attempted but not completed: 56 of
+  874 isolated files finished before interruption, with one environment error
+  because GNU `readelf` was initially absent from `PATH`. That exact module
+  subsequently passed 5/5 with `/opt/homebrew/opt/binutils/bin` on `PATH`.
+
+No captured binary was executed by any of these checks.
+
 ## Limits
 
 Unresolved behavior is intentionally explicit: external custom-table lookup,
