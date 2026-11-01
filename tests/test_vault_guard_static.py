@@ -108,5 +108,76 @@ class VaultGuardEvidenceTests(unittest.TestCase):
         self.assertEqual(census['direct_e8'], 0)
 
 
+class DuplicateSectionNameTests(unittest.TestCase):
+    """Reader.by_name keeps only the last same-named section, and that
+    dict supplies the .rela.dyn range relocations() parses plus the
+    .eh_frame/.text sections analyze() reads. A duplicate name must be
+    refused: with a decoy .rela.dyn first, the full real relocation map
+    was read; with it last, the map collapsed to the decoy's single
+    entry and the vault Location check failed — the verdict flipped on
+    section order alone. Synthetic fixtures; no target binary needed."""
+
+    def synthetic_elf(self, rows):
+        rows = list(rows) + [('.shstrtab', 3, 0, b'')]
+        names = b'\0'
+        name_off = {}
+        for name, _t, _a, _b in rows:
+            if name not in name_off:
+                name_off[name] = len(names)
+                names += name.encode() + b'\0'
+        shstr_row = len(rows) - 1
+        rows[shstr_row] = ('.shstrtab', 3, 0, names)
+        shoff = 0x1000
+        data = bytearray(shoff + len(rows) * 64)
+        data[0:6] = b'\x7fELF\x02\x01'
+        off = 0x200
+        offsets = []
+        for _n, _t, _a, blob in rows:
+            offsets.append(off)
+            data[off:off + len(blob)] = blob
+            off += max(len(blob), 1) + 0x10
+        struct.pack_into('<Q', data, 40, shoff)
+        struct.pack_into('<HHH', data, 58, 64, len(rows), shstr_row)
+        for i, (name, typ, addr, blob) in enumerate(rows):
+            struct.pack_into('<IIQQQQIIQQ', data, shoff + i * 64,
+                             name_off[name], typ, 0, addr, offsets[i],
+                             len(blob), 0, 0, 1, 0)
+        return bytes(data)
+
+    def base_rows(self):
+        rela = struct.pack('<QQq', 0x5000, 8, 0x1234)
+        return [('.rela.dyn', 4, 0x400000, rela),
+                ('.eh_frame', 1, 0x500000, b'\0' * 16),
+                ('.text', 1, 0x600000, b'\0' * 16)]
+
+    def test_duplicate_rela_dyn_rejected_in_either_order(self):
+        decoy = ('.rela.dyn', 4, 0x700000,
+                 struct.pack('<QQq', vg.VAULT_LOC, 8, 0x1111))
+        for rows in ([decoy] + self.base_rows(),
+                     self.base_rows() + [decoy]):
+            with self.assertRaisesRegex(ValueError,
+                                        r'Duplicate section: \.rela\.dyn'):
+                vg.Reader(self.synthetic_elf(rows))
+
+    def test_duplicate_eh_frame_and_text_rejected(self):
+        for name, typ, addr in (('.eh_frame', 1, 0x510000),
+                                ('.text', 1, 0x610000)):
+            rows = self.base_rows() + [(name, typ, addr, b'\0' * 8)]
+            with self.assertRaisesRegex(
+                    ValueError,
+                    r'Duplicate section: ' + name.replace('.', r'\.')):
+                vg.Reader(self.synthetic_elf(rows))
+
+    def test_duplicate_unconsumed_section_name_tolerated(self):
+        rows = self.base_rows() + [('.debug_info', 1, 0x700000, b'a'),
+                                   ('.debug_info', 1, 0x710000, b'b')]
+        reader = vg.Reader(self.synthetic_elf(rows))
+        self.assertEqual(reader.by_name['.debug_info']['address'], 0x710000)
+
+    def test_single_rela_dyn_still_parsed(self):
+        reader = vg.Reader(self.synthetic_elf(self.base_rows()))
+        self.assertEqual(vg.relocations(reader), {0x5000: 0x1234})
+
+
 if __name__ == '__main__':
     unittest.main()
