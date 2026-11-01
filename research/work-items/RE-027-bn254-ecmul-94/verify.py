@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
-"""Regenerate RE-027 with the tool and compare to the committed packet.
-
-When unicorn is importable, regenerate with emulation (malloc stubbed) and
-require an exact match to the committed JSON (full pin). When unicorn is
-absent, run static checks only (equivalent to --no-emu), compare against the
-no-emu pin, report emulation as skipped, and exit 0 if static checks pass.
+"""Static regeneration by default; --emulate requires prior execution authorization.
+The committed emulation JSON is historical author evidence until independently rerun.
 """
 import hashlib
-import importlib.util
+import argparse
 from pathlib import Path
 import sys
 
@@ -21,13 +17,16 @@ JSON_SHA256 = "ae212bc9791ccdd53cc48dff1446aec74f07693be008b62746d83a601af3b980"
 NO_EMU_JSON_SHA256 = "79149c497481d1f9daff231044ca8d2ca135af3907086a0f63393209208322f4"
 
 
-def main():
-    has_unicorn = importlib.util.find_spec("unicorn") is not None
-    result = tool.analyse(tool.TARGET.read_bytes(), run_emu=has_unicorn)
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--emulate", action="store_true")
+    args = ap.parse_args(argv)
+    result = tool.analyse(tool.TARGET.read_bytes(), run_emu=args.emulate,
+                          allow_execution=args.emulate)
     text = tool.render(result)
     errors = list(tool.expectation_errors(result))
     digest = hashlib.sha256(text.encode()).hexdigest()
-    if has_unicorn:
+    if args.emulate:
         if digest != JSON_SHA256:
             errors.append("regenerated output sha256 mismatch")
         if PACKET_JSON.read_text() != text:
@@ -36,7 +35,7 @@ def main():
     else:
         if digest != NO_EMU_JSON_SHA256:
             errors.append("regenerated --no-emu sha256 mismatch")
-        emu_note = "emu=skipped"
+        emu_note = "emu=not-requested"
     for e in errors:
         print("FAIL", e)
     print("verify: key_insns=%d vectors=%d got_slot_refs=%d %s errors=%d" % (

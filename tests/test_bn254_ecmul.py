@@ -8,6 +8,7 @@ import struct
 import subprocess
 import sys
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKET = ROOT / "research" / "work-items" / "RE-027-bn254-ecmul-94"
@@ -68,7 +69,7 @@ def static_errors():
 
 
 def emu(inp, gas=6000, limit=6000, stub=True):
-    return tool.emulate(bytes(DATA), SEGS, tool.rela_dyn(bytes(DATA)), inp, gas, limit, stub=stub)
+    return tool.emulate(bytes(DATA), SEGS, tool.rela_dyn(bytes(DATA)), inp, gas, limit, stub=stub, allow_execution=True)
 
 
 C1 = tool.VECTORS["geth_chfast1"]
@@ -77,7 +78,8 @@ C1 = tool.VECTORS["geth_chfast1"]
 @unittest.skipIf(DATA is None, "node #94 binary not present")
 class Bn254EcMulStaticTests(unittest.TestCase):
     def test_static_output_pin_and_expectations(self):
-        r = tool.analyse(bytes(DATA), run_emu=False)
+        with mock.patch.object(tool, "unicorn_available", side_effect=AssertionError("static default probed Unicorn")):
+            r = tool.analyse(bytes(DATA))
         self.assertEqual(tool.expectation_errors(r), [])
         self.assertEqual(hashlib.sha256(tool.render(r).encode()).hexdigest(), NO_EMU_OUTPUT_SHA256)
         self.assertEqual(r["carved_len"], 1762)
@@ -194,10 +196,11 @@ class Bn254EcMulStaticTests(unittest.TestCase):
                 tool.analyse(bytes(DATA), check_sha=True, run_emu=False)
 
 
-@unittest.skipIf(DATA is None or not HAS_UNICORN, "binary or unicorn missing")
+@unittest.skipUnless(os.environ.get("HL_RE027_EMULATION") == "1" and DATA is not None and HAS_UNICORN,
+                     "captured-code execution requires explicit HL_RE027_EMULATION=1 and prior authorization")
 class Bn254EcMulEmuTests(unittest.TestCase):
     def test_output_pin_and_expectations(self):
-        r = tool.analyse(bytes(DATA), run_emu=True)
+        r = tool.analyse(bytes(DATA), run_emu=True, allow_execution=True)
         self.assertEqual(tool.expectation_errors(r), [])
         self.assertEqual(hashlib.sha256(tool.render(r).encode()).hexdigest(), OUTPUT_SHA256)
         self.assertEqual((PACKET / "bn254-ecmul.json").read_text(), tool.render(r))
@@ -214,17 +217,17 @@ class Bn254EcMulEmuTests(unittest.TestCase):
 
     def test_tamper_carve_montgomery_inv_breaks_output(self):
         with flip(0x4E9708F, at=2):
-            r = emu(C1[0])
-            self.assertNotEqual(r.get("output_hex"), C1[4])
+            with self.assertRaisesRegex(ValueError, "unchanged authenticated"):
+                emu(C1[0])
 
     def test_tamper_carve_len_store_breaks_len(self):
         with flip(0x4E97392, at=4):  # movq $0x40,0x10(%rbx) immediate
-            self.assertEqual(emu(C1[0])["len"], 0x41)
+            with self.assertRaisesRegex(ValueError, "unchanged authenticated"):
+                emu(C1[0])
 
     def test_tamper_stub_removed_does_not_reproduce(self):
-        r = emu(C1[0], stub=False)
-        self.assertEqual(r["allocs"], [])
-        self.assertFalse(r["returned"] and r.get("output_hex") == C1[4])
+        with self.assertRaisesRegex(ValueError, "reviewed malloc stub"):
+            emu(C1[0], stub=False)
 
     def test_tamper_stub_heap_moves_pointer_not_output(self):
         old = tool.HEAP
@@ -245,8 +248,127 @@ class Bn254EcMulEmuTests(unittest.TestCase):
 
     def test_short_input_not_emulated(self):
         # input < 96 bytes goes through memcpy (GLOB_DAT, unresolved here): not covered.
-        r = emu(C1[0][:64])
-        self.assertFalse(r["returned"])
+        with self.assertRaisesRegex(ValueError, "96-byte"):
+            emu(C1[0][:64])
+
+class Bn254EcMulScopeTests(unittest.TestCase):
+    """Pure host-code controls. These do not import Unicorn or execute a target."""
+    def test_direct_emulation_requires_opt_in_before_import(self):
+        with mock.patch.dict(sys.modules, {"unicorn": None}):
+            with self.assertRaises(PermissionError):
+                tool.emulate(b"", [], [], b"", 0, 0)
+
+    def test_analysis_emulation_requires_opt_in_before_target_parse(self):
+        with self.assertRaises(PermissionError):
+            tool.analyse(b"", run_emu=True)
+
+    def test_requested_missing_engine_is_failure_not_skip(self):
+        with mock.patch.object(tool, "unicorn_available", return_value=False):
+            with self.assertRaisesRegex(RuntimeError, "unavailable"):
+                tool.analyse(b"", run_emu=True, allow_execution=True)
+
+    def test_short_and_long_inputs_fail_before_emulator_import(self):
+        for length in (0, 64, 95, 97, 4096):
+            with self.subTest(length=length), self.assertRaisesRegex(ValueError, "96-byte"):
+                tool.emulate(b"", [], [], bytes(length), 6000, 6000, allow_execution=True)
+
+    def test_actual_allocator_is_never_executed(self):
+        with self.assertRaisesRegex(ValueError, "malloc stub"):
+            tool.emulate(b"", [], [], bytes(96), 6000, 6000, stub=False, allow_execution=True)
+
+    def test_gas_rejects_wraparound_and_boolean(self):
+        for value in (-1, 1 << 64, True, 1.5):
+            for gas, limit in ((value, 6000), (6000, value)):
+                with self.subTest(gas=gas, limit=limit), self.assertRaisesRegex(ValueError, "unsigned 64-bit"):
+                    tool.validate_run(b"", [], [], bytes(96), gas, limit, True, True)
+
+    def test_heap_rejects_artifact_stack_and_io_aliases(self):
+        for heap in (tool.FN, tool.STACK, tool.IO, 0x70000001):
+            with mock.patch.object(tool, "HEAP", heap), self.assertRaisesRegex(ValueError, "placements"):
+                tool.validate_run(b"", [], [], bytes(96), 6000, 6000, True, True)
+
+    def test_changed_target_is_rejected_before_engine_import(self):
+        with self.assertRaisesRegex(ValueError, "unchanged authenticated"):
+            tool.emulate(b"modified", [], [], bytes(96), 6000, 6000, allow_execution=True)
+
+    def test_mapping_and_relocation_metadata_bound_to_target(self):
+        digest = mock.Mock()
+        digest.hexdigest.return_value = tool.BINARY_SHA256
+        with mock.patch.object(tool.hashlib, "sha256", return_value=digest), \
+             mock.patch.object(tool, "segments", return_value=[("pinned",)]), \
+             mock.patch.object(tool, "rela_dyn", return_value=[("rela",)]):
+            tool.validate_run(b"", [("pinned",)], [("rela",)], bytes(96), 0, tool.M64, True, True)
+            for segs, rela in (([], [("rela",)]), ([("pinned",)], [])):
+                with self.assertRaisesRegex(ValueError, "metadata"):
+                    tool.validate_run(b"", segs, rela, bytes(96), 0, tool.M64, True, True)
+
+    def test_malloc_accepts_exact_single_call(self):
+        tool.validate_malloc(tool.STACK + 8, tool.MALLOC_RET, 64, 0)
+        tool.validate_malloc(tool.STACK + tool.STACK_SIZE - 8, tool.MALLOC_RET, 64, 0)
+
+    def test_malloc_rejects_host_pointer_read_and_unreviewed_call(self):
+        for sp, ret, req, count in (
+            (tool.STACK - 8, tool.MALLOC_RET, 64, 0),
+            (tool.STACK + tool.STACK_SIZE, tool.MALLOC_RET, 64, 0),
+            (tool.STACK + 1, tool.MALLOC_RET, 64, 0),
+            (tool.STACK, tool.MALLOC_RET + 1, 64, 0),
+            (tool.STACK, tool.MALLOC_RET, 63, 0),
+            (tool.STACK, tool.MALLOC_RET, 1 << 64, 0),
+            (tool.STACK, tool.MALLOC_RET, 64, 1),
+        ):
+            with self.subTest(sp=sp, ret=ret, req=req, count=count), self.assertRaises(RuntimeError):
+                tool.validate_malloc(sp, ret, req, count)
+
+    def test_result_header_precedes_any_guest_pointer_dereference(self):
+        ok = (0x5670AE8, tool.HEAP, 64, tool.HEAP | 1, 6000)
+        allocs = [{"ret": hex(tool.MALLOC_RET), "size": 64}]
+        tool.validate_result(ok, allocs, 6000)
+        tool.validate_result((0, 0, 0x8000000000000000, 0, 0), [], 6000)
+        for index in range(5):
+            q = list(ok)
+            q[index] ^= 1
+            with self.subTest(index=index), self.assertRaises(RuntimeError):
+                tool.validate_result(tuple(q), allocs, 6000)
+        with self.assertRaises(RuntimeError):
+            tool.validate_result(ok, [], 6000)
+        with self.assertRaises(RuntimeError):
+            tool.validate_result((0, 1, 0, 0, 0), [], 6000)
+        with self.assertRaises(RuntimeError):
+            tool.validate_result((0, 0, 0, 0, 0), allocs, 6000)
+
+    def test_cli_static_default_and_existing_output_preserved(self):
+        import tempfile
+        with mock.patch.object(tool, "analyse", return_value={}) as analyse, \
+             mock.patch.object(tool, "render", return_value="static\n"), \
+             mock.patch.object(tool, "expectation_errors", return_value=[]), \
+             mock.patch.object(tool, "TARGET") as target:
+            target.read_bytes.return_value = b"fixture"
+            with tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "out.json"
+                self.assertEqual(tool.main(["-o", str(path)]), 0)
+                analyse.assert_called_once_with(b"fixture", run_emu=False, allow_execution=False)
+                self.assertEqual(path.read_text(), "static\n")
+                with self.assertRaises(FileExistsError):
+                    tool.main(["-o", str(path)])
+                self.assertEqual(path.read_text(), "static\n")
+
+    def test_cli_comparison_failure_retains_raw_record_and_nonzero_status(self):
+        import tempfile
+        with mock.patch.object(tool, "analyse", return_value={}), \
+             mock.patch.object(tool, "render", return_value="bad\n"), \
+             mock.patch.object(tool, "expectation_errors", return_value=["controlled mismatch"]), \
+             mock.patch.object(tool, "TARGET"):
+            with tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "out.json"
+                self.assertEqual(tool.main(["-o", str(path)]), 1)
+                self.assertEqual(path.read_text(), "bad\n")
+
+    def test_native_execution_closure_excludes_real_allocator_and_short_input(self):
+        self.assertIn((0x4F1F8E0, 0x4F1F9B1), tool.EXECUTION_RANGES)
+        self.assertIn((0x4F20020, 0x4F200E3), tool.EXECUTION_RANGES)
+        self.assertIn((tool.MALLOC, tool.MALLOC + 4), tool.EXECUTION_RANGES)
+        self.assertFalse(any(a <= tool.MALLOC + 4 < b for a, b in tool.EXECUTION_RANGES))
+        self.assertFalse(any(a <= tool.STOP < b for a, b in tool.EXECUTION_RANGES))
 
 
 if __name__ == "__main__":

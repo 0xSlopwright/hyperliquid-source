@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """RE-027: bn254 ecMul (EVM precompile 0x07, EIP-196) at 0x4e96cf0 (node #94).
 
-Standalone. From the pinned node #94 binary only, it recovers:
+Static analysis uses the standard library. From pinned node #94 bytes it recovers:
   * run_mul entry 0x4e96cf0 (FDE 0x4e96cf0..0x4e973d2 exclusive, the whole FDE
     is the sha256-pinned carve; primary ret at 0x4e973c1; noreturn alloc-error
     tail 0x4e973c2..0x4e973d1; int3 padding 0x4e973d2..0x4e973df is outside it);
@@ -16,16 +16,17 @@ Standalone. From the pinned node #94 binary only, it recovers:
     0x4e98b00 = 6000 Istanbul), 0 direct e8/e9 calls, and the precompile table
     objects 0x574f110 / 0x574f050 whose RELA addends are those wrappers and
     whose Address field (+0x10) is 0x..07;
-  * no CPU-feature gate and no SIMD dispatch in run_mul or its executed callees;
+  * no listed feature-opcode byte patterns in the originally listed callees;
+    this limited scan is not a complete instruction/feature inventory;
   * the only external call on the success path is malloc(0x40) at 0x4e9732c
     through GOT 0x576dfd8 (RELA -> jemalloc malloc 0x54c06b0), stubbed in the
     emulation as a bump allocator;
-  * behavioural proof: Unicorn on PT_LOAD maps with RELATIVE relocations applied
-    for go-ethereum EIP-196 scalar-mul vectors plus negative controls.
+  * retained author emulation records for fixed scalar-mul vectors. New runs
+    require explicit opt-in and remain bounded experiments, not equivalence proof.
 
 Output is sorted, deterministic JSON. Every expected value is pinned exactly.
-Imports only the Python standard library plus optional unicorn for emulation
-(no objdump, no pyelftools).
+Optional execution also imports Unicorn and the repository crypto_emulation_guard
+(no objdump or pyelftools in this generator).
 """
 from __future__ import annotations
 
@@ -50,7 +51,8 @@ CARVED_SHA256 = "fa3a57aef72db21e765e20e83db52a3c7ffb825112c2780fc3a7406406d942a
 
 DECODER = 0x4E961E0  # G1 point decoder (FDE 0x4e961e0..0x4e9660f), shared with run_add
 DECODER_END = 0x4E9660F
-# Callees on the run_mul path, with their FDE extents (for the SIMD scan).
+# Original selected callee inventory, preserved for output reproducibility.
+# EXECUTION_RANGES below also includes two transitive field helpers.
 CALLEES = [
     (0x4E961E0, 0x4E9660F, "G1 point decode"),
     (0x4F168D0, 0x4F16B7A, "decoder curve check"),
@@ -318,11 +320,59 @@ def unicorn_available():
 
 
 HEAP = 0x70000000
-STUB_HEAP_STEP = 0x40  # bump step; every allocation is 16-byte aligned
+STUB_HEAP_STEP = 0x40
+STACK, IO, STOP, TLS = 0x7FFF00000000, 0x60000000, 0x600000000, 0x7F0000000000
+STACK_SIZE, HEAP_SIZE = 0x100000, 0x10000
+OUT, INP = IO + 0x100, IO + 0x1000
+# Exact FDEs from the authenticated native review; malloc's first ENDBR64
+# instruction is intercepted, never its allocator body. Panic/memcpy targets
+# are deliberately outside this closure and must fail the execution guard.
+EXECUTION_RANGES = ((FN, FN_END),) + tuple((a, b) for a, b, _ in CALLEES) + (
+    (0x4F1F8E0, 0x4F1F9B1),  # field add/reduce, GOT 0x5777658
+    (0x4F20020, 0x4F200E3),  # field subtract/reduce, GOT 0x5777668
+    (MALLOC, MALLOC + 4),
+)
 
 
-def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True):
-    """Run run_mul; malloc 0x54c06b0 replaced by a bump allocator. Returns dict."""
+def validate_run(data, segs, rela, inp, gas, limit, stub, allow_execution):
+    """Reject scope escapes before importing or constructing an emulator."""
+    if allow_execution is not True:
+        raise PermissionError("captured-code emulation requires explicit allow_execution=True")
+    if stub is not True:
+        raise ValueError("only the reviewed malloc stub is permitted")
+    if not isinstance(inp, bytes) or len(inp) != 96:
+        raise ValueError("only 96-byte inputs are covered; short-input memcpy is excluded")
+    if any(type(v) is not int or not 0 <= v <= M64 for v in (gas, limit)):
+        raise ValueError("gas and limit must be unsigned 64-bit integers")
+    if HEAP not in (0x70000000, 0x71000000):
+        raise ValueError("heap must be one of the two reviewed nonoverlapping placements")
+    if hashlib.sha256(data).hexdigest() != BINARY_SHA256:
+        raise ValueError("emulation requires the unchanged authenticated node94")
+    if segs != segments(data) or rela != rela_dyn(data):
+        raise ValueError("mapping/relocation metadata must match the authenticated ELF")
+
+
+def validate_malloc(sp, ret, req, allocation_count):
+    if not STACK <= sp <= STACK + STACK_SIZE - 8 or sp % 8:
+        raise RuntimeError("malloc return slot is outside the synthetic stack")
+    if ret != MALLOC_RET or req != MALLOC_SIZE or allocation_count != 0:
+        raise RuntimeError("malloc requires the single reviewed 64-byte call and return")
+
+
+def validate_result(q, allocs, gas):
+    """Validate the complete result header before dereferencing guest pointers."""
+    if q[0] == 0:
+        if q[1] != 0 or allocs:
+            raise RuntimeError("invalid error result header or unexpected allocation")
+    elif q != (0x5670AE8, HEAP, MALLOC_SIZE, HEAP | 1, gas) or allocs != [
+            {"ret": hex(MALLOC_RET), "size": MALLOC_SIZE}]:
+        raise RuntimeError("result escaped the reviewed allocation/header contract")
+
+
+def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True, *, allow_execution=False):
+    """Explicitly authorized bounded run; the actual allocator is excluded."""
+    validate_run(data, segs, rela, inp, gas, limit, stub, allow_execution)
+    from crypto_emulation_guard import run_bounded
     from unicorn import UC_ARCH_X86, UC_HOOK_CODE, UC_MODE_64, UC_PROT_ALL, Uc, UcError
     from unicorn.x86_const import (UC_X86_REG_FS_BASE, UC_X86_REG_R8, UC_X86_REG_RAX,
                                    UC_X86_REG_RCX, UC_X86_REG_RDI, UC_X86_REG_RDX,
@@ -330,18 +380,19 @@ def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True):
 
     mu = Uc(UC_ARCH_X86, UC_MODE_64)
     page = 0x1000
+    mapped = set()
 
     def map_span(va, size):
         start = va & ~(page - 1)
         end = (va + size + page - 1) & ~(page - 1)
         try:
             mu.mem_map(start, end - start, UC_PROT_ALL)
+            mapped.update(range(start, end, page))
         except UcError:
             for p in range(start, end, page):
-                try:
+                if p not in mapped:
                     mu.mem_map(p, page, UC_PROT_ALL)
-                except UcError:
-                    pass
+                    mapped.add(p)
 
     for base, off, filesz, memsz in segs:
         map_span(base, memsz)
@@ -352,7 +403,6 @@ def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True):
             mu.mem_write(r_offset, struct.pack("<Q", r_addend))
             relocs += 1
 
-    STACK, IO, STOP, TLS = 0x7FFF00000000, 0x60000000, 0x600000000, 0x7F0000000000
     map_span(STACK, 0x100000)
     map_span(IO, 0x10000)
     map_span(HEAP, 0x10000)
@@ -360,7 +410,6 @@ def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True):
     map_span(TLS, 0x2000)
     mu.reg_write(UC_X86_REG_FS_BASE, TLS + 0x1000)
     mu.mem_write(STOP, b"\xf4")
-    OUT, INP = IO + 0x100, IO + 0x1000
     mu.mem_write(INP, inp)
     rsp = STACK + 0x100000 - 0x2000 - 8
     mu.mem_write(rsp, struct.pack("<Q", STOP))
@@ -372,29 +421,33 @@ def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True):
     mu.reg_write(UC_X86_REG_R8, limit)
 
     allocs = []
-    bump = [HEAP]
 
     def on_malloc(uc, address, size, _user):
         sp = uc.reg_read(UC_X86_REG_RSP)
+        # Validate the stack address before any guest-pointer read.
+        if not STACK <= sp <= STACK + STACK_SIZE - 8 or sp % 8:
+            raise RuntimeError("malloc return slot is outside the synthetic stack")
         ret = struct.unpack("<Q", uc.mem_read(sp, 8))[0]
         req = uc.reg_read(UC_X86_REG_RDI)
+        validate_malloc(sp, ret, req, len(allocs))
         allocs.append({"ret": hex(ret), "size": req})
-        p = bump[0]
-        bump[0] += (req + 15) & ~15
-        uc.reg_write(UC_X86_REG_RAX, p)
+        uc.reg_write(UC_X86_REG_RAX, HEAP)
         uc.reg_write(UC_X86_REG_RSP, sp + 8)
         uc.reg_write(UC_X86_REG_RIP, ret)
 
-    if stub:
-        mu.hook_add(UC_HOOK_CODE, on_malloc, begin=MALLOC, end=MALLOC)
-    fault = None
+    stub_hook = mu.hook_add(UC_HOOK_CODE, on_malloc, begin=MALLOC, end=MALLOC)
     try:
-        mu.emu_start(FN, STOP, timeout=60_000_000, count=50_000_000)
-    except UcError as e:
-        fault = str(e)
+        run_bounded(mu, FN, STOP, code_ranges=EXECUTION_RANGES,
+                    writable_ranges=((STACK, STACK + STACK_SIZE),
+                                     (OUT, OUT + 0x28), (HEAP, HEAP + MALLOC_SIZE)),
+                    timeout=60_000_000, count=50_000_000)
+    finally:
+        mu.hook_del(stub_hook)
+    fault = None
     rip = mu.reg_read(UC_X86_REG_RIP)
     out = bytes(mu.mem_read(OUT, 0x28))
     q = struct.unpack("<5Q", out)
+    validate_result(q, allocs, gas)
     res = {"allocs": allocs, "fault": fault, "relocs_applied": relocs,
            "returned": fault is None and rip == STOP, "out_hex": out.hex()}
     if q[0] != 0:  # Ok(PrecompileOutput{bytes, gas_used})
@@ -403,14 +456,18 @@ def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True):
         res["data_ptr"] = hex(q[1])
         res["len"] = q[2]
         res["gas_used"] = q[4]
-        res["output_hex"] = bytes(mu.mem_read(q[1], q[2])).hex() if q[2] <= 0x100 else None
+        res["output_hex"] = bytes(mu.mem_read(q[1], q[2])).hex()
     else:
         res["kind"] = "err"
         res["err_payload_hex"] = out[0x10:0x28].hex()
     return res
 
 
-def analyse(data, check_sha=True, run_emu=True):
+def analyse(data, check_sha=True, run_emu=False, *, allow_execution=False):
+    if run_emu and allow_execution is not True:
+        raise PermissionError("captured-code emulation requires explicit allow_execution=True")
+    if run_emu and not unicorn_available():
+        raise RuntimeError("explicit emulation requested but Unicorn is unavailable")
     if check_sha:
         got = hashlib.sha256(data).hexdigest()
         if got != BINARY_SHA256:
@@ -519,7 +576,7 @@ def analyse(data, check_sha=True, run_emu=True):
             entry["reference_hex"] = enc(*ref_mul(pt, int.from_bytes(inp[64:96], "big"))).hex()
             entry["reference_match"] = entry["reference_hex"] == expect
         if do_emu:
-            r = emulate(data, segs, rela, inp, gas, limit)
+            r = emulate(data, segs, rela, inp, gas, limit, allow_execution=allow_execution)
             entry["emu"] = r
             if kind == "ok":
                 entry["emulated_match"] = (r["returned"] and r["kind"] == "ok" and r["output_hex"] == expect
@@ -644,18 +701,24 @@ def render(result):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--no-emu", action="store_true", help="skip Unicorn behavioural proof")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--emulate", action="store_true",
+                      help="explicit opt-in to bounded captured-code execution; requires prior authorization")
+    mode.add_argument("--no-emu", action="store_true", help="static only (the default)")
     ap.add_argument("-o", "--output", type=Path, help="write JSON to path")
     args = ap.parse_args(argv)
-    result = analyse(TARGET.read_bytes(), run_emu=not args.no_emu)
+    result = analyse(TARGET.read_bytes(), run_emu=args.emulate, allow_execution=args.emulate)
     text = render(result)
     errors = expectation_errors(result)
-    if args.output:
-        args.output.write_text(text)
-    else:
-        sys.stdout.write(text)
     for e in errors:
         print("FAIL", e, file=sys.stderr)
+    # Completed comparison records remain useful evidence even when mismatched.
+    # Preserve the raw record and signal failure separately through the exit code.
+    if args.output:
+        with args.output.open("x") as handle:
+            handle.write(text)
+    else:
+        sys.stdout.write(text)
     return 1 if errors else 0
 
 
