@@ -13,7 +13,8 @@ Standalone. From the pinned node #94 binary only, it recovers:
   * wiring: R_X86_64_RELATIVE addend 0x4e96610 at GOT slot 0x5776f00, exactly
     2 ff15 calls to the slot (gas wrappers 0x4e98a40 = 150 Istanbul and
     0x4e98ad0 = 500 Byzantium), 0 direct e8/e9 calls, and the precompile table
-    slots 0x574f020 / 0x574f0e0 whose RELA addends are those wrappers;
+    objects 0x574f020 / 0x574f0e0 whose RELA addends are those wrappers and
+    whose Address field (+0x10) is 0x..06;
   * no CPU-feature gate and no SIMD dispatch in run_add or its executed callees;
   * the only external call on the success path is malloc(0x40) at 0x4e96c5c
     through GOT 0x576dfd8 (RELA -> jemalloc malloc 0x54c06b0), stubbed in the
@@ -77,6 +78,8 @@ WRAPPERS = [
     (0x4E98A40, 0x4E98A57, 150, 0x574F020, "Istanbul"),
     (0x4E98AD0, 0x4E98AE7, 500, 0x574F0E0, "Byzantium"),
 ]
+# Precompile object layout (0x30 stride, Address at +0x10) as described in #550.
+PRECOMPILE_ADDRESS = "00" * 19 + "06"
 # Sibling bn128 entries (context only, static): (fn, GOT slot)
 SIBLINGS = [(0x4E96CF0, 0x5776F08, "run_mul"), (0x4E973E0, 0x5776F10, "run_pair")]
 
@@ -436,10 +439,12 @@ def analyse(data, check_sha=True, run_emu=True):
     for wva, cva, gas, tslot, fork in WRAPPERS:
         r = rela_of(tslot)
         imm = struct.unpack("<I", read_va(data, segs, cva - 8 + 1, 4))[0]
+        addr = read_va(data, segs, tslot + 0x10, 20).hex()
         wrappers.append({"wrapper": hex(wva), "call_va": hex(cva), "gas_imm": imm,
                          "fork": fork, "table_slot": hex(tslot), "table_rela": r,
+                         "table_address_va": hex(tslot + 0x10), "table_address_hex": addr,
                          "match": imm == gas and r is not None and r["r_addend"] == hex(wva)
-                         and r["r_info"] == hex(R_X86_64_RELATIVE)})
+                         and r["r_info"] == hex(R_X86_64_RELATIVE) and addr == PRECOMPILE_ADDRESS})
     siblings = [{"fn": hex(f), "slot": hex(s), "name": n, "rela": rela_of(s)} for f, s, n in SIBLINGS]
 
     simd = {"run_add": simd_hits(carved)}
