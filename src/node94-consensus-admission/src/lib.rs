@@ -13,6 +13,7 @@ mod auth;
 mod error;
 mod qc;
 mod stake;
+mod state;
 mod tc;
 mod types;
 
@@ -22,6 +23,11 @@ pub use error::{AdmissionError, FatalAdmissionError, VerificationFailure};
 pub use qc::verify_qc;
 pub use stake::{
     has_strict_two_thirds, Quorum, StakeHistory, StakeSnapshot, RECENT_ROUND_SPAN, STAKE_LAG_ROUNDS,
+};
+pub use state::{
+    admit_and_register, admit_verified_block, register_admitted_block, AdmittedBlock,
+    ConsensusState, ForwardChannel, ForwardDisposition, OutboundBlock, RegisteredBlock,
+    RegistrationOutcome, TransactionRecord,
 };
 pub use tc::verify_tc;
 pub use types::{
