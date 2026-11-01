@@ -73,7 +73,7 @@ Unicorn maps all PT_LOAD, applies every `R_X86_64_RELATIVE`, sets a stack and RE
 - memcpy / memset = real copy / fill
 - alloc-error / panic / unwind = `hlt`
 
-The only external calls in the core closure are those three jemalloc helpers, memcpy, memset, and the trap helpers named above (soft-int helpers at PLT targets reached via GOT remain executable and are not stubbed). The proof covers the function **with those stubs in place**; it is not a fully self-contained emulation.
+The only external calls in the core closure are those three jemalloc helpers, memcpy, memset, and the trap helpers named above (soft-int helpers at PLT targets reached via GOT remain executable and are not stubbed). The proof covers the function **with those stubs in place**; it is not a fully self-contained emulation. The trap helpers above are a representative list, not a complete one: several distinct panic / bounds-check helpers sit in `0x157a000`–`0x157c000` and only `0x157b810` is named, and some GOT-indirect calls go to internal in-binary code rather than libc externals. None of them is reached on valid inputs.
 
 #550 (RE-021, Blake2b) is prior table-layout work only: it pins the precompile table object layout used here to read Address `0x05`. It is not evidence for this function.
 
