@@ -175,12 +175,12 @@ def fde_end(data, segs, va):
             starts = [a + x for x, _ in tab]
             i = starts.index(va)
             # The next table start includes alignment padding. Read this FDE's pc_range.
-    fva = a + tab[i][1]
-    header = at(data, segs, fva, 16)
-    pc, size = struct.unpack_from("<iI", header, 8)
-    if fva + 8 + pc != va or size == 0:
-        raise ValueError("unexpected FDE start/range")
-    return va + size
+            fva = a + tab[i][1]
+            header = at(data, segs, fva, 16)
+            pc, size = struct.unpack_from("<iI", header, 8)
+            if fva + 8 + pc != va or size == 0:
+                raise ValueError("unexpected FDE start/range")
+            return va + size
     raise KeyError(".eh_frame_hdr")
 
 

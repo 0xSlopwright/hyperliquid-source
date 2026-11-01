@@ -43,3 +43,13 @@ pinned target; no target evidence was altered. Final normal/optimized test,
 compile, verify, catalogue and reproduction receipts are maintained in the
 ignored review ledger after the branch is frozen. Full combined repository tests
 are owned by the parent integration run.
+
+## Independent review correction
+
+Review of candidate `687eafa6ca6f8913ccfddb7771a4e6011cc94cbd` found a
+missing-section error in the RE-019 independent FDE reader correction. FDE body
+parsing now stays inside the matching `.eh_frame_hdr` branch, and a missing header
+raises `KeyError`. A new negative control previously reproduced
+`UnboundLocalError`. RE-020 wording now distinguishes the lookup table from the
+actual FDE `pc_begin`/`pc_range` fields. The prior candidate remains in Git history
+and the original failure is recorded in the ignored review evidence.

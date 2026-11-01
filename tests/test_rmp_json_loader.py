@@ -7,6 +7,7 @@ import struct
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKET = ROOT / "research" / "work-items" / "RE-019-rmp-json-loader-94"
@@ -62,6 +63,11 @@ def tool_rejects(data):
 
 @unittest.skipIf(DATA is None, "node #94 binary not present")
 class RmpJsonLoaderTests(unittest.TestCase):
+    def test_independent_missing_fde_header_is_explicit(self):
+        with patch.object(iv, 'shdrs', return_value=iter(())):
+            with self.assertRaisesRegex(KeyError, 'eh_frame_hdr'):
+                iv.fde_end(b'', [], 0x3c155a0)
+
     def test_padding_is_outside_actual_fde(self):
         # Changing alignment bytes must not change the declared function range.
         for start, end in [(63002016, 63003746)]:

@@ -1,7 +1,7 @@
 {
   "branch": "codex/review-w3-static-batch-20261031",
   "base": "f76c003006b3e935d59b278f8b8fd8a21478e537",
-  "frozen": false,
+  "frozen": true,
   "target_sha256": "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f",
   "captured_execution": false,
   "instruction_emulation": false,
@@ -10594,6 +10594,221 @@
       "current_sha256": "93c337e14086700e8495d85f1ba0cfadc9dceda3a8a05d77939d9f621c0e82b6"
     }
   ],
-  "integration_status": "running normal/optimized affected suite plus verify/catalogue/reproduce",
-  "evidence_directory": "work/pr-review-20261031/w3-static-review"
+  "integration_status": "Normal259 and parser-delta28 normal/28 optimized pass; remaining broad receipts pending",
+  "evidence_directory": "work/pr-review-20261031/w3-static-review",
+  "parent_review_correction": {
+    "prior_candidate": "687eafa6ca6f8913ccfddb7771a4e6011cc94cbd",
+    "file": "research/work-items/RE-019-rmp-json-loader-94/independent_verify.py",
+    "finding": "FDE-body parsing was incorrectly outside the matching .eh_frame_hdr branch; absent header raised UnboundLocalError.",
+    "before": {
+      "candidate": "687eafa6ca6f8913ccfddb7771a4e6011cc94cbd",
+      "file": "research/work-items/RE-019-rmp-json-loader-94/independent_verify.py",
+      "sha256": "82b8fe9d728d05c2afc3ceb9444474de280f2a5a96797de9053d1d274f91d712",
+      "missing_header_exception": "UnboundLocalError",
+      "message": "cannot access local variable 'a' where it is not associated with a value",
+      "expected": "KeyError",
+      "verdict": "FAIL"
+    },
+    "fix": "Parse and return within matching header; reachable final KeyError. Add missing-header negative control. Correct RE-020 prose: header locates FDE; pc_begin/pc_range yields end.",
+    "validation": "PASS: 28 normal and 28 optimized affected tests; both packet verifiers normal/optimized; final make verify. Broader optimized259 and catalogue/reproduce receipts continue in ignored ledger.",
+    "results": [
+      {
+        "label": "test_rmp_json_loader.py-normal",
+        "command": [
+          "python3.10",
+          "-B",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-p",
+          "test_rmp_json_loader.py",
+          "-v"
+        ],
+        "exit": 0,
+        "seconds": 33.11157202720642,
+        "tests": 17,
+        "log": "delta-test_rmp_json_loader.py-normal.log"
+      },
+      {
+        "label": "test_path_field_thunk.py-normal",
+        "command": [
+          "python3.10",
+          "-B",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-p",
+          "test_path_field_thunk.py",
+          "-v"
+        ],
+        "exit": 0,
+        "seconds": 21.601786136627197,
+        "tests": 11,
+        "log": "delta-test_path_field_thunk.py-normal.log"
+      },
+      {
+        "label": "RE-019-rmp-json-loader-94-verify.py-normal",
+        "command": [
+          "python3.10",
+          "-I",
+          "-B",
+          "research/work-items/RE-019-rmp-json-loader-94/verify.py"
+        ],
+        "exit": 0,
+        "seconds": 1.5035669803619385,
+        "tests": null,
+        "log": "delta-RE-019-rmp-json-loader-94-verify.py-normal.log"
+      },
+      {
+        "label": "RE-019-rmp-json-loader-94-independent_verify.py-normal",
+        "command": [
+          "python3.10",
+          "-I",
+          "-B",
+          "research/work-items/RE-019-rmp-json-loader-94/independent_verify.py"
+        ],
+        "exit": 0,
+        "seconds": 1.503493070602417,
+        "tests": null,
+        "log": "delta-RE-019-rmp-json-loader-94-independent_verify.py-normal.log"
+      },
+      {
+        "label": "RE-020-path-field-thunk-94-verify.py-normal",
+        "command": [
+          "python3.10",
+          "-I",
+          "-B",
+          "research/work-items/RE-020-path-field-thunk-94/verify.py"
+        ],
+        "exit": 0,
+        "seconds": 3.0052430629730225,
+        "tests": null,
+        "log": "delta-RE-020-path-field-thunk-94-verify.py-normal.log"
+      },
+      {
+        "label": "RE-020-path-field-thunk-94-independent_verify.py-normal",
+        "command": [
+          "python3.10",
+          "-I",
+          "-B",
+          "research/work-items/RE-020-path-field-thunk-94/independent_verify.py"
+        ],
+        "exit": 0,
+        "seconds": 2.9971041679382324,
+        "tests": null,
+        "log": "delta-RE-020-path-field-thunk-94-independent_verify.py-normal.log"
+      },
+      {
+        "label": "test_rmp_json_loader.py-optimized",
+        "command": [
+          "python3.10",
+          "-O",
+          "-B",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-p",
+          "test_rmp_json_loader.py",
+          "-v"
+        ],
+        "exit": 0,
+        "seconds": 32.6857852935791,
+        "tests": 17,
+        "log": "delta-test_rmp_json_loader.py-optimized.log"
+      },
+      {
+        "label": "test_path_field_thunk.py-optimized",
+        "command": [
+          "python3.10",
+          "-O",
+          "-B",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-p",
+          "test_path_field_thunk.py",
+          "-v"
+        ],
+        "exit": 0,
+        "seconds": 21.458171844482422,
+        "tests": 11,
+        "log": "delta-test_path_field_thunk.py-optimized.log"
+      },
+      {
+        "label": "RE-019-rmp-json-loader-94-verify.py-optimized",
+        "command": [
+          "python3.10",
+          "-O",
+          "-I",
+          "-B",
+          "research/work-items/RE-019-rmp-json-loader-94/verify.py"
+        ],
+        "exit": 0,
+        "seconds": 1.4923770427703857,
+        "tests": null,
+        "log": "delta-RE-019-rmp-json-loader-94-verify.py-optimized.log"
+      },
+      {
+        "label": "RE-019-rmp-json-loader-94-independent_verify.py-optimized",
+        "command": [
+          "python3.10",
+          "-O",
+          "-I",
+          "-B",
+          "research/work-items/RE-019-rmp-json-loader-94/independent_verify.py"
+        ],
+        "exit": 0,
+        "seconds": 1.47871994972229,
+        "tests": null,
+        "log": "delta-RE-019-rmp-json-loader-94-independent_verify.py-optimized.log"
+      },
+      {
+        "label": "RE-020-path-field-thunk-94-verify.py-optimized",
+        "command": [
+          "python3.10",
+          "-O",
+          "-I",
+          "-B",
+          "research/work-items/RE-020-path-field-thunk-94/verify.py"
+        ],
+        "exit": 0,
+        "seconds": 2.950620174407959,
+        "tests": null,
+        "log": "delta-RE-020-path-field-thunk-94-verify.py-optimized.log"
+      },
+      {
+        "label": "RE-020-path-field-thunk-94-independent_verify.py-optimized",
+        "command": [
+          "python3.10",
+          "-O",
+          "-I",
+          "-B",
+          "research/work-items/RE-020-path-field-thunk-94/independent_verify.py"
+        ],
+        "exit": 0,
+        "seconds": 2.9960668087005615,
+        "tests": null,
+        "log": "delta-RE-020-path-field-thunk-94-independent_verify.py-optimized.log"
+      },
+      {
+        "label": "verify-final",
+        "command": [
+          "make",
+          "verify"
+        ],
+        "exit": 0,
+        "seconds": 1.280702829360962,
+        "tests": null,
+        "log": "delta-verify-final.log"
+      }
+    ]
+  }
 }

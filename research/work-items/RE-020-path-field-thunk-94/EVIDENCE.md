@@ -25,7 +25,7 @@ Output: path-field-thunk.json (sha256 in MANIFEST). It is byte-identical for see
 
 All coordinates are virtual addresses (VAs) mapped through the PT_LOAD program headers. Analysis is complete for the listed ranges; nothing timed out.
 
-1. **FDE A.** `.eh_frame_hdr` gives 0x22ae8a0 the exclusive end 0x22b107c. Body sha256 = ccc2d5a652b97962b0350c11cd2362c8ad4929d02c5ad1f8b5f77b641c59cd2b (10204 bytes).
+1. **FDE A.** `.eh_frame_hdr` locates the FDE; its `pc_begin` and `pc_range` yield `0x22ae8a0..0x22b107c`. Body sha256 = ccc2d5a652b97962b0350c11cd2362c8ad4929d02c5ad1f8b5f77b641c59cd2b (10204 bytes).
 
 2. **Four ff15 sites through GOT 0x5773c70** (each slot target re-derived as site+6+disp32):
    - 0x22aec0f `ff 15 5b 50 4c 03`. Path pointer: 0x22aebc6 `48 8b b5 d0 00 00 00` = `mov rsi,[rbp+0xd0]`; length 0x22aebcd `48 8b 95 d8 00 00 00`.
@@ -35,7 +35,7 @@ All coordinates are virtual addresses (VAs) mapped through the PT_LOAD program h
 
 3. **GOT.** Exactly one `.rela.dyn` RELATIVE at r_offset 0x5773c70, addend 0x4546ba0.
 
-4. **FDE B (thunk).** `.eh_frame_hdr` gives 0x4546ba0 the exclusive end 0x4546c51. Body sha256 = 7e02b1e4b53e3d479e95a5d696400d6528f16f4b2f8a4ef379599daaf0394b95 (177 bytes). Fixed bytes through the loader call:
+4. **FDE B (thunk).** `.eh_frame_hdr` locates the FDE; its `pc_begin` and `pc_range` yield `0x4546ba0..0x4546c51`. Body sha256 = 7e02b1e4b53e3d479e95a5d696400d6528f16f4b2f8a4ef379599daaf0394b95 (177 bytes). Fixed bytes through the loader call:
    - 0x4546ba0 `41 57 41 56 53` push r15,r14,rbx
    - 0x4546ba5 `48 81 ec 00 10 00 00` sub rsp,0x1000
    - 0x4546bac `48 c7 04 24 00 00 00 00` mov qword [rsp],0
