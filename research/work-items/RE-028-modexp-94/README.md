@@ -73,7 +73,7 @@ Unicorn maps all PT_LOAD, applies every `R_X86_64_RELATIVE`, sets a stack and RE
 - memcpy / memset = real copy / fill
 - alloc-error / panic / unwind = `hlt`
 
-The only external calls in the core closure are those three jemalloc helpers, memcpy, memset, and the trap helpers named above (soft-int helpers at PLT targets reached via GOT remain executable and are not stubbed). The proof covers the function **with those stubs in place**; it is not a fully self-contained emulation. The trap helpers above are a representative list, not a complete one: several distinct panic / bounds-check helpers sit in `0x157a000`–`0x157c000` and only `0x157b810` is named, and some GOT-indirect calls go to internal in-binary code rather than libc externals. None of them is reached on valid inputs.
+The calls stubbed in the core closure are those three jemalloc helpers, memcpy and memset (the libc externals, via GLOB_DAT), plus the trap helpers, of which only a representative set is named above (soft-int helpers at PLT targets reached via GOT remain executable and are not stubbed). The proof covers the function **with those stubs in place**; it is not a fully self-contained emulation. The trap helpers above are a representative list, not a complete one: several distinct panic / bounds-check helpers sit in `0x157a000`–`0x157c000` and only `0x157b810` is named, and some GOT-indirect calls go to internal in-binary code rather than libc externals. None of them is reached on valid inputs.
 
 #550 (RE-021, Blake2b) is prior table-layout work only: it pins the precompile table object layout used here to read Address `0x05`. It is not evidence for this function.
 
@@ -84,7 +84,7 @@ The only external calls in the core closure are those three jemalloc helpers, me
 - Short / exotic input shapes beyond the listed vectors are not claimed; the zero-modulus and even-modulus paths are exercised, but not every padding corner.
 - No SIMD or CPU-feature branch exists in the recovered closure, so there is no second path to cover.
 - Does not assert anything about other node builds or unpinned binaries.
-- `make verify test catalogue-check` is held (not run for this packet).
+- `make verify test catalogue-check` ran at head `40dd6dd7` (results in the PR body); later commits change only README / PR-body text.
 
 ### Next step
 

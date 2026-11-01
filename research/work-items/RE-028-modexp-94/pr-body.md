@@ -61,6 +61,8 @@ add / mul precompiles under the same stub style.
 
 ### make verify test catalogue-check output
 
+The make ran at HEAD `40dd6dd7`; the later commits on this branch change only README / PR-body text (no pinned value or test change, no fresh make).
+
 GNU objdump 2.44, head `40dd6dd70804`:
 
 ```text
