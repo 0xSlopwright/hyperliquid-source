@@ -36,7 +36,7 @@ These are raw bit-pattern facts, not recovered Option/Result/enum discriminants.
 
 The explicit prefix loads a qword at input `+0x10`, compares it against sign-extended immediate **101**, then uses unsigned JAE to worker `+0x5da`. For valid input memory this is exactly count >=101. Counts 0..100 pass the local guard. They are **not** thereby proved to complete: the selected-collection helper and subsequent processing can fail or have additional constraints.
 
-The >=101 arm skips the selected-collection helper, handles the observed input ownership, prepares raw raw exit word **0x158**, calls `0x2308120`, and exits the worker's measured normal route. Its whole error/public status representation and helper side effects are unknown. This packet calls it a limit-exit route, not an established returned HTTP error.
+The >=101 arm skips the selected-collection helper, handles the observed input ownership, prepares raw exit word **0x158**, calls `0x2308120`, and exits the worker's measured normal route. Its whole error/public status representation and helper side effects are unknown. This packet calls it a limit-exit route, not an established returned HTTP error.
 
 The all-collection prefix instead obtains its buffer/count from the context:
 

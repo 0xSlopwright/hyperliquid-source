@@ -1,4 +1,4 @@
-"""Actual six-body selector/dispatch and semantic operand corruption controls."""
+"""Actual seven-body selector/dispatch and semantic operand corruption controls."""
 import hashlib
 import json
 from pathlib import Path
@@ -77,7 +77,7 @@ class SnapshotSelectionTests(unittest.TestCase):
             site,row=next(iter(o['rip_bindings'].items()))
             with self.assertRaisesRegex(ValueError,'RIP binding changed'):subject.analyze(self.mutate(int(site)+len(bytes.fromhex(row['prefix']))))
 
-    def test_real_source_relocations_and_six_fde_bounds(self):
+    def test_real_source_relocations_and_seven_fde_bounds(self):
         sec=next(s for s in self.secs if s['name']=='.rela.dyn')
         offsets={struct.unpack_from('<Q',self.data,p)[0]:p for p in range(sec['offset'],sec['offset']+sec['size'],24)}
         for slot in self.spec['relocations']:
