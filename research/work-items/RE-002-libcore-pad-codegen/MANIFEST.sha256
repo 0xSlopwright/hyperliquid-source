@@ -4,7 +4,7 @@ f3f7a9bee3726a4244561f5334caf85bcca7761c42eed1e7e0fd38aa5067f9ac  src/libcore-pa
 f1561d80c48afd672f5ee7e88482051a6a250efb0322983cb0a9541b6c97a298  research/work-items/RE-002-libcore-pad-codegen/EXPECTED-OBSERVATIONS.json
 dd85ed217456ad54a54c80067be8c52778cdef5aa8b46e93b9ce280452a981eb  research/work-items/RE-002-libcore-pad-codegen/PREPARATION.json
 ca6962b987efbd380548892cb2d055c37a6ec5c579eef15aa7b5284173134462  research/work-items/RE-002-libcore-pad-codegen/PUBLISHED-BITCODE-INPUT.json
-b030fd266e04b050549df9814053dd4c5e2445b64fdb906909abfe7222f49610  research/work-items/RE-002-libcore-pad-codegen/README.md
+4b25cf79bac02780d26590abe3f1edd3009fbe917bab5b63136616fc473d9a9f  research/work-items/RE-002-libcore-pad-codegen/README.md
 4300e5c647d83bc4dde69800cd0c8d1a56822af51a35ca587f732083cbe8a1eb  research/work-items/RE-002-libcore-pad-codegen/RECIPES.json
 d62080d0724a750e0162d6a0563c7a056ae76e2212fd48310f89bcf8809dfde4  research/work-items/RE-002-libcore-pad-codegen/fixtures/captured-adapter622.bin
 ab7fc88e156c3ef084ae3db3f3de8bbbccfbcf711365c253d3bb4251e8196086  research/work-items/RE-002-libcore-pad-codegen/fixtures/generated-adapter622.bin

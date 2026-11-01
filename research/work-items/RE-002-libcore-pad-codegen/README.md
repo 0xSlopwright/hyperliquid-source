@@ -155,10 +155,14 @@ inferred source is used.
 No original Rust ABI, private formatter/vtable layout, callback semantics,
 whole-ELF match, runtime behavior, original compiler/fork or component recovery
 gate is claimed. The wrapper's types are a deliberate new build stimulus.
-Current full `make test` remains unrun pending separate authorization for
-upstream captured-instruction evaluators; the four cleared static targets and
-owned non-executing controls are reported separately. Hosted CI is deliberately
-skipped on a draft publication, not claimed passing.
+The operator has authorized all 73 audited offline evaluator families. Full
+`make test` remains unrun while the complete suite is arranged as separate
+module processes to fit available RAM. The four cleared static targets and
+owned non-executing controls are reported separately. Historical receipts retain
+their original authorization-state labels. Captured native binaries and the
+produced probe libraries remain unexecuted. CI is authorized for the audited
+families, but deliberately skipped on this draft while full-suite qualification
+is pending; no hosted success is claimed.
 
 The next provenance question is whether independent historical source/compiler
 evidence can identify the original build route; this two-recipe result alone
