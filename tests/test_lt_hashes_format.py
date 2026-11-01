@@ -19,7 +19,7 @@ DATA = bv.TARGET.read_bytes() if bv.TARGET.exists() else None
 requires_bin = unittest.skipIf(DATA is None, 'node #94 binary absent')
 RE009_MERGED = {
     'research/work-items/RE-009-storage-state-roots/hashers.json':
-        '6411981c8f0953dc152e432a3c9abeb8512f703599e36df675d39dfb9f6a77f0',
+        '1e7fbe921766315fb37f5c72227b24ba8ceb07822ad950de570b4553480855fa',
     'research/work-items/RE-009-storage-state-roots/state-roots.json':
         '1ac3af0abe3b12e44819f117d3288a2e7e7ae336934cb6927d566142bc8387a8',
     'research/work-items/RE-009-storage-state-roots/fixture-schema.json':

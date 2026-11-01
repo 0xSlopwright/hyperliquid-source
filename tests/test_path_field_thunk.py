@@ -13,7 +13,7 @@ PACKET = ROOT / "research" / "work-items" / "RE-020-path-field-thunk-94"
 sys.path.insert(0, str(ROOT / "tools"))
 import path_field_thunk as tool  # noqa: E402
 
-OUTPUT_SHA256 = "6d3a09f4d8ab2e6061c6bfe3491ccec5fa43ad4f15439999e743557ab1c3ce15"
+OUTPUT_SHA256 = "93c337e14086700e8495d85f1ba0cfadc9dceda3a8a05d77939d9f621c0e82b6"
 
 
 def load(name, path):
@@ -62,6 +62,22 @@ def tool_rejects(data):
 
 @unittest.skipIf(DATA is None, "node #94 binary not present")
 class PathFieldThunkTests(unittest.TestCase):
+    def test_padding_is_outside_actual_fde(self):
+        # Changing alignment bytes must not change the declared function range.
+        for start, end in [(36366496, 36376700), (72641440, 72641617)]:
+            with flip(end):
+                self.assertEqual(tool.fde_end(bytes(DATA), SEGS, start), end)
+
+    def test_fde_pc_range_controls_end(self):
+        section = tool.section_map(bytes(DATA))[b'.eh_frame_hdr']
+        o, a = section[4], section[3]
+        count, = struct.unpack_from('<I', DATA, o + 8)
+        table = [struct.unpack_from('<ii', DATA, o + 12 + i * 8) for i in range(count)]
+        for start, end in [(36366496, 36376700), (72641440, 72641617)]:
+            fva = a + next(f for pc, f in table if a + pc == start)
+            with flip(fva + 12):
+                self.assertNotEqual(tool.fde_end(bytes(DATA), SEGS, start), end)
+
     def test_output_pin_and_expectations(self):
         r = tool.analyse(bytes(DATA))
         self.assertEqual(tool.expectation_errors(r), [])
@@ -76,8 +92,8 @@ class PathFieldThunkTests(unittest.TestCase):
         self.assertEqual(len(tool.KEY_INSNS), 26)
         self.assertEqual(r["key_insns"], 26)
         self.assertEqual(len(r["locations"]), 1)
-        self.assertEqual(r["fde_a_extent_len"], 10208)
-        self.assertEqual(r["fde_b_extent_len"], 192)
+        self.assertEqual(r["fde_a_extent_len"], 10204)
+        self.assertEqual(r["fde_b_extent_len"], 177)
         self.assertEqual(r["got_slot"], "0x5773c70")
         self.assertEqual(r["got_addend"], "0x4546ba0")
         self.assertEqual(r["path_sources"]["0x22aec0f"]["path_ptr_source"], "[rbp+0xd0]")

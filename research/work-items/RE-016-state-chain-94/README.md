@@ -1,10 +1,10 @@
 # RE-016 state chain (hl-node #94)
 
-This is a standalone packet. `tools/state_chain.py` builds `state-chain.json` from the binary. It needs only a bounded .rela.dyn parse and three bounded function extents. `verify.py` regenerates the JSON and checks the exact pins. `independent_verify.py` imports nothing from tools/. It checks 43 key VAs byte by byte, re-derives 10 call/slot targets, re-parses both relocations and re-runs the whole-section e8/ff15 caller pass (8 sites across 5 pinned targets), then reports PASS, FAIL or INCONCLUSIVE. `tests/test_state_chain.py` holds the pins, the seed checks and the tamper tests. See EVIDENCE.md.
+This is a standalone packet. `tools/state_chain.py` builds `state-chain.json` from the binary. It needs only a bounded .rela.dyn parse and three bounded normal-return instruction windows. `verify.py` regenerates the JSON and checks the exact pins. `independent_verify.py` imports nothing from tools/. It checks 43 key VAs byte by byte, re-derives 10 call/slot targets, re-parses both relocations and re-runs the whole-section e8/ff15 caller pass (8 sites across 5 pinned targets), then reports PASS, FAIL or INCONCLUSIVE. `tests/test_state_chain.py` holds the pins, the seed checks and the tamper tests. See EVIDENCE.md.
 
 File hashes (also in MANIFEST.sha256):
 
-- EVIDENCE.md 9973ca95ae6e4b301b98c5e0b486f2f381da9e2ce90bb280775d611b3cbb6baa
+- EVIDENCE.md bed9ebc5f927dbf11e85b55b83f3998e80c1225d7ef3a3a3d1548fb6c66264b8
 - state-chain.json 6e063821c3de3ad62dc45b0af1bc28ff7cdedaf048da0fbdd3cc5e51cabead75
 - verify.py 9f48f7929400ee00e5822c81512a5e06a9023defd8e9907796636d510ed39ac9
 - independent_verify.py fc9d1532fb9654bd099c5ae6d679a916c1eed84c53483bf0bc1173f760d5be70

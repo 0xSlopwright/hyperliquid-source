@@ -16,12 +16,12 @@ for s in 0 7 99; do PYTHONHASHSEED=$s python3 -B tools/rmp_json_loader.py | sha2
 
 ## File hashes
 
-- EVIDENCE.md d2ee27175bd1a9b388de61a5ff535afa38319ff708031a0abda241768f561e6f
-- rmp-json-loader.json 58cf74dd36110d624b1df3422838f9f242c3ed14623a9b3bd44eb1e334ded75f
-- verify.py c31f5236a287b0346dff09a9874a2a345c48647fe38a597d9b9e8daae4c5fbed
-- independent_verify.py 0355dde46d97f479693fc05628be75e705b9c197692522fcc4b12dd851ec6777
-- tools/rmp_json_loader.py aec96f293485c5831b7a172992bd8cc153d01e75010b193b0066a4084c502bd0
-- tests/test_rmp_json_loader.py 3f30980e06f7b6a0ddaaa5d83455ee6375d0830ddb63766b194d72a6694376fa
+- EVIDENCE.md 36cdb6e3def890ace2be529c938cf201bb17871a06f37ac96ad9397c20909c02
+- rmp-json-loader.json 47e98c9d78eceb2125b799b77c89ce5c9f2a1353d7e7ec2aa24304578decd295
+- verify.py b6b862c407186f9518846a58c28554ad46d5481947cc3a295d61cd4523cc3cd9
+- independent_verify.py 82b8fe9d728d05c2afc3ceb9444474de280f2a5a96797de9053d1d274f91d712
+- tools/rmp_json_loader.py c449c7e394b2c3eff42bf4be44c80c30e191d779351cec91367510d2ca468211
+- tests/test_rmp_json_loader.py 2faa1b6c913645a00b667178314589a8e65d14efe4e7aa585fe9d17e29c27d06
 
 ## What this does not claim
 

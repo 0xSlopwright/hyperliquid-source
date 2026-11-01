@@ -10,7 +10,7 @@ import evm_db_blake3 as m  # noqa: E402
 import bincode_varint as bv  # noqa: E402
 
 BIN_SHA = '3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f'
-JSON_SHA = 'd0047969a9226409e8d74480d57df9cd76bd4c8d91fcbbb38792c9a85fbead4e'
+JSON_SHA = '8b06f4ba3fb87bba0da2e6fa31d334ea2512934d5da329c0e09d919fce86fc47'
 
 
 def main():

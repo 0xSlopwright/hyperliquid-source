@@ -17,8 +17,8 @@ BINARY = ROOT / "artifacts" / "node" / "94" / "hl-node"
 SHA256 = "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
 PACKET_JSON = HERE / "rmp-json-loader.json"
 FN = 0x3c155a0
-FN_END = 0x3c15c70
-EXTENT_SHA256 = "b9475c6190243bb4674d50321121a69fe42b87751dfcbea6acf3455738b08f8e"
+FN_END = 0x3c15c62
+EXTENT_SHA256 = "97e6f232fa7ee3f9a045bdbb7620bbeab50b090ef856fa0f89c61242e91cb7b3"
 CALLERS = [0x22aefea, 0x3273862, 0x4546bca]
 SCAN = (b".text\0", b".init\0", b".fini\0", b".plt\0")
 FDES = {0x22aefea: 0x22ae8a0, 0x3273862: 0x3273810, 0x4546bca: 0x4546ba0}
@@ -166,7 +166,7 @@ def fde_start(data, segs, va):
     raise KeyError(".eh_frame_hdr")
 
 
-def fde_next_start(data, segs, va):
+def fde_end(data, segs, va):
     for name, h in shdrs(data):
         if name == b".eh_frame_hdr\0":
             o, a = h[4], h[3]
@@ -174,7 +174,13 @@ def fde_next_start(data, segs, va):
             tab = [struct.unpack_from("<ii", data, o + 12 + 8 * i) for i in range(n)]
             starts = [a + x for x, _ in tab]
             i = starts.index(va)
-            return starts[i + 1]
+            # The next table start includes alignment padding. Read this FDE's pc_range.
+    fva = a + tab[i][1]
+    header = at(data, segs, fva, 16)
+    pc, size = struct.unpack_from("<iI", header, 8)
+    if fva + 8 + pc != va or size == 0:
+        raise ValueError("unexpected FDE start/range")
+    return va + size
     raise KeyError(".eh_frame_hdr")
 
 
@@ -259,7 +265,7 @@ def check_keys(data, check_sha=True, callers=True, labels=True, locations=True, 
     fails = []
     segs = load_segments(data)
     if extent:
-        if fde_next_start(data, segs, FN) != FN_END:
+        if fde_end(data, segs, FN) != FN_END:
             fails.append("extent end mismatch")
         ext = at(data, segs, FN, FN_END - FN)
         if hashlib.sha256(ext).hexdigest() != EXTENT_SHA256:

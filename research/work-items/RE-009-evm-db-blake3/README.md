@@ -11,7 +11,7 @@
 There are three blake3 rounds. Each has the same shape:
 
 1. A DB-wrapper call.
-2. `memset(buf, 0, 0x810)`.
+2. `memset(scratch, 0, 0x810)` at `rsp+0xa60`; this is distinct from the producer output buffer.
 3. A producer call `(rdi=buf, rsi=src, edx=1000000, rcx=scratch)`.
 4. blake3 `0x57700c0`.
 5. `update(rsp+0xa60, buf, 0x800)`.
@@ -25,9 +25,10 @@ There are three blake3 rounds. Each has the same shape:
 
 Each round hashes exactly the first 0x800 bytes of its own 0x810-byte buffer. The rounds are separate hashers, not one chained hash. The order is 1, 2, 3.
 
-Each 32-byte finalize output is overwritten before it is read:
+On each normal-return path, each 32-byte finalize output is overwritten before any digest byte is read:
 
 - The store `mov [slot],r14; mov [slot+8],ebp` writes the Instant::now result.
+- The intervening `0x4ee3730` helper reads only the replaced 8-byte word and 4-byte word from that slot (loads at `0x4ee3742` and `0x4ee3749`); its recursive path swaps those same 12-byte inputs.
 - A `memcpy(slot, …, 0xf8)` then follows. It covers all 32 bytes.
 
 The pinned sites are:
@@ -76,4 +77,4 @@ python3 -O -B research/work-items/RE-009-evm-db-blake3/verify.py
 python3 -I -B research/work-items/RE-009-evm-db-blake3/independent_verify.py
 ```
 
-`evm-db-blake3.json` has sha256 `d0047969a9226409e8d74480d57df9cd76bd4c8d91fcbbb38792c9a85fbead4e`. It is identical under PYTHONHASHSEED 0, 7 and 99.
+`evm-db-blake3.json` has sha256 `8b06f4ba3fb87bba0da2e6fa31d334ea2512934d5da329c0e09d919fce86fc47`. It is identical under PYTHONHASHSEED 0, 7 and 99.

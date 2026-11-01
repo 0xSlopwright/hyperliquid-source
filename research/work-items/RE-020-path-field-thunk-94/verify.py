@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import path_field_thunk as tool  # noqa: E402
 
 PACKET_JSON = HERE / "path-field-thunk.json"
-JSON_SHA256 = "6d3a09f4d8ab2e6061c6bfe3491ccec5fa43ad4f15439999e743557ab1c3ce15"
+JSON_SHA256 = "93c337e14086700e8495d85f1ba0cfadc9dceda3a8a05d77939d9f621c0e82b6"
 
 
 def main():

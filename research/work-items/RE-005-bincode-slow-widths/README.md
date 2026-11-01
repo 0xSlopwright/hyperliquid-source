@@ -34,7 +34,7 @@ Static and offline. The binary is never executed.
 
 ```sh
 python3 -B tools/bincode_varint_slow.py | sha256sum
-# 2a997306317bd14b243d1f780501514707f3b4a5d75726555a0156608867df14 = slow-sites.json
+# c974cce1fb38ef48235890eeec8eaf5a57ee2738499f1baef847c33594702688 = slow-sites.json
 python3 -I -B research/work-items/RE-005-bincode-slow-widths/verify.py
 python3 -O -B research/work-items/RE-005-bincode-slow-widths/verify.py
 python3 -I -B research/work-items/RE-005-bincode-slow-widths/independent_verify.py
@@ -52,7 +52,7 @@ Output is byte-identical under `PYTHONHASHSEED` 0, 7 and 99.
 
 | file | sha256 |
 |---|---|
-| `slow-sites.json` | `2a997306317bd14b243d1f780501514707f3b4a5d75726555a0156608867df14` |
+| `slow-sites.json` | `c974cce1fb38ef48235890eeec8eaf5a57ee2738499f1baef847c33594702688` |
 | `objdump-excerpts.txt` | `0a8b937e511c334bc640b417042359a864051e8b758de85b5aeadefbe1e9eb03` |
 
 The objdump excerpts were made with GNU objdump (`-d -M intel --no-show-raw-insn`)
@@ -127,8 +127,8 @@ Reached through GOT `0x57745e8`.
 ### u16 length-marker scan (`u16_marker_scan`)
 
 The scan covered 35 `0xfb` sites, exactly one length-2-adjacent hit at
-`0x134698d`, which is a chain-id lookup, not a u16 decoder, so there is no u16
-slice decoder.
+`0x134698d`, which is a chain-id lookup, not a u16 decoder. No u16 slice decoder was
+found by this scan; other instruction shapes and wider-separated checks remain untested.
 
 - Sites: every `cmp <reg>,0xfb` instruction start in `.text`, 35 in total. The
   list is pinned in the tool and re-proved equal to GNU objdump 2.44's full

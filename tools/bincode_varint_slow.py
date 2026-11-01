@@ -325,7 +325,7 @@ def _u16_marker_scan(data, secs, fdes):
                                '31337, 42161, 11155111); not a u16 decoder. The chain names are an '
                                'inference from the immediates, not an observation'),
         },
-        'conclusion': 'no u16 slice decoder: the only length2_adjacent 0xfb site is the chain-id lookup',
+        'conclusion': 'no u16 slice decoder found by the specified length2_adjacent scan: its only hit is the chain-id lookup',
     }
 
 

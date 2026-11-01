@@ -19,7 +19,7 @@ import bincode_varint_slow as sv  # noqa: E402
 
 PACKET = ROOT / 'research/work-items/RE-005-bincode-slow-widths'
 FAST_PACKET = ROOT / 'research/work-items/RE-005-bincode-varint'
-OUTPUT_SHA256 = '2a997306317bd14b243d1f780501514707f3b4a5d75726555a0156608867df14'
+OUTPUT_SHA256 = 'c974cce1fb38ef48235890eeec8eaf5a57ee2738499f1baef847c33594702688'
 _CACHE = {}
 
 

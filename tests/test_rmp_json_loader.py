@@ -13,7 +13,7 @@ PACKET = ROOT / "research" / "work-items" / "RE-019-rmp-json-loader-94"
 sys.path.insert(0, str(ROOT / "tools"))
 import rmp_json_loader as tool  # noqa: E402
 
-OUTPUT_SHA256 = "58cf74dd36110d624b1df3422838f9f242c3ed14623a9b3bd44eb1e334ded75f"
+OUTPUT_SHA256 = "47e98c9d78eceb2125b799b77c89ce5c9f2a1353d7e7ec2aa24304578decd295"
 
 
 def load(name, path):
@@ -62,6 +62,22 @@ def tool_rejects(data):
 
 @unittest.skipIf(DATA is None, "node #94 binary not present")
 class RmpJsonLoaderTests(unittest.TestCase):
+    def test_padding_is_outside_actual_fde(self):
+        # Changing alignment bytes must not change the declared function range.
+        for start, end in [(63002016, 63003746)]:
+            with flip(end):
+                self.assertEqual(tool.fde_end(bytes(DATA), SEGS, start), end)
+
+    def test_fde_pc_range_controls_end(self):
+        section = tool.section_map(bytes(DATA))[b'.eh_frame_hdr']
+        o, a = section[4], section[3]
+        count, = struct.unpack_from('<I', DATA, o + 8)
+        table = [struct.unpack_from('<ii', DATA, o + 12 + i * 8) for i in range(count)]
+        for start, end in [(63002016, 63003746)]:
+            fva = a + next(f for pc, f in table if a + pc == start)
+            with flip(fva + 12):
+                self.assertNotEqual(tool.fde_end(bytes(DATA), SEGS, start), end)
+
     def test_output_pin_and_expectations(self):
         r = tool.analyse(bytes(DATA))
         self.assertEqual(tool.expectation_errors(r), [])
@@ -77,7 +93,7 @@ class RmpJsonLoaderTests(unittest.TestCase):
         self.assertEqual(len(r["key_bytes"]), 47)
         self.assertEqual(len(r["labels"]), 5)
         self.assertEqual(len(r["locations"]), 2)
-        self.assertEqual(r["extent_len"], 1744)
+        self.assertEqual(r["extent_len"], 1730)
         self.assertEqual(r["ok_payload_len"], 0x1fc8)
         self.assertEqual(r["err_tag"], 2)
         self.assertEqual(r["path_abi"]["rsi"], "path pointer")

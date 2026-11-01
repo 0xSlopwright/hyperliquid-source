@@ -196,7 +196,7 @@ def scan(data, expected_sha256=bv.SHA256, check_callers=True):
             'round': r, 'db_wrapper_call': f'{dbcall:#x}', 'db_wrapper_esi': f'{code:#x}',
             'producer': f'{prod:#x}', 'producer_fde_end': f'{PRODUCER_FDES[prod]:#x}',
             'producer_location': f'{PRODUCER_LOCATION[0]}:{PRODUCER_LOCATION[1]}',
-            'buffer': f'rsp+{buf:#x}', 'buffer_zeroed_len': BUFFER_LEN,
+            'buffer': f'rsp+{buf:#x}', 'scratch': 'rsp+0xa60', 'scratch_zeroed_len': BUFFER_LEN,
             'update_call': f'{upd:#x}', 'update_args': {'rdi': 'rsp+0xa60', 'rsi': f'rsp+{buf:#x}', 'rdx': UPDATE_LEN},
             'hashed_bytes': f'[rsp+{buf:#x}, rsp+{buf + UPDATE_LEN:#x})',
             'finalize_call': f'{fin:#x}', 'finalize_out': f'rsp+{slot:#x}',

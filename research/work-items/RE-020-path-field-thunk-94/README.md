@@ -2,7 +2,7 @@
 
 ## Claim
 
-Inside FDE `0x22ae8a0..0x22b1080` there are exactly four `ff15` call sites through
+Inside FDE `0x22ae8a0..0x22b107c` there are exactly four `ff15` call sites through
 GOT slot `0x5773c70`. Each loads its path pointer from a different source:
 
 | site | path-pointer source | proving load |
@@ -13,7 +13,7 @@ GOT slot `0x5773c70`. Each loads its path pointer from a different source:
 | `0x22afc2c` | `r15` | `0x22afc29` `4c 89 fe` |
 
 GOT `0x5773c70` is a single `.rela.dyn` RELATIVE whose addend is `0x4546ba0`.
-That FDE (`0x4546ba0..0x4546c60`) is a thin thunk: it preserves `rsi`/`rdx`
+That FDE (`0x4546ba0..0x4546c51`) is a thin thunk: it preserves `rsi`/`rdx`
 (path pointer/length), injects `lea rcx, Location 0x56dfc28` (state.rs:86),
 redirects `rdi` to a local out buffer, then `e8` to the loader at `0x3c155a0`.
 Whole-section census: exactly 4 `ff15` through the slot; exactly 0 direct `e8`

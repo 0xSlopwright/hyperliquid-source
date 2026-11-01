@@ -24,10 +24,10 @@
   "0x4546bca"
  ],
  "err_tag": 2,
- "extent_len": 1744,
- "extent_sha256": "b9475c6190243bb4674d50321121a69fe42b87751dfcbea6acf3455738b08f8e",
+ "extent_len": 1730,
+ "extent_sha256": "97e6f232fa7ee3f9a045bdbb7620bbeab50b090ef856fa0f89c61242e91cb7b3",
  "function": "0x3c155a0",
- "function_end": "0x3c15c70",
+ "function_end": "0x3c15c62",
  "key_bytes": {
   "0x144a60b": {
    "bytes": "4989d6",

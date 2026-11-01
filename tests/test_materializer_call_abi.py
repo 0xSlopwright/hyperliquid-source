@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 import materializer_call_abi as tool  # noqa: E402
 
 SLOT = 0x5773aa8
-OUTPUT_SHA256 = '4789cdd0cb2dd7af93b0a20b50cd976da3b3fc18fe0307505d0b25a98c6f52f0'
+OUTPUT_SHA256 = 'b679a68f47442a68cc5235095b1fd8a94cc92cb57dc4c53a0c89b89d2ce4415e'
 
 
 def load(name, path):
@@ -74,7 +74,7 @@ class MaterializerCallAbiTests(unittest.TestCase):
         r = tool.analyse(bytes(DATA))
         self.assertEqual(len(r['sites']), 5)
         self.assertEqual(len(r['caller_scan']['ff15_slot_sites']['0x5773aa8']), 6)
-        self.assertEqual(len(tool.KEY_INSNS), 38)
+        self.assertEqual(len(tool.KEY_INSNS), 39)
         self.assertEqual(len(r['window_sha256']), 5)
 
     def test_seeds_and_optimize_byte_identical(self):

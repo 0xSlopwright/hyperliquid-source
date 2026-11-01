@@ -5,7 +5,7 @@ Standalone. From the pinned node #94 binary only, it recovers:
   * path ABI (rdi=out, rsi=path_ptr, rdx=path_len, rcx=Location);
   * first call [0x576f628] -> 0x144a600 ~/ expander (cmpw $0x2f7e);
   * absolute-/ is sete-flag (not reject); exact-.. (len==2, cmpw $0x2e2e) -> non-rmp arm;
-  * the FDE extent 0x3c155a0..0x3c15c70 (sha256-pinned);
+  * the FDE extent 0x3c155a0..0x3c15c62 (sha256-pinned);
   * a whole-section e8 caller pass: exactly three sites call 0x3c155a0;
   * the .rmp case-insensitive extension gate;
   * the two format arms: .rmp -> call 0x2e0db40 + LEA rmp_serde::from_slice;
@@ -28,7 +28,7 @@ TARGET = ROOT / "artifacts" / "node" / "94" / "hl-node"
 BINARY_SHA256 = "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
 
 FN = 0x3c155a0
-FN_END = 0x3c15c70
+FN_END = 0x3c15c62
 SCAN_SECTIONS = (".fini", ".init", ".plt", ".text")
 CALLERS = (0x22aefea, 0x3273862, 0x4546bca)
 
@@ -131,7 +131,7 @@ TILDE_EXPANDER = {
     "cmpw_va": "0x144a624",
     "cmpw_bytes": "66813e7e2f",
 }
-EXTENT_SHA256 = "b9475c6190243bb4674d50321121a69fe42b87751dfcbea6acf3455738b08f8e"
+EXTENT_SHA256 = "97e6f232fa7ee3f9a045bdbb7620bbeab50b090ef856fa0f89c61242e91cb7b3"
 CALLER_FDES = {
     "0x22aefea": "0x22ae8a0",
     "0x3273862": "0x3273810",
@@ -227,7 +227,7 @@ def fde_start(data, segs, va):
     return fva + 8 + pc
 
 
-def fde_next_start(data, segs, va):
+def fde_end(data, segs, va):
     secs = section_map(data)
     h = secs[b".eh_frame_hdr"]
     o, a = h[4], h[3]
@@ -235,7 +235,13 @@ def fde_next_start(data, segs, va):
     tab = [struct.unpack_from("<ii", data, o + 12 + 8 * i) for i in range(n)]
     starts = [a + x for x, _ in tab]
     i = starts.index(va)
-    return starts[i + 1]
+    # The next table start includes alignment padding. Read this FDE's pc_range.
+    fva = a + tab[i][1]
+    header = at(data, segs, fva, 16)
+    pc, size = struct.unpack_from("<iI", header, 8)
+    if fva + 8 + pc != va or size == 0:
+        raise ValueError("unexpected FDE start/range")
+    return va + size
 
 
 def caller_scan(data):
@@ -310,7 +316,7 @@ def analyse(data, check_sha=True):
     if check_sha and hashlib.sha256(data).hexdigest() != BINARY_SHA256:
         raise ValueError("binary sha256 mismatch")
     segs = segments(data)
-    end = fde_next_start(data, segs, FN)
+    end = fde_end(data, segs, FN)
     if end != FN_END:
         raise ValueError("extent end %s != %s" % (hex(end), hex(FN_END)))
     extent = at(data, segs, FN, FN_END - FN)

@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 import materializer_call_abi as tool  # noqa: E402
 
 PACKET_JSON = HERE / 'materializer-call-abi.json'
-JSON_SHA256 = '4789cdd0cb2dd7af93b0a20b50cd976da3b3fc18fe0307505d0b25a98c6f52f0'
+JSON_SHA256 = 'b679a68f47442a68cc5235095b1fd8a94cc92cb57dc4c53a0c89b89d2ce4415e'
 
 
 def main():

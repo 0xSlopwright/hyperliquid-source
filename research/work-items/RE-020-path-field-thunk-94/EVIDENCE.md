@@ -4,7 +4,7 @@
 - Target release and full SHA-256: node #94 `artifacts/node/94/hl-node`, 3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f
 - Source commit / reference commit: base origin/main 1f8c67c63ca4794c9689235471c60297f8a5c985. No reference source is used.
 - Claim status: observation for the FDE extents, four ff15 sites, path-pointer load bytes, GOT RELATIVE, thunk body bytes, Location record and call census listed below.
-- Scope included and excluded: included FDE 0x22ae8a0..0x22b1080 (sha256-pinned), the four ff15 sites through GOT 0x5773c70 and the path-pointer load immediately feeding each, FDE 0x4546ba0..0x4546c60 (sha256-pinned), the GOT RELATIVE addend, the thunk's rsi/rdx-preserving / rcx-injecting / rdi-redirecting prologue through the e8 to 0x3c155a0, Location 0x56dfc28, and a whole-section ff15+e8 census over .text/.init/.fini/.plt. Excluded: filenames/formats held in the path fields, writers of +0xd0/+0x140/+0x220, loader internals (RE-019), other GOT slots.
+- Scope included and excluded: included FDE 0x22ae8a0..0x22b107c (sha256-pinned), the four ff15 sites through GOT 0x5773c70 and the path-pointer load immediately feeding each, FDE 0x4546ba0..0x4546c51 (sha256-pinned), the GOT RELATIVE addend, the thunk's rsi/rdx-preserving / rcx-injecting / rdi-redirecting prologue through the e8 to 0x3c155a0, Location 0x56dfc28, and a whole-section ff15+e8 census over .text/.init/.fini/.plt. Excluded: filenames/formats held in the path fields, writers of +0xd0/+0x140/+0x220, loader internals (RE-019), other GOT slots.
 
 ## Reproduce
 
@@ -25,7 +25,7 @@ Output: path-field-thunk.json (sha256 in MANIFEST). It is byte-identical for see
 
 All coordinates are virtual addresses (VAs) mapped through the PT_LOAD program headers. Analysis is complete for the listed ranges; nothing timed out.
 
-1. **FDE A.** `.eh_frame_hdr` gives 0x22ae8a0 the exclusive end 0x22b1080. Body sha256 = 50478e148269fa470c6dd5aae4856b72c729cf49f0c9f3b38cc755ed62fcb9c4 (10208 bytes).
+1. **FDE A.** `.eh_frame_hdr` gives 0x22ae8a0 the exclusive end 0x22b107c. Body sha256 = ccc2d5a652b97962b0350c11cd2362c8ad4929d02c5ad1f8b5f77b641c59cd2b (10204 bytes).
 
 2. **Four ff15 sites through GOT 0x5773c70** (each slot target re-derived as site+6+disp32):
    - 0x22aec0f `ff 15 5b 50 4c 03`. Path pointer: 0x22aebc6 `48 8b b5 d0 00 00 00` = `mov rsi,[rbp+0xd0]`; length 0x22aebcd `48 8b 95 d8 00 00 00`.
@@ -35,7 +35,7 @@ All coordinates are virtual addresses (VAs) mapped through the PT_LOAD program h
 
 3. **GOT.** Exactly one `.rela.dyn` RELATIVE at r_offset 0x5773c70, addend 0x4546ba0.
 
-4. **FDE B (thunk).** `.eh_frame_hdr` gives 0x4546ba0 the exclusive end 0x4546c60. Body sha256 = a70030129ce619628e734791f5c998483c7b9f622bbf973432cf60253351add4 (192 bytes). Fixed bytes through the loader call:
+4. **FDE B (thunk).** `.eh_frame_hdr` gives 0x4546ba0 the exclusive end 0x4546c51. Body sha256 = 7e02b1e4b53e3d479e95a5d696400d6528f16f4b2f8a4ef379599daaf0394b95 (177 bytes). Fixed bytes through the loader call:
    - 0x4546ba0 `41 57 41 56 53` push r15,r14,rbx
    - 0x4546ba5 `48 81 ec 00 10 00 00` sub rsp,0x1000
    - 0x4546bac `48 c7 04 24 00 00 00 00` mov qword [rsp],0

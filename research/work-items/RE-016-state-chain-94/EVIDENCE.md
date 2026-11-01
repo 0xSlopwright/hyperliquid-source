@@ -4,7 +4,7 @@
 - Target release and full SHA-256: artifacts/node/94/hl-node, 3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f
 - Source commit / reference commit: main 1f8c67c63ca4794c9689235471c60297f8a5c985 (no source; binary-only)
 - Claim status: observation for the relocations, call sites, call targets, branch counts and output-buffer copies listed below. The role of 0x3751e80 is not proven by any string or named caller; see limitations.
-- Scope included and excluded: included the two .rela.dyn entries for GOT slots 0x5773aa8 and 0x5775580 (plus their +-8 neighbours), one whole-section caller pass over .text/.init/.fini/.plt, and three whole function extents decoded linearly to their ret: 0x3751e80..0x37529b5 (448 instructions), 0x3270570..0x32707b3 (112) and 0x326e460..0x326e50d (44). Excluded: the internals of every callee (0x37d08a0, 0x332d440, 0x37d4e30, 0x3269ae0), the field meaning of any copied block, and the behaviour of the six indirect call sites that load slot 0x5773aa8 (their locations are proven, their roles are not). #316 (LtHash writer, which already reports 0x326e460 as reachable only through the relocation at 0x5775580), #262 (LtHash top function 0x3269ae0) and #271 (lists 0x3751e80 as a lead for exchange +0x3a00) are cited. This packet does not claim their ground and imports nothing from them or from other tools/.
+- Scope included and excluded: included the two .rela.dyn entries for GOT slots 0x5773aa8 and 0x5775580 (plus their +-8 neighbours), one whole-section caller pass over .text/.init/.fini/.plt, and three normal-return instruction windows decoded linearly through their first ret: 0x3751e80..0x37529b5 (448 instructions), 0x3270570..0x32707b3 (112) and 0x326e460..0x326e50d (44). Excluded: the internals of every callee (0x37d08a0, 0x332d440, 0x37d4e30, 0x3269ae0), the field meaning of any copied block, and the behaviour of the six indirect call sites that load slot 0x5773aa8 (their locations are proven, their roles are not). #316 (LtHash writer, which already reports 0x326e460 as reachable only through the relocation at 0x5775580), #262 (LtHash top function 0x3269ae0) and #271 (lists 0x3751e80 as a lead for exchange +0x3a00) are cited. This packet does not claim their ground and imports nothing from them or from other tools/.
 
 ## Reproduce
 
@@ -34,7 +34,7 @@ All coordinates are VAs. Text maps file offset 0x1342c80 to VA 0x1343c80. .rela.
 
 Neighbours: 0x5773aa0 -> 0x4f94140, 0x5773ab0 -> 0x4743490, 0x5775578 -> 0x4f93d90, 0x5775588 -> 0x4e35e80.
 
-**0x3751e80** (0 branches to its ret at 0x37529b5; r14 = entry rdi):
+**0x3751e80 normal-return prefix** (0 branches to its first ret at 0x37529b5; r14 = entry rdi):
 
 ```
 3751eb8:  4989fe              mov    r14,rdi
@@ -52,9 +52,9 @@ Neighbours: 0x5773aa0 -> 0x4f94140, 0x5773ab0 -> 0x4743490, 0x5775578 -> 0x4f93d
 37529b5:  c3                  ret
 ```
 
-Its only rel32 call is 0x3752220 -> 0x3270570. Its other calls all go through the memcpy slot 0x576dfe0: one direct call at 0x3751fb7 and six through r15. Their lengths are 0x298, 0xf0, 0x148, 0x298, 0x90, 0x8f8 and 0x25e8. After the call, the 0x25e8-byte block that 0x3270570 wrote at rsp+0x550 is copied to out+0xbc0.
+Its only rel32 call in this prefix is 0x3752220 -> 0x3270570. Its other calls all go through the memcpy slot 0x576dfe0: one direct call at 0x3751fb7 and six through r15. Their lengths are 0x298, 0xf0, 0x148, 0x298, 0x90, 0x8f8 and 0x25e8. After the call, the 0x25e8-byte block that 0x3270570 wrote at rsp+0x550 is copied to out+0xbc0.
 
-**0x3270570** (0 branches to its ret at 0x32707b3; rbx = entry rdi):
+**0x3270570 normal-return prefix** (0 branches to its first ret at 0x32707b3; rbx = entry rdi):
 
 ```
 32705ac:  4889fb              mov    rbx,rdi
@@ -70,9 +70,9 @@ Its only rel32 call is 0x3752220 -> 0x3270570. Its other calls all go through th
 327079f:  4889d8              mov    rax,rbx
 ```
 
-The call at 0x3270682 is RIP-relative with no index register, so it always goes through slot 0x5775580. It is the function's only non-register call. Its out buffer (rsp+0xa70) is copied 0x1b38 bytes into the entry rdi object.
+The call at 0x3270682 is RIP-relative with no index register, so it always goes through slot 0x5775580. It is the prefix's only non-register call. Its out buffer (rsp+0xa70) is copied 0x1b38 bytes into the entry rdi object.
 
-**0x326e460** (one branch, the `je 0x326e4fe` at 0x326e4f0 that skips the free; no branch before the copy):
+**0x326e460 normal-return prefix** (one branch, the `je 0x326e4fe` at 0x326e4f0 that skips the free; no branch before the copy):
 
 ```
 326e47b:  4889d3              mov    rbx,rdx
@@ -98,7 +98,7 @@ The call at 0x3270682 is RIP-relative with no index register, so it always goes 
 
 The 0x3269ae0 result buffer (rsp+0x60) is copied 0x1b20 bytes to out+0. Then 0x18 bytes from rsi are copied to out+0x1b20..0x1b38. So 0x326e460 writes 0x1b38 bytes, which is exactly the length 0x3270570 copies out of the buffer it passes. That is an observation about lengths; it says nothing about layout meaning.
 
-**Strings:** none of the three extents contains a RIP-relative lea (the JSON pins `rip_lea_targets` as empty for each). The chain therefore references no .rodata literal.
+**Strings:** none of the three extents contains a RIP-relative lea (the JSON pins `rip_lea_targets` as empty for each). No .rodata literal is identified by that RIP-relative LEA scan.
 
 ## Implementation and comparison
 
@@ -112,3 +112,13 @@ Not yet implemented. There is no Rust path and nothing is compared.
 - Not claimed: what 0x37d08a0, 0x332d440, 0x37d4e30 or 0x3269ae0 compute; what any copied field means; what the six indirect callers do; other releases.
 
 Next question: which of the six `ff15 [0x5773aa8]` sites runs on a snapshot or export path, and does any of them sit next to a string that names it?
+
+## Review: unwind coverage
+
+The 448/112/44 instruction counts describe only the named prologue-to-first-return
+windows. GNU readelf and the actual FDE parser agree on the larger unwind extents:
+`0x3751e80..0x3752b37`, `0x3270570..0x327082f`, and
+`0x326e460..0x326e53b`. Instructions after the first returns at
+`0x37529b5`, `0x32707b3`, and `0x326e50d` include cleanup/unwind paths.
+Those paths are excluded from the branch and call counts in this packet.
+No whole-function coverage or behavior claim follows from those counts.

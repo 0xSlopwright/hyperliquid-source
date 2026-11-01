@@ -16,11 +16,11 @@ BINARY = ROOT / "artifacts" / "node" / "94" / "hl-node"
 SHA256 = "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
 PACKET_JSON = HERE / "path-field-thunk.json"
 FDE_A = 0x22ae8a0
-FDE_A_END = 0x22b1080
+FDE_A_END = 0x22b107c
 FDE_B = 0x4546ba0
-FDE_B_END = 0x4546c60
-EXTENT_A_SHA256 = "50478e148269fa470c6dd5aae4856b72c729cf49f0c9f3b38cc755ed62fcb9c4"
-EXTENT_B_SHA256 = "a70030129ce619628e734791f5c998483c7b9f622bbf973432cf60253351add4"
+FDE_B_END = 0x4546c51
+EXTENT_A_SHA256 = "ccc2d5a652b97962b0350c11cd2362c8ad4929d02c5ad1f8b5f77b641c59cd2b"
+EXTENT_B_SHA256 = "7e02b1e4b53e3d479e95a5d696400d6528f16f4b2f8a4ef379599daaf0394b95"
 GOT_SLOT = 0x5773c70
 FF15_SITES = [0x22aec0f, 0x22aee86, 0x22aef33, 0x22afc2c]
 SCAN = (b".text\0", b".init\0", b".fini\0", b".plt\0")
@@ -94,7 +94,7 @@ def section_blobs(data):
     return out
 
 
-def fde_next(data, segs, va):
+def fde_end(data, segs, va):
     secs = section_blobs(data)
     h = secs[b".eh_frame_hdr\0"]
     # need section header fields: reuse via raw
@@ -113,7 +113,13 @@ def fde_next(data, segs, va):
     tab = [struct.unpack_from("<ii", data, o + 12 + 8 * i) for i in range(n)]
     starts = [a + x for x, _ in tab]
     i = starts.index(va)
-    return starts[i + 1]
+    # The next table start includes alignment padding. Read this FDE's pc_range.
+    fva = a + tab[i][1]
+    header = at(data, segs, fva, 16)
+    pc, size = struct.unpack_from("<iI", header, 8)
+    if fva + 8 + pc != va or size == 0:
+        raise ValueError("unexpected FDE start/range")
+    return va + size
 
 
 def decode_target(va, hx):
@@ -144,8 +150,8 @@ def check_keys(data, check_sha=True, census=True, locations=True, extent=True):
         if va in TARGETS and t != TARGETS[va]:
             errs.append("target %s" % hex(va))
     if extent:
-        end_a = fde_next(data, segs, FDE_A)
-        end_b = fde_next(data, segs, FDE_B)
+        end_a = fde_end(data, segs, FDE_A)
+        end_b = fde_end(data, segs, FDE_B)
         if end_a != FDE_A_END:
             errs.append("fde_a_end")
         if end_b != FDE_B_END:

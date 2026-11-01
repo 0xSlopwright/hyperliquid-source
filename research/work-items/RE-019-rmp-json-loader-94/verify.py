@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import rmp_json_loader as tool  # noqa: E402
 
 PACKET_JSON = HERE / "rmp-json-loader.json"
-JSON_SHA256 = "58cf74dd36110d624b1df3422838f9f242c3ed14623a9b3bd44eb1e334ded75f"
+JSON_SHA256 = "47e98c9d78eceb2125b799b77c89ce5c9f2a1353d7e7ec2aa24304578decd295"
 
 
 def main():

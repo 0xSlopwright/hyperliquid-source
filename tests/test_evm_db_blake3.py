@@ -12,7 +12,7 @@ import bincode_varint as bv  # noqa: E402
 
 PKT = ROOT / 'research/work-items/RE-009-evm-db-blake3'
 BIN_SHA = '3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f'
-JSON_SHA = 'd0047969a9226409e8d74480d57df9cd76bd4c8d91fcbbb38792c9a85fbead4e'
+JSON_SHA = '8b06f4ba3fb87bba0da2e6fa31d334ea2512934d5da329c0e09d919fce86fc47'
 DATA = bv.TARGET.read_bytes() if bv.TARGET.exists() else None
 requires_bin = unittest.skipIf(DATA is None, 'node #94 binary absent')
 
@@ -36,6 +36,13 @@ class Pins(unittest.TestCase):
 
     def test_binary_sha(self):
         self.assertEqual(hashlib.sha256(DATA).hexdigest(), BIN_SHA)
+
+    def test_zeroed_scratch_is_not_the_hash_input(self):
+        for row in self.r['rounds']:
+            self.assertEqual(row['scratch'], 'rsp+0xa60')
+            self.assertEqual(row['scratch_zeroed_len'], 0x810)
+            self.assertNotEqual(row['scratch'], row['buffer'])
+            self.assertNotIn('buffer_zeroed_len', row)
 
     def test_json_bytes(self):
         out = m.render(self.r)
@@ -70,7 +77,7 @@ class Pins(unittest.TestCase):
 
     def test_negative_control_untouched(self):
         d = ROOT / 'research/work-items/RE-009-storage-state-roots'
-        for f, h in (('hashers.json', '6411981c'), ('state-roots.json', '1ac3af0a'),
+        for f, h in (('hashers.json', '1e7fbe92'), ('state-roots.json', '1ac3af0a'),
                      ('fixture-schema.json', 'ae0c6815')):
             self.assertEqual(hashlib.sha256((d / f).read_bytes()).hexdigest()[:8], h, f)
 

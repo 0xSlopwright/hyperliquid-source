@@ -45,7 +45,7 @@ All coordinates are virtual addresses (VAs). The pinned per-leaf VAs, calls, loo
 - **XOF:** each leaf makes three blake3 calls, with XOF length 0x800. They go through GOT slots 0x57700c0, 0x57700c8 and 0x57700b0. Each slot is filled by a single R_X86_64_RELATIVE entry, and both the tool and the independent verifier resolve those entries. The names are stripped, so each label comes from the target's bytes:
   - 0x57700c0 → 0x14fa220 is a **platform-detect** slot. The target tests the CPU feature word (`test eax,0x80000`) and returns a SIMD level (`mov al,0x4`). The hasher constructor is inlined at the call site.
   - 0x57700c8 → 0x14f93e0 is **update**. It works on a 0x400-byte chunk buffer (`cmp rax,0x401`, `mov r14d,0x400`).
-  - 0x57700b0 → 0x14f7e40 is **XOF fill**. It is called with a buffer and a length, sets the ROOT flag (`or al,0x8`), and writes 64-byte output blocks (`and rax,-0x40`, `shr rcx,6`). There is a wide-SIMD path through slot 0x57700b8. All links are direct rel32 calls; there is no vtable.
+  - 0x57700b0 → 0x14f7e40 is **XOF fill**. It is called with a buffer and a length, sets the ROOT flag (`or al,0x8`), and writes 64-byte output blocks (`and rax,-0x40`, `shr rcx,6`). There is a wide-SIMD path through slot 0x57700b8. These three dispatches use the resolved GOT slots; no vtable dispatch is asserted for them.
 - **Reference closure:** the full `.text` scan pins 53 reference sites to 32 targets, each with an exact site, kind and owner function. The owner is checked against the `.eh_frame_hdr` FDE ranges.
   - Each leaf's backward closure has exactly 11 functions and 16 edges.
   - The only entry from outside the closure is one call from the top function 0x3269ae0.

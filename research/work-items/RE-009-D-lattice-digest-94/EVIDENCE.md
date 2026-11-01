@@ -72,7 +72,7 @@ Hashed input ranges are [0x0,0x800), [0x810,0x1010) and [0x1020,0x1820). The 16 
 
 Neither caller passes the digest struct to the writer.
 
-**Negative: the digest is computed and discarded in both callers (no downstream consumer observed).**
+**Bounded negative: no digest consumer is observed in the inspected caller windows.**
 
 Caller A (after 0x326af55): the tool's length scan of 0x326af5a..0x326b018 (50 instructions) finds zero accesses to rsp+0x8..0x97. The frame is freed at 0x326b006 (`add rsp,0x18c8`) and the function returns at 0x326b017. No read of the digest bytes is observed in this window.
 

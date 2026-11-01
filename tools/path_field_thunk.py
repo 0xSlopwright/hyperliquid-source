@@ -2,10 +2,10 @@
 """RE-020: 0x22ae8a0 path-field layout + 0x4546ba0 GOT thunk census (node #94).
 
 Standalone. From the pinned node #94 binary only, it recovers:
-  * FDE 0x22ae8a0..0x22b1080 and the four ff15 sites through GOT 0x5773c70;
+  * FDE 0x22ae8a0..0x22b107c and the four ff15 sites through GOT 0x5773c70;
   * the DIFFERENT path-pointer source at each site (+0xd0, +0x140, +0x220, r15);
   * GOT slot 0x5773c70 RELATIVE addend 0x4546ba0 (thin thunk);
-  * thunk FDE 0x4546ba0..0x4546c60: preserves rsi/rdx, injects Location into rcx,
+  * thunk FDE 0x4546ba0..0x4546c51: preserves rsi/rdx, injects Location into rcx,
     redirects rdi to a local out buffer, then e8 to 0x3c155a0;
   * call census: exactly 4 ff15 through 0x5773c70 across .text/.init/.fini/.plt;
     exactly 0 direct e8 to 0x4546ba0.
@@ -26,9 +26,9 @@ TARGET = ROOT / "artifacts" / "node" / "94" / "hl-node"
 BINARY_SHA256 = "3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f"
 
 FDE_A = 0x22ae8a0
-FDE_A_END = 0x22b1080
+FDE_A_END = 0x22b107c
 FDE_B = 0x4546ba0
-FDE_B_END = 0x4546c60
+FDE_B_END = 0x4546c51
 GOT_SLOT = 0x5773c70
 LOADER = 0x3c155a0
 LOCATION = 0x56dfc28
@@ -101,8 +101,8 @@ THUNK_ABI = {
     "forwards_to": "0x3c155a0",
 }
 
-EXTENT_A_SHA256 = "50478e148269fa470c6dd5aae4856b72c729cf49f0c9f3b38cc755ed62fcb9c4"
-EXTENT_B_SHA256 = "a70030129ce619628e734791f5c998483c7b9f622bbf973432cf60253351add4"
+EXTENT_A_SHA256 = "ccc2d5a652b97962b0350c11cd2362c8ad4929d02c5ad1f8b5f77b641c59cd2b"
+EXTENT_B_SHA256 = "7e02b1e4b53e3d479e95a5d696400d6528f16f4b2f8a4ef379599daaf0394b95"
 
 TARGETS = {
     "0x22aec0f": "0x5773c70",
@@ -169,7 +169,7 @@ def section_map(data):
     return {name: h for name, h in shdrs(data)}
 
 
-def fde_next_start(data, segs, va):
+def fde_end(data, segs, va):
     secs = section_map(data)
     h = secs[b".eh_frame_hdr"]
     o, a = h[4], h[3]
@@ -179,7 +179,13 @@ def fde_next_start(data, segs, va):
     tab = [struct.unpack_from("<ii", data, o + 12 + 8 * i) for i in range(n)]
     starts = [a + x for x, _ in tab]
     i = starts.index(va)
-    return starts[i + 1]
+    # The next table start includes alignment padding. Read this FDE's pc_range.
+    fva = a + tab[i][1]
+    header = at(data, segs, fva, 16)
+    pc, size = struct.unpack_from("<iI", header, 8)
+    if fva + 8 + pc != va or size == 0:
+        raise ValueError("unexpected FDE start/range")
+    return va + size
 
 
 def decode_target(va, hx):
@@ -271,10 +277,10 @@ def analyse(data, check_sha=True):
     if check_sha and hashlib.sha256(data).hexdigest() != BINARY_SHA256:
         raise ValueError("binary sha256 mismatch")
     segs = segments(data)
-    end_a = fde_next_start(data, segs, FDE_A)
+    end_a = fde_end(data, segs, FDE_A)
     if end_a != FDE_A_END:
         raise ValueError("FDE A end %s != %s" % (hex(end_a), hex(FDE_A_END)))
-    end_b = fde_next_start(data, segs, FDE_B)
+    end_b = fde_end(data, segs, FDE_B)
     if end_b != FDE_B_END:
         raise ValueError("FDE B end %s != %s" % (hex(end_b), hex(FDE_B_END)))
     ext_a = at(data, segs, FDE_A, FDE_A_END - FDE_A)
