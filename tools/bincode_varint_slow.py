@@ -196,14 +196,15 @@ def _call_got_sites(data, secs, relocs):
     base = text['addr']
     want = set(READER_CALL_COUNTS)
     sites = {t: [] for t in want}
-    for i in range(len(tb) - 6):
-        if tb[i:i + 2] != b'\xff\x15':
-            continue
+    i = tb.find(b'\xff\x15')
+    while i != -1 and i + 6 <= len(tb):
         disp = struct.unpack_from('<i', tb, i + 2)[0]
         slot = base + i + 6 + disp
         tgt = relocs.get(slot)
         if tgt in want:
             sites[tgt].append({'site': f'{base + i:#x}', 'got_slot': f'{slot:#x}'})
+        # Advance one byte: another candidate may begin inside this displacement.
+        i = tb.find(b'\xff\x15', i + 1)
     for tgt, expect in READER_CALL_COUNTS.items():
         if len(sites[tgt]) != expect:
             raise EvidenceError(f'Reader {tgt:#x} call-site count {len(sites[tgt])} != {expect}')

@@ -156,16 +156,20 @@ def scan_refs(data, secs, targets):
     ta, to, ts = secs['.text']
     tb = data[to:to + ts]
     hits = {x: [] for x in targets}
-    for i in range(len(tb) - 5):
-        o = tb[i]
-        if o == 0xe8 or o == 0xe9:
+    for opcode, kind in ((b'\xe8', 'call'), (b'\xe9', 'jmp')):
+        i = tb.find(opcode)
+        while i != -1 and i + 5 <= len(tb):
             x = ta + i + 5 + struct.unpack_from('<i', tb, i + 1)[0]
             if x in hits:
-                hits[x].append((ta + i, 'call' if o == 0xe8 else 'jmp'))
-        if o == 0x8d and tb[i + 1] & 0xc7 == 5 and i + 6 <= len(tb):
+                hits[x].append((ta + i, kind))
+            i = tb.find(opcode, i + 1)
+    i = tb.find(b'\x8d')
+    while i != -1 and i + 6 <= len(tb):
+        if tb[i + 1] & 0xc7 == 5:
             x = ta + i + 6 + struct.unpack_from('<i', tb, i + 2)[0]
             if x in hits:
                 hits[x].append((ta + i - 1, 'lea'))
+        i = tb.find(b'\x8d', i + 1)
     _ra, ro, rz = secs['.rela.dyn']
     for j in range(ro, ro + rz - 23, 24):
         off, info, add = struct.unpack_from('<QQq', data, j)

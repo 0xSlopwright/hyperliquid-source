@@ -196,6 +196,18 @@ def h(x):
     return int(x, 16) if isinstance(x, str) else x
 
 
+def reader_call_counts(tb, tva, rel):
+    counts = dict.fromkeys(CALL_COUNTS, 0)
+    i = tb.find(b'\xff\x15')
+    while i != -1 and i + 6 <= len(tb):
+        slot = tva + i + 6 + i32(tb, i + 2)
+        tgt = rel.get(slot)
+        if tgt in counts:
+            counts[tgt] += 1
+        i = tb.find(b'\xff\x15', i + 1)  # retain overlapping candidate starts
+    return counts
+
+
 def check(img, js):
     if js.get('target', {}).get('sha256') != BIN_SHA:
         raise Bad('json target sha256')
@@ -228,14 +240,7 @@ def check(img, js):
     text = img.sec['.text']
     _t, tva, toff, tsize = text
     tb = img.d[toff:toff + tsize]
-    counts = dict.fromkeys(CALL_COUNTS, 0)
-    for i in range(len(tb) - 6):
-        if tb[i:i + 2] != b'\xff\x15':
-            continue
-        slot = tva + i + 6 + i32(tb, i + 2)
-        tgt = rel.get(slot)
-        if tgt in counts:
-            counts[tgt] += 1
+    counts = reader_call_counts(tb, tva, rel)
     if counts != CALL_COUNTS:
         raise Bad(f'call counts {counts}')
     if {h(k): v for k, v in js['reader_call_counts'].items()} != CALL_COUNTS:
