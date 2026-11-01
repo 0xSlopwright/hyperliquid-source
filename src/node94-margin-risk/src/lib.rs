@@ -5,11 +5,16 @@
 
 #![forbid(unsafe_code)]
 
+mod liquidation;
 mod position;
 mod requirements;
 mod tiers;
 mod types;
 
+pub use liquidation::{
+    CrossMarginSummary, LiquidationAssessment, LiquidationError, assess_cross_liquidation,
+    assess_isolated_liquidation,
+};
 pub use position::{
     AccountingMode, MarginMode, PositionCalculationError, PositionInput, PositionMargin,
     calculate_position_margin,
