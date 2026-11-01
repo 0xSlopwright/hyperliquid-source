@@ -2,11 +2,13 @@
 import hashlib
 import json
 from test_research_tools import fixture
+from catalogue import PROGRESS_END, PROGRESS_START
 
 GATES = ('mapped', 'built', 'behavior', 'identity')
 
 
 def prepare_inputs(root):
+    (root / 'README.md').write_text(f'{PROGRESS_START}\n{PROGRESS_END}\n')
     progress_path = root / 'research/progress.json'
     progress = json.loads(progress_path.read_text())
     progress['gates'] = {gate: gate for gate in GATES}

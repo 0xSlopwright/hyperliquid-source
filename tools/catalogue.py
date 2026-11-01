@@ -39,7 +39,7 @@ def render_readme_progress(components, progress):
     ]
     for c in components:
         n = sum(progress['components'][c['id']]['gates'].values())
-        target = {'node94': 'Node #94', 'visor': 'Visor'}[c['artifact']]
+        target = {'node94': 'Node #94', 'visor': 'Visor'}.get(c['artifact'], c['artifact'])
         lines.append(f"| [{c['name']}](docs/COMPONENTS.md#{c['id']}) | {target} | {n}/{gate_count} | {100 * n / gate_count:.0f}% |")
     lines += [
         f'| **Total** | **Declared project scope** | **{accepted}/{total}** | **{100 * accepted / total:.2f}%** |', '',
