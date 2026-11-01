@@ -200,6 +200,9 @@ def decode(code, va):
         if o2 == 0x7e and pre == 0x66:
             reg, e = modrm(64 if w else 32)
             return done('movq.r' if w else 'movd.r', fin(e), ('x', reg | r << 3))
+        if o2 == 0xd6 and pre == 0x66:
+            reg, e = modrm(64)
+            return done('movq.st', fin(e, True), ('x', reg | r << 3))
         if o2 == 0xd7 and pre == 0x66:
             reg, e = modrm(128)
             return done('pmovmskb', ('r', reg | r << 3, 32), fin(e, True))
@@ -280,6 +283,8 @@ def decode(code, va):
         reg, e = modrm(sz)
         a, c = fin(e), ('r', reg | r << 3, sz)
         return done(name, *((c, a) if op & 2 else (a, c)))
+    if op == 0x24:
+        return done('and', ('r', 0, 8), ('i', imm(1) & 255))
     if op == 0x34:
         v = imm(1)
         return done('xor', ('r', 0, 8), ('i', v & 255))
@@ -714,7 +719,7 @@ PINS = [
     ('entry', 0x26f7343, 'cmp [rbp]:32,0x1', 'flag word 1 computes the 32-byte hash'),
     ('entry', 0x26f7351, 'movzx rsid,[rbp+0x8f2]:8', 'chain byte passed to the hash'),
     ('entry', 0x26f7363, 'call 0x3987cb0', 'hash'),
-    ('row', 0x26f7399, 'add [rax+0x7f048d4b]:8,raxb', 'row stride 0x18: len times 3'),
+    ('row', 0x26f739b, 'lea rax,[r15+r15*2]:64', 'row stride 0x18: len times 3'),
     ('row', 0x26f73a4, 'lea rax,[r14+rax*8]:64', 'row stride 0x18: end pointer'),
     ('row', 0x26f740b, 'movzx raxd,[r14+0x8]:8', 'side byte'),
     ('row', 0x26f7410, 'cmp raxb,0x2', 'side byte 2 ends the walk'),
@@ -885,7 +890,37 @@ class Stream:
         return seq[self.u(len(seq))]
 
 
+def instruction_starts(img, addresses):
+    """Walk from actual FDE starts; a decodable interior byte is not a pin.
+
+    This linear walk checks instruction alignment, not reachability or CFG
+    completeness. Unknown opcodes remain errors. The five original pin walks
+    were independently checked against GNU objdump in the review correction.
+    """
+    table = fdes(img.data)
+    limits = {}
+    for va in addresses:
+        start, end = extent(table, va)
+        if not start <= va < end:
+            raise ValueError(f'{va:#x} is not inside an FDE')
+        limits[start] = (end, max(va, limits.get(start, (end, start))[1]))
+    starts = set()
+    for start, (end, last) in sorted(limits.items()):
+        pc = start
+        while pc <= last:
+            i = decode(img.rd, pc)
+            if not 0 < i.size <= 15 or pc + i.size > end:
+                raise ValueError(f'instruction exceeds FDE at {pc:#x}')
+            starts.add(pc)
+            pc += i.size
+    for va in addresses:
+        if va not in starts:
+            raise ValueError(f'{va:#x} is not an instruction start')
+    return starts
+
+
 def check_tables(img):
+    instruction_starts(img, [p[1] for p in PINS] + [p[3] for p in LAYOUT_ROWS])
     rows = []
     for group, va, text, note in PINS:
         i = decode(img.rd, va)

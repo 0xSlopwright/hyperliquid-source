@@ -45,6 +45,18 @@ class Baseline(unittest.TestCase):
         self.assertEqual(len(pins), len(tool.PINS))
         self.assertEqual(len(layout), len(tool.LAYOUT_ROWS))
 
+    def test_corrected_stride_pin_starts_after_movabs(self):
+        # Native disassembly: movabs at 0x26f7391 is ten bytes; lea is next.
+        self.assertEqual(tool.decode(IMG.rd, 0x26f7391).size, 10)
+        starts = tool.instruction_starts(IMG, [p[1] for p in tool.PINS])
+        self.assertIn(0x26f739b, starts)
+        self.assertNotIn(0x26f7399, starts)
+        self.assertEqual(tool.decode(IMG.rd, 0x26f739b).text(), 'lea rax,[r15+r15*2]:64')
+
+    def test_boundary_walk_additional_native_encodings(self):
+        self.assertEqual(tool.decode(IMG.rd, 0x23561ab).text(), 'movq.st [rsp+0x10]:64,xmm4')
+        self.assertEqual(tool.decode(IMG.rd, 0x235b43a).text(), 'and raxb,0x1')
+
     def test_hlp_address_in_both_layouts(self):
         for layout in ('A', 'B'):
             self.assertEqual(tool.special_address(IMG, 3, layout).hex(), 'dfc24b077bc1425ad1dea75bcb6f8158e10df303')
@@ -103,6 +115,24 @@ class Negative(unittest.TestCase):
     def test_pin_catches_changed_byte(self):
         with self.assertRaises(ValueError):
             tool.check_tables(patched((0x26f74b2, '80969800')))
+
+    def test_original_decodable_interior_pin_is_rejected(self):
+        saved = tool.PINS
+        tool.PINS = [('row', 0x26f7399, 'add [rax+0x7f048d4b]:8,raxb', 'invalid old pin')]
+        try:
+            with self.assertRaisesRegex(ValueError, 'not an instruction start'):
+                tool.check_tables(IMG)
+        finally:
+            tool.PINS = saved
+
+    def test_layout_address_inside_instruction_is_rejected(self):
+        saved = tool.LAYOUT_ROWS
+        tool.LAYOUT_ROWS = [('row', 0, 8, 0x26f739c, 'rax', 'inside lea')]
+        try:
+            with self.assertRaisesRegex(ValueError, 'not an instruction start'):
+                tool.check_tables(IMG)
+        finally:
+            tool.LAYOUT_ROWS = saved
 
     def test_layout_catches_changed_offset(self):
         rows = tool.LAYOUT_ROWS

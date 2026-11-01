@@ -32,7 +32,7 @@ entry	0x26f733e	call 0x27ae040	oracle table
 entry	0x26f7343	cmp [rbp]:32,0x1	flag word 1 computes the 32-byte hash
 entry	0x26f7351	movzx rsid,[rbp+0x8f2]:8	chain byte passed to the hash
 entry	0x26f7363	call 0x3987cb0	hash
-row	0x26f7399	add [rax+0x7f048d4b]:8,raxb	row stride 0x18: len times 3
+row	0x26f739b	lea rax,[r15+r15*2]:64	row stride 0x18: len times 3
 row	0x26f73a4	lea rax,[r14+rax*8]:64	row stride 0x18: end pointer
 row	0x26f740b	movzx raxd,[r14+0x8]:8	side byte
 row	0x26f7410	cmp raxb,0x2	side byte 2 ends the walk
