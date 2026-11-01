@@ -41,3 +41,11 @@ PYTHONHASHSEED=0 python3 -m unittest tests.test_sub_deployer_guards -v
 - Does NOT emulate the setter (static pin only; no Unicorn vectors).
 - Sibling "too many" path is pinned as related, not claimed as a primary rule of this packet.
 - No other node builds.
+
+## Build verification
+
+The full repo test suite (one `unittest discover` over about 5,000 tests) needs about 25 GB of memory, more than the local build machine has, so it was not run locally; the full suite is left to CI. The following targeted checks are run instead: the packet's own `verify.py` and `independent_verify.py`, its unittest file, the repo catalogue/progress-table check, and the test modules touching the files this packet changes. Exact commands and output are recorded below.
+
+### Targeted checks (commands + output)
+
+PENDING — to be filled with exact commands and output once the heavy slot is free (ASI run has it first).

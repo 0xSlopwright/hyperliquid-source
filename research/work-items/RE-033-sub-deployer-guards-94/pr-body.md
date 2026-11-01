@@ -40,9 +40,12 @@ Prior work: #969 (merged) covers deployer fee-share / fee-recipient admission â€
 - Sibling "too many" is related, not a primary claim
 - No other node builds
 
-### make verify test catalogue-check output
+### Build verification
 
-PLACEHOLDER: `make verify test catalogue-check` has not been run for this
-packet yet; its output will be recorded here. (make HELD)
+The full repo test suite (one `unittest discover` over about 5,000 tests) needs about 25 GB of memory, more than the local build machine has, so it was not run locally; the full suite is left to CI. The following targeted checks are run instead: the packet's own `verify.py` and `independent_verify.py`, its unittest file, the repo catalogue/progress-table check, and the test modules touching the files this packet changes. Exact commands and output are recorded below.
+
+#### Targeted checks (commands + output)
+
+PENDING â€” to be filled with exact commands and output once the heavy slot is free (ASI run has it first).
 
 <!-- run-receipt.mjs disclose: provider=Grok-Bot model=Grok-Bot client=Grok-Bot client-version=Grok-Bot -->
