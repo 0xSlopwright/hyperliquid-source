@@ -42,9 +42,9 @@ python3 -m unittest \
 PATH=/opt/homebrew/opt/binutils/bin:$PATH make verify test catalogue-check
 ```
 
-The component test runs are deterministic and offline. A clean second build is
-recorded in the PR qualification log. `make test` may use static disassemblers
-but never executes the captured target.
+The component test runs are deterministic and offline. Debug and release
+builds and tests are recorded in the PR qualification log. `make test` may use
+static disassemblers but never executes the captured target.
 
 ## Evidence
 
