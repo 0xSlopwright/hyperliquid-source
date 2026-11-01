@@ -30,7 +30,7 @@ class FixturesDocTypeTests(unittest.TestCase):
         by_id = hp.validate_fixtures(
             copy.deepcopy(self.fixtures_doc), self.protocol
         )
-        self.assertIn('syn-94-pos-equal-window-v1', by_id)
+        self.assertIn('94-pos-equal-window-v1', by_id)
 
     def test_dict_fixtures_doc_wrong_task_id_still_rejected(self):
         doc = copy.deepcopy(self.fixtures_doc)

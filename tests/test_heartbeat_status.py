@@ -118,7 +118,10 @@ class HeartbeatOutputPinTests(unittest.TestCase):
                     return _FRAMES
                 if cmd[0] == 'readelf':
                     return _RELOCATIONS
-                return f'{binary}:\tfile format elf64-x86-64\n  4726a50:\t55\tpush %rbp\n'
+                # Decoders print the path they were given; run() now passes
+                # the private snapshot, so echo cmd[-1] as a real decoder
+                # would instead of the target path.
+                return f'{cmd[-1]}:\tfile format elf64-x86-64\n  4726a50:\t55\tpush %rbp\n'
 
             with mock.patch.object(heartbeat_status, 'check', lambda path, item: None), \
                     mock.patch.object(heartbeat_status, 'static_controls', lambda data: []), \

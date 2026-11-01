@@ -1,0 +1,32 @@
+{
+  "actual_archive_sha256": "ca804049dc84fa29d47c1ceb7012c7688a6848b5c858bd598ba484a0652ab256",
+  "actual_base_target_sha256": "a6e2897cd051213d004802deca416e8eca62b7a8278fa39f249e98c3867b5301",
+  "exports_or_target_mutation_files_written": false,
+  "identity_admitted": false,
+  "native_compiler_or_emulator_execution": false,
+  "reported_slot_VA": 1879048192,
+  "result": "ACCEPTED_BEFORE_FIX",
+  "schema": "actual-used-slot-footprint-before-proof-v1",
+  "serialized_patches": [
+    {
+      "after_hex": "8625986e",
+      "before_hex": "2626e604",
+      "file_offset": 23579254,
+      "meaning": "real GOTPCREL displacement"
+    },
+    {
+      "after_hex": "6825986e",
+      "before_hex": "0826e604",
+      "file_offset": 23579284,
+      "meaning": "real GOTPCREL displacement"
+    },
+    {
+      "after_hex": "0000007000000000",
+      "before_hex": "a0004e0600000000",
+      "file_offset": 1272936,
+      "meaning": "real selected RELATIVE r_offset"
+    }
+  ],
+  "slot_has_file_backed_section_and_PT_LOAD": false,
+  "source_sha256": "a4106b0baaaf2576771fa64bc506f4be93b832682192a84c68e559472d393fdd"
+}

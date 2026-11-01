@@ -1,0 +1,18 @@
+{
+  "actual_48B_raw_hex": "000000000000000018000000000000000800000000000000000000000000000000000000000000000000000000000000",
+  "actual_archive_sha256": "ca804049dc84fa29d47c1ceb7012c7688a6848b5c858bd598ba484a0652ab256",
+  "actual_six_words": [
+    0,
+    24,
+    8,
+    0,
+    0,
+    0
+  ],
+  "actual_source_section_index": 1113,
+  "correction": "Retain source size48 and real three pointer-relocation relationships; compare all48 actual source bytes to target, without inventing a nominal header tuple.",
+  "failure_receipt": "positive-attempt-1/RESULT.json",
+  "finding": "An unnecessary guessed fixed header16 was wrong. The claimed relation is raw source/target data equality, not private ABI/header16.",
+  "first_positive_export_created": false,
+  "first_source_sha256": "e268f6c6828667422a159e82a34a8ddc03904578cbcdb8465d03d2d2ad7050f5"
+}

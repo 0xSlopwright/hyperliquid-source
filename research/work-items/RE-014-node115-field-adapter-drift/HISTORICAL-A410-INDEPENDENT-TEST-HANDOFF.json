@@ -1,0 +1,150 @@
+{
+  "actions": {
+    "Git_public_or_registration_actions": false,
+    "compiler_native_object_captured_or_emulator_execution": false,
+    "full_suite_or_hosted_CI": false,
+    "new_target_archive_or_member_disk_copies": false,
+    "only_repository_edit": "tests/test_node115_field_adapter_drift.py",
+    "workspace_writes": false
+  },
+  "actual_runs": [
+    {
+      "before_after_equal": true,
+      "bytes": 1094,
+      "mode": "normal",
+      "path": "/tmp/node115-drift-normal-j6mn6ry4/RESULT.json",
+      "sha256": "beea922c650e87c21f15a6b992834d3d40c2e18625537046648eaec88c1f91f1",
+      "skips": 0,
+      "source_helper_input_records": 6,
+      "stderr": {
+        "bytes": 2001,
+        "path": "/tmp/node115-drift-normal-j6mn6ry4/stderr.txt",
+        "sha256": "c59101442bf527a7c5e465632fc1990ae6e31dacb13ef936fa54b2f777ed94b3"
+      },
+      "stdout": {
+        "bytes": 0,
+        "path": "/tmp/node115-drift-normal-j6mn6ry4/stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "test_seconds": 5.943,
+      "tests": 10,
+      "wall_seconds": 6.041409551980905
+    },
+    {
+      "before_after_equal": true,
+      "bytes": 1110,
+      "mode": "optimized",
+      "path": "/tmp/node115-drift-optimized-nggy7eed/RESULT.json",
+      "sha256": "d2e396a8709102a23edcd3d7052174f5412064bd5e172ea9e13dbaa9bc223690",
+      "skips": 0,
+      "source_helper_input_records": 6,
+      "stderr": {
+        "bytes": 2001,
+        "path": "/tmp/node115-drift-optimized-nggy7eed/stderr.txt",
+        "sha256": "565aa71211f7903115d85d6c407d2a1fdfc387cd1481d6445fcb3085794ab46d"
+      },
+      "stdout": {
+        "bytes": 0,
+        "path": "/tmp/node115-drift-optimized-nggy7eed/stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "test_seconds": 6.158,
+      "tests": 10,
+      "wall_seconds": 6.473148271034006
+    }
+  ],
+  "design_before_new_producer": {
+    "bytes": 2789,
+    "path": "/tmp/hl-node115-drift-independent-20261101/CONTROL-DESIGN.json",
+    "sha256": "827b7b88d5bac024b33bdc4bc548e5157c5a94c526d24469c35275cd7372869b"
+  },
+  "design_only_stimuli": {
+    "bytes": 11318,
+    "designed_rows": 32,
+    "not_an_executed_count": "These preserve pre-producer byte stimuli; final test source/actual logs define the executed controls, including stronger actual wrong-parent-FUNC and FDE-bound cases.",
+    "path": "/tmp/hl-node115-drift-independent-20261101/COUNTERFACTUAL-STIMULI.json",
+    "sha256": "71baf637a567268275e7c2c25ac2a8d4ac6926d006a643ba95dd8f43b1035155"
+  },
+  "independent_expectations": {
+    "bytes": 22675,
+    "path": "/tmp/hl-node115-drift-independent-20261101/EXPECTED-DRIFT.json",
+    "sha256": "a1a19e1cd34f3cb00dc6967eebf57826bb058801f53887b5ec070168e87a583c"
+  },
+  "meaningful_controls": [
+    "real parent nonRELA byte and each of9actual targetdisplacements",
+    "all9actual sourceRELA kind1-vs-code4B records;addend;duplicateactualfield;fullFUNCvalue;validdefinedwrongFUNCatbothGOTfields",
+    "sixliteralreferences(5unique targetstarts) andfixedheaderbyte8, separatefrompointerfields",
+    "fourusedtargetRELATIVE records kind/symbol; selected+24/GOTaddend;genuine duplicatepointerrow;threeactualsourcepointerkind records/addend/selectedwrongdefinedFUNC",
+    "twoactualFDEs declaredlength4/8/12, minimaldeclared13+unterminatedaugmentationbyte, wrongpc_range, wrongCIEdelta, duplicatedadjacentindexstart, actualsharedCIEencodingbyte",
+    "onechangedopaque630body andtwovalidmappedopaquevtableaddends areACCEPTEDunqualified observations, notfalselycountedasrejections",
+    "fullinputidentity refusal andexistingoutput-before-inputread/noexportfailure;actualgeneratecanonicalrecordreproduction"
+  ],
+  "next": "Soleintegrator andsourcepeer own finalpacket/exactcommitchecks/publication. Testsource frozen; nofurtheredits exceptactualfailure.",
+  "observed_scope": {
+    "actual_typed_code_fields": 9,
+    "adapter_compared_bytes": 0,
+    "behavior_transferred": false,
+    "equal_non_RELA_bytes": 354,
+    "extent_drift_bytes": 8,
+    "field_bytes": 36,
+    "literal_bytes_with_repetition": 14,
+    "literal_references": 6,
+    "mask_transferred": false,
+    "parent_bytes": 390,
+    "parent_raw_different_bytes": 35,
+    "source_adapter_bytes": 622,
+    "source_symbol_kinds_by_vtable_offset": {
+      "24": "FUNC2",
+      "32": "FUNC2",
+      "40": "SECTION3"
+    },
+    "target_adapter_bytes": 630,
+    "typed_vtable_pointers": 3,
+    "unique_literal_start_addresses": 5,
+    "vtable_bytes": 48
+  },
+  "owned_test": {
+    "bytes": 17118,
+    "path": "/tmp/hl-node115-field-drift-20261101/checkout/tests/test_node115_field_adapter_drift.py",
+    "sha256": "891ca8be4bda35d9f3117737da79befc63fc49cc12a0a3515a510072d04556e2"
+  },
+  "precision": [
+    "Supported observed zR header/zeroaugmentation and selectedindexedmetadata, not a proof of all CFI/unwind semantics or a globalcensus.",
+    "Opaque+32/+40 targetcallees and630internalbehavior are unqualified; validchangedmappedpointers/opaquebytes may remain accepted belowidentity.",
+    "derive is a below-wholeidentity structural seam; analyze authenticates both immutablefullinputbytes beforeclaimingadmission.",
+    "Eachanalyze/generate report usesoneimmutabletarget andonearchiveview; private in-memorymutants are sequential. No wholeimage/member mutation is written.",
+    "No originalcompiler/fork/version/sourceuniqueness, privateABI/runtime/originalimplementation/gate/wholeELF claim."
+  ],
+  "preserved_preparation": {
+    "actual_short_declared_FDE_before_acceptance": {
+      "bytes": 1469,
+      "path": "/tmp/hl-node115-field-drift-20261101/pre-fde-length-bound/BEFORE-ACCEPTANCE.json",
+      "sha256": "e62aba7c50f58dc53140ec1be62f92d98a8edade971d8a067b65bdc13f50ab2e"
+    },
+    "after_source_sha256": "a4106b0baaaf2576771fa64bc506f4be93b832682192a84c68e559472d393fdd",
+    "before_source_sha256": "923f3387dc13dbe04c1bb7607a3471d6463b3f536e88b029a52091b6aeb7007e",
+    "symbol_kind_correction": {
+      "bytes": 621,
+      "path": "/tmp/hl-node115-field-drift-20261101/SOURCE-SYMBOL-PRECHECK.json",
+      "sha256": "00b9713eb26f75262e088cc350f631a0dec1377527d62742f59ae05236f4fe51"
+    },
+    "vtable_correction": {
+      "bytes": 846,
+      "path": "/tmp/hl-node115-field-drift-20261101/VTABLE-PREPARATION-CORRECTION.json",
+      "sha256": "1c021109e6dc81029b3d7993895b5448d311c1863a87854ba505e70a767515e8"
+    }
+  },
+  "producer": {
+    "bytes": 22332,
+    "path": "/tmp/hl-node115-field-drift-20261101/checkout/tools/node115_field_adapter_drift.py",
+    "sha256": "a4106b0baaaf2576771fa64bc506f4be93b832682192a84c68e559472d393fdd"
+  },
+  "reader_status": "Bothactualtestprocessescompleted; nofulltargetobject remains held. Tail andFee notifiedrelease.",
+  "refined_design": {
+    "bytes": 3517,
+    "path": "/tmp/hl-node115-drift-independent-20261101/CONTROL-DESIGN-REFINED.json",
+    "sha256": "ab41026e40c8cdfe80fac3f2c65700164f185f48d98305d0fa372d0ecae882bf"
+  },
+  "schema": "independent-node115-field-adapter-drift-test-handoff-v1",
+  "status": "PASS for exact10method ownedstatic controls; no broad-suite/hostedCI claim"
+}

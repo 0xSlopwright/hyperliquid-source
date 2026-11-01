@@ -1,0 +1,29 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "tools/node115_field_adapter_drift.py",
+    "--libcore",
+    "/tmp/hl-rem-rust-1.94.1-20261031/prefix/lib/rustlib/x86_64-unknown-linux-gnu/lib/libcore-e60dd2ab51fbc7de.rlib",
+    "--output",
+    "/tmp/hl-node115-field-drift-20261101/positive-attempt-1/observed"
+  ],
+  "captured_native_compiler_or_emulator_execution": false,
+  "exit": 1,
+  "headroom_before": 2147205120,
+  "output_exists": false,
+  "seconds": 0.2017920430516824,
+  "source_after": {
+    "tools/build_provenance.py": "4a0832dc1e2e09c129d69f4e81d44ff4bed8b3422f99d70c7db0ec9b10af61f3",
+    "tools/elf_index.py": "9191b647e2df52bf38bb167267ad4c698b3f7e8f7f324631d86357a2a864dcc7",
+    "tools/node115_field_adapter_drift.py": "e268f6c6828667422a159e82a34a8ddc03904578cbcdb8465d03d2d2ad7050f5"
+  },
+  "source_before": {
+    "tools/build_provenance.py": "4a0832dc1e2e09c129d69f4e81d44ff4bed8b3422f99d70c7db0ec9b10af61f3",
+    "tools/elf_index.py": "9191b647e2df52bf38bb167267ad4c698b3f7e8f7f324631d86357a2a864dcc7",
+    "tools/node115_field_adapter_drift.py": "e268f6c6828667422a159e82a34a8ddc03904578cbcdb8465d03d2d2ad7050f5"
+  },
+  "source_equal": true,
+  "stderr_sha256": "ed186e89436af1c4fffad8233dd4fa5d0d19cd8090b731e750e158cf0f18c052",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

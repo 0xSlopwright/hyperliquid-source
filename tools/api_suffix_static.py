@@ -111,6 +111,8 @@ def analyze(data):
             for pos in range(section['offset'], section['offset'] + section['size'], 24):
                 slot, info, addend = struct.unpack_from('<QQq', data, pos)
                 if info & 0xffffffff == 8:
+                    if slot in relative:
+                        raise ValueError(f'duplicate relative relocation for slot {slot:#x}')
                     relative[slot] = addend
     wanted = {0x566ab28: 0x1ecd56, 0x576eb70: 0x577a898,
               0x576f6d0: 0x157c730, 0x576e040: 0x1344760}

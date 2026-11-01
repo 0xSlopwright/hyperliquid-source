@@ -156,6 +156,8 @@ class Elf:
                 name = table[sec[0]:end].decode()
             except UnicodeDecodeError as exc:
                 raise EvidenceError("section name is not valid UTF-8") from exc
+            if name in self.sections:
+                raise EvidenceError(f"Duplicate section: {name}")
             self.sections[name] = (sec[3], sec[4], sec[5])
 
     def section(self, name):
@@ -236,6 +238,8 @@ def relative_relocs(elf: Elf) -> dict:
             raise EvidenceError(".rela.dyn truncated")
         r_off, info, add = struct.unpack_from("<QQq", elf.data, o)
         if info & 0xFFFFFFFF == 8:
+            if r_off in out:
+                raise EvidenceError(f"duplicate RELATIVE relocation slot {r_off:#x}")
             out[r_off] = add
     return out
 

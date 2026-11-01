@@ -154,6 +154,11 @@ class Image:
         if fdes is None:
             _, records = fde_extents.eh_frame_records(data, elf_index.sections(data))
             fdes = sorted((r["start"], r["end"]) for r in records)
+        seen = set()
+        for start, _end in fdes:
+            if start in seen:
+                fail(f"duplicate FDE start {start:#x}")
+            seen.add(start)
         self.fdes = fdes
         self.starts = [row[0] for row in fdes]
         self.relocs = {}

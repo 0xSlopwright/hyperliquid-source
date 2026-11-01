@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 import harness_plan as hp
 
 PACKET = Path('research/work-items/RE-003-harness-design')
-POSITIVE = 'syn-94-pos-equal-window-v1'
+POSITIVE = '94-pos-equal-window-v1'
 
 
 class FixturePayloadIdentityTests(unittest.TestCase):
@@ -22,11 +22,18 @@ class FixturePayloadIdentityTests(unittest.TestCase):
         self.protocol = hp.load_json(ROOT / PACKET / 'protocol.json')
         self.fixtures = hp.load_json(ROOT / PACKET / 'fixture-identities.json')
 
-    def test_committed_empty_payload_template_remains_valid(self):
+    def test_committed_window_and_negative_payload_identities_remain_valid(self):
         fixtures = hp.validate_fixtures(self.fixtures, self.protocol)
         self.assertEqual(len(fixtures), 3)
-        self.assertTrue(all(row['payload_sha256'] == hashlib.sha256(b'').hexdigest()
-                            for row in fixtures.values()))
+        positive = fixtures[POSITIVE]
+        self.assertEqual(positive['kind'], 'target_window_expectation')
+        self.assertEqual(positive['window_length'], 89)
+        self.assertEqual(positive['payload_sha256'],
+                         'e5786bcf006e4207862b5b8985c2a9ba7fd7488c171b9e86a5cc6a137b35ccdb')
+        for fixture_id in ('syn-94-neg-corrupt-byte-v1', 'syn-94-neg-wrong-digest-v1'):
+            with self.subTest(fixture_id=fixture_id):
+                self.assertEqual(fixtures[fixture_id]['payload_sha256'],
+                                 hashlib.sha256(b'').hexdigest())
         # The intentionally wrong target is retained as a negative control;
         # this check validates payload syntax, not known-target equivalence.
         self.assertEqual(fixtures['syn-94-neg-wrong-digest-v1']['target_sha256'], '0' * 64)
@@ -57,7 +64,8 @@ class FixturePayloadIdentityTests(unittest.TestCase):
             row['payload_sha256'] = 'not-a-sha256'
             path.write_text(json.dumps(fixtures, indent=2) + '\n')
             result = subprocess.run(
-                [sys.executable, '-B', str(root / 'tools/harness_plan.py'),
+                [sys.executable, '-B', *(['-O'] if sys.flags.optimize else []),
+                 str(root / 'tools/harness_plan.py'),
                  '--request', str(root / PACKET / 'examples/plan-only.json')],
                 cwd=root, capture_output=True, text=True, timeout=10)
             self.assertNotEqual(result.returncode, 0)

@@ -1,0 +1,22 @@
+--- a/tools/node115_field_adapter_drift.py
++++ b/tools/node115_field_adapter_drift.py
+@@ -269,8 +269,7 @@
+         if role == 'literal':
+             need(expected == expected_literal, 'source literal bytes changed')
+         else:
+-            need(len(expected) == 48 and struct.unpack('<6Q', expected) == (0, 16, 8, 0, 0, 0),
+-                 'source vtable raw layout changed')
++            need(len(expected) == 48, 'source vtable byte extent changed')
+             need(vtable_section is None, 'duplicate source vtable reference')
+             vtable_section = section
+         actual, file_offset, data_section = image.virtual(destination, len(expected))
+@@ -293,7 +292,8 @@
+     selected_source = []
+     for row in source_pointers:
+         symbol = row['symbol']; index = symbol['section_index']
+-        need(row['type'] == 1 and row['addend'] == 0 and symbol['info'] & 15 == 2
++        expected_kind = {24: 2, 32: 2, 40: 3}[row['offset']]
++        need(row['type'] == 1 and row['addend'] == 0 and symbol['info'] & 15 == expected_kind
+              and 0 < index < len(source.sections) and source.sections[index]['flags'] & 4
+              and symbol['value'] == 0, 'source vtable pointer kind/symbol/addend changed')
+         if row['offset'] == 24:

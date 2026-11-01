@@ -1,0 +1,35 @@
+{
+  "actual_base_target_sha256": "a6e2897cd051213d004802deca416e8eca62b7a8278fa39f249e98c3867b5301",
+  "archive_sha256": "ca804049dc84fa29d47c1ceb7012c7688a6848b5c858bd598ba484a0652ab256",
+  "cases": [
+    {
+      "FDE_file_offset": 13380516,
+      "changed_length_word_hex": "04000000",
+      "identity_admitted": false,
+      "logical_gap": "An8-byte declaredFDE was accepted while begin/range/header reads extended beyond that record.",
+      "original_length_word_hex": "28000000",
+      "reported_FDE_raw_length_bytes": 8,
+      "reported_code_extent_bytes": 390,
+      "result": "ACCEPTED_BEFORE_FIX",
+      "seconds": 0.14614813099615276,
+      "selected": "parent390"
+    },
+    {
+      "FDE_file_offset": 13383332,
+      "changed_length_word_hex": "04000000",
+      "identity_admitted": false,
+      "logical_gap": "An8-byte declaredFDE was accepted while begin/range/header reads extended beyond that record.",
+      "original_length_word_hex": "28000000",
+      "reported_FDE_raw_length_bytes": 8,
+      "reported_code_extent_bytes": 630,
+      "result": "ACCEPTED_BEFORE_FIX",
+      "seconds": 0.14742550801020116,
+      "selected": "adapter630"
+    }
+  ],
+  "native_compiler_evaluator_execution": false,
+  "peer_finding": "Fee used-FDE length enclosure gap",
+  "schema": "actual-selected-FDE-length-before-proof-v1",
+  "source_sha256": "923f3387dc13dbe04c1bb7607a3471d6463b3f536e88b029a52091b6aeb7007e",
+  "whole_target_or_mutation_files_written": false
+}

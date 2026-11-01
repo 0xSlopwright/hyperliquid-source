@@ -19,7 +19,7 @@ class FixturesRowIdTypeTests(unittest.TestCase):
         return {'task_id': 'RE-003', 'fixtures': [row]}, protocol
 
     def test_non_string_row_fixture_id_rejected(self):
-        for bad in (['syn-94-pos-equal-window-v1'], {'id': 'x'}, 123, None):
+        for bad in (['94-pos-equal-window-v1'], {'id': 'x'}, 123, None):
             with self.subTest(bad=type(bad).__name__):
                 doc, protocol = self._doc(bad)
                 with self.assertRaises(ValueError):
@@ -30,7 +30,7 @@ class FixturesRowIdTypeTests(unittest.TestCase):
         fixtures = hp.validate_fixtures(
             hp.load_json(PACKET / 'fixture-identities.json'), protocol
         )
-        self.assertIn('syn-94-pos-equal-window-v1', fixtures)
+        self.assertIn('94-pos-equal-window-v1', fixtures)
 
 
 if __name__ == '__main__':

@@ -2,7 +2,6 @@ import hashlib
 import importlib.util
 import json
 import os
-import shutil
 import struct
 import subprocess
 import sys
@@ -12,6 +11,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
+from gnu_binutils import gnu_objdump, requires_gnu  # noqa: E402
+
 spec = importlib.util.spec_from_file_location('evm_rpc_method_path', ROOT / 'tools/evm_rpc_method_path.py')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
@@ -102,9 +103,10 @@ class MethodPathTests(unittest.TestCase):
         leas = mod.common.lea_targets(self.elf)
         self.assertEqual(mod.common.tag_anchor(self.elf, 'eth_nonexistentRe011Control', leas, rel), [])
 
-    @unittest.skipUnless(shutil.which('objdump'), 'objdump unavailable')
+    @requires_gnu('objdump')
     def test_objdump_linear_table_and_calls(self):
-        out = subprocess.run(['objdump', '-d', '--start-address=0x27ab650', '--stop-address=0x27abc18',
+        objdump, _ = gnu_objdump()
+        out = subprocess.run([objdump, '-d', '--start-address=0x27ab650', '--stop-address=0x27abc18',
                               str(ROOT / 'artifacts/node/94/hl-node')], capture_output=True, text=True, check=True).stdout
         for method in self.result['methods']:
             for anchor in method['anchors']:
@@ -117,7 +119,7 @@ class MethodPathTests(unittest.TestCase):
             self.assertRegex(out, rf'(?m)^\s*{use["call_site"][2:]}:\s+.*\bcall\s+{use["call_target"][2:]}\b')
         for edge in self.result['pinned_calls'].values():
             site = int(edge['site'], 16)
-            text = subprocess.run(['objdump', '-d', f'--start-address={site:#x}', f'--stop-address={site+5:#x}',
+            text = subprocess.run([objdump, '-d', f'--start-address={site:#x}', f'--stop-address={site+5:#x}',
                                    str(ROOT / 'artifacts/node/94/hl-node')], capture_output=True, text=True, check=True).stdout
             self.assertIn('call', text)
             self.assertIn(edge['target'][2:], text)

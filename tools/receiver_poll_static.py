@@ -111,6 +111,8 @@ def relocations(data):
                 symbol = symbol_section['offset'] + (info >> 32) * entry_size
                 if symbol + 4 > len(data):
                     raise ValueError('Receiver symbol entry outside file')
+                if symbol + entry_size > symbol_section['offset'] + symbol_section['size']:
+                    raise ValueError('Receiver dynamic symbol entry outside symbol table')
                 name_offset = struct.unpack_from('<I', data, symbol)[0]
                 if name_offset >= string_section['size']:
                     raise ValueError('Receiver dynamic symbol name offset outside string table')
@@ -139,27 +141,33 @@ def generate(binary, output):
     data = binary.read_bytes()
     instruction_controls(data)
     jump_tables, relocation_rows = tables(data), relocations(data)
-    frames = subprocess.check_output(['readelf', '-wf', str(binary)], text=True, encoding='utf-8')
-    extents = [(int(a, 16), int(b, 16)) for a, b in
-               re.findall(r'FDE[^\n]*pc=([0-9a-f]+)\.\.([0-9a-f]+)', frames)]
     output.mkdir(parents=True, exist_ok=True)
     ranges = {}
-    for name, pair in RANGES.items():
-        if extents.count(pair) != 1:
-            raise ValueError(f'Expected one exact receiver FDE: {pair}')
-        begin, end = pair
-        offset, body = read_va(data, begin, end - begin)
-        ranges[name] = {'start_va': hex(begin), 'end_va': hex(end), 'file_offset': hex(offset),
-                        'bytes': len(body), 'sha256': hashlib.sha256(body).hexdigest()}
-        result = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
-                                          f'--stop-address={end:#x}', str(binary)], text=True, encoding='utf-8')
-        (output / (name + '.objdump.txt')).write_text(result.replace(str(binary), '<authenticated-node94>'), encoding='utf-8', newline='\n')
-    (output / 'frames.txt').write_text('\n'.join(line for line in frames.splitlines()
-        if 'FDE' in line and any(f'pc={a:016x}..{b:016x}' in line for a, b in RANGES.values())) + '\n', encoding='utf-8', newline='\n')
-    raw_rela = subprocess.check_output(['readelf', '-rW', str(binary)], text=True, encoding='utf-8')
-    slots = {*RELATIVE, 0x5777378}
-    (output / 'relocations.txt').write_text('\n'.join(line for line in raw_rela.splitlines()
-        if re.match(r'^[0-9a-f]+\s', line) and int(line.split()[0], 16) in slots) + '\n', encoding='utf-8', newline='\n')
+    # Bind external decoder input to the same bytes using a private snapshot.
+    import tempfile
+    with tempfile.TemporaryDirectory() as temporary:
+        snapshot = Path(temporary) / 'node94.elf'
+        snapshot.write_bytes(data)
+        check(snapshot, identity)  # Authenticate the exact bytes the decoders reopen.
+        frames = subprocess.check_output(['readelf', '-wf', str(snapshot)], text=True, encoding='utf-8')
+        extents = [(int(a, 16), int(b, 16)) for a, b in
+                   re.findall(r'FDE[^\n]*pc=([0-9a-f]+)\.\.([0-9a-f]+)', frames)]
+        for name, pair in RANGES.items():
+            if extents.count(pair) != 1:
+                raise ValueError(f'Expected one exact receiver FDE: {pair}')
+            begin, end = pair
+            offset, body = read_va(data, begin, end - begin)
+            ranges[name] = {'start_va': hex(begin), 'end_va': hex(end), 'file_offset': hex(offset),
+                            'bytes': len(body), 'sha256': hashlib.sha256(body).hexdigest()}
+            result = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
+                                              f'--stop-address={end:#x}', str(snapshot)], text=True, encoding='utf-8')
+            (output / (name + '.objdump.txt')).write_text(result.replace(str(snapshot), '<authenticated-node94>'), encoding='utf-8', newline='\n')
+        (output / 'frames.txt').write_text('\n'.join(line for line in frames.splitlines()
+            if 'FDE' in line and any(f'pc={a:016x}..{b:016x}' in line for a, b in RANGES.values())) + '\n', encoding='utf-8', newline='\n')
+        raw_rela = subprocess.check_output(['readelf', '-rW', str(snapshot)], text=True, encoding='utf-8')
+        slots = {*RELATIVE, 0x5777378}
+        (output / 'relocations.txt').write_text('\n'.join(line for line in raw_rela.splitlines()
+            if re.match(r'^[0-9a-f]+\s', line) and int(line.split()[0], 16) in slots) + '\n', encoding='utf-8', newline='\n')
     record = {'target_sha256': identity['sha256'], 'target_bytes': len(data), 'ranges': ranges,
               'jump_tables': jump_tables, 'relocations': relocation_rows,
               'instruction_controls': {hex(a): b for a, b in CONTROLS.items()},

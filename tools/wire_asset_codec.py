@@ -112,6 +112,8 @@ class Image:
         strings = rows[strndx][4]
         self.sections = {}
         for row in rows:
+            if row[1] == 8:  # SHT_NOBITS occupies no file bytes; mapping its VAs would
+                continue  # return unrelated file bytes as if they lived there.
             end = data.index(b"\0", strings + row[0])
             self.sections[data[strings + row[0]:end].decode()] = (row[3], row[4], row[5])
         self.text_va, self.text_off, self.text_size = self.sections[".text"]

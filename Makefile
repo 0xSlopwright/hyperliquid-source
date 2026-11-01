@@ -1,5 +1,5 @@
 PYTHON ?= python3
-.PHONY: setup pull fetch verify test reproduce doctor index fde-index visor-index catalogue catalogue-check provenance rea-install rea-doctor rea-mcp rea-smoke rea-mcp-check rea-native-smoke
+.PHONY: setup pull fetch verify test reproduce doctor index fde-index visor-index catalogue catalogue-check provenance rea-install rea-doctor rea-mcp rea-smoke rea-mcp-check rea-native-smoke alias-rust drift drift-verify
 setup:
 	./scripts/setup.sh
 pull:
@@ -15,6 +15,11 @@ verify:
 	$(PYTHON) tools/verify_imports.py
 test:
 	$(PYTHON) -m unittest discover -s tests -v
+alias-rust:
+	$(PYTHON) tools/short_string_alias_rust.py --controls
+.PHONY: kind5-rust
+kind5-rust:
+	$(PYTHON) tools/kind5_reader_rust.py --controls
 provenance:
 	$(PYTHON) tools/build_provenance.py
 reproduce:
@@ -45,3 +50,7 @@ rea-mcp-check:
 	$(PYTHON) tools/rea_mcp_check.py --require-ghidra
 rea-native-smoke:
 	$(PYTHON) tools/rea_mcp_check.py --require-ghidra --native-smoke
+drift:
+	$(PYTHON) tools/release_drift.py --output-dir work/drift
+drift-verify:
+	$(PYTHON) -I -B research/work-items/RE-014-release-drift/verify.py
