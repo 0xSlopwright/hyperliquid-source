@@ -197,6 +197,8 @@ class Image:
         if self.relocs:
             return self.relocs
         rela = next(s for s in self.sections if s["name"] == ".rela.dyn")
+        if rela["size"] % 24:
+            fail("truncated RELA section")
         for off in range(rela["offset"], rela["offset"] + rela["size"], 24):
             where, info, addend = struct.unpack_from("<QQq", self.data, off)
             if info & 0xffffffff == 8:
