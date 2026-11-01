@@ -92,8 +92,10 @@ make reproduce              # if literals, inventories or evidence interpretatio
 ```
 
 Run `make catalogue` after an approved edit to research/components.json or
-research/progress.json and commit generated tables/catalogues with it. Do not
-edit generated tables directly. Completion is four reviewed component gates;
+research/progress.json and commit generated tables/catalogues with it, including
+the README progress block. `make catalogue-check` also detects README progress
+drift; text outside its generated markers is preserved. Do not edit generated
+tables directly. Completion is four reviewed component gates;
 only mark a gate true with a packet covering its entire scope and an evidence
 path in the progress record. The consistency check verifies paths and structure;
 it is not a semantic proof or a substitute for review. Partial results keep

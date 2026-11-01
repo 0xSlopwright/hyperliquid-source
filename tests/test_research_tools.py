@@ -6,7 +6,8 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
-from catalogue import owner, validate_progress
+from catalogue import (PROGRESS_END, PROGRESS_START, owner, render_readme_progress,
+                       update_readme_progress, validate_progress)
 from elf_index import entry_file_offset, sections, target_for, unwind_index
 
 
@@ -86,6 +87,32 @@ class CatalogueTests(unittest.TestCase):
     def test_missing_component_rejected(self):
         d = copy.deepcopy(self.progress); del d['components']['visor']
         with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
+
+    def test_readme_uses_accepted_gates_for_counts_and_total(self):
+        d = copy.deepcopy(self.progress)
+        for row in d['components'].values():
+            row['gates'] = dict.fromkeys(d['gates'], False)
+        d['components']['foundation']['gates'] = dict.fromkeys(d['gates'], True)
+        d['components']['visor']['gates']['mapped'] = True
+        block = render_readme_progress(self.parts, d)
+        self.assertIn('5.21% (5/96 accepted gates; 1/24 modules complete)', block)
+        self.assertIn('| Node #94 | 4/4 | 100% |', block)
+        self.assertIn('| Visor | 1/4 | 25% |', block)
+        self.assertIn('| **5/96** | **5.21%** |', block)
+
+    def test_readme_regeneration_preserves_surrounding_text(self):
+        readme = f'User introduction\n{PROGRESS_START}\nStale numbers\n{PROGRESS_END}\nUser setup\n'
+        result = update_readme_progress(readme, 'Current numbers')
+        self.assertEqual(result, f'User introduction\n{PROGRESS_START}\nCurrent numbers\n{PROGRESS_END}\nUser setup\n')
+        self.assertEqual(update_readme_progress(result, 'Current numbers'), result)
+
+    def test_readme_rejects_missing_duplicate_and_reversed_markers(self):
+        for readme in ['', PROGRESS_START, PROGRESS_END,
+                       PROGRESS_START * 2 + PROGRESS_END,
+                       PROGRESS_START + PROGRESS_END * 2,
+                       PROGRESS_END + PROGRESS_START]:
+            with self.subTest(readme=readme), self.assertRaises(ValueError):
+                update_readme_progress(readme, 'Current numbers')
 
 
 class VisorIndexTests(unittest.TestCase):
