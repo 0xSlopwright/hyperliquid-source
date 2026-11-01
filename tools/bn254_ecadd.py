@@ -300,6 +300,42 @@ EXECUTION_RANGES = (
     (0x4F20020, 0x4F200E3), (0x4F200F0, 0x4F206EA),
 )
 
+# Only the two original, separately authorized negative experiments. These
+# hashes cover the entire ELF, not just the changed instruction or an allowlist
+# of unchecked offsets: combining either change with anything else is rejected.
+EMULATION_INPUT_SHA256 = frozenset((
+    BINARY_SHA256,
+    "3d64ad390742cc3d0859ace9cdc1da76a83d73a14101a80e7be424953bc77d12",  # VA 0x4e9696d: 29 -> 28
+    "52079b92d958c0f645280503cdfe7b06b9b584d6ce04262eb96532cec752a07c",  # VA 0x4e96cc2: 40 -> 41
+))
+
+
+def validate_run(data, segs, rela, inp, gas, limit, stub, allow_execution):
+    """Authenticate code and mapping metadata before importing the backend."""
+    if allow_execution is not True:
+        raise ValueError("captured-code emulation requires explicit authorization and opt-in")
+    if not isinstance(inp, bytes) or len(inp) != 128 or any(
+            type(v) is not int or not 0 <= v < 2**64 for v in (gas, limit)):
+        raise ValueError("bounded harness requires 128-byte input and u64 gas values")
+    if type(stub) is not bool or HEAP not in (0x70000000, 0x71000000):
+        raise ValueError("only the reviewed stub modes and heap placements are permitted")
+    if not isinstance(data, bytes) or hashlib.sha256(data).hexdigest() not in EMULATION_INPUT_SHA256:
+        raise ValueError("emulation requires authenticated node94 or one exact reviewed mutation")
+    if segs != segments(data) or rela != rela_dyn(data):
+        raise ValueError("mapping/relocation metadata must match the authenticated ELF")
+
+
+def validate_result(q, allocs, gas):
+    """Validate the target-grounded header before reading any guest pointer."""
+    if q[0] == 0:
+        if q[1] != 0 or allocs or q[2] not in ((1 << 63), (1 << 63) | 6, (1 << 63) | 7):
+            raise ValueError("invalid error result header or unexpected allocation")
+        # Error-path trailing bytes can be uninitialized; they remain a raw
+        # snapshot, not a claimed initialized part of the native error ABI.
+    elif q != (0x5670AE8, HEAP, MALLOC_SIZE, HEAP | 1, gas) or allocs != [
+            {"ret": hex(MALLOC_RET), "size": MALLOC_SIZE}]:
+        raise ValueError("result escaped the reviewed allocation/header contract")
+
 
 def checked_span(address, size, base, length, label):
     if size <= 0 or not base <= address <= base + length - size:
@@ -320,10 +356,7 @@ def malloc_request(sp, ret, request, bump, stack, heap):
 def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True,
             *, allow_execution=False):
     """Run run_add; malloc 0x54c06b0 replaced by a bump allocator. Returns dict."""
-    if not allow_execution:
-        raise ValueError("captured-code emulation requires explicit authorization and opt-in")
-    if len(inp) != 128 or not 0 <= gas < 2**64 or not 0 <= limit < 2**64:
-        raise ValueError("bounded harness requires 128-byte input and u64 gas values")
+    validate_run(data, segs, rela, inp, gas, limit, stub, allow_execution)
     from crypto_emulation_guard import run_bounded
     from unicorn import UC_ARCH_X86, UC_HOOK_CODE, UC_MODE_64, UC_PROT_ALL, Uc, UcError
     from unicorn.x86_const import (UC_X86_REG_FS_BASE, UC_X86_REG_R8, UC_X86_REG_RAX,
@@ -379,6 +412,8 @@ def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True,
     def on_malloc(uc, address, size, _user):
         sp = uc.reg_read(UC_X86_REG_RSP)
         checked_span(sp, 8, STACK, 0x100000, "malloc stack")
+        if sp % 8 or allocs:
+            raise ValueError("malloc requires one aligned return slot and a single allocation")
         ret = struct.unpack("<Q", uc.mem_read(sp, 8))[0]
         req = uc.reg_read(UC_X86_REG_RDI)
         next_bump = malloc_request(sp, ret, req, bump[0], STACK, HEAP)
@@ -395,7 +430,7 @@ def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True,
         run_bounded(mu, FN, STOP,
                     code_ranges=EXECUTION_RANGES + ((MALLOC, MALLOC + 4),),
                     writable_ranges=((STACK, STACK + 0x100000),
-                                     (OUT, OUT + 0x28), (HEAP, HEAP + 0x10000)),
+                                     (OUT, OUT + 0x28), (HEAP, HEAP + MALLOC_SIZE)),
                     timeout=60_000_000, count=50_000_000)
     except (UcError, ValueError) as e:
         fault = str(e)
@@ -405,6 +440,13 @@ def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True,
     rip = mu.reg_read(UC_X86_REG_RIP)
     out = bytes(mu.mem_read(OUT, 0x28))
     q = struct.unpack("<5Q", out)
+    if fault is None:
+        try:
+            if rip != STOP:
+                raise ValueError("emulation stopped before the return sentinel")
+            validate_result(q, allocs, gas)
+        except ValueError as e:
+            fault = str(e)
     res = {"allocs": allocs, "fault": fault, "relocs_applied": relocs,
            "returned": fault is None and rip == STOP, "out_hex": out.hex()}
     if q[0] != 0:  # Ok(PrecompileOutput{bytes, gas_used})
@@ -413,9 +455,9 @@ def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True,
         res["data_ptr"] = hex(q[1])
         res["len"] = q[2]
         res["gas_used"] = q[4]
-        valid_output = (0 < q[2] <= MALLOC_SIZE and HEAP <= q[1]
-                        and q[1] + q[2] <= bump[0])
-        res["output_hex"] = bytes(mu.mem_read(q[1], q[2])).hex() if valid_output else None
+        # Failed/incomplete runs retain the raw header and diagnostic but never
+        # expose a pointer-derived output as a successful comparison candidate.
+        res["output_hex"] = bytes(mu.mem_read(q[1], q[2])).hex() if res["returned"] else None
     else:
         res["kind"] = "err"
         res["err_payload_hex"] = out[0x10:0x28].hex()

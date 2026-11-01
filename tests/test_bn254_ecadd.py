@@ -7,6 +7,7 @@ from pathlib import Path
 import struct
 import subprocess
 import sys
+import types
 import unittest
 from unittest.mock import patch
 
@@ -203,6 +204,10 @@ class Bn254EcAddStaticTests(unittest.TestCase):
 @unittest.skipUnless(ALLOW_EMULATION and DATA is not None and HAS_UNICORN,
                      "captured emulation requires explicit authorization and opt-in")
 class Bn254EcAddEmuTests(unittest.TestCase):
+    def assert_complete(self, result):
+        self.assertTrue(result["returned"], result)
+        self.assertIsNone(result["fault"], result)
+
     def test_output_pin_and_expectations(self):
         r = tool.analyse(bytes(DATA), run_emu=True)
         self.assertEqual(tool.expectation_errors(r), [])
@@ -212,12 +217,14 @@ class Bn254EcAddEmuTests(unittest.TestCase):
     def test_g_plus_2g_matches_reference(self):
         three_g = tool.ref_add(tool.G, tool.TWO_G)
         r = emu(tool.enc(*tool.G, *tool.TWO_G))
+        self.assert_complete(r)
         self.assertEqual(r["output_hex"], tool.enc(*three_g).hex())
 
     def test_tamper_input_takes_error_path(self):
         inp = bytearray(GG[0])
         inp[63] ^= 1  # y of point 1: 2 -> 3, off curve
         r = emu(bytes(inp))
+        self.assert_complete(r)
         self.assertEqual((r["kind"], r["err_payload_hex"], r["allocs"]), ("err", tool.ERR_AFFINE, []))
 
     def test_tamper_carve_p_limb_breaks_output(self):
@@ -227,7 +234,11 @@ class Bn254EcAddEmuTests(unittest.TestCase):
 
     def test_tamper_carve_len_store_breaks_len(self):
         with flip(0x4E96CC2):  # movq $0x40,0x10(%rbx) immediate
-            self.assertEqual(emu(GG[0])["len"], 0x41)
+            r = emu(GG[0])
+            self.assertEqual(r["len"], 0x41)
+            self.assertFalse(r["returned"])
+            self.assertIsNotNone(r["fault"])
+            self.assertIsNone(r["output_hex"])
 
     def test_tamper_stub_removed_does_not_reproduce(self):
         r = emu(GG[0], stub=False)
@@ -241,14 +252,149 @@ class Bn254EcAddEmuTests(unittest.TestCase):
             r = emu(GG[0])
         finally:
             tool.HEAP = old
+        self.assert_complete(r)
         self.assertEqual((r["data_ptr"], r["output_hex"]), ("0x71000000", GG[4]))
 
     def test_gas_equal_limit_succeeds(self):
         r = emu(GG[0], gas=150, limit=150)
+        self.assert_complete(r)
         self.assertEqual((r["kind"], r["gas_used"]), ("ok", 150))
 
 
 class Bn254EcAddHarnessControls(unittest.TestCase):
+    def test_authentication_fails_before_backend_import(self):
+        with patch.dict(sys.modules, {"unicorn": None, "crypto_emulation_guard": None}):
+            with self.assertRaisesRegex(ValueError, "authenticated node94"):
+                tool.emulate(b"not an ELF", [], [], bytes(128), 150, 1000,
+                             allow_execution=True)
+
+    @unittest.skipIf(DATA is None, "node #94 binary not present")
+    def test_only_the_two_exact_original_mutations_are_authenticated(self):
+        tool.validate_run(bytes(DATA), SEGS, RELA, GG[0], 150, 1000, True, True)
+        for va in (0x4E9696D, 0x4E96CC2):
+            with flip(va):
+                tool.validate_run(bytes(DATA), SEGS, RELA, GG[0], 150, 1000, True, True)
+        for va in (0, tool.FN, 0x4E9696E, 0x4E96CC3):
+            # Offset zero is the ELF magic; all other cases are code mutations.
+            mutation = Patched(0, bytes([DATA[0] ^ 1])) if va == 0 else flip(va)
+            with mutation, self.assertRaisesRegex(ValueError, "authenticated node94"):
+                tool.validate_run(bytes(DATA), SEGS, RELA, GG[0], 150, 1000, True, True)
+        with flip(0x4E9696D), flip(0x4E96CC2):
+            with self.assertRaisesRegex(ValueError, "authenticated node94"):
+                tool.validate_run(bytes(DATA), SEGS, RELA, GG[0], 150, 1000, True, True)
+
+    @unittest.skipIf(DATA is None, "node #94 binary not present")
+    def test_mapping_metadata_is_bound_before_backend_import(self):
+        with patch.dict(sys.modules, {"unicorn": None, "crypto_emulation_guard": None}):
+            for segs, rela in (([], RELA), (SEGS, []), (SEGS, RELA[:-1])):
+                with self.subTest(segs_empty=not segs, rela_count=len(rela)):
+                    with self.assertRaisesRegex(ValueError, "metadata"):
+                        tool.emulate(bytes(DATA), segs, rela, GG[0], 150, 1000,
+                                     allow_execution=True)
+
+    def test_gas_and_heap_scope_fail_before_backend_import(self):
+        for value in (True, 1.5, -1, 1 << 64):
+            for gas, limit in ((value, 1000), (150, value)):
+                with self.assertRaisesRegex(ValueError, "u64 gas"):
+                    tool.validate_run(b"", [], [], GG[0], gas, limit, True, True)
+        for heap in (tool.FN, 0x60000000, 0x7FFF00000000, 0x70000001):
+            with patch.object(tool, "HEAP", heap):
+                with self.assertRaisesRegex(ValueError, "heap placements"):
+                    tool.validate_run(b"", [], [], GG[0], 150, 1000, True, True)
+
+    def test_complete_header_required_before_pointer_read(self):
+        q = (0x5670AE8, tool.HEAP, 64, tool.HEAP | 1, 150)
+        allocs = [{"ret": hex(tool.MALLOC_RET), "size": 64}]
+        tool.validate_result(q, allocs, 150)
+        for i in range(5):
+            bad = list(q)
+            bad[i] ^= 1
+            with self.subTest(qword=i), self.assertRaises(ValueError):
+                tool.validate_result(tuple(bad), allocs, 150)
+        for bad_allocs in ([], allocs * 2, [{"ret": hex(tool.MALLOC_RET + 1), "size": 64}]):
+            with self.assertRaises(ValueError):
+                tool.validate_result(q, bad_allocs, 150)
+        for tag in (0, 6, 7):
+            tool.validate_result((0, 0, (1 << 63) | tag, 0xa5, 0xa5), [], 150)
+        for bad in ((0, 1, 1 << 63, 0, 0), (0, 0, 0, 0, 0)):
+            with self.assertRaises(ValueError):
+                tool.validate_result(bad, [], 150)
+
+    def fake_backend_result(self, *, header=None, stopped=False):
+        """Pure host control: the fake runner never executes any instructions."""
+        u = types.ModuleType("unicorn")
+        x = types.ModuleType("unicorn.x86_const")
+        guard = types.ModuleType("crypto_emulation_guard")
+        for i, name in enumerate(("UC_ARCH_X86", "UC_HOOK_CODE", "UC_MODE_64", "UC_PROT_ALL")):
+            setattr(u, name, i)
+        for i, name in enumerate(("FS_BASE", "R8", "RAX", "RCX", "RDI", "RDX", "RIP", "RSI", "RSP")):
+            setattr(x, "UC_X86_REG_" + name, i)
+        u.UcError = type("FakeUcError", (Exception,), {})
+        reads = []
+
+        class Fake:
+            def __init__(self, *args): self.mem, self.reg, self.hooks = {}, {}, []
+            def mem_map(self, *args): pass
+            def mem_write(self, address, data): self.mem.update((address+i, b) for i, b in enumerate(data))
+            def mem_read(self, address, size):
+                reads.append((address, size))
+                return bytes(self.mem.get(address+i, 0) for i in range(size))
+            def reg_write(self, reg, value): self.reg[reg] = value
+            def reg_read(self, reg): return self.reg.get(reg, 0)
+            def hook_add(self, kind, hook, **kwargs): self.hooks.append(hook); return len(self.hooks)
+            def hook_del(self, hook): pass
+
+        u.Uc = Fake
+        q = header or (0x5670AE8, tool.HEAP, 64, tool.HEAP | 1, 150)
+        expected = tool.enc(*tool.ref_add(tool.G, tool.TWO_G)).hex()
+
+        def fake_run(mu, start, stop, **kwargs):
+            self.assertEqual(kwargs["writable_ranges"][-1], (tool.HEAP, tool.HEAP + 64))
+            sp = mu.reg_read(x.UC_X86_REG_RSP)
+            mu.mem_write(sp, struct.pack("<Q", tool.MALLOC_RET))
+            mu.reg_write(x.UC_X86_REG_RDI, 64)
+            mu.hooks[0](mu, tool.MALLOC, 4, None)
+            mu.mem_write(0x60000100, struct.pack("<5Q", *q))
+            mu.mem_write(tool.HEAP, bytes.fromhex(expected))
+            mu.reg_write(x.UC_X86_REG_RIP, start if stopped else stop)
+            if stopped:
+                raise ValueError("controlled incomplete return")
+
+        guard.run_bounded = fake_run
+        with patch.dict(sys.modules, {"unicorn": u, "unicorn.x86_const": x,
+                                     "crypto_emulation_guard": guard}), \
+             patch.object(tool, "validate_run"):
+            result = tool.emulate(b"", [], [], GG[0], 150, 1000, allow_execution=True)
+        return result, reads, expected
+
+    def test_stopped_output_never_passes_positive_acceptance(self):
+        result, reads, _ = self.fake_backend_result(stopped=True)
+        self.assertFalse(result["returned"])
+        self.assertEqual(result["fault"], "controlled incomplete return")
+        self.assertIsNone(result["output_hex"])
+        self.assertNotIn((tool.HEAP, 64), reads)
+        with self.assertRaises(AssertionError):
+            Bn254EcAddEmuTests().assert_complete(result)
+
+    def test_invalid_header_never_reads_guest_output(self):
+        for q in ((1, tool.HEAP, 64, tool.HEAP | 1, 150),
+                  (0x5670AE8, tool.HEAP + 8, 64, tool.HEAP | 1, 150),
+                  (0x5670AE8, tool.HEAP, 65, tool.HEAP | 1, 150),
+                  (0x5670AE8, tool.HEAP, 64, 0, 150),
+                  (0x5670AE8, tool.HEAP, 64, tool.HEAP | 1, 151)):
+            result, reads, _ = self.fake_backend_result(header=q)
+            self.assertFalse(result["returned"])
+            self.assertIsNotNone(result["fault"])
+            self.assertIsNone(result["output_hex"])
+            self.assertNotIn((q[1], q[2]), reads)
+
+    def test_valid_header_reads_exact_allocation_after_completion(self):
+        result, reads, expected = self.fake_backend_result()
+        self.assertTrue(result["returned"])
+        self.assertIsNone(result["fault"])
+        self.assertEqual(result["output_hex"], expected)
+        self.assertEqual(reads[-1], (tool.HEAP, 64))
+
     def test_raw_reference_scans_include_final_fitting_offsets(self):
         target = tool.TEXT_LOAD_VA + 0x100
         for prefix,kind,size in [(b"\xff\x15","call",6),(b"\xff\x25","jmp",6),
