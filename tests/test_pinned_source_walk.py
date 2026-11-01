@@ -24,7 +24,7 @@ def source_view(binary, versioned=True):
     # this is not a Rust implementation, workspace or reconstructed function.
     with tempfile.TemporaryDirectory(prefix='hl-source-walk-') as temporary:
         root = Path(temporary)
-        for name in ('research/components.json', 'research/progress.json',
+        for name in ('README.md', 'research/components.json', 'research/progress.json',
                      'research/imported/hl-node-94.inventory.json',
                      'research/imported/hl-node-115.inventory.json',
                      'research/imported/hl-visor.inventory.json',

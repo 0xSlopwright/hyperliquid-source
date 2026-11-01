@@ -1,5 +1,25 @@
 # Agent instructions
 
+## Primary objective: complete the node reverse engineering
+
+All agent work, PRs and submissions must focus on reverse engineering the node's
+code. Hillclimb completion by choosing bounded work that resolves binary-backed
+unknowns, reconstructs established semantics or validates the reconstruction
+against the target. Report concrete evidence of progress; retain the full-scope
+acceptance gates below and do not inflate completion for partial work.
+
+Modify tooling, infrastructure, workflows or surrounding architecture **only
+when an active reverse-engineering task is blocked**. Record the task, evidence
+of the blocker and why existing tools cannot support it. Make the smallest fix,
+verify that the blocked work can proceed, and immediately resume reverse
+engineering. Convenience, speculative improvements and architectural preferences
+are not blockers. This restriction applies even to tasks listed in the queue.
+
+**Window dressing, cosmetic cleanup and inconsequential PRs or submissions will
+be closed.** Do not spend agent work on standalone tooling polish, refactors,
+documentation churn or surrounding architecture changes without a demonstrated
+blocker. Preserve useful documentation of new binary findings in evidence packets.
+
 ## Read first and preserve scope
 
 Read CONTRIBUTING.md, docs/SCOPE.md, docs/PROGRESS.md, docs/TASKS.md and docs/REA.md.

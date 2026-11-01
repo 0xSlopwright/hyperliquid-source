@@ -17,11 +17,8 @@ import unittest
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
-
-
-from catalogue import owner, validate_progress
-
-
+from catalogue import (PROGRESS_END, PROGRESS_START, owner, render_readme_progress,
+                       update_readme_progress, validate_progress)
 from elf_index import entry_file_offset, sections, target_for, unwind_index
 
 
@@ -126,6 +123,32 @@ class CatalogueTests(unittest.TestCase):
         d = copy.deepcopy(self.progress); del d['components']['visor']
         with self.assertRaises(ValueError): validate_progress(self.parts, d, self.root)
 
+    def test_readme_uses_accepted_gates_for_counts_and_total(self):
+        d = copy.deepcopy(self.progress)
+        for row in d['components'].values():
+            row['gates'] = dict.fromkeys(d['gates'], False)
+        d['components']['foundation']['gates'] = dict.fromkeys(d['gates'], True)
+        d['components']['visor']['gates']['mapped'] = True
+        block = render_readme_progress(self.parts, d)
+        self.assertIn('5.21% (5/96 accepted gates; 1/24 modules complete)', block)
+        self.assertIn('| Node #94 | 4/4 | 100% |', block)
+        self.assertIn('| Visor | 1/4 | 25% |', block)
+        self.assertIn('| **5/96** | **5.21%** |', block)
+
+    def test_readme_regeneration_preserves_surrounding_text(self):
+        readme = f'User introduction\n{PROGRESS_START}\nStale numbers\n{PROGRESS_END}\nUser setup\n'
+        result = update_readme_progress(readme, 'Current numbers')
+        self.assertEqual(result, f'User introduction\n{PROGRESS_START}\nCurrent numbers\n{PROGRESS_END}\nUser setup\n')
+        self.assertEqual(update_readme_progress(result, 'Current numbers'), result)
+
+    def test_readme_rejects_missing_duplicate_and_reversed_markers(self):
+        for readme in ['', PROGRESS_START, PROGRESS_END,
+                       PROGRESS_START * 2 + PROGRESS_END,
+                       PROGRESS_START + PROGRESS_END * 2,
+                       PROGRESS_END + PROGRESS_START]:
+            with self.subTest(readme=readme), self.assertRaises(ValueError):
+                update_readme_progress(readme, 'Current numbers')
+
     def test_boolean_match_count_rejected(self):
         d = copy.deepcopy(self.progress)
         d['components']['orderbook']['raw_equal_bodies'] = True
@@ -163,6 +186,7 @@ class CatalogueTests(unittest.TestCase):
 
     def _catalogue_root(self, tmp, elf):
         root = Path(tmp)
+        (root / 'README.md').write_text(f'{PROGRESS_START}\n{PROGRESS_END}\n')
         for rel in ['research/components.json', 'research/progress.json',
                     'research/imported/hl-node-94.inventory.json',
                     'research/imported/hl-node-115.inventory.json',
@@ -230,6 +254,7 @@ class CatalogueTests(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         root = Path(temp.name)
         (root / 'research/imported').mkdir(parents=True)
+        (root / 'README.md').write_text(f'{PROGRESS_START}\n{PROGRESS_END}\n')
         (root / 'references/can1357-hl').mkdir(parents=True)
         comp = {"id": "foundation", "name": "Foundation", "patterns": ["base/*"],
                 "depends_on": [], "scope": "x", "first_task": "y", "artifact": "node94"}

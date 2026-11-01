@@ -12,7 +12,7 @@ class CataloguePortablePaths(unittest.TestCase):
         source=subprocess.check_output(['git','-C',str(reference),'show','999556f6e0a474b8312db96ec3149e1c44e97c23:base/duration.rs'])
         with tempfile.TemporaryDirectory() as temporary:
             stage=Path(temporary)
-            for name in ('research/components.json','research/progress.json',
+            for name in ('README.md','research/components.json','research/progress.json',
                          'research/imported/hl-node-94.inventory.json',
                          'research/imported/hl-node-115.inventory.json',
                          'research/imported/hl-visor.inventory.json',
