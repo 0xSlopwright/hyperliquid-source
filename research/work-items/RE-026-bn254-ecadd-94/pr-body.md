@@ -1,3 +1,5 @@
+> Historical submitted PR body, preserved below. Current static review and held behavioral acceptance are documented in README.md and the adjacent review packet. The default no longer executes captured code.
+
 RE-026: bn254 ecAdd (precompile 0x06) @ 0x4e96610 (node #94), emulated with malloc stubbed
 
 Static recovery of the revm-precompile 16.0.0 bn128 `run_add` (EIP-196 ecAdd)

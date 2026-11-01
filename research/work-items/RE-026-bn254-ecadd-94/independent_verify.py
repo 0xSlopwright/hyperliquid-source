@@ -200,15 +200,16 @@ def main():
         if base == TEXT_LOAD_VA:
             text = data[off : off + filesz]
     refs, direct = [], 0
-    for i in range(len(text) - 7):
-        b0, b1 = text[i], text[i + 1]
-        if b0 == 0xFF and b1 in (0x15, 0x25):
+    for i in range(len(text)):
+        b0 = text[i]
+        b1 = text[i + 1] if i + 1 < len(text) else None
+        if b0 == 0xFF and b1 in (0x15, 0x25) and i + 6 <= len(text):
             if TEXT_LOAD_VA + i + 6 + struct.unpack_from("<i", text, i + 2)[0] == GOT_SLOT:
                 refs.append((b1, TEXT_LOAD_VA + i))
-        elif b0 in (0x48, 0x4C) and b1 == 0x8B and (text[i + 2] & 0xC7) == 0x05:
+        elif b0 in (0x48, 0x4C) and b1 == 0x8B and i + 7 <= len(text) and (text[i + 2] & 0xC7) == 0x05:
             if TEXT_LOAD_VA + i + 7 + struct.unpack_from("<i", text, i + 3)[0] == GOT_SLOT:
                 refs.append((0x8B, TEXT_LOAD_VA + i))
-        if b0 in (0xE8, 0xE9) and TEXT_LOAD_VA + i + 5 + struct.unpack_from("<i", text, i + 1)[0] == FN:
+        if b0 in (0xE8, 0xE9) and i + 5 <= len(text) and TEXT_LOAD_VA + i + 5 + struct.unpack_from("<i", text, i + 1)[0] == FN:
             direct += 1
     if refs != [(0x15, 0x4E98A57), (0x15, 0x4E98AE7)]:
         failures.append("GOT slot refs")

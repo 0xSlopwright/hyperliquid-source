@@ -8,6 +8,7 @@ import struct
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKET = ROOT / "research" / "work-items" / "RE-026-bn254-ecadd-94"
@@ -17,6 +18,7 @@ import bn254_ecadd as tool  # noqa: E402
 OUTPUT_SHA256 = "0ece19222a62722e80d336bca990ba1113a9e3765a26aa0f858b46c7af335581"
 NO_EMU_OUTPUT_SHA256 = "8832409f27af72886b0f2cf4c1355e142bf29f76ac6a1faf7dc1d35684df1716"
 HAS_UNICORN = importlib.util.find_spec("unicorn") is not None
+ALLOW_EMULATION = os.environ.get("HL_ALLOW_BN254_ECADD_EMULATION") == "1"
 TOOL = str(ROOT / "tools" / "bn254_ecadd.py")
 
 DATA = bytearray(tool.TARGET.read_bytes()) if tool.TARGET.exists() else None
@@ -68,7 +70,8 @@ def static_errors():
 
 
 def emu(inp, gas=150, limit=1000, stub=True):
-    return tool.emulate(bytes(DATA), SEGS, tool.rela_dyn(bytes(DATA)), inp, gas, limit, stub=stub)
+    return tool.emulate(bytes(DATA), SEGS, tool.rela_dyn(bytes(DATA)), inp, gas, limit,
+                        stub=stub, allow_execution=True)
 
 
 GG = tool.VECTORS["g_plus_g"]
@@ -183,8 +186,22 @@ class Bn254EcAddStaticTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 tool.analyse(bytes(DATA), check_sha=True, run_emu=False)
 
+    def test_out_of_gas_leaves_trailing_result_bytes_untouched(self):
+        # Authenticate the branch/store footprint; this is static algebra only.
+        self.assertEqual(tool.read_va(DATA, SEGS, 0x4e96627, 2).hex(), "7613")
+        self.assertEqual(tool.read_va(DATA, SEGS, 0x4e96629, 19).hex(),
+                         "48b8000000000000008048894310e995010000")
+        self.assertEqual(tool.read_va(DATA, SEGS, 0x4e967d1, 9).hex(),
+                         "0f57c00f11034889d8")
+        result = bytearray([0xa5] * 40)
+        result[16:24] = struct.pack("<Q", 1 << 63)
+        result[:16] = bytes(16)
+        self.assertEqual(result[24:], bytes([0xa5] * 16))
+        self.assertNotEqual(result[16:].hex(), tool.ERR_OOG)
 
-@unittest.skipIf(DATA is None or not HAS_UNICORN, "binary or unicorn missing")
+
+@unittest.skipUnless(ALLOW_EMULATION and DATA is not None and HAS_UNICORN,
+                     "captured emulation requires explicit authorization and opt-in")
 class Bn254EcAddEmuTests(unittest.TestCase):
     def test_output_pin_and_expectations(self):
         r = tool.analyse(bytes(DATA), run_emu=True)
@@ -229,6 +246,49 @@ class Bn254EcAddEmuTests(unittest.TestCase):
     def test_gas_equal_limit_succeeds(self):
         r = emu(GG[0], gas=150, limit=150)
         self.assertEqual((r["kind"], r["gas_used"]), ("ok", 150))
+
+
+class Bn254EcAddHarnessControls(unittest.TestCase):
+    def test_raw_reference_scans_include_final_fitting_offsets(self):
+        target = tool.TEXT_LOAD_VA + 0x100
+        for prefix,kind,size in [(b"\xff\x15","call",6),(b"\xff\x25","jmp",6),
+                                 (b"\x48\x8b\x05","mov",7),(b"\x4c\x8b\x05","mov",7)]:
+            for pad in [b"",b"\x90"]:
+                candidate=prefix+struct.pack('<i',target-(tool.TEXT_LOAD_VA+len(pad)+size))
+                self.assertEqual(tool.slot_refs(pad+candidate,target),[(kind,tool.TEXT_LOAD_VA+len(pad))])
+                self.assertEqual(tool.slot_refs(pad+candidate[:-1],target),[])
+        for prefix in [b"\xe8",b"\xe9"]:
+            candidate=prefix+struct.pack('<i',target-(tool.TEXT_LOAD_VA+5))
+            self.assertEqual(tool.direct_calls(candidate,target),1)
+            self.assertEqual(tool.direct_calls(candidate[:-1],target),0)
+
+    def test_default_cli_is_static_even_if_unicorn_is_available(self):
+        with patch.object(tool, "analyse", return_value={}) as analyse, \
+             patch.object(tool, "expectation_errors", return_value=[]), \
+             patch.object(tool, "render", return_value=""), \
+             patch.object(tool, "unicorn_available", return_value=True):
+            self.assertEqual(tool.main([]), 0)
+        self.assertFalse(analyse.call_args.kwargs["run_emu"])
+
+    def test_emulation_requires_opt_in_before_loading_backend(self):
+        with self.assertRaisesRegex(ValueError, "explicit authorization"):
+            tool.emulate(b"", [], [], bytes(128), 150, 1000)
+        with patch.object(tool, "unicorn_available", return_value=False):
+            with self.assertRaisesRegex(RuntimeError, "unavailable"):
+                tool.analyse(b"", run_emu=True)
+
+    def test_input_bounds_checked_before_loading_backend(self):
+        for inp, gas, limit in [(b"",150,1000),(bytes(129),150,1000),(bytes(128),-1,1000),(bytes(128),150,2**64)]:
+            with self.assertRaisesRegex(ValueError, "128-byte input"):
+                tool.emulate(b"", [], [], inp, gas, limit, allow_execution=True)
+
+    def test_malloc_callback_rejects_unreviewed_requests(self):
+        stack=0x1000;heap=0x100000
+        self.assertEqual(tool.malloc_request(stack,tool.MALLOC_RET,64,heap,stack,heap),heap+64)
+        for sp,ret,n,bump in [(stack-1,tool.MALLOC_RET,64,heap),(stack+0x100000-7,tool.MALLOC_RET,64,heap),
+                              (stack,tool.MALLOC_RET+1,64,heap),(stack,tool.MALLOC_RET,65,heap),
+                              (stack,tool.MALLOC_RET,64,heap+0xfff0),(stack,tool.MALLOC_RET,64,heap+1)]:
+            with self.assertRaises(ValueError):tool.malloc_request(sp,ret,n,bump,stack,heap)
 
 
 if __name__ == "__main__":

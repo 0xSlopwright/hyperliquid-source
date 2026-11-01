@@ -3,12 +3,12 @@
 - Component ID: RE-026 (`RE-026-bn254-ecadd-94`); no `docs/COMPONENTS.md` progress change is claimed
 - Target release and full SHA-256: node #94 `artifacts/node/94/hl-node`, `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`
 - Source commit / reference commit: repository base `308e5127990217a9d6196992665da6ca1afd4b82`; `references/can1357-hl` not consulted; no radare2 revision (r2 not used)
-- Claim status: observation (static pins, RELA wiring, field constants, emulated vectors with the allocator stubbed)
+- Review status: static pins, RELA wiring and field constants checked; behavioral acceptance HELD. The original emulated vectors are author-reported historical records, not reproduced by this review.
 - Scope included and excluded: `run_add` FDE, its decoder, the Istanbul/Byzantium gas wrappers and table objects included; see "What this does not claim"
 
 Deterministic static recovery of the revm-precompile 16.0.0 bn128 `run_add`
 (EVM precompile `0x06`, EIP-196 ecAdd) in the pinned node #94 `hl-node`, plus a
-Unicorn behavioural proof of the function with jemalloc `malloc` stubbed.
+historical Unicorn comparison with jemalloc `malloc` stubbed. Captured-code execution requires separate explicit authorization; the corrected default is static.
 
 ## Reproduce
 
@@ -16,36 +16,36 @@ Unicorn behavioural proof of the function with jemalloc `malloc` stubbed.
 | --- | --- |
 | Platform | Linux x86_64 |
 | Python | CPython 3.13.5 (system `python3` for static runs; a venv with Unicorn for the emulated run) |
-| Unicorn | 2.1.4 (Python binding; optional, only for the behavioural proof) |
+| Unicorn | 2.1.4 (Python binding; optional, only for an explicitly authorized comparison) |
 | ELF parser | in-tool stdlib parser (`struct`): PT_LOAD headers for VA/file-offset mapping, `.rela.dyn` (`R_X86_64_RELATIVE` type 8, `GLOB_DAT` type 6) |
 | Disassembly cross-check | GNU objdump (GNU Binutils for Debian) 2.44, used only to write this README; the tool does not call it |
 | Capstone / radare2 | not used |
 | Unicorn settings | `UC_ARCH_X86` / `UC_MODE_64`; every PT_LOAD mapped at its VA; all 78833 `R_X86_64_RELATIVE` relocations applied; FS base set to a TLS page; stack at `0x7FFF00000000`; return address -> stop page with `hlt`; bump heap at `0x70000000` |
-| Allocator stub | `UC_HOOK_CODE` at jemalloc `malloc` `0x54c06b0`: `rax` = bump pointer (16-byte steps), pop return address, jump to it |
+| Allocator stub | `UC_HOOK_CODE` at jemalloc `malloc` `0x54c06b0`: `rax` = bump pointer (64-byte steps, 16-byte aligned), pop return address, jump to it |
 | Vectors | G+G, P+(-P), 128 zero bytes, off-curve point, x = p, gas limit 149 |
 | Determinism | PYTHONHASHSEED 0/7/99 and `-O` give byte-identical `--no-emu` stdout |
 
 Declared execution / side effects: the captured binary is never run as a
-whole. With unicorn present, only the hash-pinned `run_add` and its callees
-are emulated in-process on fixed vectors, with `malloc` replaced by the stub
-above. Without unicorn, everything is static.
+whole. The default CLI, packet verifier, analysis API and test suite remain static even when Unicorn is installed. Only explicit `--emulate` or the dedicated test opt-in starts captured instructions after authorization. Ten authenticated arithmetic FDE ranges plus the four-byte allocator hook entry are allowed; out-of-range instructions/writes, incomplete returns, unexpected allocation size/site and synthetic heap/stack escapes fail. The allocator itself is not admitted beyond its hook entry.
 
 ```bash
 # static only (no unicorn required)
 PYTHONHASHSEED=0 python3 -B tools/bn254_ecadd.py --no-emu -o out.json
 
-# with Unicorn behavioural proof (optional)
-python3 -B tools/bn254_ecadd.py -o out.json
+# Only after explicit authorization for this packet:
+python3 -B tools/bn254_ecadd.py --emulate -o out.json
 
-# packet verify (emu soft-skipped when unicorn missing)
+# packet verify (static by default; --emulate requires authorization)
 python3 -I -B research/work-items/RE-026-bn254-ecadd-94/verify.py
 python3 -O -B research/work-items/RE-026-bn254-ecadd-94/verify.py
 
 # independent (stdlib only: hashlib / pathlib / struct)
 python3 -I -B research/work-items/RE-026-bn254-ecadd-94/independent_verify.py
 
-# unit tests
-python3 -B -m unittest tests.test_bn254_ecadd -v
+# safe unit tests; eight captured-code tests remain explicitly skipped
+python3 -B -m unittest discover -s tests -p test_bn254_ecadd.py -v
+# Only after explicit authorization, with an installed reviewed Unicorn build:
+HL_ALLOW_BN254_ECADD_EMULATION=1 python3 -B -m unittest discover -s tests -p test_bn254_ecadd.py -v
 ```
 
 Seed / optim determinism (byte-identical stdout, expected sha256
@@ -58,7 +58,9 @@ done
 PYTHONHASHSEED=0 python3 -O -B tools/bn254_ecadd.py --no-emu | sha256sum
 ```
 
-### make verify test catalogue-check output
+### Historical contributor make verify test catalogue-check output
+
+These original receipts are retained as submitted; they are not current review receipts.
 
 GNU objdump 2.44, head `42e63a5b23a7`:
 
@@ -144,12 +146,11 @@ the path string, and not any single shared constant (p is shared with
 ABI: `rdi` = 40-byte result, `rsi`/`rdx` = input ptr/len, `rcx` = gas cost,
 `r8` = gas limit. Ok: `[0]` Bytes vtable `0x5670ae8`, `[8]` data ptr,
 `[0x10]` len `0x40`, `[0x18]` tagged ptr, `[0x20]` gas used. Err: `[0..0x10]`
-zero, payload at `+0x10` (`0x8000000000000000` OutOfGas, `…06`
+zero, a raw tag at `+0x10` (`0x8000000000000000` OutOfGas, `…06`
 Bn128FieldPointNotAMember, `…07` Bn128AffineGFailedToCreate, in the upstream
 `PrecompileError` order).
 
-SIMD / feature scan: no `cpuid`, `xgetbv`, `adcx`, `adox` or `mulx` in
-`run_add`, the decoder or any callee listed above. There is no feature branch.
+Selected opcode scan: no `cpuid`, `xgetbv`, `adcx`, `adox` or `mulx` in the listed bodies. This does not establish absence of SIMD or complete feature dispatch. Native run_add has 100 XMM instructions, including `xorps xmm0,xmm0` at `0x4e96659`. The historical callee list is not transitive: native calls additionally reach `0x4f1dea0..0x4f1e70c`, `0x4f1f8e0..0x4f1f9b1`, `0x4f20020..0x4f200e3`, and `0x4f200f0..0x4f206ea`; these are included in the corrected harness allowlist. Panic/error/import paths remain excluded and fail the bounded runner.
 
 Prior work: #550 (RE-021, Blake2b) pins the precompile table object
 `0x574f0b0` (Address `0x09`, 0x30-byte stride, Address at `+0x10`). This packet
@@ -161,7 +162,7 @@ layout, not evidence for this function.
 Independent Rust path: not yet implemented. Comparison: the emulated output of
 the carved function against an affine bn254 add written in the tool (and
 again in `independent_verify.py`); 2G is the well-known bn254 doubling of
-(1,2). Every ok vector matches exactly. Corruption controls are the tamper tests in
+(1,2). The author recorded exact matches for the three ok vectors; this review checked the independent algebra and record integrity without rerunning captured instructions. Corruption controls are the tamper tests in
 `tests/test_bn254_ecadd.py` (prologue, p limb, Montgomery constant, R², wrapper
 gas, wrapper call, malloc call, GOT RELA, table RELA, table Address, Location
 line, injected `cpuid`, unpinned byte, input tamper, stub removed, heap moved).
@@ -169,7 +170,7 @@ Two-build comparison: not yet measured.
 
 ## Results and limitations
 
-| Vector | Gas limit | Emulated result | Expected |
+| Vector | Gas limit | Historical author-reported emulated result | Expected |
 | --- | --- | --- | --- |
 | G+G `(1,2)+(1,2)` | 1000 | ok, 2G `030644e7…d3`,`15ed738c…c4`; gas used 150; one 64-byte alloc from `0x4e96c62` | exact match |
 | P+(-P) `(1,2)+(1,p-2)` | 1000 | ok, 64 zero bytes (infinity); gas used 150 | exact match |
@@ -186,10 +187,40 @@ No progress gate is requested.
 - Inputs shorter than `0x80` bytes take the `memcpy` path (`GLOB_DAT` `0x576dfe0`), which is not stubbed. Short inputs are not exercised; the zero control uses 128 zero bytes.
 - Not all callers or forks are exercised. The emulation enters `run_add` directly with gas 150; the Istanbul and Byzantium wrappers and the rest of the precompile lookup are read statically, not executed.
 - The Location (`bn128.rs` 169:20) is string+shape evidence only, and it belongs to `run_pair`, not `run_add`.
-- No SIMD or CPU-feature branch exists in the recovered code, so there is no second path to cover.
+- The selected opcode scan is not a proof of whole-call-graph feature behavior. XMM instructions are present; no global no-SIMD claim is made.
 - Does not assert anything about other node builds or unpinned binaries.
 
 ### Next step
 
 Do `run_mul` (`0x4e96cf0`) and `run_pair` (`0x4e973e0`) reproduce EIP-196/197
 vectors under the same allocator stub?
+
+## Review corrections and remaining acceptance
+
+The exact eight original files are archived in
+`../RE-026-bn254-ecadd-review-20261031/originals/`. The original JSON remains
+unchanged and is historical evidence. Native bounds and bytes were independently
+checked against node #94. The corrected harness has not executed captured code.
+Its opt-in run and eight behavioral tests remain required before behavioral
+acceptance; installed dependencies alone do not authorize execution.
+
+The out-of-gas path writes the raw tag at output +0x10, clears output +0..+0x10,
+and returns. It leaves +0x18..+0x28 unchanged. The trailing zeros in the retained
+24-byte error snapshot therefore depend on zero-initialized synthetic memory;
+they are not a guaranteed initialized error payload. Decoder-error padding is
+also not recovered. Names for Rust types and variants remain interpretations
+consistent with the observed raw tags and path string, not source identity.
+
+The allowlist covers ten FDEs and 13,773 bytes. Four additional arithmetic
+callees were required beyond the original selected list; all have preserved
+native hashes in the review packet. Bounds do not prove all authorized vectors
+will finish or match the historical records. The only allocated buffer admitted
+by the host callback is 64 bytes from the observed call return 0x4e96c62.
+Short inputs, allocator internals, panic/unwind paths, other forks, wrapper
+execution, complete source recovery and whole-binary equivalence stay unclosed.
+
+Raw reference scans now include the final fitting 5-, 6- and 7-byte positions,
+with synthetic terminal/truncation controls. The producer searches encoding
+candidates efficiently; the independent verifier retains a scalar scan. Both
+remain unaligned byte scans, and actual sites are authenticated by native
+disassembly. The original and corrected static JSON digest is unchanged.

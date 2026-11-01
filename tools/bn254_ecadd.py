@@ -15,14 +15,15 @@ Standalone. From the pinned node #94 binary only, it recovers:
     0x4e98ad0 = 500 Byzantium), 0 direct e8/e9 calls, and the precompile table
     objects 0x574f020 / 0x574f0e0 whose RELA addends are those wrappers and
     whose Address field (+0x10) is 0x..06;
-  * no CPU-feature gate and no SIMD dispatch in run_add or its executed callees;
+  * selected opcode-pattern counts in the listed bodies, not absence of SIMD
+    (these bodies contain XMM instructions) or complete feature-dispatch closure;
   * the only external call on the success path is malloc(0x40) at 0x4e96c5c
     through GOT 0x576dfd8 (RELA -> jemalloc malloc 0x54c06b0), stubbed in the
     emulation as a bump allocator;
   * module Location 0x574f258 (bn128.rs:169) referenced from run_pair, not
     run_add: string+shape evidence only;
-  * behavioural proof: Unicorn on PT_LOAD maps with RELATIVE relocations applied
-    for 2G, two controls that return infinity, an off-curve point, and out-of-gas.
+  * optional, separately authorized Unicorn comparison on fixed vectors. The
+    original recorded emulator JSON remains historical until reproduced.
 
 Output is sorted, deterministic JSON. Every expected value is pinned exactly.
 Imports only the Python standard library plus optional unicorn for emulation
@@ -145,7 +146,9 @@ def enc(*xs):
 
 
 ZERO64 = "00" * 64
-# Error payload at out+0x10 (24 bytes): niche tag 0x8000000000000000 | variant.
+# Historical zero-initialized harness snapshots at out+0x10 (24 bytes).
+# Only the first qword is the selected raw error tag. In particular OutOfGas
+# leaves out+0x18..0x28 unchanged; trailing zero bytes are not initialized ABI.
 # Variant order matches upstream PrecompileError: 0 OutOfGas,
 # 6 Bn128FieldPointNotAMember, 7 Bn128AffineGFailedToCreate.
 ERR_OOG = struct.pack("<Q", 0x8000000000000000).hex() + "00" * 16
@@ -232,24 +235,32 @@ def text_bytes(data, segs):
 
 
 def slot_refs(text, slot):
-    """Rip-relative references to `slot` in the main text load, by kind."""
+    """Raw encoding candidates, including the final fitting byte offset.
+
+    This remains an unaligned byte scan; native decoding validates actual sites.
+    """
     refs = []
-    for i in range(len(text) - 7):
-        b0, b1 = text[i], text[i + 1]
-        if b0 == 0xFF and b1 in (0x15, 0x25):
-            if TEXT_LOAD_VA + i + 6 + struct.unpack_from("<i", text, i + 2)[0] == slot:
-                refs.append(("call" if b1 == 0x15 else "jmp", TEXT_LOAD_VA + i))
-        elif b0 in (0x48, 0x4C) and b1 == 0x8B and (text[i + 2] & 0xC7) == 0x05:
-            if TEXT_LOAD_VA + i + 7 + struct.unpack_from("<i", text, i + 3)[0] == slot:
-                refs.append(("mov", TEXT_LOAD_VA + i))
-    return refs
+    for prefix, kind, size, displacement in [(b"\xff\x15","call",6,2),
+                                             (b"\xff\x25","jmp",6,2),
+                                             (b"\x48\x8b","mov",7,3),
+                                             (b"\x4c\x8b","mov",7,3)]:
+        i = text.find(prefix)
+        while i >= 0:
+            if i + size <= len(text) and (kind != "mov" or text[i + 2] & 0xC7 == 0x05):
+                if TEXT_LOAD_VA + i + size + struct.unpack_from("<i", text, i + displacement)[0] == slot:
+                    refs.append((kind, TEXT_LOAD_VA + i))
+            i = text.find(prefix, i + 1)
+    return sorted(refs, key=lambda item: item[1])
 
 
 def direct_calls(text, target):
     n = 0
-    for i in range(len(text) - 5):
-        if text[i] in (0xE8, 0xE9) and TEXT_LOAD_VA + i + 5 + struct.unpack_from("<i", text, i + 1)[0] == target:
-            n += 1
+    for prefix in (b"\xe8", b"\xe9"):
+        i = text.find(prefix)
+        while i >= 0:
+            if i + 5 <= len(text) and TEXT_LOAD_VA + i + 5 + struct.unpack_from("<i", text, i + 1)[0] == target:
+                n += 1
+            i = text.find(prefix, i + 1)
     return n
 
 
@@ -279,9 +290,41 @@ def unicorn_available():
 HEAP = 0x70000000
 STUB_HEAP_STEP = 0x40  # bump step; every allocation is 16-byte aligned
 
+# Actual FDEs authenticated in the review packet. Error/unwind/import paths are
+# outside this allowlist; encountering one fails the bounded comparison.
+EXECUTION_RANGES = (
+    (FN, FN_END), (DECODER, DECODER_END),
+    (0x4F1B0F0, 0x4F1BF31), (0x4F160C0, 0x4F164D5),
+    (0x4F168D0, 0x4F16B7A), (0x4F1F9C0, 0x4F1FF86),
+    (0x4F1DEA0, 0x4F1E70C), (0x4F1F8E0, 0x4F1F9B1),
+    (0x4F20020, 0x4F200E3), (0x4F200F0, 0x4F206EA),
+)
 
-def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True):
+
+def checked_span(address, size, base, length, label):
+    if size <= 0 or not base <= address <= base + length - size:
+        raise ValueError(label + " outside synthetic memory")
+
+
+def malloc_request(sp, ret, request, bump, stack, heap):
+    """Validate host callback inputs before producing a synthetic allocation."""
+    checked_span(sp, 8, stack, 0x100000, "malloc stack")
+    if ret != MALLOC_RET or request != MALLOC_SIZE:
+        raise ValueError("unexpected malloc call site or size")
+    checked_span(bump, MALLOC_SIZE, heap, 0x10000, "malloc heap")
+    if bump % 16:
+        raise ValueError("unaligned malloc heap")
+    return bump + MALLOC_SIZE
+
+
+def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True,
+            *, allow_execution=False):
     """Run run_add; malloc 0x54c06b0 replaced by a bump allocator. Returns dict."""
+    if not allow_execution:
+        raise ValueError("captured-code emulation requires explicit authorization and opt-in")
+    if len(inp) != 128 or not 0 <= gas < 2**64 or not 0 <= limit < 2**64:
+        raise ValueError("bounded harness requires 128-byte input and u64 gas values")
+    from crypto_emulation_guard import run_bounded
     from unicorn import UC_ARCH_X86, UC_HOOK_CODE, UC_MODE_64, UC_PROT_ALL, Uc, UcError
     from unicorn.x86_const import (UC_X86_REG_FS_BASE, UC_X86_REG_R8, UC_X86_REG_RAX,
                                    UC_X86_REG_RCX, UC_X86_REG_RDI, UC_X86_REG_RDX,
@@ -335,22 +378,30 @@ def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True):
 
     def on_malloc(uc, address, size, _user):
         sp = uc.reg_read(UC_X86_REG_RSP)
+        checked_span(sp, 8, STACK, 0x100000, "malloc stack")
         ret = struct.unpack("<Q", uc.mem_read(sp, 8))[0]
         req = uc.reg_read(UC_X86_REG_RDI)
+        next_bump = malloc_request(sp, ret, req, bump[0], STACK, HEAP)
         allocs.append({"ret": hex(ret), "size": req})
         p = bump[0]
-        bump[0] += (req + 15) & ~15
+        bump[0] = next_bump
         uc.reg_write(UC_X86_REG_RAX, p)
         uc.reg_write(UC_X86_REG_RSP, sp + 8)
         uc.reg_write(UC_X86_REG_RIP, ret)
 
-    if stub:
-        mu.hook_add(UC_HOOK_CODE, on_malloc, begin=MALLOC, end=MALLOC)
+    malloc_hook = mu.hook_add(UC_HOOK_CODE, on_malloc, begin=MALLOC, end=MALLOC) if stub else None
     fault = None
     try:
-        mu.emu_start(FN, STOP, timeout=60_000_000, count=50_000_000)
-    except UcError as e:
+        run_bounded(mu, FN, STOP,
+                    code_ranges=EXECUTION_RANGES + ((MALLOC, MALLOC + 4),),
+                    writable_ranges=((STACK, STACK + 0x100000),
+                                     (OUT, OUT + 0x28), (HEAP, HEAP + 0x10000)),
+                    timeout=60_000_000, count=50_000_000)
+    except (UcError, ValueError) as e:
         fault = str(e)
+    finally:
+        if malloc_hook is not None:
+            mu.hook_del(malloc_hook)
     rip = mu.reg_read(UC_X86_REG_RIP)
     out = bytes(mu.mem_read(OUT, 0x28))
     q = struct.unpack("<5Q", out)
@@ -362,14 +413,18 @@ def emulate(data, segs, rela, inp: bytes, gas: int, limit: int, stub=True):
         res["data_ptr"] = hex(q[1])
         res["len"] = q[2]
         res["gas_used"] = q[4]
-        res["output_hex"] = bytes(mu.mem_read(q[1], q[2])).hex() if q[2] <= 0x100 else None
+        valid_output = (0 < q[2] <= MALLOC_SIZE and HEAP <= q[1]
+                        and q[1] + q[2] <= bump[0])
+        res["output_hex"] = bytes(mu.mem_read(q[1], q[2])).hex() if valid_output else None
     else:
         res["kind"] = "err"
         res["err_payload_hex"] = out[0x10:0x28].hex()
     return res
 
 
-def analyse(data, check_sha=True, run_emu=True):
+def analyse(data, check_sha=True, run_emu=False):
+    if run_emu and not unicorn_available():
+        raise RuntimeError("explicit emulation requested but Unicorn is unavailable")
     if check_sha:
         got = hashlib.sha256(data).hexdigest()
         if got != BINARY_SHA256:
@@ -484,7 +539,7 @@ def analyse(data, check_sha=True, run_emu=True):
             entry["reference_hex"] = enc(*ref_add(*pts)).hex()
             entry["reference_match"] = entry["reference_hex"] == expect
         if do_emu:
-            r = emulate(data, segs, rela, inp, gas, limit)
+            r = emulate(data, segs, rela, inp, gas, limit, allow_execution=True)
             entry["emu"] = r
             if kind == "ok":
                 entry["emulated_match"] = (r["returned"] and r["kind"] == "ok" and r["output_hex"] == expect
@@ -609,10 +664,12 @@ def render(result):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--no-emu", action="store_true", help="skip Unicorn behavioural proof")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--no-emu", action="store_true", help="static only (the default)")
+    mode.add_argument("--emulate", action="store_true", help="run captured-code vectors only after explicit authorization")
     ap.add_argument("-o", "--output", type=Path, help="write JSON to path")
     args = ap.parse_args(argv)
-    result = analyse(TARGET.read_bytes(), run_emu=not args.no_emu)
+    result = analyse(TARGET.read_bytes(), run_emu=args.emulate)
     text = render(result)
     errors = expectation_errors(result)
     if args.output:
