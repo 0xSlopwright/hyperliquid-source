@@ -4,7 +4,6 @@ Two fast generators stand in for the shared write path: cguard (4 files) and
 file_tracker (4 files). Before the newline pin they produced CRLF on Windows and
 the committed observed/ files could not be reproduced.
 """
-import shutil
 import sys
 import tempfile
 import unittest
@@ -14,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 import cguard_consistency_static as cguard  # noqa: E402
 import file_tracker_init_static as file_tracker  # noqa: E402
+from gnu_binutils import requires_gnu  # noqa: E402
 
 ARTIFACT = ROOT / 'artifacts/node/94/hl-node'
 CASES = (
@@ -22,8 +22,7 @@ CASES = (
 )
 
 
-@unittest.skipUnless(shutil.which('readelf') and shutil.which('objdump'),
-                     'GNU binutils required')
+@requires_gnu('objdump', 'readelf')
 @unittest.skipUnless(ARTIFACT.exists(), 'captured node #94 not present')
 class EvidenceBytes(unittest.TestCase):
     def test_regenerated_packet_matches_committed_bytes(self):
