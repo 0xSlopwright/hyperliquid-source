@@ -14,7 +14,7 @@ verify:
 	$(PYTHON) tools/artifacts.py verify
 	$(PYTHON) tools/verify_imports.py
 test:
-	$(PYTHON) -m unittest discover -s tests -v
+	$(PYTHON) tools/run_tests.py
 alias-rust:
 	$(PYTHON) tools/short_string_alias_rust.py --controls
 .PHONY: kind5-rust
