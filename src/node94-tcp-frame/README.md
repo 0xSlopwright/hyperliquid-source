@@ -29,6 +29,27 @@ at least 1,025 unless `(port & !1) == 3998`, which excludes ports 3998 and
 output window, `+24` allocation, 65,535-byte hash-table switch, and truncating
 little-endian u32 size prefix.
 
+## LZ4 correspondence and limits
+
+The decoder pins the MIT-licensed crate `lz4_flex = 0.11.6` in both
+`Cargo.toml` and `Cargo.lock`. The downloaded crates.io archive has SHA-256
+`373f5eceeeab7925e0c1098212f2fbc4d416adec9d35051a6ab251e824c1854a`,
+matching the archive identified by the static evidence. The component calls
+that version's `block::uncompressed_size` and `block::decompress`, preserving:
+
+- a little-endian u32 size prefix and `ExpectedAnotherByte` for 0–3 bytes;
+- the inclusive configured decoded-size limit before output allocation;
+- the five observed error classes (`OutputTooSmall`, `LiteralOutOfBounds`,
+  `ExpectedAnotherByte`, `OffsetZero`, `OffsetOutOfBounds`);
+- truncation to the produced length without requiring it to equal the prefix.
+
+This version pin is source/API correspondence, not a claim that this crate's
+compressed bytes, allocator behavior, optimized copy paths, panic formatting,
+or generated machine code are binary-identical to node #94. The target's full
+Cargo feature set, compiler flags, allocator, compressor bodies, and every
+decoder fast path remain unverified. Default `lz4_flex` 0.11.6 features are
+locked here; only the block API behavior above is claimed.
+
 Build from the repository root with the pinned toolchain:
 
 ```sh
