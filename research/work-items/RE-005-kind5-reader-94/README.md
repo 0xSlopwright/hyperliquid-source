@@ -178,3 +178,7 @@ corruptions are rejected below the separate whole-image admission gate.
 This is static correspondence with explicit slot aliases, not target execution
 or a transfer of the node94 fixture measurements to node115. The original
 node94 source, static exports and Rust results remain unchanged.
+
+## Integration review (2026-10-31)
+
+The original active source manifests are preserved as source-sha256.original.json and drift/source-sha256.original.json, together with MANIFEST.original.sha256. Their original hashes were verified against PR371 head b903c24c2401a65839ed443bb28fb3bacf6b5547. Only the active tools/bincode_varint.py binding changes to the reviewed shared parser. Fresh node94 fixture generation and node94/node115 drift exports are unchanged; both verifiers pass. The rust/source-sha256.json file remains an unchanged historical build receipt, not the active generator binding. Fresh local debug/release tests,28992 fixtures,9 compiling mutants,fmt/clippy and two byte-identical release builds passed without executing captured code.

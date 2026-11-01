@@ -209,3 +209,7 @@ closure, non-Location relocation comparisons and whole-ELF identity remain
 unmeasured. Numeric reference roles remain unresolved without a unique
 instruction/dataflow binding. See [RESULT.md](RESULT.md) for negative results,
 prior-work attribution, corruption controls, non-claims and the next question.
+
+## Integration review (2026-10-31)
+
+The original inventory and manifest remain in inventory.original.json and MANIFEST.original.sha256. Original source hashes and the prior hashers packet hash were checked against PR1075 head d6e77b7b34d4f20acceed36ae0f9e68ddc8ed0d0. Fresh generation differs only in the two producer-source hashes for reviewed shared ELF/FDE parsers and the reviewed prior hashers-packet binding. All target facts,27776 instruction rows, metrics, shared-range findings and negative findings remain byte-identical. Independent GNU decoding verified all11 FDE ranges. No progress gate or semantic scope changes.
