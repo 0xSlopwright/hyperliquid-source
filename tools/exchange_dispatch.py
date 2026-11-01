@@ -39,6 +39,10 @@ HANDLER_RE = re.compile(
 )
 
 
+# Sections this module reads; a repeated one would otherwise be last-wins.
+CONSUMED_SECTIONS = frozenset((".eh_frame_hdr", ".rela.dyn"))
+
+
 class Elf:
     def __init__(self, data: bytes):
         if len(data) < 64:
@@ -77,6 +81,8 @@ class Elf:
                 name = table[sec[0]:end].decode()
             except UnicodeDecodeError as exc:
                 raise EvidenceError("section name is not valid UTF-8") from exc
+            if name in CONSUMED_SECTIONS and name in self.sections:
+                raise EvidenceError(f"duplicate section name {name}")
             self.sections[name] = (sec[3], sec[4], sec[5])
 
     def section(self, name):
