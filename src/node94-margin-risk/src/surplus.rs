@@ -2,17 +2,26 @@ use core::fmt;
 
 use crate::PositionMargin;
 
-/// The already-aggregated values consumed by the verified cross-margin branch.
+/// One pair accumulated by the observed cross-account margin helper.
 ///
-/// Constructing this aggregation from account state is outside the evidence
-/// boundary and is intentionally not implemented here.
+/// The target also accumulates two further output words whose ownership is not
+/// established by the bounded packet. This type deliberately exposes only the
+/// signed-equity and maintenance-requirement pair consumed by candidate
+/// admission.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CrossMarginContribution {
+    pub signed_equity_delta: i64,
+    pub maintenance_requirement: u64,
+}
+
+/// The two aggregate values consumed by the verified cross-margin branch.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CrossMarginSummary {
     pub signed_equity: i64,
     pub maintenance_requirement: u64,
 }
 
-/// The bounded result used for negative-only candidate admission.
+/// The bounded result of subtracting maintenance requirement from margin.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct LiquidationAssessment {
     pub surplus: i64,
@@ -42,6 +51,33 @@ impl fmt::Display for LiquidationError {
 
 impl std::error::Error for LiquidationError {}
 
+/// Aggregate the proved cross-account pair with target saturation order.
+///
+/// Node #94 adds signed equity with signed saturation and maintenance
+/// requirement with unsigned saturation. The caller supplies the account's
+/// established starting equity because its construction is outside this
+/// component.
+#[must_use]
+pub fn aggregate_cross_margin(
+    starting_equity: i64,
+    contributions: &[CrossMarginContribution],
+) -> CrossMarginSummary {
+    contributions.iter().fold(
+        CrossMarginSummary {
+            signed_equity: starting_equity,
+            maintenance_requirement: 0,
+        },
+        |summary, contribution| CrossMarginSummary {
+            signed_equity: summary
+                .signed_equity
+                .saturating_add(contribution.signed_equity_delta),
+            maintenance_requirement: summary
+                .maintenance_requirement
+                .saturating_add(contribution.maintenance_requirement),
+        },
+    )
+}
+
 fn assess(
     signed_margin: i64,
     maintenance_requirement: u64,
@@ -58,7 +94,7 @@ fn assess(
     })
 }
 
-/// Apply the proved signed-surplus predicate to already-aggregated cross values.
+/// Apply the proved signed-surplus predicate to aggregated cross values.
 pub fn assess_cross_liquidation(
     summary: CrossMarginSummary,
 ) -> Result<LiquidationAssessment, LiquidationError> {
@@ -67,9 +103,9 @@ pub fn assess_cross_liquidation(
 
 /// Apply the proved signed-surplus predicate to an isolated position output.
 ///
-/// A cross output is rejected because the target's candidate path first runs a
-/// separate aggregate-margin helper; treating one cross position as the account
-/// aggregate would be an unsupported assumption.
+/// A cross output is rejected because the target first runs its separate
+/// aggregate-margin helper. Treating one cross position as an account aggregate
+/// would be an unsupported assumption.
 pub fn assess_isolated_liquidation(
     position: PositionMargin,
 ) -> Result<LiquidationAssessment, LiquidationError> {
@@ -86,6 +122,29 @@ pub fn assess_isolated_liquidation(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cross_aggregation_saturates_each_proved_field_independently() {
+        assert_eq!(
+            aggregate_cross_margin(
+                i64::MAX - 1,
+                &[
+                    CrossMarginContribution {
+                        signed_equity_delta: 10,
+                        maintenance_requirement: u64::MAX - 1,
+                    },
+                    CrossMarginContribution {
+                        signed_equity_delta: -4,
+                        maintenance_requirement: 10,
+                    },
+                ],
+            ),
+            CrossMarginSummary {
+                signed_equity: i64::MAX - 4,
+                maintenance_requirement: u64::MAX,
+            }
+        );
+    }
 
     #[test]
     fn negative_only_predicate_excludes_zero() {

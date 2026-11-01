@@ -5,15 +5,16 @@
 
 #![forbid(unsafe_code)]
 
-mod liquidation;
+mod candidate;
 mod position;
 mod requirements;
+mod surplus;
 mod tiers;
 mod types;
 
-pub use liquidation::{
-    CrossMarginSummary, LiquidationAssessment, LiquidationError, assess_cross_liquidation,
-    assess_isolated_liquidation,
+pub use candidate::{
+    CandidateAdmission, CandidateScope, CandidateSubject, LiquidationCandidate,
+    TARGET_CANDIDATE_RECORD_BYTES, admit_cross_candidate, admit_isolated_candidate,
 };
 pub use position::{
     AccountingMode, MarginMode, PositionCalculationError, PositionInput, PositionMargin,
@@ -21,6 +22,10 @@ pub use position::{
 };
 pub use requirements::{
     RequirementError, initial_requirement, maintenance_requirement, select_tier,
+};
+pub use surplus::{
+    CrossMarginContribution, CrossMarginSummary, LiquidationAssessment, LiquidationError,
+    aggregate_cross_margin, assess_cross_liquidation, assess_isolated_liquidation,
 };
 pub use tiers::TierConstructionError;
 pub use types::{
