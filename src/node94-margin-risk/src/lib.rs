@@ -5,10 +5,15 @@
 
 #![forbid(unsafe_code)]
 
+mod position;
 mod requirements;
 mod tiers;
 mod types;
 
+pub use position::{
+    AccountingMode, MarginMode, PositionCalculationError, PositionInput, PositionMargin,
+    calculate_position_margin,
+};
 pub use requirements::{
     RequirementError, initial_requirement, maintenance_requirement, select_tier,
 };
