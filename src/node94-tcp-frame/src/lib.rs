@@ -6,6 +6,7 @@
 
 mod compression;
 mod decoder;
+mod encoder;
 mod header;
 mod limits;
 
@@ -14,5 +15,6 @@ pub use compression::{
     compressed_output_capacity, compression_size_prefix, hash_table_width, should_compress,
 };
 pub use decoder::{DecodeError, DecodedFrame, Lz4DecodeError, decode_frame};
+pub use encoder::{EncodeError, EncodedFrame, encode_frame};
 pub use header::{HEADER_LEN, Header, HeaderError};
 pub use limits::{CHUNK_LEN, Chunk, ChunkPlan, FrameLimits, LengthError};

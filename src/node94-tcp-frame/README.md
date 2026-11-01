@@ -50,6 +50,13 @@ Cargo feature set, compiler flags, allocator, compressor bodies, and every
 decoder fast path remain unverified. Default `lz4_flex` 0.11.6 features are
 locked here; only the block API behavior above is claimed.
 
+`encode_frame` emits a complete offline frame. It uses flag 0 with an exact raw
+copy below the threshold or on excluded ports; otherwise it calls the pinned
+crate's `block::compress_prepend_size` and emits flag 1. The final wire payload
+must fit a u32, and `EncodedFrame::chunks` plans decimal 4,000,000-byte writes
+over the header plus payload. Allocation failure and the target's precise panic
+or error construction for impossible oversized writer inputs are not claimed.
+
 Build from the repository root with the pinned toolchain:
 
 ```sh
