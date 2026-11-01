@@ -1,4 +1,9 @@
 use crate::*;
+use std::collections::BTreeMap;
+
+const EVALUATED_VECTORS: &str =
+    include_str!("../../../research/work-items/RE-005-action-signable-94/vectors.tsv");
+const ENCODED_INPUTS: &str = include_str!("../tests/encoded-inputs.tsv");
 
 fn hex_32(value: &str) -> [u8; 32] {
     assert_eq!(value.len(), 64);
@@ -238,6 +243,100 @@ fn each_preimage_field_changes_the_connection_digest() {
     ] {
         assert_ne!(connection_id(action, &context).unwrap(), baseline);
     }
+}
+
+#[test]
+fn all_1008_retained_evaluator_vectors_match() {
+    let inputs = encoded_inputs();
+    let mut function_counts = BTreeMap::new();
+    let mut count = 0usize;
+    for (line_number, line) in EVALUATED_VECTORS.lines().enumerate().skip(1) {
+        let columns: Vec<_> = line.split('\t').collect();
+        assert_eq!(columns.len(), 9, "evidence line {}", line_number + 1);
+        let function = columns[0];
+        let encoded_len: usize = columns[1].parse().unwrap();
+        let nonce: u64 = columns[2].parse().unwrap();
+        let input_key = if encoded_len == 40 {
+            ("nonce", nonce)
+        } else {
+            ("length", encoded_len as u64)
+        };
+        let encoded = inputs
+            .get(&input_key)
+            .unwrap_or_else(|| panic!("missing encoded input {input_key:?}"));
+        assert_eq!(encoded.len(), encoded_len);
+
+        let vault_address = if columns[3] == "-" {
+            None
+        } else {
+            Some(VaultAddress::try_from_slice(&hex_bytes(columns[3])).unwrap())
+        };
+        let expires_after = (columns[4] != "-").then(|| columns[4].parse().unwrap());
+        let selector = ChainSelector::new(columns[5].parse().unwrap());
+        let context = SignableContext::new(nonce, vault_address, expires_after);
+        let expected = hex_32(columns[7]);
+        assert_eq!(columns[8], "-");
+        assert_eq!(
+            *connection_id(EncodedAction::new(encoded), &context)
+                .unwrap()
+                .as_bytes(),
+            expected,
+            "evidence line {}",
+            line_number + 1
+        );
+
+        match function {
+            "0x333f240" | "0x37eb2d0" => {
+                let payload =
+                    build_agent_payload(EncodedAction::new(encoded), &context, selector).unwrap();
+                assert_eq!(*payload.connection_id.as_bytes(), expected);
+                assert_eq!(
+                    payload.source,
+                    if selector.value() == 3 {
+                        AgentSource::A
+                    } else {
+                        AgentSource::B
+                    }
+                );
+            }
+            "0x3984fe0" => {
+                let copied = SignatureChainId::from_bytes([count as u8; 32]);
+                let payload =
+                    build_embedded_payload(EncodedAction::new(encoded), &context, selector, copied)
+                        .unwrap();
+                assert_eq!(*payload.connection_id.as_bytes(), expected);
+                assert_eq!(payload.signature_chain_id, copied);
+                assert_eq!(payload.nonce, nonce);
+                assert_eq!(payload.chain_selector, selector);
+            }
+            _ => panic!("unsupported retained function {function}"),
+        }
+        *function_counts.entry(function).or_insert(0usize) += 1;
+        count += 1;
+    }
+    assert_eq!(count, 1008);
+    assert_eq!(function_counts.get("0x333f240"), Some(&336));
+    assert_eq!(function_counts.get("0x37eb2d0"), Some(&336));
+    assert_eq!(function_counts.get("0x3984fe0"), Some(&336));
+}
+
+fn encoded_inputs() -> BTreeMap<(&'static str, u64), Vec<u8>> {
+    ENCODED_INPUTS
+        .lines()
+        .skip(1)
+        .map(|line| {
+            let columns: Vec<_> = line.split('\t').collect();
+            assert_eq!(columns.len(), 3);
+            (
+                (columns[0], columns[1].parse().unwrap()),
+                if columns[2] == "-" {
+                    Vec::new()
+                } else {
+                    hex_bytes(columns[2])
+                },
+            )
+        })
+        .collect()
 }
 
 fn hex_bytes(value: &str) -> Vec<u8> {
