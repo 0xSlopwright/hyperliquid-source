@@ -22,23 +22,12 @@ pub struct OutboundBlock {
     pub block: SignedBlock,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ForwardChannel {
     pub closed: bool,
     pub waker_registered: bool,
     pub wake_count: u64,
     pub records: Vec<OutboundBlock>,
-}
-
-impl Default for ForwardChannel {
-    fn default() -> Self {
-        Self {
-            closed: false,
-            waker_registered: false,
-            wake_count: 0,
-            records: Vec::new(),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
