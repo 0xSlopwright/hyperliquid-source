@@ -8,6 +8,7 @@
 //!
 //! This is not a network service or a complete consensus implementation.
 
+mod admission;
 mod auth;
 mod error;
 mod qc;
@@ -15,6 +16,7 @@ mod stake;
 mod tc;
 mod types;
 
+pub use admission::{verify_block, VerifiedBlock};
 pub use auth::{AdmissionAuthenticator, AuthenticationError};
 pub use error::{AdmissionError, FatalAdmissionError, VerificationFailure};
 pub use qc::verify_qc;
