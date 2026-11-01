@@ -94,13 +94,21 @@ def build(data: bytes, expected_sha256: str = sr.EXPECTED_SHA256) -> dict:
         ln, line, col = struct.unpack_from("<QII", elf.read(slot + 8, 16))
         if not 0 < ln < 256 or line == 0 or col == 0:
             continue
+        if slot + 24 > dr_va + dr_size:
+            raise EvidenceError(f"Location record at {slot:#x} past .data.rel.ro")
+        if a + ln > ro_va + ro_size:
+            raise EvidenceError(f"Location path at {a:#x} past .rodata")
         p = elf.read(a, ln)
         if not p.endswith(b".rs") or b"\0" in p:
             continue
         for site in leas.get(slot, ()):
             f = own(site)
             if f is not None:
-                fn_paths[f].add(p.decode())
+                try:
+                    decoded = p.decode()
+                except UnicodeDecodeError:
+                    raise EvidenceError(f"Location path at {a:#x} is not valid UTF-8")
+                fn_paths[f].add(decoded)
     fp_prefix = sr.FIRST_PARTY.decode()
 
     def first_party_files(f):
@@ -297,7 +305,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     try:
         text = render(build(a.binary.read_bytes()))
-    except EvidenceError as e:
+    except (EvidenceError, OSError) as e:
         print(f"state_hashers: {e}", file=sys.stderr)
         return 2
     if a.out:

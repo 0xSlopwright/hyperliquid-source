@@ -123,6 +123,8 @@ IDIOMS = {
 def sections(data):
     if data[:6] != b'\x7fELF\x02\x01':
         raise EvidenceError('not a little-endian ELF64 file')
+    if len(data) < 64:
+        raise EvidenceError('truncated ELF header')
     shoff = struct.unpack_from('<Q', data, 40)[0]
     shentsize, shnum, shstrndx = struct.unpack_from('<HHH', data, 58)
     if shentsize != 64 or shoff + shnum * 64 > len(data):
@@ -131,8 +133,19 @@ def sections(data):
     stro = raw[shstrndx][4]
     out = {}
     for h in raw:
-        end = data.index(b'\0', stro + h[0])
-        out[data[stro + h[0]:end].decode()] = {'addr': h[3], 'offset': h[4], 'size': h[5]}
+        if h[1] == 8:  # SHT_NOBITS occupies no file bytes; mapping its VAs would
+            continue  # return unrelated file bytes as if they lived there.
+        try:
+            end = data.index(b'\0', stro + h[0])
+        except ValueError:
+            raise EvidenceError('section name is not NUL-terminated')
+        try:
+            name = data[stro + h[0]:end].decode()
+        except UnicodeDecodeError:
+            raise EvidenceError('section name is not valid UTF-8')
+        if name in out:
+            raise EvidenceError(f'Duplicate section: {name}')
+        out[name] = {'addr': h[3], 'offset': h[4], 'size': h[5]}
     for name in ('.text', '.eh_frame', '.eh_frame_hdr', '.rela.dyn', '.data.rel.ro', '.rodata'):
         if name not in out:
             raise EvidenceError(f'missing section {name}')
@@ -171,6 +184,8 @@ def fde_extents(data, secs):
         begin = fde_va + 8 + begin_rel
         if begin != start:
             raise EvidenceError(f'FDE at {fde_va:#x} disagrees with its index entry')
+        if begin in out:
+            raise EvidenceError(f'duplicate FDE start {begin:#x}')
         out[begin] = begin + pc_range
     return out
 
@@ -187,6 +202,8 @@ def direct_calls(text, base, target):
 
 def relative_relocs(data, secs):
     r = secs['.rela.dyn']
+    if r['size'] % 24:
+        raise EvidenceError('truncated .rela.dyn')
     out = {}
     for o in range(r['offset'], r['offset'] + r['size'], 24):
         where, info, addend = struct.unpack_from('<QQq', data, o)
@@ -206,8 +223,31 @@ def panic_location(data, secs, relocs, lea_va):
     lo = va_to_off(secs, loc)
     length, line, col = struct.unpack_from('<QII', data, lo + 8)
     po = va_to_off(secs, path_va)
+    try:
+        path = data[po:po + length].decode()
+    except UnicodeDecodeError:
+        raise EvidenceError('panic location path is not valid UTF-8')
     return {'location': f'{loc:#x}', 'path_va': f'{path_va:#x}',
-            'path': data[po:po + length].decode(), 'line': line, 'column': col}
+            'path': path, 'line': line, 'column': col}
+
+
+def section_slice(data, secs, va, size):
+    """Return `(file_offset, bytes)` for a range that lies in one section.
+
+    `va_to_off` only checks that the first byte is mapped, so an anchor
+    straddling the end of its section would silently borrow the next
+    section's bytes; those bytes are not the function's evidence.
+    """
+    for s in secs.values():
+        if s['addr'] and s['addr'] <= va < s['addr'] + s['size']:
+            if va + size > s['addr'] + s['size']:
+                raise EvidenceError(f'range {va:#x}+{size} leaves its section')
+            off = s['offset'] + va - s['addr']
+            blob = data[off:off + size]
+            if len(blob) != size:
+                raise EvidenceError(f'range {va:#x}+{size} leaves the file')
+            return off, blob
+    raise EvidenceError(f'address {va:#x} is outside every section')
 
 
 def scan(data, expected_sha256=SHA256):
@@ -229,8 +269,8 @@ def scan(data, expected_sha256=SHA256):
             if not start <= va < end:
                 raise EvidenceError(f'{name}: anchor {va:#x} outside its FDE')
             want = bytes.fromhex(hexbytes)
-            o = va_to_off(secs, va)
-            if data[o:o + len(want)] != want:
+            o, got = section_slice(data, secs, va, len(want))
+            if got != want:
                 raise EvidenceError(f'{name}: bytes at {va:#x} are not {hexbytes}')
             rows.append({'va': f'{va:#x}', 'file_offset': f'{o:#x}', 'bytes': hexbytes, 'meaning': meaning})
         sites = direct_calls(tbytes, text['addr'], start)

@@ -2,7 +2,7 @@
 """Target94 file-tracker initialization observations; static only."""
 import argparse,hashlib,json,re,struct,subprocess
 from pathlib import Path
-from artifacts import ROOT,check
+from artifacts import ROOT,check,manifest_item
 from elf_index import sections
 RANGES = {'initializer': (20760960, 20762239), 'regular-mode-predicate': (21276432, 21276804), 'metadata-path': (21285168, 21285441), 'load-path': (21288048, 21289819), 'initial-write-path': (21295152, 21296189)}
 CONTROLS = {20761120: 'ff15c21f3a0484c07423', 20761236: 'e8972508004885c00f85d2020000', 20761287: '48c743501a40f600c743580000000048b8000000000000144048894330', 20761376: 'ff15ca1e3a04837c24080175074c8b642410eb3a', 20761431: 'e814090800488b4424084c8b6424104889c148f7d97115', 20761610: '488d354cffe1fe488d0d70a02904488d7c2408488d542438', 20761640: '48b8000000000000144048894330c7433800000000', 20761677: '48c743501a40f600c743580000000048c743180000000048c743200800000048c743280000000048894348', 20761741: '48892b4c896b084c897310488b44246048894318488b44246848894320488b4424704889432848b8000000000000144048', 21276521: 'b800f00000234424483d00800000400f94c5', 21295197: '4883fa09752248b82f6465762f6e756c483345000fb64d084883f16c4809c1750c31c0e9e6020000'}
@@ -25,6 +25,8 @@ def relocations(data):
     result={}
     for section in sections(data):
         if section['type']!=4:continue
+        if section['size'] % 24:
+            raise ValueError('Truncated relocation section')
         for offset in range(section['offset'],section['offset']+section['size'],24):
             slot,info,addend=struct.unpack_from('<QQq',data,offset)
             if slot in RELATIVE:
@@ -34,7 +36,9 @@ def relocations(data):
     return [result[s] for s in sorted(result)]
 
 def generate(binary,output):
-    identity=next(i for i in json.loads((ROOT/'provenance/artifacts.json').read_text())['files'] if i['path']=='artifacts/node/94/hl-node')
+    identity=manifest_item(ROOT,'artifacts/node/94/hl-node')
+    missing=[field for field in ('size','sha256') if field not in identity]
+    if missing: raise ValueError(f"provenance/artifacts.json entry for artifacts/node/94/hl-node is missing {'/'.join(missing)}")
     check(binary,identity)
     data=binary.read_bytes();controls(data);rela=relocations(data)
     frames=subprocess.check_output(['readelf','-wf',str(binary)],text=True)
@@ -45,12 +49,12 @@ def generate(binary,output):
         offset,body=read_va(data,start,end-start)
         ranges[name]={'start_va':hex(start),'end_va':hex(end),'file_offset':hex(offset),'bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()}
         raw=subprocess.check_output(['objdump','-d',f'--start-address={start:#x}',f'--stop-address={end:#x}',str(binary)],text=True)
-        (output/(name+'.objdump.txt')).write_text(raw.replace(str(binary),'<authenticated-node94>'))
-    (output/'frames.txt').write_text('\n'.join(line for line in frames.splitlines()if 'FDE'in line and any(f'pc={a:016x}..{b:016x}'in line for a,b in RANGES.values()))+'\n')
+        (output/(name+'.objdump.txt')).write_text(raw.replace(str(binary),'<authenticated-node94>'), encoding='utf-8', newline='\n')
+    (output/'frames.txt').write_text('\n'.join(line for line in frames.splitlines()if 'FDE'in line and any(f'pc={a:016x}..{b:016x}'in line for a,b in RANGES.values()))+'\n', encoding='utf-8', newline='\n')
     raw_rela=subprocess.check_output(['readelf','-rW',str(binary)],text=True)
-    (output/'relocations.txt').write_text('\n'.join(line for line in raw_rela.splitlines()if re.match(r'^[0-9a-f]+\s',line)and int(line.split()[0],16)in RELATIVE)+'\n')
+    (output/'relocations.txt').write_text('\n'.join(line for line in raw_rela.splitlines()if re.match(r'^[0-9a-f]+\s',line)and int(line.split()[0],16)in RELATIVE)+'\n', encoding='utf-8', newline='\n')
     result={'target_sha256':identity['sha256'],'target_bytes':len(data),'ranges':ranges,'controls':{hex(a):b for a,b in CONTROLS.items()},'literal_bytes':{hex(a):b for a,b in LITERALS.items()},'relocations':rela,'captured_binary_executed':False,'limits':'One initializer and four helper extents. No full tracker type/update protocol, filesystem execution, parser/schema equivalence, metadata clock/calendar proof, helper closure or progress gate.'}
-    (output/'records.json').write_text(json.dumps(result,indent=2)+'\n');return result
+    (output/'records.json').write_text(json.dumps(result,indent=2)+'\n', encoding='utf-8', newline='\n');return result
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--binary',type=Path,default=ROOT/'artifacts/node/94/hl-node');parser.add_argument('--output',type=Path,default=ROOT/'work/file-tracker-init-94');args=parser.parse_args()
