@@ -12,6 +12,7 @@ mod auth;
 mod error;
 mod qc;
 mod stake;
+mod tc;
 mod types;
 
 pub use auth::{AdmissionAuthenticator, AuthenticationError};
@@ -20,6 +21,7 @@ pub use qc::verify_qc;
 pub use stake::{
     has_strict_two_thirds, Quorum, StakeHistory, StakeSnapshot, RECENT_ROUND_SPAN, STAKE_LAG_ROUNDS,
 };
+pub use tc::verify_tc;
 pub use types::{
     BlockHash, EventTime, Hardfork, Qc, QcVote, Round, SignatureBytes, SignedBlock, Tc,
     TimeoutVote, TransactionHash, ValidatorAddress,
