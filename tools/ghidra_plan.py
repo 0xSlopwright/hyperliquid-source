@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import shlex
 
-from artifacts import ROOT, check
+from artifacts import ROOT, check, manifest_item
 from doctor import locate_ghidra
 
 def render_import_plan(ghidra, project_dir, name, binary, log, *, windows):
@@ -40,7 +40,7 @@ def main():
     if not ghidra:
         raise SystemExit('Set GHIDRA_HOME to an installation with support/analyzeHeadless')
     relative = f'artifacts/node/{args.release}/hl-node'
-    item = next(i for i in json.loads((ROOT / 'provenance/artifacts.json').read_text())['files'] if i['path'] == relative)
+    item = manifest_item(ROOT, relative)
     check(ROOT / relative, item)
     project_dir = ROOT / 'work/ghidra'
     name = f"hl-node-{args.release}-{item['sha256'][:12]}"

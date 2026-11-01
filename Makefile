@@ -1,9 +1,11 @@
 PYTHON ?= python3
-.PHONY: setup pull fetch verify test reproduce doctor index fde-index catalogue catalogue-check provenance rea-install rea-doctor rea-mcp rea-smoke rea-mcp-check rea-native-smoke
+.PHONY: setup pull fetch verify test reproduce doctor index fde-index visor-index catalogue catalogue-check provenance rea-install rea-doctor rea-mcp rea-smoke rea-mcp-check rea-native-smoke
 setup:
 	./scripts/setup.sh
 pull:
+	git lfs install --local
 	git submodule update --init --recursive
+	git -C references/can1357-hl lfs install --local
 	git lfs pull
 	git -C references/can1357-hl lfs pull
 fetch:

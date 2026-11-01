@@ -1,26 +1,66 @@
 """RE-010 tests: pinned output, tamper controls, boundaries, determinism, binutils cross-check."""
+
+
 import bisect
+import contextlib
 import hashlib
+import io
 import json
+
+
 import os
+
+
 from pathlib import Path
+
+
 import re
+
+
 import shutil
+
+
 import struct
+
+
 import subprocess
+
+
 import sys
+
+
 import tempfile
+
+
 import unittest
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from gnu_binutils import requires_gnu  # noqa: E402
+
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
 sys.path.insert(0, str(ROOT / 'tools'))
+
+
 import exchange_dispatch as ed  # noqa: E402
 
+
 PACKET = ROOT / 'research/work-items/RE-010-exchange-handlers'
+
+
 PATH_INSNS = 760
+
+
 SLOT_CALLS = 3
+
+
 OFF_BY_ONE_SAME = 0
+
+
 OUTPUT_SHA256 = 'bf82df7744abc508bd73bc8337d5b21af0a17eab9c64b6849137a4f58dfa5cb1'
+
+
 _CACHE = {}
 
 
@@ -69,6 +109,86 @@ def objdump_lines():
 
 def case(i):
     return result()['cases'][i]
+
+
+def _elf_code_mid_file(code, va=0x400000):
+    """Minimal ELF64 with `code` as the only PT_LOAD, section headers after it."""
+    shstr = b'\x00.text\x00.shstrtab\x00'
+    ehsize, phentsize, shentsize = 64, 56, 64
+    phoff = ehsize
+    code_off = phoff + phentsize
+    shoff = code_off + len(code)
+    shstr_off = shoff + 3 * shentsize
+    ident = b'\x7fELF' + bytes([2, 1, 1]) + b'\x00' * 9
+    eh = ident + struct.pack('<HHIQQQIHHHHHH', 2, 0x3E, 1, va, phoff, shoff, 0,
+                             ehsize, phentsize, 1, shentsize, 3, 2)
+    ph = struct.pack('<IIQQQQQQ', 1, 5, code_off, va, va, len(code), len(code), 0x1000)
+
+    def sh(name, typ, flags, addr, off, size):
+        return struct.pack('<IIQQQQIIQQ', name, typ, flags, addr, off, size, 0, 0, 1, 0)
+
+    shs = b'\x00' * shentsize
+    shs += sh(1, 1, 6, va, code_off, len(code))
+    shs += sh(7, 3, 0, 0, shstr_off, len(shstr))
+    return eh + ph + code + shs + shstr
+
+
+def _elf_code_at_eof(code, va=0x400000):
+    """Same minimal ELF, but the segment's bytes are the last bytes of the file."""
+    shstr = b'\x00.text\x00.shstrtab\x00'
+    ehsize, phentsize, shentsize = 64, 56, 64
+    phoff = ehsize
+    shoff = phoff + phentsize
+    shstr_off = shoff + 3 * shentsize
+    code_off = shstr_off + len(shstr)
+    ident = b'\x7fELF' + bytes([2, 1, 1]) + b'\x00' * 9
+    eh = ident + struct.pack('<HHIQQQIHHHHHH', 2, 0x3E, 1, va, phoff, shoff, 0,
+                             ehsize, phentsize, 1, shentsize, 3, 2)
+    ph = struct.pack('<IIQQQQQQ', 1, 5, code_off, va, va, len(code), len(code), 0x1000)
+
+    def sh(name, typ, flags, addr, off, size):
+        return struct.pack('<IIQQQQIIQQ', name, typ, flags, addr, off, size, 0, 0, 1, 0)
+
+    shs = b'\x00' * shentsize
+    shs += sh(1, 1, 6, va, code_off, len(code))
+    shs += sh(7, 3, 0, 0, shstr_off, len(shstr))
+    return eh + ph + shs + shstr + code
+
+
+def synthetic_elf(entries):
+    """Minimal ELF64 whose .eh_frame_hdr table carries the given (pc, range)
+    FDE specs; needs no materialized binary, unlike the pinned-evidence tests."""
+    va = 0x400000
+    hdr_off = 0x200
+    table = bytearray(bytes([1, 0x1B, 0x03, 0x3B, 0, 0, 0, 0]))
+    table += struct.pack('<I', len(entries))
+    fde_blobs = {}
+    for j, (pc, rng) in enumerate(entries):
+        fde_va = va + 0x2000 + j * 0x1000
+        disp = pc - fde_va - 8
+        fde_blobs[fde_va - va] = struct.pack('<8x') + struct.pack('<i', disp) + struct.pack('<I', rng)
+        table += struct.pack('<ii', pc - (va + hdr_off), fde_va - (va + hdr_off))
+    shstr = b'\x00.eh_frame_hdr\x00.shstrtab\x00'
+    shoff = 0x1000
+    total = max(shoff + 3 * 64, max(fde_blobs) + 16 if fde_blobs else 0x1000)
+    data = bytearray(total)
+    data[0:6] = b'\x7fELF\x02\x01'
+    struct.pack_into('<HHIQQQIHHHHHH', data, 16, 2, 0x3E, 1, 0, 64, shoff, 0,
+                     64, 56, 1, 64, 3, 2)
+    struct.pack_into('<IIQQQQQQ', data, 64, 1, 5, 0, va, va, len(data), len(data), 0x1000)
+    data[hdr_off:hdr_off + len(table)] = table
+    for off, blob in fde_blobs.items():
+        data[off:off + len(blob)] = blob
+    shstr_off = shoff + 3 * 64
+    data[shstr_off:shstr_off + len(shstr)] = shstr
+
+    def sh(name_off, typ, flags, addr, off, size):
+        return struct.pack('<IIQQQQIIQQ', name_off, typ, flags, addr, off, size, 0, 0, 1, 0)
+    secs = b'\x00' * 64
+    secs += sh(1, 1, 0, va + hdr_off, hdr_off, len(table))
+    secs += sh(15, 3, 0, 0, shstr_off, len(shstr))
+    data[shoff:shoff + len(secs)] = secs
+    return ed.Elf(bytes(data))
 
 
 class Pinned(unittest.TestCase):
@@ -215,6 +335,7 @@ class Boundaries(unittest.TestCase):
             ed.decode_one(b'\xf4' + b'\0' * 15, 0, 0x1000)  # hlt not in subset
 
 
+@requires_gnu('objdump', 'readelf')
 class Binutils(unittest.TestCase):
     def test_arms_are_instruction_starts(self):
         od = objdump_lines()
@@ -273,6 +394,204 @@ class Binutils(unittest.TestCase):
                 self.assertEqual(fdes[c['first_call']['target']], c['first_call']['target_fde_end'])
         for r in result()['address_survey']:
             self.assertEqual(fdes[r['fde_start']], r['fde_end'])
+
+
+class MainErrorHandling(unittest.TestCase):
+    def run_main(self, argv):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            rc = ed.main(argv)
+        return rc, err.getvalue()
+
+    def test_missing_binary_is_one_line_error(self):
+        rc, err = self.run_main(['--binary', '/nonexistent.bin'])
+        self.assertEqual(rc, 1)
+        self.assertNotIn('Traceback', err)
+        self.assertEqual(len(err.strip().splitlines()), 1)
+
+    def test_wrong_binary_is_one_line_error(self):
+        with tempfile.TemporaryDirectory() as d:
+            junk = Path(d) / 'junk.bin'
+            junk.write_bytes(b'not an elf at all, just junk bytes for the parser')
+            rc, err = self.run_main(['--binary', str(junk)])
+        self.assertEqual(rc, 1)
+        self.assertNotIn('Traceback', err)
+        self.assertEqual(len(err.strip().splitlines()), 1)
+
+
+class Classify(unittest.TestCase):
+    STARTS = [0x1000, 0x2000, 0x3000]
+
+    CLAIM = {"case": 7, "wire_type": "x", "rust_variant": "Y",
+             "claimed_ea": 0x2000, "claimed_symbol": "handler_y"}
+
+    OTHER_FIRST = {"site": 0x2759300, "kind": "rel32", "target": 0x1000}
+
+    def test_branch_call_with_other_first_call(self):
+        # The arm's straight-line path calls a different function first, but
+        # a conditional branch in the same arm calls the claimed handler:
+        # the claim IS called from the arm, so it is a branch first call,
+        # not an uncalled FDE start.
+        self.assertEqual(
+            ed.classify(self.CLAIM, self.OTHER_FIRST, [0x2000], self.STARTS),
+            "real_first_call_on_branch")
+
+    def test_branch_call_only(self):
+        self.assertEqual(
+            ed.classify(self.CLAIM, None, [0x2000], self.STARTS),
+            "real_first_call_on_branch")
+
+    def test_direct_first_call(self):
+        first = {"site": 1, "kind": "rel32", "target": 0x2000}
+        self.assertEqual(
+            ed.classify(self.CLAIM, first, [], self.STARTS),
+            "real_first_call")
+
+    def test_uncalled_handler(self):
+        self.assertEqual(
+            ed.classify(self.CLAIM, self.OTHER_FIRST, [], self.STARTS),
+            "fde_start_not_called_from_arm")
+
+
+class ReadBounds(unittest.TestCase):
+    TRUNC = b'\x48\x81\xc0'
+
+    def test_read_within_segment_unchanged(self):
+        elf = ed.Elf(_elf_code_mid_file(self.TRUNC))
+        self.assertEqual(elf.read(0x400000, 3), self.TRUNC)
+        self.assertEqual(elf.read(0x400002, 1), b'\xc0')
+
+    def test_read_past_segment_end_raises(self):
+        # Bytes past the segment exist in the file (section headers) but are
+        # mapped at no VA; read() must not hand them out as segment content.
+        elf = ed.Elf(_elf_code_mid_file(self.TRUNC))
+        with self.assertRaises(ed.EvidenceError):
+            elf.read(0x400000, 16)
+        with self.assertRaises(ed.EvidenceError):
+            elf.read(0x400001, 3)
+
+    def test_walk_code_at_eof_raises_evidence_error(self):
+        elf = ed.Elf(_elf_code_at_eof(self.TRUNC))
+        with self.assertRaises(ed.EvidenceError):
+            ed.walk(elf, 0x400000, {}, [0x400000])
+
+    def test_decode_one_truncated_instruction_raises(self):
+        with self.assertRaises(ed.EvidenceError):
+            ed.decode_one(self.TRUNC, 0, 0x400000)
+
+    def test_decode_one_truncated_modrm_raises(self):
+        # REX.W + mov with a ModRM byte announcing a SIB that is not there.
+        with self.assertRaises(ed.EvidenceError):
+            ed.decode_one(b'\x48\x8b\x04', 0, 0x400000)
+
+    def test_well_formed_control_walk_unchanged(self):
+        code = b'\xe8\x00\x00\x00\x00' + b'\x00' * 715  # call +0, segment of 720
+        elf = ed.Elf(_elf_code_mid_file(code))
+        addrs, jccs, term = ed.walk(elf, 0x400000, {}, [0x400000, 0x400005])
+        self.assertEqual(addrs, [0x400000])
+        self.assertEqual(jccs, [])
+        self.assertEqual(term, {'site': 0x400000, 'kind': 'rel32', 'target': 0x400005})
+
+
+class FdeIndexOverlapTests(unittest.TestCase):
+    """fde_index() enforced strictly-sorted starts, so duplicates were
+    already rejected, but an FDE ending past the next start still passed
+    silently and left containing() to resolve the overlap by bisect order
+    alone. This is the exchange_dispatch overlap-only slice of open #496
+    (consensus_wire) and #522/#524 (info_request_path, state_roots)."""
+
+    def test_overlapping_fde_ranges_rejected(self):
+        with self.assertRaisesRegex(ed.EvidenceError, 'overlapping next start'):
+            ed.fde_index(synthetic_elf([(0x401000, 0x200), (0x401100, 0x100)]))
+
+    def test_adjacent_fde_ranges_accepted(self):
+        starts, ends = ed.fde_index(synthetic_elf([(0x401000, 0x100), (0x401100, 0x100)]))
+        self.assertEqual((starts, ends), ([0x401000, 0x401100], [0x401100, 0x401200]))
+
+    def test_duplicate_fde_start_still_rejected(self):
+        with self.assertRaisesRegex(ed.EvidenceError, 'not strictly sorted'):
+            ed.fde_index(synthetic_elf([(0x401000, 0x100), (0x401000, 0x100)]))
+
+
+class ElfSectionNameBoundsTests(unittest.TestCase):
+    """Synthetic ELF64 whose .shstrtab is followed by other bytes.
+
+    On base, Elf.__init__ located each section name with an unbounded
+    data.index(b'\\0', ...), so a name unterminated inside .shstrtab was
+    silently read with bytes borrowed from past the table, and a name
+    offset outside the table was read from following bytes instead of
+    failing closed. This composes with open #299 (unterminated-name
+    ValueError conversion), which keeps the unbounded index.
+    """
+
+    def build(self, table, trailing, entries):
+        # entries: (name_offset, offset, size); last entry is .shstrtab.
+        data = bytearray(0x500)
+        data[:6] = b'\x7fELF\x02\x01'
+        struct.pack_into('<QQ', data, 0x20, 0, 64)
+        struct.pack_into('<HHHHH', data, 0x36, 56, 0, 64,
+                         len(entries), len(entries) - 1)
+        for i, (name_off, off, size) in enumerate(entries):
+            struct.pack_into('<IIQQQQIIQQ', data, 64 + i * 64,
+                             name_off, 3, 0, 0, off, size, 0, 0, 1, 0)
+        data[0x400:0x400 + len(table)] = table
+        data[0x400 + len(table):0x400 + len(table) + len(trailing)] = trailing
+        return bytes(data)
+
+    def test_borrowed_terminator_rejected(self):
+        data = self.build(b'\x00.extra', b'_name\x00',
+                          [(0, 0, 0), (1, 0x200, 0x10), (0, 0x400, 7)])
+        with self.assertRaises(ed.EvidenceError):
+            ed.Elf(data)
+
+    def test_offset_outside_table_rejected(self):
+        data = self.build(b'\x00.extra', b'_name\x00',
+                          [(0, 0, 0), (9, 0x200, 0x10), (0, 0x400, 7)])
+        with self.assertRaises(ed.EvidenceError):
+            ed.Elf(data)
+
+    def test_offset_at_table_end_rejected(self):
+        data = self.build(b'\x00.extra', b'_name\x00',
+                          [(0, 0, 0), (7, 0x200, 0x10), (0, 0x400, 7)])
+        with self.assertRaises(ed.EvidenceError):
+            ed.Elf(data)
+
+    def test_terminated_names_still_parse(self):
+        data = self.build(b'\x00.text\x00.shstrtab\x00', b'',
+                          [(0, 0, 0), (1, 0x200, 0x10), (7, 0x400, 17)])
+        elf = ed.Elf(data)
+        self.assertEqual(sorted(elf.sections), ['', '.shstrtab', '.text'])
+
+
+class ElfShstrtabTypeTests(unittest.TestCase):
+    """A NOBITS section name table occupies no file bytes, so names read
+    from its offset are phantom names, not a string table."""
+
+    NAMES = b'\0.text\0.shstrtab\0'
+
+    def build(self, shstrtab_type):
+        data = bytearray(0x2000)
+        data[0:6] = b'\x7fELF\x02\x01'
+        struct.pack_into('<QQ', data, 0x20, 0, 64)  # phoff, shoff
+        struct.pack_into('<HHHHH', data, 0x36, 0, 0, 64, 3, 2)
+
+        def section(index, name, typ, flags, addr, off, size):
+            struct.pack_into('<IIQQQQIIQQ', data, 64 + index * 64,
+                             name, typ, flags, addr, off, size, 0, 0, 1, 0)
+
+        section(0, 0, 0, 0, 0, 0, 0)
+        section(1, 1, 1, 0x6, 0x400000, 0x1000, 0x10)  # .text
+        section(2, 7, shstrtab_type, 0, 0, 0x1000, len(self.NAMES))
+        data[0x1000:0x1000 + len(self.NAMES)] = self.NAMES
+        return bytes(data)
+
+    def test_nobits_shstrtab_rejected(self):
+        with self.assertRaises(ed.EvidenceError):
+            ed.Elf(self.build(8))
+
+    def test_strtab_shstrtab_accepted(self):
+        self.assertEqual(sorted(ed.Elf(self.build(3)).sections),
+                         ['', '.shstrtab', '.text'])
 
 
 if __name__ == '__main__':

@@ -17,11 +17,39 @@ def git(root, path, *args):
         raise ValueError(f'Unreadable pinned source: {path}; {SETUP}') from None
 
 
+def _unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f'Duplicate key in provenance manifest: {key}')
+        result[key] = value
+    return result
+
+
+def _load(root, name):
+    path = root / 'provenance' / name
+    if not path.is_file():
+        raise ValueError(f'Missing manifest: provenance/{name}')
+    return json.loads(path.read_text(), object_pairs_hook=_unique_object)
+
+
 def verify(root):
-    manifest = json.loads((root / 'provenance/imports.json').read_text())
+    manifest = _load(root, 'imports.json')
+    if not isinstance(manifest, dict) or not isinstance(manifest.get('files'), list):
+        raise ValueError('Invalid import manifest')
+    if any(not isinstance(item, dict) or 'path' not in item for item in manifest['files']):
+        raise ValueError('Invalid import manifest record')
+    paths = [item['path'] for item in manifest['files']]
+    if len(set(paths)) != len(paths):
+        raise ValueError('Duplicate path in imports manifest')
     for item in manifest['files']:
         check(root / item['path'], item)
-    for repo in json.loads((root / 'provenance/sources.json').read_text())['repositories']:
+    sources = _load(root, 'sources.json')
+    if not isinstance(sources, dict) or 'repositories' not in sources:
+        raise ValueError('Invalid sources manifest')
+    for repo in sources['repositories']:
+        if not isinstance(repo, dict) or 'path' not in repo or 'commit' not in repo:
+            raise ValueError('Invalid source repository record')
         if not (root / repo['path'] / '.git').exists():
             raise ValueError(f'Missing pinned source: {repo["path"]}; {SETUP}')
         if git(root, repo['path'], 'rev-parse', 'HEAD') != repo['commit']:
@@ -32,4 +60,8 @@ def verify(root):
 
 
 if __name__ == '__main__':
-    verify(Path(__file__).resolve().parents[1])
+    try:
+        verify(Path(__file__).resolve().parents[1])
+    except (ValueError, OSError) as error:
+        print(f'verify_imports: {error}', file=sys.stderr)
+        sys.exit(1)
