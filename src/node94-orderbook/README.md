@@ -33,6 +33,8 @@ walk and full insertion loop are outside this crate.
 
 - target duplicate-order behavior (duplicates return
   `UnsupportedDuplicateOrder` without mutating the book);
+- target repeated-cancellation semantics (the safe API returns `VacantSlot`
+  after the first successful removal);
 - reduce-only matching without external signed-position state;
 - the unresolved special self-cross predicate beyond equal 20-byte users;
 - full perp/spot insertion, trigger orders, rollback, concurrency, settlement,

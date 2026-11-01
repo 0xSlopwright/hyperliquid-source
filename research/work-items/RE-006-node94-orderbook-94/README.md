@@ -122,6 +122,8 @@ queues, reachability, aggregates, free lists, and neighbor links.
 - Duplicate target behavior is unknown. The library rejects duplicate IDs
   atomically and labels that outcome unsupported rather than assigning a target
   status.
+- Repeated-cancellation behavior is not established for the target. The safe
+  library reports `VacantSlot` after a successful first removal.
 - Equal-user self-cross is supported. The unresolved external predicate from
   the match body is not modeled.
 - Margin, leverage, oracle, position, and fill-mask computations are external.

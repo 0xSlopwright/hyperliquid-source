@@ -568,3 +568,54 @@ fn price_key_boundary_is_rejected_without_mutation() {
     );
     assert_eq!(book.snapshot().unwrap(), before);
 }
+
+#[test]
+fn empty_book_has_no_best_order_or_stale_state() {
+    let book = Book::new();
+    assert_eq!(book.best(Side::Bid).unwrap(), None);
+    assert_eq!(book.best(Side::Ask).unwrap(), None);
+    assert_eq!(book.occupied_count(), 0);
+    assert_eq!(book.aggregate_quantity(), 0);
+    let snapshot = book.snapshot().unwrap();
+    assert!(snapshot.bids.is_empty());
+    assert!(snapshot.asks.is_empty());
+    assert!(snapshot.slots.is_empty());
+}
+
+#[test]
+fn zero_and_maximum_live_quantities_keep_saturating_accounting_consistent() {
+    let mut book = Book::new();
+    let zero = book.insert(order(1, Side::Ask, 100, 0)).unwrap();
+    let maximum = book.insert(order(2, Side::Bid, 99, u64::MAX)).unwrap();
+    assert_eq!(book.aggregate_quantity(), u64::MAX);
+    book.check_consistency().unwrap();
+
+    book.cancel(zero, CancelReason::Canceled).unwrap();
+    assert_eq!(book.aggregate_quantity(), u64::MAX);
+    book.cancel(maximum, CancelReason::Canceled).unwrap();
+    assert_eq!(book.aggregate_quantity(), 0);
+    book.check_consistency().unwrap();
+}
+
+#[test]
+fn repeated_cancel_is_a_typed_safe_api_error() {
+    let mut book = Book::new();
+    let slot = book.insert(order(1, Side::Bid, 100, 1)).unwrap();
+    let record = book.cancel(slot, CancelReason::Canceled).unwrap();
+    assert_eq!(record.removed_quantity, 1);
+    assert_eq!(
+        book.cancel(slot, CancelReason::Canceled),
+        Err(BookError::VacantSlot(slot))
+    );
+    book.check_consistency().unwrap();
+}
+
+#[test]
+fn invariant_checker_rejects_an_empty_level_with_stale_presence() {
+    let mut book = Book::new();
+    book.bids.insert(-100, PriceLevel::default());
+    assert_eq!(
+        book.check_consistency(),
+        Err(BookError::CorruptState("level has no head"))
+    );
+}
