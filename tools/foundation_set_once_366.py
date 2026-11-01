@@ -43,8 +43,9 @@ WINDOW = bytes.fromhex(
     '488d46ff483d6d0100007717837f60017514397764b908000000b8010000000f44c1c331c0'
     'c3c7476001000000897764b008c3')
 PADDING = b'\xcc' * 13
-# Exported FDE/CIE bytes, independently checked with GNU --dwarf=frames.
-# These are narrow record locks, not a replacement for RE-001's FDE decoder.
+# Exported FDE/CIE bytes are retained claims, to be confirmed against the
+# materialized artifact (see the packet README); they were not re-checked
+# on a machine without the LFS artifact.
 CIE = bytes.fromhex('1400000000000000017a5200017810011b0c070890010000')
 FDE = bytes.fromhex('10000000e4440100300082003300000000000000')
 FDE_VA = 0xcf59f8
