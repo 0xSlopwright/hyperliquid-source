@@ -5,6 +5,22 @@ This repository consolidates original binary evidence, static-analysis tools,
 research results, and pinned public source references. It is not an official
 Hyperliquid source release. No buildable or equivalent node is claimed.
 
+## Contribution focus
+
+**All PRs, submissions and agent work must focus on completing the reverse
+engineering of the node's code.** Contributions should hillclimb completion
+through binary-backed findings, independently reconstructed Rust and validation
+against the target. Show the concrete gap closed or evidence gained, even when
+the result is partial and the component's acceptance gates remain unfinished.
+
+Tooling, infrastructure, workflow and surrounding architecture changes are
+accepted **only when an active reverse-engineering task is blocked**. Document
+the blocker, make the smallest necessary fix, verify that the work can proceed,
+and return to reverse engineering. **Window dressing, cosmetic cleanup and
+inconsequential PRs or submissions will be closed**, as will supporting changes
+without a demonstrated blocker. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+acceptance policy and evidence requirements.
+
 ## Reconstruction progress
 
 Static inputs and research tooling are ready. A compilable, verified node is

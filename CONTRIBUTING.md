@@ -6,6 +6,29 @@ For REA CLI/MCP configuration and supported Node versions, see [REA.md](docs/REA
 The project reconstructs Linux x86-64 Hyperliquid binaries from evidence.
 Node #94 is the initial baseline; #115 and visor remain separate targets.
 
+## Acceptance priority: complete the node reverse engineering
+
+Every PR and submission must focus on reverse engineering the node's code and
+hillclimb toward completion: resolve a concrete unknown with binary evidence,
+recover established semantics in independently authored Rust, or validate the
+reconstruction against the target. State the task/component, the gap addressed,
+and the evidence of progress. Bounded partial results are welcome when they
+advance that work; they do not justify marking an unfinished gate complete.
+
+Changes to tooling, infrastructure, workflows or surrounding architecture are
+allowed **only when an active reverse-engineering task is blocked**. Identify
+the blocked task, provide evidence of the blocker, explain why existing tools
+cannot support the work, and make the smallest change needed to unblock it.
+Include validation that the blocked work can proceed, then return to reverse
+engineering. General convenience, speculative future needs and architectural
+preferences do not qualify as blockers.
+
+**PRs and submissions consisting of window dressing, cosmetic cleanup or other
+inconsequential changes will be closed.** Standalone tooling polish, refactors,
+documentation churn and surrounding architecture changes without a demonstrated
+reverse-engineering blocker will also be closed. Documentation of new binary
+findings and evidence belongs with the corresponding research contribution.
+
 ## Set up and choose work
 
 ```sh
@@ -29,8 +52,10 @@ The [packet template](research/templates/EVIDENCE.md) specifies required fields.
   source/data attribution, inferences and unresolved questions.
 - Implementation: independently authored Rust, target ABI/layout, pinned
   component build and lockfile, helper closure and evidence-backed tests.
-- Tooling: deterministic offline outputs, explicit input hashes, malformed-input
-  checks where appropriate, and no implicit execution of captured binaries.
+- Tooling or surrounding architecture: only the minimal fix for a demonstrated
+  reverse-engineering blocker under the policy above. Require deterministic
+  offline outputs, explicit input hashes, malformed-input checks where
+  appropriate, and no implicit execution of captured binaries.
 - Review: reproduce the claimed build/checks and attack the comparator with
   corruption controls. Missing evidence remains a gap even if code looks right.
 
