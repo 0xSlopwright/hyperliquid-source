@@ -72,12 +72,13 @@ impl From<CompressionSizeError> for EncodeError {
     }
 }
 
-/// Encodes one complete frame using the verified threshold and port policy.
+/// Encodes one complete frame using the verified threshold and stream-field policy.
 ///
 /// This function performs no I/O. It always emits flag 0 for raw payloads and
-/// flag 1 for LZ4 payloads.
-pub fn encode_frame(payload: &[u8], port: u16) -> Result<EncodedFrame, EncodeError> {
-    let compressed = should_compress(payload.len() as u64, port);
+/// flag 1 for LZ4 payloads. `stream_field` is the observed u16 value used by
+/// the target's compression predicate; values 3998 and 3999 bypass compression.
+pub fn encode_frame(payload: &[u8], stream_field: u16) -> Result<EncodedFrame, EncodeError> {
+    let compressed = should_compress(payload.len() as u64, stream_field);
     let wire_payload = if compressed {
         // Preserve the target's checked sizing failure before asking the pinned
         // crate to allocate its output vector.

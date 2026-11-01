@@ -8,8 +8,8 @@ fn deterministic_payload(len: usize) -> Vec<u8> {
         .collect()
 }
 
-fn assert_complete_roundtrip(payload: &[u8], port: u16) {
-    let encoded = encode_frame(payload, port).unwrap();
+fn assert_complete_roundtrip(payload: &[u8], stream_field: u16) {
+    let encoded = encode_frame(payload, stream_field).unwrap();
     let max_len = (payload.len() as u64).max(u64::from(encoded.header.payload_len));
     let decoded = decode_frame(encoded.as_bytes(), FrameLimits::new(max_len)).unwrap();
     assert_eq!(decoded.payload, payload);

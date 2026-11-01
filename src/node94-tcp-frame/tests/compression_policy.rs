@@ -10,9 +10,9 @@ fn threshold_is_inclusive() {
 }
 
 #[test]
-fn masked_port_rule_excludes_exactly_3998_and_3999_nearby() {
+fn masked_stream_field_rule_excludes_exactly_3998_and_3999_nearby() {
     let selected: Vec<_> = (3996_u16..=4001)
-        .filter(|port| should_compress(COMPRESSION_THRESHOLD, *port))
+        .filter(|stream_field| should_compress(COMPRESSION_THRESHOLD, *stream_field))
         .collect();
     assert_eq!(selected, [3996, 3997, 4000, 4001]);
 }

@@ -22,12 +22,17 @@ rejects lengths that cannot be represented by the wire u32.
 and the same inclusive gate to an LZ4 uncompressed-size prefix. `ChunkPlan`
 implements the verified decimal 4,000,000-byte cap without allocating a list;
 readers apply it to the payload and writers apply it to the complete frame.
+No target-wide numeric maximum was established, so the crate does not invent
+one: callers must provide a bounded `FrameLimits` value appropriate for their
+offline input and memory budget.
 
 The writer compression policy is also exposed without I/O: compress at lengths
-at least 1,025 unless `(port & !1) == 3998`, which excludes ports 3998 and
-3999. Its checked sizing helpers preserve the observed `len * 110 / 100 + 20`
-output window, `+24` allocation, 65,535-byte hash-table switch, and truncating
-little-endian u32 size prefix.
+at least 1,025 unless `(stream_field & !1) == 3998`, which excludes observed
+u16 values 3998 and 3999. Separate NodePort evidence contains those two port
+values, but the meaning of the stream field at every writer call remains an
+inference. Checked sizing helpers preserve the observed
+`len * 110 / 100 + 20` output window, `+24` allocation, 65,535-byte hash-table
+switch, and truncating little-endian u32 size prefix.
 
 ## LZ4 correspondence and limits
 
@@ -51,17 +56,20 @@ decoder fast path remain unverified. Default `lz4_flex` 0.11.6 features are
 locked here; only the block API behavior above is claimed.
 
 `encode_frame` emits a complete offline frame. It uses flag 0 with an exact raw
-copy below the threshold or on excluded ports; otherwise it calls the pinned
-crate's `block::compress_prepend_size` and emits flag 1. The final wire payload
-must fit a u32, and `EncodedFrame::chunks` plans decimal 4,000,000-byte writes
-over the header plus payload. Allocation failure and the target's precise panic
-or error construction for impossible oversized writer inputs are not claimed.
+copy below the threshold or for the excluded stream-field values; otherwise it
+calls the pinned crate's `block::compress_prepend_size` and emits flag 1. The
+final wire payload must fit a u32, and `EncodedFrame::chunks` plans decimal
+4,000,000-byte writes over the header plus payload. Allocation failure and the
+target's precise panic or error construction for impossible oversized writer
+inputs are not claimed.
 
 The integration tests roundtrip complete frames at 0/1 bytes, on both sides of
 the 1,025-byte compression threshold, on both sides of the 65,535-byte table
 switch, and on both sides of the 4,000,000-byte reader/writer chunk boundaries.
 Independent negative controls mutate header lengths, compression flags, prefix
-endianness, match offsets, and every truncation point of a raw frame.
+endianness, match offsets, and every truncation point of raw and compressed
+frames. A bounded deterministic mutation corpus also checks that arbitrary
+short inputs never panic and that repeated decoding is stable.
 
 Build from the repository root with the pinned toolchain:
 

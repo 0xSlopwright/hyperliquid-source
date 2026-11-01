@@ -33,26 +33,33 @@ fn threshold_boundary_switches_flag_and_size_prefix() {
 }
 
 #[test]
-fn excluded_ports_keep_large_payload_raw() {
+fn excluded_stream_field_values_keep_large_payload_raw() {
     let payload = vec![0x5a; COMPRESSION_THRESHOLD as usize];
-    for port in [3998, 3999] {
-        let encoded = encode_frame(&payload, port).unwrap();
-        assert_eq!(encoded.header.compression_flag, 0, "port {port}");
-        assert_eq!(&encoded.as_bytes()[5..], payload, "port {port}");
+    for stream_field in [3998, 3999] {
+        let encoded = encode_frame(&payload, stream_field).unwrap();
+        assert_eq!(
+            encoded.header.compression_flag, 0,
+            "stream field {stream_field}"
+        );
+        assert_eq!(
+            &encoded.as_bytes()[5..],
+            payload,
+            "stream field {stream_field}"
+        );
     }
 }
 
 #[test]
-fn adjacent_ports_compress_large_payload() {
+fn adjacent_stream_field_values_compress_large_payload() {
     let payload = vec![0x5a; COMPRESSION_THRESHOLD as usize];
-    for port in [3997, 4000] {
+    for stream_field in [3997, 4000] {
         assert_eq!(
-            encode_frame(&payload, port)
+            encode_frame(&payload, stream_field)
                 .unwrap()
                 .header
                 .compression_flag,
             1,
-            "port {port}"
+            "stream field {stream_field}"
         );
     }
 }

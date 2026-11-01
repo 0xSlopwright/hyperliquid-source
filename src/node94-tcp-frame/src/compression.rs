@@ -3,7 +3,7 @@ use core::fmt;
 /// Smallest input length that reaches the verified writer compression path.
 pub const COMPRESSION_THRESHOLD: u64 = 1_025;
 
-const EXCLUDED_PORT_MASKED: u16 = 3_998;
+const EXCLUDED_STREAM_FIELD_MASKED: u16 = 3_998;
 const CAPACITY_PERCENT: u64 = 110;
 const OUTPUT_OVERHEAD: u64 = 20;
 const ALLOCATION_OVERHEAD: u64 = 24;
@@ -19,10 +19,13 @@ pub enum HashTableWidth {
 
 /// Returns whether the verified writer selects compression.
 ///
-/// The masked comparison excludes exactly ports 3998 and 3999.
+/// `stream_field` is the observed u16 at stream offset `0x90`. The masked
+/// comparison excludes values 3998 and 3999. Static evidence correlates those
+/// values with two NodePort entries but does not establish the field's meaning
+/// at every writer call site.
 #[must_use]
-pub const fn should_compress(input_len: u64, port: u16) -> bool {
-    input_len >= COMPRESSION_THRESHOLD && (port & !1) != EXCLUDED_PORT_MASKED
+pub const fn should_compress(input_len: u64, stream_field: u16) -> bool {
+    input_len >= COMPRESSION_THRESHOLD && (stream_field & !1) != EXCLUDED_STREAM_FIELD_MASKED
 }
 
 /// Returns the observed LZ4 hash-table width boundary.
