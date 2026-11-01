@@ -83,8 +83,19 @@ and seven new mutation sites. The original native static qualification and
 the later corrected-source real build are distinct historical observations;
 their recorded hashes have not been restamped.
 
-Repository-wide checks are still pending; no complete-suite result follows
-from these bounded passes. All existing progress gates remain false.
+`make doctor verify catalogue-check reproduce` all pass on the exact source
+commit `8c3346a78f45854328830697eb6c5a72d46aa0fb` (base `4179e174`).
+`repository-qualification/` retains raw outputs, the actual result and a
+hash-bound audit summary: all 6,998 tracked/new source and input identities,
+seven pinned repositories, HEAD/tree/status and computational sources are
+unchanged. The later evidence-only commit adds these receipts and status prose;
+it changes none of the compiled source, tests, fixtures or generic readers.
+
+Full `make test` and newer-family CI are **NOT_RUN** here. Authorization for
+the 82 newly audited offline evaluator families is separate from the cleared
+four static targets and authored component builds. The intended draft's
+`[skip ci]` head suppresses automatic CI; it is not a completed-suite claim.
+All existing progress gates remain false.
 
 Build commands inherit the trusted host subprocess environment. It is not
 recorded in full and this is not a hermetic build or sandbox claim; host linker
