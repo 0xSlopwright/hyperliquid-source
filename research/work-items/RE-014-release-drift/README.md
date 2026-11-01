@@ -184,10 +184,11 @@ below.
 | `equivalent_unpaired` rows / bytes | 41,386 / 5,916,192 | 44,306 / 6,785,593 |
 | `unmatched` rows / bytes | 56,625 / 52,545,326 | 67,719 / 64,919,650 |
 
-- **Byte-equal code is small:** 16,624 functions (8.44 MB, 12.2% of #94's
+- **Uniquely paired masked matches are limited:** 16,624 FDE extents (8.44 MB, 12.2% of #94's
   69.40 MB of FDE-covered code) pair uniquely with equal masked text; only
-  2,016 of them are byte-identical. Most surviving code moved and only its
-  address operands differ. Another 5,058 (0.64 MB) pair by duplicate order.
+  2,016 of them are byte-identical. For 14,608 of these pairs raw bytes differ while masked instruction text
+  agrees; data references and alternate-encoding residuals remain unresolved.
+  Another 5,058 (0.64 MB) pair by duplicate order.
 - **Duplicates dominate the remainder:** 85,692 rows have a masked twin across
   releases but no pairing of their own (generic instantiations and small
   thunks), so they are counted, not paired.
@@ -343,3 +344,25 @@ could check a sample of `changed` pairs independently.
 Next question: for the 1,606 inferred `changed` pairs, which differ only in
 `.rodata`-referenced data or inlining? Which of the 56,625 unmatched #94
 functions sit under the 28 `absent115` source paths?
+
+## Review correction: retain mnemonics in the independent spot-check
+
+PR #1123's original `crosscheck.py` applied its broad hexadecimal regex to an
+entire disassembly line. As a result `adc` and `add` could both become `N`;
+`review-original-crosscheck.json` retains that counterexample. The spot-check
+now preserves prefixes and the instruction mnemonic before masking only its
+operand text. A regression covers hex-letter mnemonics, prefixes and bare
+hexadecimal branch operands. This remains a broader mask than the primary
+fingerprint and establishes only the listed sampled invariants.
+
+The original crosscheck, tests, README and manifest are archived with the exact
+head binding in `original-submission/`. Primary fingerprints and retained target
+exports are unchanged. Review on GNU objdump 2.47.20260726 reproduced all class,
+byte, instruction, extent and mask counts and the paths output, but the TSV and
+summary hashes differ from the pinned Debian2.44 run. That raw host comparison
+is kept separately under ignored work; the exact2.44 verifier correctly skips
+on this host and its guard remains intact. This is not an exact pinned-recipe
+or hosted-CI pass. The optional external classifier CSV remains unavailable.
+`independent_verify.py` independently checks retained hashes/counts and decodes
+one unchanged synthetic layout, but delegates mutation classifications to the
+primary implementation; it is not an independent whole-binary classifier.

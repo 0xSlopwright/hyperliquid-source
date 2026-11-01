@@ -24,6 +24,19 @@ BINARY = {r: ROOT / f'artifacts/node/{r}/hl-node' for r in ('94', '115')}
 ENV = {'LC_ALL': 'C', 'PATH': '/usr/bin:/bin'}
 HEX = re.compile(r'-?\b(?:0x)?[0-9a-f]+\b')
 
+# Keep the instruction's prefix/mnemonic portion, including hex-letter names
+# such as adc/add/dec. Only the operand portion receives this deliberately
+# broad numeric mask; it still does not prove operand or target equivalence.
+HEAD = re.compile(r"^(?:(?:notrack|bnd|cs|ss|ds|es|fs|gs|rep|repz|repe|repnz|repne|"
+                  r"lock|data16|data32|addr16|addr32|xacquire|xrelease|rex(?:\.[WRXB]+)?)\s+)*\S+")
+
+
+def mask_operands(text):
+    head = HEAD.match(text)
+    if head is None:
+        raise ValueError("empty disassembly line")
+    return text[:head.end()] + HEX.sub('N', text[head.end():])
+
 def require_gnu_tool(name, gnu_token="GNU"):
     """Return path if `name` is GNU binutils; else raise SystemExit with skip reason.
 
@@ -69,7 +82,7 @@ def disasm(path, start, size):
 
 
 def broad(a, sa, b, sb):
-    return [[HEX.sub('N', i) for i in disasm(BINARY[r], s, n)] for r, s, n in (('94', a, sa), ('115', b, sb))]
+    return [[mask_operands(i) for i in disasm(BINARY[r], s, n)] for r, s, n in (('94', a, sa), ('115', b, sb))]
 
 
 def main():

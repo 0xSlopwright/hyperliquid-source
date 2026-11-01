@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Independent RE-014 verifier: no imports from tools/ or the packet modules.
+"""RE-014 retained-evidence checks with no direct imports from tools/ or packet modules.
 
-Re-implements the mutation opcode subset decoder and the classify/fingerprint
-contracts against pinned expectations. Verdict: PASS / FAIL / INCONCLUSIVE.
+Checks retained hashes/counts and delegates mutation classifications to the primary
+implementation in mutation_controls.py. Separately decodes one unchanged synthetic
+layout; this is not an independent whole-binary classifier. Verdict: PASS / FAIL.
 Holds under python -O (no assert).
 """
 from pathlib import Path

@@ -396,5 +396,23 @@ class VerifyObjdumpVersionGate(unittest.TestCase):
 
 
 
+
+class CrosscheckMnemonicControl(unittest.TestCase):
+    def test_broad_mask_preserves_mnemonics_and_prefixes(self):
+        import importlib.util
+        path = ROOT / 'research/work-items/RE-014-release-drift/crosscheck.py'
+        spec = importlib.util.spec_from_file_location('review_crosscheck', path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        for prefix in ('', 'lock ', 'cs ', 'data16 cs ', 'rex.W '):
+            for left, right in (('add', 'adc'), ('add', 'dec')):
+                self.assertNotEqual(module.mask_operands(prefix + left + ' %eax,%ebx'),
+                                    module.mask_operands(prefix + right + ' %eax,%ebx'))
+        self.assertNotEqual(module.mask_operands('notrack jmp *%rax'),
+                            module.mask_operands('bnd jmp *%rax'))
+        self.assertEqual(module.mask_operands('bnd call abcdef'), 'bnd call N')
+        self.assertEqual(module.mask_operands('mov $0x1234,0x5678(%rip)'), 'mov $N,N(%rip)')
+        self.assertEqual(module.mask_operands('add %eax,%ebx'), 'add %eax,%ebx')
+
 if __name__ == '__main__':
     unittest.main()
