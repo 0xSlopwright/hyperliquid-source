@@ -119,10 +119,11 @@
     ],
     "exit": 0,
     "sha256": "62b2bc35db2b34337f2cb5feace2b03e4faee375be93a1f0c03e8eb04654bdfb",
-    "source": "Observed07:02:45UTC shell exit0;raw log retained locally.",
+    "source": "Observed07:02:45UTC shell exit0;complete raw passing log retained in this packet.",
     "artifactFiles": 8,
     "importedFiles": 38,
-    "sourcePins": 7
+    "sourcePins": 7,
+    "rawLog": "validation/verify-final.log"
   },
   "llvm": {
     "command": [
