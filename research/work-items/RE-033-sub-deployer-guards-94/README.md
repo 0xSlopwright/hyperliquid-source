@@ -48,4 +48,75 @@ The full repo test suite (one `unittest discover` over about 5,000 tests) needs 
 
 ### Targeted checks (commands + output)
 
-PENDING — to be filled with exact commands and output once the heavy slot is free (ASI run has it first).
+All checks below ran at head `e55c8a03`. Output is verbatim; the full repository suite was not run (see above).
+
+head `e55c8a03`:
+
+```text
+$ .venv/bin/python -I -B research/work-items/RE-033-sub-deployer-guards-94/verify.py
+verify: key_insns=13 strings=3 got_slot_refs=3 errors=0
+[exit 0]
+```
+
+head `e55c8a03`:
+
+```text
+$ .venv/bin/python -O -B research/work-items/RE-033-sub-deployer-guards-94/verify.py
+verify: key_insns=13 strings=3 got_slot_refs=3 errors=0
+[exit 0]
+```
+
+head `e55c8a03`:
+
+```text
+$ .venv/bin/python -I -B research/work-items/RE-033-sub-deployer-guards-94/independent_verify.py
+PASS carve=62308cdc40af8382 refs=3 strings=3 key_insns=13
+[exit 0]
+```
+
+head `e55c8a03`:
+
+```text
+$ .venv/bin/python -O -B research/work-items/RE-033-sub-deployer-guards-94/independent_verify.py
+PASS carve=62308cdc40af8382 refs=3 strings=3 key_insns=13
+[exit 0]
+```
+
+head `e55c8a03`:
+
+```text
+$ .venv/bin/python -m unittest tests.test_sub_deployer_guards -v
+test_committed_json_pins (tests.test_sub_deployer_guards.SubDeployerGuardsStaticTests.test_committed_json_pins) ... ok
+test_error_string_bytes_verbatim (tests.test_sub_deployer_guards.SubDeployerGuardsStaticTests.test_error_string_bytes_verbatim) ... ok
+test_mutation_tamper_cannot_set_string (tests.test_sub_deployer_guards.SubDeployerGuardsStaticTests.test_mutation_tamper_cannot_set_string) ... ok
+test_mutation_tamper_carve (tests.test_sub_deployer_guards.SubDeployerGuardsStaticTests.test_mutation_tamper_carve) ... ok
+test_mutation_tamper_duplicate_string (tests.test_sub_deployer_guards.SubDeployerGuardsStaticTests.test_mutation_tamper_duplicate_string) ... ok
+test_mutation_tamper_early_reject_imm (tests.test_sub_deployer_guards.SubDeployerGuardsStaticTests.test_mutation_tamper_early_reject_imm) ... ok
+test_negative_controls_per_rule (tests.test_sub_deployer_guards.SubDeployerGuardsStaticTests.test_negative_controls_per_rule) ... ok
+test_static_output_pin_and_expectations (tests.test_sub_deployer_guards.SubDeployerGuardsStaticTests.test_static_output_pin_and_expectations) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 92.642s
+
+OK
+[exit 0]
+```
+
+head `e55c8a03`:
+
+```text
+$ .venv/bin/python tools/catalogue.py --check
+Catalogue and progress tables match pinned inputs.
+[exit 0]
+```
+
+head `e55c8a03` (packet manifest, before this documentation commit):
+
+```text
+$ sha256sum -c MANIFEST.sha256
+README.md: OK
+sub_deployer_guards.json: OK
+independent_verify.py: OK
+pr-body.md: OK
+verify.py: OK
+```
