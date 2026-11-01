@@ -1,5 +1,5 @@
 extern crate node94_field_request_protocol;
-#[path = "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree/src/node94-field-request-protocol/test_driver.rs"] mod test_driver;
+#[path = "[REVIEW_TREE]/src/node94-field-request-protocol/test_driver.rs"] mod test_driver;
 use std::io::{self, Write};
 fn main() {
     let path = std::env::args().nth(1).expect("input-only stimuli path");

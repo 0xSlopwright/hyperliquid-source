@@ -2,7 +2,7 @@
   {
     "label": "rustc-identity",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "-vV"
     ],
     "exit_code": 0,
@@ -44,13 +44,13 @@
   {
     "label": "debug-adapter",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "node94_newline_writer_protocol",
       "--crate-type=rlib",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree/src/node94-newline-writer-protocol/lib.rs",
+      "[REVIEW_TREE]/src/node94-newline-writer-protocol/lib.rs",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/adapter/libnode94_newline_writer_protocol.rlib",
+      "[REVIEW_OUTPUT]/host-build/debug/adapter/libnode94_newline_writer_protocol.rlib",
       "-C",
       "metadata=node94-newline-protocol",
       "--edition=2021",
@@ -65,7 +65,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 0.321,
@@ -85,17 +85,17 @@
   {
     "label": "debug-library",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "node94_field_request_protocol",
       "--crate-type=rlib",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree/src/node94-field-request-protocol/lib.rs",
+      "[REVIEW_TREE]/src/node94-field-request-protocol/lib.rs",
       "--extern",
-      "node94_newline_writer_protocol=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/adapter/libnode94_newline_writer_protocol.rlib",
+      "node94_newline_writer_protocol=[REVIEW_OUTPUT]/host-build/debug/adapter/libnode94_newline_writer_protocol.rlib",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/adapter",
+      "dependency=[REVIEW_OUTPUT]/host-build/debug/adapter",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/parent/libnode94_field_request_protocol.rlib",
+      "[REVIEW_OUTPUT]/host-build/debug/parent/libnode94_field_request_protocol.rlib",
       "-C",
       "metadata=node94-field-protocol",
       "--edition=2021",
@@ -110,7 +110,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 0.138,
@@ -130,19 +130,19 @@
   {
     "label": "debug-independent-build",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "debug_independent",
       "--test",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree/src/node94-field-request-protocol/independent_tests.rs",
+      "[REVIEW_TREE]/src/node94-field-request-protocol/independent_tests.rs",
       "--extern",
-      "node94_field_request_protocol=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/parent/libnode94_field_request_protocol.rlib",
+      "node94_field_request_protocol=[REVIEW_OUTPUT]/host-build/debug/parent/libnode94_field_request_protocol.rlib",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/parent",
+      "dependency=[REVIEW_OUTPUT]/host-build/debug/parent",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/adapter",
+      "dependency=[REVIEW_OUTPUT]/host-build/debug/adapter",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/debug-independent-tests",
+      "[REVIEW_OUTPUT]/host-build/debug/debug-independent-tests",
       "--edition=2021",
       "-D",
       "warnings",
@@ -155,7 +155,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 0.724,
@@ -175,7 +175,7 @@
   {
     "label": "debug-independent-run",
     "argv": [
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/debug-independent-tests",
+      "[REVIEW_OUTPUT]/host-build/debug/debug-independent-tests",
       "--nocapture",
       "--test-threads=1"
     ],
@@ -197,19 +197,19 @@
   {
     "label": "debug-fixture-build",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "debug_fixture",
       "--test",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree/src/node94-field-request-protocol/fixture_tests.rs",
+      "[REVIEW_TREE]/src/node94-field-request-protocol/fixture_tests.rs",
       "--extern",
-      "node94_field_request_protocol=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/parent/libnode94_field_request_protocol.rlib",
+      "node94_field_request_protocol=[REVIEW_OUTPUT]/host-build/debug/parent/libnode94_field_request_protocol.rlib",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/parent",
+      "dependency=[REVIEW_OUTPUT]/host-build/debug/parent",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/adapter",
+      "dependency=[REVIEW_OUTPUT]/host-build/debug/adapter",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/debug-fixture-tests",
+      "[REVIEW_OUTPUT]/host-build/debug/debug-fixture-tests",
       "--edition=2021",
       "-D",
       "warnings",
@@ -222,7 +222,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 0.666,
@@ -242,7 +242,7 @@
   {
     "label": "debug-fixture-run",
     "argv": [
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/debug-fixture-tests",
+      "[REVIEW_OUTPUT]/host-build/debug/debug-fixture-tests",
       "--nocapture",
       "--test-threads=1"
     ],
@@ -264,18 +264,18 @@
   {
     "label": "debug-production-link",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "field_comparison",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/comparison-main.rs",
+      "[REVIEW_OUTPUT]/host-build/comparison-main.rs",
       "--extern",
-      "node94_field_request_protocol=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/parent/libnode94_field_request_protocol.rlib",
+      "node94_field_request_protocol=[REVIEW_OUTPUT]/host-build/debug/parent/libnode94_field_request_protocol.rlib",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/parent",
+      "dependency=[REVIEW_OUTPUT]/host-build/debug/parent",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/adapter",
+      "dependency=[REVIEW_OUTPUT]/host-build/debug/adapter",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/production",
+      "[REVIEW_OUTPUT]/host-build/debug/production",
       "--edition=2021",
       "-D",
       "warnings",
@@ -288,7 +288,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 1.064,
@@ -308,8 +308,8 @@
   {
     "label": "debug-production-run",
     "argv": [
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/debug/production",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/inputs.txt"
+      "[REVIEW_OUTPUT]/host-build/debug/production",
+      "[REVIEW_OUTPUT]/host-build/inputs.txt"
     ],
     "exit_code": 0,
     "seconds": 0.377,
@@ -329,13 +329,13 @@
   {
     "label": "optimized-adapter",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "node94_newline_writer_protocol",
       "--crate-type=rlib",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree/src/node94-newline-writer-protocol/lib.rs",
+      "[REVIEW_TREE]/src/node94-newline-writer-protocol/lib.rs",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/adapter/libnode94_newline_writer_protocol.rlib",
+      "[REVIEW_OUTPUT]/host-build/optimized/adapter/libnode94_newline_writer_protocol.rlib",
       "-C",
       "metadata=node94-newline-protocol",
       "--edition=2021",
@@ -350,7 +350,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 0.219,
@@ -370,17 +370,17 @@
   {
     "label": "optimized-library",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "node94_field_request_protocol",
       "--crate-type=rlib",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree/src/node94-field-request-protocol/lib.rs",
+      "[REVIEW_TREE]/src/node94-field-request-protocol/lib.rs",
       "--extern",
-      "node94_newline_writer_protocol=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/adapter/libnode94_newline_writer_protocol.rlib",
+      "node94_newline_writer_protocol=[REVIEW_OUTPUT]/host-build/optimized/adapter/libnode94_newline_writer_protocol.rlib",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/adapter",
+      "dependency=[REVIEW_OUTPUT]/host-build/optimized/adapter",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/parent/libnode94_field_request_protocol.rlib",
+      "[REVIEW_OUTPUT]/host-build/optimized/parent/libnode94_field_request_protocol.rlib",
       "-C",
       "metadata=node94-field-protocol",
       "--edition=2021",
@@ -395,7 +395,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 0.111,
@@ -415,19 +415,19 @@
   {
     "label": "optimized-independent-build",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "optimized_independent",
       "--test",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree/src/node94-field-request-protocol/independent_tests.rs",
+      "[REVIEW_TREE]/src/node94-field-request-protocol/independent_tests.rs",
       "--extern",
-      "node94_field_request_protocol=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/parent/libnode94_field_request_protocol.rlib",
+      "node94_field_request_protocol=[REVIEW_OUTPUT]/host-build/optimized/parent/libnode94_field_request_protocol.rlib",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/parent",
+      "dependency=[REVIEW_OUTPUT]/host-build/optimized/parent",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/adapter",
+      "dependency=[REVIEW_OUTPUT]/host-build/optimized/adapter",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/optimized-independent-tests",
+      "[REVIEW_OUTPUT]/host-build/optimized/optimized-independent-tests",
       "--edition=2021",
       "-D",
       "warnings",
@@ -440,7 +440,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 1.957,
@@ -460,7 +460,7 @@
   {
     "label": "optimized-independent-run",
     "argv": [
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/optimized-independent-tests",
+      "[REVIEW_OUTPUT]/host-build/optimized/optimized-independent-tests",
       "--nocapture",
       "--test-threads=1"
     ],
@@ -482,19 +482,19 @@
   {
     "label": "optimized-fixture-build",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "optimized_fixture",
       "--test",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree/src/node94-field-request-protocol/fixture_tests.rs",
+      "[REVIEW_TREE]/src/node94-field-request-protocol/fixture_tests.rs",
       "--extern",
-      "node94_field_request_protocol=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/parent/libnode94_field_request_protocol.rlib",
+      "node94_field_request_protocol=[REVIEW_OUTPUT]/host-build/optimized/parent/libnode94_field_request_protocol.rlib",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/parent",
+      "dependency=[REVIEW_OUTPUT]/host-build/optimized/parent",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/adapter",
+      "dependency=[REVIEW_OUTPUT]/host-build/optimized/adapter",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/optimized-fixture-tests",
+      "[REVIEW_OUTPUT]/host-build/optimized/optimized-fixture-tests",
       "--edition=2021",
       "-D",
       "warnings",
@@ -507,7 +507,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 2.421,
@@ -527,7 +527,7 @@
   {
     "label": "optimized-fixture-run",
     "argv": [
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/optimized-fixture-tests",
+      "[REVIEW_OUTPUT]/host-build/optimized/optimized-fixture-tests",
       "--nocapture",
       "--test-threads=1"
     ],
@@ -549,18 +549,18 @@
   {
     "label": "optimized-production-link",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "field_comparison",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/comparison-main.rs",
+      "[REVIEW_OUTPUT]/host-build/comparison-main.rs",
       "--extern",
-      "node94_field_request_protocol=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/parent/libnode94_field_request_protocol.rlib",
+      "node94_field_request_protocol=[REVIEW_OUTPUT]/host-build/optimized/parent/libnode94_field_request_protocol.rlib",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/parent",
+      "dependency=[REVIEW_OUTPUT]/host-build/optimized/parent",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/adapter",
+      "dependency=[REVIEW_OUTPUT]/host-build/optimized/adapter",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/production",
+      "[REVIEW_OUTPUT]/host-build/optimized/production",
       "--edition=2021",
       "-D",
       "warnings",
@@ -573,7 +573,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 2.15,
@@ -593,8 +593,8 @@
   {
     "label": "optimized-production-run",
     "argv": [
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/optimized/production",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/inputs.txt"
+      "[REVIEW_OUTPUT]/host-build/optimized/production",
+      "[REVIEW_OUTPUT]/host-build/inputs.txt"
     ],
     "exit_code": 0,
     "seconds": 0.392,
@@ -614,13 +614,13 @@
   {
     "label": "repro-a-adapter",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "node94_newline_writer_protocol",
       "--crate-type=rlib",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree/src/node94-newline-writer-protocol/lib.rs",
+      "[REVIEW_TREE]/src/node94-newline-writer-protocol/lib.rs",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/repro-a/adapter/libnode94_newline_writer_protocol.rlib",
+      "[REVIEW_OUTPUT]/host-build/repro-a/adapter/libnode94_newline_writer_protocol.rlib",
       "-C",
       "metadata=node94-newline-protocol",
       "--edition=2021",
@@ -635,7 +635,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 0.205,
@@ -655,17 +655,17 @@
   {
     "label": "repro-a-library",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "node94_field_request_protocol",
       "--crate-type=rlib",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree/src/node94-field-request-protocol/lib.rs",
+      "[REVIEW_TREE]/src/node94-field-request-protocol/lib.rs",
       "--extern",
-      "node94_newline_writer_protocol=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/repro-a/adapter/libnode94_newline_writer_protocol.rlib",
+      "node94_newline_writer_protocol=[REVIEW_OUTPUT]/host-build/repro-a/adapter/libnode94_newline_writer_protocol.rlib",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/repro-a/adapter",
+      "dependency=[REVIEW_OUTPUT]/host-build/repro-a/adapter",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/repro-a/parent/libnode94_field_request_protocol.rlib",
+      "[REVIEW_OUTPUT]/host-build/repro-a/parent/libnode94_field_request_protocol.rlib",
       "-C",
       "metadata=node94-field-protocol",
       "--edition=2021",
@@ -680,7 +680,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 0.166,
@@ -700,13 +700,13 @@
   {
     "label": "repro-b-adapter",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "node94_newline_writer_protocol",
       "--crate-type=rlib",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree/src/node94-newline-writer-protocol/lib.rs",
+      "[REVIEW_TREE]/src/node94-newline-writer-protocol/lib.rs",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/repro-b/adapter/libnode94_newline_writer_protocol.rlib",
+      "[REVIEW_OUTPUT]/host-build/repro-b/adapter/libnode94_newline_writer_protocol.rlib",
       "-C",
       "metadata=node94-newline-protocol",
       "--edition=2021",
@@ -721,7 +721,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 0.08,
@@ -741,17 +741,17 @@
   {
     "label": "repro-b-library",
     "argv": [
-      "/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
+      "[REVIEW_HOME]/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc",
       "--crate-name",
       "node94_field_request_protocol",
       "--crate-type=rlib",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree/src/node94-field-request-protocol/lib.rs",
+      "[REVIEW_TREE]/src/node94-field-request-protocol/lib.rs",
       "--extern",
-      "node94_newline_writer_protocol=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/repro-b/adapter/libnode94_newline_writer_protocol.rlib",
+      "node94_newline_writer_protocol=[REVIEW_OUTPUT]/host-build/repro-b/adapter/libnode94_newline_writer_protocol.rlib",
       "-L",
-      "dependency=/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/repro-b/adapter",
+      "dependency=[REVIEW_OUTPUT]/host-build/repro-b/adapter",
       "-o",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-review/host-build/repro-b/parent/libnode94_field_request_protocol.rlib",
+      "[REVIEW_OUTPUT]/host-build/repro-b/parent/libnode94_field_request_protocol.rlib",
       "-C",
       "metadata=node94-field-protocol",
       "--edition=2021",
@@ -766,7 +766,7 @@
       "-C",
       "linker=/usr/bin/cc",
       "--remap-path-prefix",
-      "/Users/shawwalters/hlsource/hyperliquid-source/work/pr-review-20261031/pr1030-advance-tree=/reconstruction"
+      "[REVIEW_TREE]=/reconstruction"
     ],
     "exit_code": 0,
     "seconds": 0.14,

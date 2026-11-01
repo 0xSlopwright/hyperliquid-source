@@ -1,36 +1,88 @@
-import hashlib,json,os,pathlib,subprocess,sys,time
-P=pathlib.Path(__file__).resolve().parent;T=P.parent/'pr1030-advance-tree';D=T/'research/work-items/RE-005-field-parent-current546-rebind';sys.path.insert(0,str(T/'tools'));os.environ['PATH']='/opt/homebrew/opt/binutils/bin:'+os.environ['PATH']
-import bincode_diagnostic_parent_rust as b
-head='38883e27597c1da7540d8ab0669290fb88aa66bc';base='da97c34d6fa24600672bf74653a9af0f582b6cdb'
-files=subprocess.check_output(['git','diff','--cached','--name-only'],cwd=T,text=True).splitlines();assert len(files)==19 and all(x.startswith('research/work-items/RE-005-field-parent-current546-rebind/') for x in files)
-blobs=[]
-for f in files:
- data=subprocess.check_output(['git','show',head+':'+f],cwd=T);assert (T/f).read_bytes()==data;blobs.append({'file':f,'sha256':hashlib.sha256(data).hexdigest()})
-manifest_drift=[]
-for line in (D/'MANIFEST.sha256').read_text().splitlines():
- h,f=line.split('  ',1);original=subprocess.check_output(['git','show',head+':'+f],cwd=T);assert hashlib.sha256(original).hexdigest()==h,f
- actual=hashlib.sha256((T/f).read_bytes()).hexdigest()
- if actual!=h:manifest_drift.append({'file':f,'historical_head_sha256':h,'current_sha256':actual})
-fresh=b.reference.oracle(b.TARGET,repo=T)
-for name,key in [('inputs.txt','inputs'),('expected.txt','expected'),('fixture.tsv','fixture')]:assert (D/'evidence'/name).read_bytes()==fresh[key],name
-assert json.loads((D/'evidence/oracle.json').read_text())==fresh['metadata']
-for name in ['debug.stdout','optimized.stdout']:assert (D/'evidence'/name).read_bytes()==fresh['expected']
-assert (D/'evidence/BEFORE.json').read_bytes()==(D/'evidence/AFTER.json').read_bytes()
-native=json.loads((D/'evidence/native-record.json').read_text());producer=b.reference._load_producer(T);proof,exports=producer._analyze(b.TARGET.read_bytes());proof=json.loads(json.dumps(proof))
-(P/'fresh-native-record.json').write_text(json.dumps(proof,indent=2)+'\n')
-provider_deltas=[]
-for fresh,prior,path in [(proof,native,'native_tool'),(proof['used_adapter_contract'],native['used_adapter_contract'],'used_adapter_contract/native_tool')]:
- if fresh['native_tool']!=prior['native_tool']:
-  provider_deltas.append({'field':path,'historical':prior['native_tool'],'review':fresh['native_tool']})
-  fresh['native_tool']=prior['native_tool']
-assert proof==native
-for k,v in exports.items():
- if (D/'evidence'/k).exists():assert (D/'evidence'/k).read_text()==v,k
-py='/Users/shawwalters/.local/share/uv/python/cpython-3.10.18-macos-aarch64-none/bin/python3.10';results=[]
-for opt in [[],['-O']]:
- cmd=[py,*opt,'-B','-m','unittest','discover','-s','tests','-p','test_bincode_diagnostic_parent_rust.py','-v'];st=time.time();r=subprocess.run(cmd,cwd=T,capture_output=True,text=True);name='optimized' if opt else 'normal';(P/(name+'.log')).write_text(r.stdout+r.stderr);results.append({'command':cmd,'exit':r.returncode,'seconds':time.time()-st,'log':name+'.log'});assert not r.returncode
-rustc=pathlib.Path('/Users/shawwalters/.rustup/toolchains/1.94.1-aarch64-apple-darwin/bin/rustc');actual=hashlib.sha256(rustc.read_bytes()).hexdigest();assert actual=='b69cbcffa5e990057035d53ccc8163e8392ce784f6abb114c19ceb61528ba9f6'
-original_pin=b.COMPILER_SHA256;b.COMPILER_SHA256=actual
-host=b.build(b.TARGET,rustc,P/'host-build',False)
-review={'number':1030,'head':head,'base':base,'effective_files':blobs,'only_additive_evidence':True,'prior_source_and_tests_unchanged':True,'fresh_oracle_equals_all_recorded_bytes':True,'fresh_native_record_equal_except_provider_labels':True,'provider_deltas':provider_deltas,'before_after_equal':True,'historical_manifest_all83_authenticated':True,'current_manifest_drift':manifest_drift,'tests':results,'host_build_status':host['status'],'host_override':{'original_linux_compiler_pin':original_pin,'review_host_pin':actual,'source_pins_unmodified':True,'scope':'Fresh native macOS arm64 own-code build and925-row replay, not reproduction of historical Linux binary identities'},'target_sha256':b.reference.TARGET_SHA256,'captured_execution':False,'instruction_emulation':False}
-(P/'review.json').write_text(json.dumps(review,indent=2)+'\n');print('PASS evidence, focused tests, fresh host own-code build',flush=True)
+#!/usr/bin/env python3
+"""Recheck exact advanced evidence; optionally test or build authored Rust."""
+import argparse
+import hashlib
+import json
+import pathlib
+import subprocess
+import sys
+
+HEAD = '38883e27597c1da7540d8ab0669290fb88aa66bc'
+PACKET = 'research/work-items/RE-005-field-parent-current546-rebind'
+
+
+def require(value, message):
+    if not value:
+        raise ValueError(message)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--repo', type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[3])
+    parser.add_argument('--out', type=pathlib.Path, required=True, help='New review output directory')
+    parser.add_argument('--python', default=sys.executable)
+    parser.add_argument('--tests', action='store_true')
+    parser.add_argument('--rustc', type=pathlib.Path, help='Optional independently authored host build')
+    parser.add_argument('--rustc-sha256', help='Required explicit compiler identity for optional host build')
+    args = parser.parse_args()
+    require(not args.out.exists(), 'Preserve previous outputs; choose a new directory')
+    repo = args.repo.resolve()
+    sys.path.insert(0, str(repo / 'tools'))
+    import bincode_diagnostic_parent_rust as b
+    packet = repo / PACKET
+    files = subprocess.check_output(['git', 'ls-tree', '-r', '--name-only', HEAD, '--', PACKET], cwd=repo, text=True).splitlines()
+    require(len(files) == 19, 'Expected exact19 original evidence files')
+    blobs = []
+    for file in files:
+        raw = subprocess.check_output(['git', 'show', HEAD + ':' + file], cwd=repo)
+        require((repo / file).read_bytes() == raw, 'Original evidence differs: ' + file)
+        blobs.append(dict(file=file, sha256=hashlib.sha256(raw).hexdigest()))
+    entries = []
+    for line in (packet / 'MANIFEST.sha256').read_text().splitlines():
+        expected, file = line.split('  ', 1)
+        original = subprocess.check_output(['git', 'show', HEAD + ':' + file], cwd=repo)
+        require(hashlib.sha256(original).hexdigest() == expected, 'Historical manifest differs: ' + file)
+        require(hashlib.sha256((repo / file).read_bytes()).hexdigest() == expected, 'Current manifest differs: ' + file)
+        entries.append(file)
+    fresh = b.reference.oracle(b.TARGET, repo=repo)
+    for name, key in [('inputs.txt', 'inputs'), ('expected.txt', 'expected'), ('fixture.tsv', 'fixture')]:
+        require((packet / 'evidence' / name).read_bytes() == fresh[key], 'Oracle differs: ' + name)
+    require(json.loads((packet / 'evidence/oracle.json').read_text()) == fresh['metadata'], 'Oracle metadata differs')
+    for name in ['debug.stdout', 'optimized.stdout']:
+        require((packet / 'evidence' / name).read_bytes() == fresh['expected'], 'Recorded rows differ')
+    require((packet / 'evidence/BEFORE.json').read_bytes() == (packet / 'evidence/AFTER.json').read_bytes(), 'Source before/after differs')
+    native = json.loads((packet / 'evidence/native-record.json').read_text())
+    proof, exports = b.reference._load_producer(repo)._analyze(b.TARGET.read_bytes())
+    proof = json.loads(json.dumps(proof))
+    raw_proof = json.dumps(proof, indent=2) + '\n'
+    provider_deltas = []
+    for current, prior, label in [(proof, native, 'native_tool'), (proof['used_adapter_contract'], native['used_adapter_contract'], 'used_adapter_contract/native_tool')]:
+        if current['native_tool'] != prior['native_tool']:
+            provider_deltas.append(dict(field=label, historical=prior['native_tool'], current=current['native_tool']))
+            current['native_tool'] = prior['native_tool']
+    require(proof == native, 'Native evidence differs beyond provider labels')
+    for name, value in exports.items():
+        if (packet / 'evidence' / name).exists():
+            require((packet / 'evidence' / name).read_text() == value, 'Native export differs: ' + name)
+    args.out.mkdir(parents=True)
+    (args.out / 'fresh-native-record.json').write_text(raw_proof)
+    results = dict(head=HEAD, originals=blobs, manifest_entries=len(entries), provider_deltas=provider_deltas, static='PASS', captured_execution=False)
+    if args.tests:
+        for optimized in (False, True):
+            command = [args.python] + (['-O'] if optimized else []) + ['-B', '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_bincode_diagnostic_parent_rust.py', '-v']
+            result = subprocess.run(command, cwd=repo, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            (args.out / ('optimized.log' if optimized else 'normal.log')).write_bytes(result.stdout)
+            require(result.returncode == 0, 'Focused tests failed')
+    if args.rustc:
+        actual = hashlib.sha256(args.rustc.read_bytes()).hexdigest()
+        require(args.rustc_sha256 == actual, 'Explicit compiler SHA-256 differs')
+        original = b.COMPILER_SHA256
+        b.COMPILER_SHA256 = actual
+        results['host_build'] = b.build(b.TARGET, args.rustc.resolve(), args.out / 'host-build', False)['status']
+        results['provider'] = dict(original_pin=original, current_pin=actual, scope='Own-code host replay only; original Linux binary identity unproven')
+    (args.out / 'result.json').write_text(json.dumps(results, indent=2) + '\n')
+    print('PASS exact19 evidence,83 manifest entries,925 oracle rows,native exports')
+
+
+if __name__ == '__main__':
+    main()
