@@ -9,6 +9,7 @@
 mod context;
 mod keccak;
 mod layout;
+mod payload;
 mod preimage;
 
 pub use context::{
@@ -17,6 +18,10 @@ pub use context::{
 };
 pub use keccak::{KECCAK_DELIMITER, KECCAK_OUTPUT_LENGTH, KECCAK_RATE, keccak256};
 pub use layout::{TARGET_SHA256, TargetContextLayout, TargetFunction};
+pub use payload::{
+    ACTION_CHAIN_ID, AgentPayload, AgentSource, EmbeddedPayload, ZeroVerifyingContract,
+    build_agent_payload, build_embedded_payload, connection_id,
+};
 pub use preimage::{BuildError, build_preimage, preimage_len, signing_suffix_len};
 
 #[cfg(test)]

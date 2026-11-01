@@ -130,3 +130,121 @@ fn keccak_absorb_boundaries_match_independent_expected_digests() {
         );
     }
 }
+
+#[test]
+fn public_sdk_connection_digest_matches_the_independent_golden_vector() {
+    let encoded = hex_bytes(
+        "83a474797065a56f72646572a66f72646572739186a16104a162c3a170a6313637302e31a173a6302e30313437a172c2a17481a56c696d697481a3746966a3496f63a867726f7570696e67a26e61",
+    );
+    let context = SignableContext::new(1_677_777_606_040, None, None);
+    let actual = connection_id(EncodedAction::new(&encoded), &context).unwrap();
+    assert_eq!(
+        *actual.as_bytes(),
+        hex_32("0fcbeda5ae3c4950a548021552a4fea2226858c4453571bf3f24ba017eac2908")
+    );
+}
+
+#[test]
+fn agent_payload_source_covers_all_observed_selector_classes() {
+    let context = SignableContext::new(7, None, None);
+    for selector in [0, 1, 2, 3, 4, 0x7f, 0x80, 0xff] {
+        let payload = build_agent_payload(
+            EncodedAction::new(&[0x90]),
+            &context,
+            ChainSelector::new(selector),
+        )
+        .unwrap();
+        assert_eq!(
+            payload.source,
+            if selector == 3 {
+                AgentSource::A
+            } else {
+                AgentSource::B
+            }
+        );
+        assert_eq!(
+            payload.source.as_byte(),
+            if selector == 3 { b'a' } else { b'b' }
+        );
+        assert_eq!(payload.chain_id, ACTION_CHAIN_ID);
+        assert_eq!(
+            payload.verifying_contract.observed_zero_region(),
+            [0; ZeroVerifyingContract::OBSERVED_ZERO_REGION_LENGTH]
+        );
+    }
+}
+
+#[test]
+fn embedded_payload_preserves_copied_fields_separately() {
+    let signature_chain_id = SignatureChainId::from_bytes([0xa5; 32]);
+    let context = SignableContext::new(u64::MAX, None, Some(0));
+    let payload = build_embedded_payload(
+        EncodedAction::new(&[0x80]),
+        &context,
+        ChainSelector::new(0xff),
+        signature_chain_id,
+    )
+    .unwrap();
+    assert_eq!(payload.signature_chain_id, signature_chain_id);
+    assert_eq!(payload.nonce, u64::MAX);
+    assert_eq!(payload.chain_selector.value(), 0xff);
+    assert_eq!(
+        payload.connection_id,
+        connection_id(EncodedAction::new(&[0x80]), &context).unwrap()
+    );
+}
+
+#[test]
+fn selector_changes_payload_metadata_but_not_connection_digest() {
+    let context = SignableContext::new(9, Some(VaultAddress::from_bytes([7; 20])), Some(11));
+    let a = build_agent_payload(
+        EncodedAction::new(&[1, 2, 3]),
+        &context,
+        ChainSelector::new(3),
+    )
+    .unwrap();
+    let b = build_agent_payload(
+        EncodedAction::new(&[1, 2, 3]),
+        &context,
+        ChainSelector::new(4),
+    )
+    .unwrap();
+    assert_eq!(a.connection_id, b.connection_id);
+    assert_ne!(a.source, b.source);
+}
+
+#[test]
+fn each_preimage_field_changes_the_connection_digest() {
+    let vault = VaultAddress::from_bytes([0x11; 20]);
+    let base = SignableContext::new(1, None, None);
+    let baseline = connection_id(EncodedAction::new(&[0x90]), &base).unwrap();
+    for (action, context) in [
+        (
+            EncodedAction::new(&[0x91]),
+            SignableContext::new(1, None, None),
+        ),
+        (
+            EncodedAction::new(&[0x90]),
+            SignableContext::new(2, None, None),
+        ),
+        (
+            EncodedAction::new(&[0x90]),
+            SignableContext::new(1, Some(vault), None),
+        ),
+        (
+            EncodedAction::new(&[0x90]),
+            SignableContext::new(1, None, Some(0)),
+        ),
+    ] {
+        assert_ne!(connection_id(action, &context).unwrap(), baseline);
+    }
+}
+
+fn hex_bytes(value: &str) -> Vec<u8> {
+    assert_eq!(value.len() % 2, 0);
+    value
+        .as_bytes()
+        .chunks_exact(2)
+        .map(|pair| u8::from_str_radix(core::str::from_utf8(pair).unwrap(), 16).unwrap())
+        .collect()
+}
