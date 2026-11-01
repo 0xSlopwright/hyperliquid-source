@@ -76,6 +76,13 @@ def analyze(data):
             raise ValueError('daily/hourly descriptor changed')
     relative = {}
     memcpy = None
+    # The name lookup below keeps only the last same-named section, so a
+    # duplicate would silently decide which symbol/string bytes the memcpy
+    # binding is checked against. Refuse it for the names this tool reads,
+    # mirroring locate()'s exactly-one-match rule for VA mappings.
+    for name in ('.dynsym', '.dynstr'):
+        if sum(s['name'] == name for s in secs) > 1:
+            raise ValueError(f'Duplicate section: {name}')
     named = {s['name']: s for s in secs}
     for section in secs:
         if section['type'] != 4:
@@ -83,6 +90,8 @@ def analyze(data):
         for pos in range(section['offset'], section['offset'] + section['size'], 24):
             slot, info, addend = struct.unpack_from('<QQq', data, pos)
             if info & 0xffffffff == 8:
+                if slot in relative:
+                    raise ValueError(f'duplicate RELATIVE relocation slot {slot:#x}')
                 relative[slot] = addend
             if slot == 0x576dfe0:
                 if info & 0xffffffff != 6 or not info >> 32:
