@@ -1,0 +1,32 @@
+{
+  "argv": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "-B",
+    "-O",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests",
+    "-p",
+    "test_node115_field_adapter_drift.py",
+    "-v"
+  ],
+  "before_after_equal": true,
+  "cwd": "/tmp/hl-node115-field-drift-20261101/checkout",
+  "environment_overrides": {
+    "HL_RE014_LIBCORE": "/tmp/hl-rem-rust-1.94.1-20261031/prefix/lib/rustlib/x86_64-unknown-linux-gnu/lib/libcore-e60dd2ab51fbc7de.rlib",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "TMPDIR": "/tmp/node115-drift-optimized-3hh41q16"
+  },
+  "exit_code": 0,
+  "headroom_before": 2061291520,
+  "inherited_environment_trusted_unrecorded": true,
+  "mode": "optimized",
+  "schema": "owned-node115-static-tests-run-v1",
+  "scope": "only owned10test static controls, no compiler/native/captured/emulator/fullsuite",
+  "source_and_input_count": 6,
+  "stderr_sha256": "565aa71211f7903115d85d6c407d2a1fdfc387cd1481d6445fcb3085794ab46d",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "wall_seconds": 6.460029290989041
+}

@@ -1,0 +1,12 @@
+{
+  "actual_source_symbol_kinds_by_offset": {
+    "24": 2,
+    "32": 2,
+    "40": 3
+  },
+  "correction": "Validate the actual declared kind at each slot; selected+24 remains a622B function definition and target630 adapter binding.",
+  "finding": "The third source vtable pointer at+40 uses STT_SECTION3, not STT_FUNC2. Its defined executable section is valid; further target behavior remains opaque.",
+  "new_source_sha256": "923f3387dc13dbe04c1bb7607a3471d6463b3f536e88b029a52091b6aeb7007e",
+  "new_target_admission_for_this_precheck": false,
+  "status": "SOURCE_ONLY_PRECHECK_CORRECTION_BEFORE_SECOND_TARGET_ATTEMPT"
+}

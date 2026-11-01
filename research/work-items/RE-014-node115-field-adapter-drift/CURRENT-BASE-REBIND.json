@@ -1,0 +1,17 @@
+{
+  "actual_helper_file_change": "__main__ CLI exception catch also includesstruct.error, not executed byour imports.",
+  "canonical_admission_sha256": "f3154929c42dbc6da7e67339f000eadcc57ed107319f9ae26619d8dd71df0020",
+  "canonical_head": "546081f30a3ebe6af1dadb6f90869f01bd08e1e4",
+  "canonical_tree": "09e856239802e8da97f03d5cf92a1106445aeb3a",
+  "current546_fresh_static_records_sha256": "ac48db86e79b7461e313771ca65028bf8d61d926cbf9ad1054118a879ac4a83b",
+  "elf_index_current_sha256": "b1dac3e12f468d1416839be620573904d55b2f6c4a0dcddb907eedc7c2db014d",
+  "elf_index_old_sha256": "9191b647e2df52bf38bb167267ad4c698b3f7e8f7f324631d86357a2a864dcc7",
+  "full_evaluator_suite_or_CI_authorized": false,
+  "helper_imports_unchanged": true,
+  "old308_source_and_test_byte_identical": true,
+  "program_headers_module_byte_identical": true,
+  "schema": "canonical546-static-import-binding-v1",
+  "source_sha256": "be144319213e86575535976eb9649b963bc720aaa1f47a182c66300db5f7b8b9",
+  "test_sha256": "ae145e3fb0bc7863efd7c1486d06340fbdfcf5fd85c17b293605b4a41b5e4c29",
+  "used_sections_function_AST_identical": true
+}

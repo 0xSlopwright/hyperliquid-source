@@ -1,0 +1,12 @@
+--- a/tools/node115_field_adapter_drift.py
++++ b/tools/node115_field_adapter_drift.py
+@@ -315,6 +315,9 @@
+     for slot, records in dynamic.items():
+         need(len(records) == 1 and records[0]['type'] == 8 and records[0]['symbol_index'] == 0,
+              'target pointer lacks one symbol-free RELATIVE record')
++        raw_slot, slot_offset, slot_section = image.virtual(slot, 8)
++        records[0].update(slot_file_offset=slot_offset, slot_section=slot_section['name'],
++                          raw_slot_hex=raw_slot.hex())
+         image.virtual(records[0]['addend'], 1, code=True)
+     got = dynamic[got_slots[0]][0]
+     need(got['addend'] == ADAPTER_START, 'selected GOT target is not the observed adapter')
