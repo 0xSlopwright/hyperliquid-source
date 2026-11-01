@@ -1,0 +1,144 @@
+{
+  "actual_used_GOT_slot": {
+    "addend": 23620560,
+    "offset": 105775264,
+    "raw_slot_hex": "0000000000000000",
+    "record_file_offset": 1272936,
+    "relocation_section": ".rela.dyn",
+    "slot_file_offset": 105767072,
+    "slot_section": ".got",
+    "symbol_index": 0,
+    "symbol_table_index": 4,
+    "target_section_index": 0,
+    "type": 8
+  },
+  "argv": [
+    "python3",
+    "-B",
+    "tools/node115_field_adapter_drift.py",
+    "--binary",
+    "/tmp/hl-node115-field-drift-546-20261101/checkout/artifacts/node/115/hl-node",
+    "--libcore",
+    "/tmp/hl-rem-rust-1.94.1-20261031/prefix/lib/rustlib/x86_64-unknown-linux-gnu/lib/libcore-e60dd2ab51fbc7de.rlib",
+    "--output",
+    "/tmp/hl-node115-peer-20261101/final-static-546-post-slot/observed"
+  ],
+  "counts": {
+    "adapter_bytes": 630,
+    "adapter_compared_bytes": 0,
+    "literal_refs": 6,
+    "parent_actual_RELA_fields": 9,
+    "parent_bytes": 390,
+    "parent_nonRELA_bytes": 354,
+    "pointers": 3,
+    "source_adapter_bytes": 622,
+    "vtable_bytes": 48
+  },
+  "cwd": "/tmp/hl-node115-field-drift-546-20261101/checkout",
+  "elapsed_seconds": 0.3245814080000855,
+  "environment_overrides": {
+    "GIT_NO_LAZY_FETCH": "1",
+    "GIT_OPTIONAL_LOCKS": "0",
+    "LANG": "C",
+    "LC_ALL": "C",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONHASHSEED": "0",
+    "TMPDIR": "/tmp/hl-node115-peer-20261101/final-static-546-post-slot/tmp"
+  },
+  "exit_code": 0,
+  "git_before_after_equal": {
+    "head": "546081f30a3ebe6af1dadb6f90869f01bd08e1e4",
+    "pins": [
+      {
+        "actual": "999556f6e0a474b8312db96ec3149e1c44e97c23",
+        "path": "references/can1357-hl",
+        "pin": "999556f6e0a474b8312db96ec3149e1c44e97c23"
+      },
+      {
+        "actual": "703f10ed0d49193161a53be7e34086c2117858e8",
+        "path": "upstream/block-importer",
+        "pin": "703f10ed0d49193161a53be7e34086c2117858e8"
+      },
+      {
+        "actual": "d7e66aa751ffbd19bfd2b90fd5d9a3d8f32d99ee",
+        "path": "upstream/contracts",
+        "pin": "d7e66aa751ffbd19bfd2b90fd5d9a3d8f32d99ee"
+      },
+      {
+        "actual": "984357d36a46c95d1426f042e30a3adf2f48e388",
+        "path": "upstream/historical_data",
+        "pin": "984357d36a46c95d1426f042e30a3adf2f48e388"
+      },
+      {
+        "actual": "d0945c699d9d4774417f4355b10744e7cd420df8",
+        "path": "upstream/hyper-evm-sync",
+        "pin": "d0945c699d9d4774417f4355b10744e7cd420df8"
+      },
+      {
+        "actual": "405cc08b17a727ee51b0f9128918955a84439915",
+        "path": "upstream/node",
+        "pin": "405cc08b17a727ee51b0f9128918955a84439915"
+      },
+      {
+        "actual": "8b4f237904f683aca2dba21a07d87e831ead2a97",
+        "path": "upstream/order_book_server",
+        "pin": "8b4f237904f683aca2dba21a07d87e831ead2a97"
+      }
+    ],
+    "status": "?? research/work-items/RE-014-node115-field-adapter-drift/\n?? tests/test_node115_field_adapter_drift.py\n?? tools/node115_field_adapter_drift.py",
+    "tree": "09e856239802e8da97f03d5cf92a1106445aeb3a"
+  },
+  "headroom_before_bytes": 1677008896,
+  "historical_outputs_unmodified": [
+    "/tmp/hl-node115-peer-20261101/final-static/STATIC-REPRODUCTION.json",
+    "/tmp/hl-node115-peer-20261101/final-static/observed/records.json"
+  ],
+  "inherited_environment_trusted_unrecorded": true,
+  "inputs_before_after_equal": {
+    "/tmp/hl-node115-field-drift-546-20261101/checkout/artifacts/node/115/hl-node": {
+      "bytes": 105896032,
+      "sha256": "a6e2897cd051213d004802deca416e8eca62b7a8278fa39f249e98c3867b5301"
+    },
+    "/tmp/hl-rem-rust-1.94.1-20261031/prefix/lib/rustlib/x86_64-unknown-linux-gnu/lib/libcore-e60dd2ab51fbc7de.rlib": {
+      "bytes": 2917630,
+      "sha256": "ca804049dc84fa29d47c1ceb7012c7688a6848b5c858bd598ba484a0652ab256"
+    }
+  },
+  "no_compiler_native_evaluator_or_captured_code_execution": true,
+  "no_module_or_grid_rerun": true,
+  "observed_records": {
+    "bytes": 22901,
+    "path": "/tmp/hl-node115-peer-20261101/final-static-546-post-slot/observed/records.json",
+    "sha256": "ac48db86e79b7461e313771ca65028bf8d61d926cbf9ad1054118a879ac4a83b"
+  },
+  "raw_logs": {
+    "stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "schema": "node115-current546-post-slot-static-peer-v1",
+  "source_helpers_tests_before_after_equal": {
+    "tests/test_node115_field_adapter_drift.py": {
+      "bytes": 17865,
+      "sha256": "ae145e3fb0bc7863efd7c1486d06340fbdfcf5fd85c17b293605b4a41b5e4c29"
+    },
+    "tools/build_provenance.py": {
+      "bytes": 18896,
+      "sha256": "4a0832dc1e2e09c129d69f4e81d44ff4bed8b3422f99d70c7db0ec9b10af61f3"
+    },
+    "tools/elf_index.py": {
+      "bytes": 7626,
+      "sha256": "b1dac3e12f468d1416839be620573904d55b2f6c4a0dcddb907eedc7c2db014d"
+    },
+    "tools/node115_field_adapter_drift.py": {
+      "bytes": 22547,
+      "sha256": "be144319213e86575535976eb9649b963bc720aaa1f47a182c66300db5f7b8b9"
+    }
+  },
+  "status": "PASS_ONE_INDEPENDENT_POST_SLOT_FIX_CURRENT546_STATIC_CLI"
+}

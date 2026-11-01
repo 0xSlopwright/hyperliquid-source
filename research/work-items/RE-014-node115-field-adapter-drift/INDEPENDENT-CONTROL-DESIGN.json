@@ -1,0 +1,83 @@
+{
+  "actions": {
+    "compiler_native_target_or_emulator": false,
+    "new_producer_read": false,
+    "repo_files_edited": false
+  },
+  "expectation_sha256": "a1a19e1cd34f3cb00dc6967eebf57826bb058801f53887b5ec070168e87a583c",
+  "frozen_before_new_producer_read": true,
+  "mutations": [
+    {
+      "expected": "specific referenced data/GOT/vtable relationship refuses below target identity; no fullSHA shortcut",
+      "fields": [
+        93,
+        100,
+        154,
+        207,
+        284,
+        294,
+        309,
+        324,
+        370
+      ],
+      "group": "each actual parent target displacement"
+    },
+    {
+      "expected": "unmasked byte mismatch refuses",
+      "group": "parent non-RELA code"
+    },
+    {
+      "expected": "typed actual4B/source relationship refuses below archive identity",
+      "group": "source serialized RELA kind/addend/offset overlap and valid wrong-symbol r_info"
+    },
+    {
+      "expected": "each referenced literal byte and vtable fixedheader byte8 refuses",
+      "group": "literal/data"
+    },
+    {
+      "expected": "type/symbol/addend and duplicate selectedslot refuse; inspect section entryoffset actual",
+      "group": "target typed RELATIVE"
+    },
+    {
+      "expected": "valid wrong-symbol/kind/addend refuses; no code8B masking",
+      "group": "source three vtable ABS64"
+    },
+    {
+      "expected": "390/630 length/CIE link/exactselectedstart disagreement refuses",
+      "group": "exact indexed metadata"
+    },
+    {
+      "expected": "accepted below-identity newrawSHA with zero comparedbytes/falsemask/falsebehavior; not negative rejection",
+      "group": "opaque630body"
+    },
+    {
+      "expected": "size/digesttarget andarchive refuse before export",
+      "group": "full identities"
+    },
+    {
+      "expected": "FileExistsError before input read; marker preserved",
+      "group": "prior output"
+    }
+  ],
+  "positive": {
+    "actual_fields": 9,
+    "adapter_comparison_credit": 0,
+    "adapter_extent": 630,
+    "field_width": 4,
+    "literal_bytes_with_repetition": 14,
+    "literal_references": 6,
+    "non_RELA_equal_bytes": 354,
+    "official_adapter_extent": 622,
+    "parent_bytes": 390,
+    "pointer_records": 3,
+    "vtable_bytes": 48
+  },
+  "precision": [
+    "No global function/anchor census or absence claim.",
+    "Selected metadata uniqueness is the actually consulted indexed binding, not all unseen entries.",
+    "An opaque630-byte mutation is not fabricated rejection or semantic proof.",
+    "No622-byte mask may be transferred to630 by trim/pad or source622contract.",
+    "Counterfactuals mutate original admitted data only in private in-memory copies, sequentially; no binary disk copies or captured execution."
+  ],
+  "schema": "independent-node115-field-drift-control-plan-v1"
+}
