@@ -24,6 +24,7 @@ import json
 import struct
 import sys
 from pathlib import Path
+from crypto_emulation_guard import run_bounded
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT / "artifacts" / "node" / "94" / "hl-node"
@@ -202,8 +203,8 @@ def count_got_callers(data, segs):
     text = data[text_off : text_off + text_sz]
     mov_n = 0
     ff15_n = 0
-    for i in range(len(text) - 7):
-        if text[i] == 0x48 and text[i + 1] == 0x8B:
+    for i in range(len(text) - 5):
+        if i + 7 <= len(text) and text[i] in (0x48, 0x4C) and text[i + 1] == 0x8B:
             modrm = text[i + 2]
             if (modrm & 0xC7) == 0x05:
                 disp = struct.unpack_from("<i", text, i + 3)[0]
@@ -223,6 +224,8 @@ def unicorn_available():
 
 
 def emulate_compress(data, segs, padded: bytes) -> bytes:
+    if not padded or len(padded) > 128 or len(padded) % 64:
+        raise ValueError("fixture requires 1..2 complete 64-byte blocks")
     from unicorn import Uc, UC_ARCH_X86, UC_MODE_64, UC_PROT_ALL, UcError
     from unicorn.x86_const import (
         UC_X86_REG_RDI,
@@ -265,19 +268,20 @@ def emulate_compress(data, segs, padded: bytes) -> bytes:
     rsp = rsp_base - 8
     mu.mem_write(rsp, struct.pack("<Q", STOP))
 
-    assert len(padded) % 64 == 0
     for i in range(0, len(padded), 64):
         mu.mem_write(STATE, bytes(st))
         mu.mem_write(BLOCK, padded[i : i + 64])
         mu.reg_write(UC_X86_REG_RSP, rsp)
         mu.reg_write(UC_X86_REG_RDI, STATE)
         mu.reg_write(UC_X86_REG_RSI, BLOCK)
-        mu.emu_start(FN, STOP, timeout=10_000_000, count=5_000_000)
+        run_bounded(mu, FN, STOP, code_ranges=((FN, FN_END),),
+                    writable_ranges=((STACK, STACK + 0x100000), (STATE, STATE + 20)),
+                    timeout=10_000_000, count=5_000_000)
         st = bytearray(mu.mem_read(STATE, 20))
     return bytes(st)
 
 
-def analyse(data, check_sha=True, run_emu=True):
+def analyse(data, check_sha=True, run_emu=False):
     if check_sha:
         got = hashlib.sha256(data).hexdigest()
         if got != BINARY_SHA256:
@@ -349,6 +353,8 @@ def analyse(data, check_sha=True, run_emu=True):
     mov_count, ff15_count = count_got_callers(data, segs)
 
     want_emu = bool(run_emu)
+    if want_emu and not unicorn_available():
+        raise RuntimeError("Unicorn is required for explicitly requested captured emulation")
     do_emu = want_emu and unicorn_available()
     emu_skipped = want_emu and not do_emu
     vectors_out = {}
@@ -429,8 +435,8 @@ def expectation_errors(result):
         errs.append("missing GOT RELA for compress")
     if result["location_rela"] is None:
         errs.append("missing Location RELA")
-    if result["got_mov_caller_count"] != 1:
-        errs.append("got_mov_caller_count != 1")
+    if result["got_mov_caller_count"] != 2:
+        errs.append("got_mov_caller_count != 2")
     if result["got_ff15_caller_count"] != 1:
         errs.append("got_ff15_caller_count != 1")
     if not result["finalize_mov_slot_match"]:
@@ -453,11 +459,12 @@ def render(result):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--emulate", action="store_true", help="run captured code only after separate explicit authorization")
     ap.add_argument("--no-emu", action="store_true", help="skip Unicorn behavioural proof")
     ap.add_argument("-o", "--output", type=Path, help="write JSON to path")
     args = ap.parse_args(argv)
     data = TARGET.read_bytes()
-    result = analyse(data, run_emu=not args.no_emu)
+    result = analyse(data, run_emu=args.emulate and not args.no_emu)
     text = render(result)
     errors = expectation_errors(result)
     if args.output:

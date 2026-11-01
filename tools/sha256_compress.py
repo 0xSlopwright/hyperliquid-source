@@ -30,6 +30,7 @@ import json
 import struct
 import sys
 from pathlib import Path
+from crypto_emulation_guard import run_bounded
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT / "artifacts" / "node" / "94" / "hl-node"
@@ -201,12 +202,12 @@ def slot_refs(data, segs):
     else:
         raise KeyError("text load")
     refs = []
-    for i in range(len(text) - 7):
+    for i in range(len(text) - 5):
         b0, b1 = text[i], text[i + 1]
         if b0 == 0xFF and b1 in (0x15, 0x25):
             if TEXT_LOAD_VA + i + 6 + struct.unpack_from("<i", text, i + 2)[0] == GOT_SLOT:
                 refs.append(("call" if b1 == 0x15 else "jmp", TEXT_LOAD_VA + i))
-        elif b0 in (0x48, 0x4C) and b1 == 0x8B and (text[i + 2] & 0xC7) == 0x05:
+        elif i + 7 <= len(text) and b0 in (0x48, 0x4C) and b1 == 0x8B and (text[i + 2] & 0xC7) == 0x05:
             if TEXT_LOAD_VA + i + 7 + struct.unpack_from("<i", text, i + 3)[0] == GOT_SLOT:
                 refs.append(("mov", TEXT_LOAD_VA + i))
     return refs
@@ -220,6 +221,12 @@ def unicorn_available():
 
 def emulate_compress(data, segs, blocks: bytes, nblocks: int, state=SHA256_IV_LE, flag=0):
     """Run 0x4ec9230 with the feature byte forced to `flag`; return BE digest bytes."""
+    if type(nblocks) is not int or not 0 <= nblocks <= 2:
+        raise ValueError("fixture block count must be 0..2")
+    if len(state) != 32 or len(blocks) % 64 or not 64 * nblocks <= len(blocks) <= 128:
+        raise ValueError("fixture state/block lengths outside bounds")
+    if flag not in (0, 1):
+        raise ValueError("fixture permits plain mode or bounded SHA-NI rejection only")
     from unicorn import Uc, UC_ARCH_X86, UC_MODE_64, UC_PROT_ALL, UcError
     from unicorn.x86_const import UC_X86_REG_RDI, UC_X86_REG_RDX, UC_X86_REG_RSI, UC_X86_REG_RSP
 
@@ -257,13 +264,16 @@ def emulate_compress(data, segs, blocks: bytes, nblocks: int, state=SHA256_IV_LE
     mu.reg_write(UC_X86_REG_RDI, STATE)
     mu.reg_write(UC_X86_REG_RSI, BLOCKS)
     mu.reg_write(UC_X86_REG_RDX, nblocks)
-    mu.emu_start(FN, STOP, timeout=30_000_000, count=50_000_000)
+    run_bounded(mu, FN, STOP,
+                code_ranges=((FN, 0x4EC9264), (PLAIN_BODY, FN_END)),
+                writable_ranges=((STACK, STACK + 0x100000), (STATE, STATE + 32)),
+                timeout=30_000_000, count=50_000_000)
     st = bytes(mu.mem_read(STATE, 32))
     # sha2 keeps state as native u32 words; FIPS digests are BE word bytes.
     return b"".join(struct.pack(">I", w) for w in struct.unpack("<8I", st))
 
 
-def analyse(data, check_sha=True, run_emu=True):
+def analyse(data, check_sha=True, run_emu=False):
     if check_sha:
         got = hashlib.sha256(data).hexdigest()
         if got != BINARY_SHA256:
@@ -345,11 +355,13 @@ def analyse(data, check_sha=True, run_emu=True):
     for base, off, filesz, _m in segs:
         if base == TEXT_LOAD_VA:
             text = data[off : off + filesz]
-            for i in range(len(text) - 5):
+            for i in range(len(text) - 4):
                 if text[i] in (0xE8, 0xE9) and TEXT_LOAD_VA + i + 5 + struct.unpack_from("<i", text, i + 1)[0] == FN:
                     direct += 1
 
     want_emu = bool(run_emu)
+    if want_emu and not unicorn_available():
+        raise RuntimeError("Unicorn is required for explicitly requested captured emulation")
     do_emu = want_emu and unicorn_available()
     vectors_out = {}
     for name, (msg, nblocks, digest) in sorted(VECTORS.items()):
@@ -458,10 +470,11 @@ def render(result):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--emulate", action="store_true", help="run captured code only after separate explicit authorization")
     ap.add_argument("--no-emu", action="store_true", help="skip Unicorn behavioural proof")
     ap.add_argument("-o", "--output", type=Path, help="write JSON to path")
     args = ap.parse_args(argv)
-    result = analyse(TARGET.read_bytes(), run_emu=not args.no_emu)
+    result = analyse(TARGET.read_bytes(), run_emu=args.emulate and not args.no_emu)
     text = render(result)
     errors = expectation_errors(result)
     if args.output:

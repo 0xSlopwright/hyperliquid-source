@@ -14,7 +14,8 @@ import sha512_compress as tool  # noqa: E402
 
 OUTPUT_SHA256 = "8cb0c2e8bb4b4da347cf14b3142fcee8a2458275d9adc85550bf780da745e5e4"
 NO_EMU_OUTPUT_SHA256 = "783b671d1ac2ba4497eb611fb4e7b5a576b11ce22619e18d96f35e313964a739"
-HAS_UNICORN = importlib.util.find_spec("unicorn") is not None
+HAS_UNICORN = (os.environ.get("HL_ALLOW_CAPTURED_CRYPTO_EMULATION") == "1"
+               and importlib.util.find_spec("unicorn") is not None)
 
 
 def load(name, path):
@@ -89,7 +90,7 @@ class Sha512CompressTests(unittest.TestCase):
                 name,
             )
 
-    @unittest.skipUnless(HAS_UNICORN, "unicorn not installed")
+    @unittest.skipUnless(HAS_UNICORN, "captured emulation not explicitly enabled or Unicorn absent")
     def test_output_pin_and_expectations(self):
         r = tool.analyse(bytes(DATA), run_emu=True)
         self.assertEqual(tool.expectation_errors(r), [])
@@ -154,7 +155,7 @@ class Sha512CompressTests(unittest.TestCase):
             r = tool.analyse(bytes(DATA), check_sha=False, run_emu=False)
             self.assertTrue(all(kb["match"] for kb in r["key_bytes"]))
 
-    @unittest.skipUnless(HAS_UNICORN, "unicorn not installed")
+    @unittest.skipUnless(HAS_UNICORN, "captured emulation not explicitly enabled or Unicorn absent")
     def test_emu_tamper_prologue_breaks_vector(self):
         with flip(tool.FN):
             r = tool.analyse(bytes(DATA), check_sha=False, run_emu=True)
@@ -163,7 +164,7 @@ class Sha512CompressTests(unittest.TestCase):
                 or tool.expectation_errors(r)
             )
 
-    @unittest.skipUnless(HAS_UNICORN, "unicorn not installed")
+    @unittest.skipUnless(HAS_UNICORN, "captured emulation not explicitly enabled or Unicorn absent")
     def test_exact_counts_emu_byte_identical(self):
         r = tool.analyse(bytes(DATA), run_emu=True)
         self.assertEqual(r["got_mov_caller_count"], 1)

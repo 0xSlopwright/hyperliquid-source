@@ -14,7 +14,8 @@ import chacha12_guts as tool  # noqa: E402
 
 OUTPUT_SHA256 = "146a164a1fbc9be96ede3696385ee093560a303539b890fc68707f6770d9c3ab"
 NO_EMU_OUTPUT_SHA256 = "d3d31f80bfbf74bc86c3fb528853e413e53548025288ca4c0335e07fa569d48b"
-HAS_UNICORN = importlib.util.find_spec("unicorn") is not None
+HAS_UNICORN = (os.environ.get("HL_ALLOW_CAPTURED_CRYPTO_EMULATION") == "1"
+               and importlib.util.find_spec("unicorn") is not None)
 
 
 def load(name, path):
@@ -92,7 +93,7 @@ class ChaCha12GutsTests(unittest.TestCase):
                 name,
             )
 
-    @unittest.skipUnless(HAS_UNICORN, "unicorn not installed")
+    @unittest.skipUnless(HAS_UNICORN, "captured emulation not explicitly enabled or Unicorn absent")
     def test_output_pin_and_expectations(self):
         r = tool.analyse(bytes(DATA), run_emu=True)
         self.assertEqual(tool.expectation_errors(r), [])
@@ -153,14 +154,14 @@ class ChaCha12GutsTests(unittest.TestCase):
             # key_insns still match
             self.assertTrue(all(kb["match"] for kb in r["key_bytes"]))
 
-    @unittest.skipUnless(HAS_UNICORN, "unicorn not installed")
+    @unittest.skipUnless(HAS_UNICORN, "captured emulation not explicitly enabled or Unicorn absent")
     def test_emu_tamper_expand_breaks_vector(self):
         with flip(tool.EXPAND_VA):
             r = tool.analyse(bytes(DATA), check_sha=False, run_emu=True)
             self.assertTrue(any(not v.get("emulated_match", True) for v in r["vectors"].values())
                             or tool.expectation_errors(r))
 
-    @unittest.skipUnless(HAS_UNICORN, "unicorn not installed")
+    @unittest.skipUnless(HAS_UNICORN, "captured emulation not explicitly enabled or Unicorn absent")
     def test_exact_counts_emu_byte_identical(self):
         r = tool.analyse(bytes(DATA), run_emu=True)
         self.assertEqual(r["got_caller_count"], 21)

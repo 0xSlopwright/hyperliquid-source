@@ -18,7 +18,8 @@ OUTPUT_SHA256 = "dc2420392ce8f7ad5f63dbc313b8ddb8095143a91a25eef1e9a2a7663ad78f9
 # EIP-152 outputs without emulated_* fields. Unconditional across environments.
 NO_EMU_OUTPUT_SHA256 = "bf027d6f03afb99a699b8a3def6ccecb026be95f6714d6e61c743ea52aed7ed6"
 
-HAS_UNICORN = importlib.util.find_spec("unicorn") is not None
+HAS_UNICORN = (os.environ.get("HL_ALLOW_CAPTURED_CRYPTO_EMULATION") == "1"
+               and importlib.util.find_spec("unicorn") is not None)
 
 
 def load(name, path):
@@ -99,9 +100,9 @@ class Blake2bCompressTests(unittest.TestCase):
         self.assertEqual(disk["key_insns_count"], 37)
         self.assertEqual(disk["carved_sha256"], tool.CARVED_SHA256)
 
-    @unittest.skipUnless(HAS_UNICORN, "unicorn not installed; emulation tests skipped")
+    @unittest.skipUnless(HAS_UNICORN, "captured emulation not explicitly enabled or Unicorn absent")
     def test_output_pin_and_expectations(self):
-        r = tool.analyse(bytes(DATA))
+        r = tool.analyse(bytes(DATA), run_emu=True)
         self.assertEqual(tool.expectation_errors(r), [])
         text = tool.render(r)
         self.assertEqual(hashlib.sha256(text.encode()).hexdigest(), OUTPUT_SHA256)
@@ -135,7 +136,7 @@ class Blake2bCompressTests(unittest.TestCase):
         self.assertEqual(r["location_path_len"], 102)
         self.assertTrue(r["location_path_match"])
 
-    @unittest.skipUnless(HAS_UNICORN, "unicorn not installed; emulation tests skipped")
+    @unittest.skipUnless(HAS_UNICORN, "captured emulation not explicitly enabled or Unicorn absent")
     def test_exact_counts_emu_byte_identical(self):
         r = tool.analyse(bytes(DATA), run_emu=True)
         self.assertTrue(r["eip152_vectors"]["vector_4_rounds0"]["byte_identical"])
@@ -153,13 +154,13 @@ class Blake2bCompressTests(unittest.TestCase):
         self.assertEqual(len(outs), 1)
         self.assertEqual(hashlib.sha256(outs.pop()).hexdigest(), NO_EMU_OUTPUT_SHA256)
 
-    @unittest.skipUnless(HAS_UNICORN, "unicorn not installed; emulation tests skipped")
+    @unittest.skipUnless(HAS_UNICORN, "captured emulation not explicitly enabled or Unicorn absent")
     def test_seeds_and_optimize_byte_identical(self):
         outs = set()
         for seed, flags in (("0", []), ("7", []), ("99", []), ("0", ["-O"])):
             env = dict(os.environ, PYTHONHASHSEED=seed)
             outs.add(subprocess.run(
-                [sys.executable, "-B", *flags, str(ROOT / "tools" / "blake2b_compress.py")],
+                [sys.executable, "-B", *flags, str(ROOT / "tools" / "blake2b_compress.py"), "--emulate"],
                 env=env, check=True, capture_output=True).stdout)
         self.assertEqual(len(outs), 1)
         self.assertEqual(hashlib.sha256(outs.pop()).hexdigest(), OUTPUT_SHA256)
@@ -193,7 +194,7 @@ class Blake2bCompressTests(unittest.TestCase):
             r = tool.analyse(bytes(DATA), check_sha=False, run_emu=False)
             self.assertNotEqual(r["carved_sha256"], tool.CARVED_SHA256)
 
-    @unittest.skipUnless(HAS_UNICORN, "unicorn not installed; emulation tests skipped")
+    @unittest.skipUnless(HAS_UNICORN, "captured emulation not explicitly enabled or Unicorn absent")
     def test_emu_tamper_iv_breaks_vector(self):
         with flip(0x4E9A8C8, at=4):
             r = tool.analyse(bytes(DATA), check_sha=False, run_emu=True)

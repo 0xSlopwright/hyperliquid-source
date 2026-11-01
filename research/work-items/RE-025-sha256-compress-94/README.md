@@ -1,5 +1,9 @@
 # RE-025: SHA-256 compress @ 0x4ec9230 (node #94)
 
+Review status: the submitted execution receipts below are retained historical evidence.
+The maintainer review performed no captured execution. See [REVIEW.md](REVIEW.md)
+for the static results, corrected harness boundaries, and pending execution gate.
+
 - Component ID: RE-025 (`RE-025-sha256-compress-94`); no `docs/COMPONENTS.md` progress change is claimed
 - Target release and full SHA-256: node #94 `artifacts/node/94/hl-node`, `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`
 - Source commit / reference commit: repository base `308e5127990217a9d6196992665da6ca1afd4b82`; `references/can1357-hl` not consulted; no radare2 revision (r2 not used)
@@ -34,9 +38,9 @@ Without unicorn, everything is static.
 PYTHONHASHSEED=0 python3 -B tools/sha256_compress.py --no-emu -o out.json
 
 # with Unicorn behavioural proof (optional)
-python3 -B tools/sha256_compress.py -o out.json
+python3 -B tools/sha256_compress.py --emulate -o out.json
 
-# packet verify (emu soft-skipped when unicorn missing)
+# packet verify (static by default; --emulate requires authorization)
 python3 -I -B research/work-items/RE-025-sha256-compress-94/verify.py
 python3 -O -B research/work-items/RE-025-sha256-compress-94/verify.py
 

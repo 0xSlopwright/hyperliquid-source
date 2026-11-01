@@ -25,6 +25,7 @@ import json
 import struct
 import sys
 from pathlib import Path
+from crypto_emulation_guard import run_bounded
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT / "artifacts" / "node" / "94" / "hl-node"
@@ -185,7 +186,7 @@ def count_got_callers(data, segs):
     text = data[text_off:text_off + text_sz]
     n = 0
     i = 0
-    while i < len(text) - 6:
+    while i <= len(text) - 6:
         if text[i] == 0xFF and text[i + 1] == 0x15:
             disp = struct.unpack_from("<i", text, i + 2)[0]
             if text_va + i + 6 + disp == GOT_SLOT:
@@ -200,6 +201,10 @@ def unicorn_available():
 
 
 def emulate_block(data, segs, ndr, key32, counter0, nonce64):
+    if type(ndr) is not int or not 0 <= ndr <= 10 or len(key32) != 32:
+        raise ValueError("fixture requires 32-byte material and 0..10 double-rounds")
+    if any(type(v) is not int or not 0 <= v < 1 << 64 for v in (counter0, nonce64)):
+        raise ValueError("fixture counter and nonce must be u64")
     from unicorn import Uc, UC_ARCH_X86, UC_MODE_64, UC_PROT_ALL, UcError
     from unicorn.x86_const import (
         UC_X86_REG_RDI, UC_X86_REG_RSI, UC_X86_REG_RDX, UC_X86_REG_RSP,
@@ -245,13 +250,15 @@ def emulate_block(data, segs, ndr, key32, counter0, nonce64):
     mu.reg_write(UC_X86_REG_RDI, STATE)
     mu.reg_write(UC_X86_REG_RSI, ndr)
     mu.reg_write(UC_X86_REG_RDX, OUT)
-    mu.emu_start(FN, STOP, timeout=5_000_000, count=2_000_000)
+    run_bounded(mu, FN, STOP, code_ranges=((FN, FN_END),),
+                writable_ranges=((STACK, STACK + 0x100000), (STATE, STATE + 48), (OUT, OUT + 256)),
+                timeout=5_000_000, count=2_000_000)
     out = bytes(mu.mem_read(OUT, 256))
     ctr_after = struct.unpack_from("<Q", bytes(mu.mem_read(STATE + 32, 8)))[0]
     return out, ctr_after
 
 
-def analyse(data, check_sha=True, run_emu=True):
+def analyse(data, check_sha=True, run_emu=False):
     if check_sha:
         got = hashlib.sha256(data).hexdigest()
         if got != BINARY_SHA256:
@@ -289,6 +296,8 @@ def analyse(data, check_sha=True, run_emu=True):
     caller_count = count_got_callers(data, segs)
 
     want_emu = bool(run_emu)
+    if want_emu and not unicorn_available():
+        raise RuntimeError("Unicorn is required for explicitly requested captured emulation")
     do_emu = want_emu and unicorn_available()
     emu_skipped = want_emu and not do_emu
     vectors_out = {}
@@ -405,11 +414,12 @@ def render(result):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--emulate", action="store_true", help="run captured code only after separate explicit authorization")
     ap.add_argument("--no-emu", action="store_true", help="skip Unicorn behavioural proof")
     ap.add_argument("-o", "--output", type=Path, help="write JSON to path")
     args = ap.parse_args(argv)
     data = TARGET.read_bytes()
-    result = analyse(data, run_emu=not args.no_emu)
+    result = analyse(data, run_emu=args.emulate and not args.no_emu)
     text = render(result)
     errors = expectation_errors(result)
     if args.output:

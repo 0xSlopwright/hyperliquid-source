@@ -1,5 +1,9 @@
 # RE-021-blake2b-compress-94
 
+Review status: the submitted execution receipts below are retained historical evidence.
+The maintainer review performed no captured execution. See [REVIEW.md](REVIEW.md)
+for the static results, corrected harness boundaries, and pending execution gate.
+
 Standalone packet. `tools/blake2b_compress.py` builds `blake2b-compress.json` from node #94 bytes (Python standard library + optional `unicorn` for behavioural proof; no objdump/pyelftools).
 
 Finding (bytes + emulation): `0x4e9a8a0` is the BLAKE2b compression function F used by revm-precompile 16.0.0 (`src/blake2.rs` Location pin). ABI `(rounds, h, m, t, f)` = `(rdi, rsi, rdx, rcx, r8)`. All eight IV `movabs` immediates, the final-block `~IV[6]` `cmovne`, the rounds==0 early path, the SIGMA u64 table at `0x7c4a90`, and G-function rotates `rol 0x20/0x28/0x30/1` (eight of each) are pinned. Behavioural proof runs the **carved function bytes** under Unicorn on official EIP-152 vectors (vector 4 rounds=0, vector 5 rounds=12, plus vectors 6 and 7); outputs are byte-identical to the EIP.
@@ -11,7 +15,7 @@ HyperEVM precompile address `0x09` wiring is **statically shown**: precompile ob
 ```
 python3 -m venv .venv && .venv/bin/pip install unicorn
 Emulation tests (`test_output_pin_and_expectations`, seed full-JSON,
-`test_emu_tamper_iv_breaks_vector`, `test_exact_counts_emu_byte_identical`) run only when `unicorn` is importable (`unittest.skipUnless`); static pins and `--no-emu` JSON hash always run.
+`test_emu_tamper_iv_breaks_vector`, `test_exact_counts_emu_byte_identical`) run only after separate explicit authorization, with `HL_ALLOW_CAPTURED_CRYPTO_EMULATION=1` and `unicorn` importable; static pins and `--no-emu` JSON hash always run.
 .venv/bin/python -I -B research/work-items/RE-021-blake2b-compress-94/verify.py
 .venv/bin/python -O -B research/work-items/RE-021-blake2b-compress-94/verify.py
 .venv/bin/python -I -B research/work-items/RE-021-blake2b-compress-94/independent_verify.py

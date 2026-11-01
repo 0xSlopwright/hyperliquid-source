@@ -15,7 +15,8 @@ import sha256_compress as tool  # noqa: E402
 
 OUTPUT_SHA256 = "9dd7fda7ac294318790f69c971d3caaa1fef82abe09b0637897834692b0d9d27"
 NO_EMU_OUTPUT_SHA256 = "9d931ebabf18dfaf49b329da7cb50f77d4d1303066480a01a4ca55a0942376cc"
-HAS_UNICORN = importlib.util.find_spec("unicorn") is not None
+HAS_UNICORN = (os.environ.get("HL_ALLOW_CAPTURED_CRYPTO_EMULATION") == "1"
+               and importlib.util.find_spec("unicorn") is not None)
 TOOL = str(ROOT / "tools" / "sha256_compress.py")
 
 DATA = bytearray(tool.TARGET.read_bytes()) if tool.TARGET.exists() else None
@@ -163,7 +164,7 @@ class Sha256CompressStaticTests(unittest.TestCase):
                 tool.analyse(bytes(DATA), check_sha=True, run_emu=False)
 
 
-@unittest.skipIf(DATA is None or not HAS_UNICORN, "binary or unicorn missing")
+@unittest.skipIf(DATA is None or not HAS_UNICORN, "binary missing or captured emulation not explicitly enabled")
 class Sha256CompressEmuTests(unittest.TestCase):
     def test_output_pin_and_expectations(self):
         r = tool.analyse(bytes(DATA), run_emu=True)
@@ -196,7 +197,7 @@ class Sha256CompressEmuTests(unittest.TestCase):
     def test_shani_branch_not_executable_under_unicorn(self):
         from unicorn import UcError
 
-        with self.assertRaises(UcError):
+        with self.assertRaisesRegex(ValueError, "escaped allowed range"):
             emu(tool.pad(ABC[0]), 1, flag=1)
 
 

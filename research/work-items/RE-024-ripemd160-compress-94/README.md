@@ -1,5 +1,9 @@
 # RE-024: RIPEMD-160 compress @ 0x4ea55f0 (node #94)
 
+Review status: the submitted execution receipts below are retained historical evidence.
+The maintainer review performed no captured execution. See [REVIEW.md](REVIEW.md)
+for the static results, corrected harness boundaries, and pending execution gate.
+
 - Component ID: RE-024 (`RE-024-ripemd160-compress-94`); no `docs/COMPONENTS.md` progress change is claimed
 - Target release and full SHA-256: node #94 `artifacts/node/94/hl-node`, `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`
 - Source commit / reference commit: repository base `1f8c67c63ca4794c9689235471c60297f8a5c985`; `references/can1357-hl` pinned at `999556f6e0a474b8312db96ec3149e1c44e97c23` (not consulted); no radare2 revision (r2 not used)
@@ -36,9 +40,9 @@ PYTHONHASHSEED=0 python3 -B tools/ripemd160_compress.py --no-emu \
   -o out.json
 
 # with Unicorn behavioural proof (optional)
-python3 -B tools/ripemd160_compress.py -o out.json
+python3 -B tools/ripemd160_compress.py --emulate -o out.json
 
-# packet verify (emu soft-skipped when unicorn missing)
+# packet verify (static by default; --emulate requires authorization)
 python3 -I -B research/work-items/RE-024-ripemd160-compress-94/verify.py
 python3 -O -B research/work-items/RE-024-ripemd160-compress-94/verify.py
 
@@ -591,7 +595,7 @@ are stored LE (matching hashlib / ISO/IEC 10118-3 RIPEMD-160 byte order).
 
 Packet JSON `ripemd160-compress.json` sha256 `6167af924de2bbdb68943119ea66c3866448fa024b20992a10cd9bdd7ecefb43`.
 Carved compress sha256 `9da4dd9d6f7ad3288ba0fafbc8323f441ff24d39bef6e9deb5922fa7c5e9303c`; GOT `0x5776fb0` RELA
-`r_info 0x8` addend `0x4ea55f0`; GOT mov consumers 1, ff15 consumers 1; key instructions 8.
+`r_info 0x8` addend `0x4ea55f0`; Corrected GOT MOV references 2, FF15 references 1 (see REVIEW.md; archived JSON retains count1); key instructions 8.
 Analysis was limited to the ranges above and completed (no timeout).
 
 ## Implementation and comparison

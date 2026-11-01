@@ -1,5 +1,9 @@
 # RE-022-chacha12-guts-94
 
+Review status: the submitted execution receipts below are retained historical evidence.
+The maintainer review performed no captured execution. See [REVIEW.md](REVIEW.md)
+for the static results, corrected harness boundaries, and pending execution gate.
+
 Standalone packet. `tools/chacha12_guts.py` builds `chacha12-guts.json` from node #94 bytes (Python standard library + optional `unicorn` for behavioural proof; no objdump/pyelftools).
 
 Finding (bytes + emulation): `0x4e13780` is an SSE4x ChaCha block. ABI `(state, double_rounds, out)` = `(rdi, esi, rdx)` with 48-byte DJB state (32-byte material||counter64||nonce64) and 256-byte sequential 4-block output. The GOT-exported wrapper `0x4e14560` (slot `0x576e900`) tests flag bits loaded via `[0x576e350]`; one branch tail-jumps (`e9` @ `0x4e14db7`) to FN. A refill caller at `0x13c9ed2` passes `esi=6` (ChaCha12) and consumes `0x100` bytes. A Location string at `0x1e6959` (len 95, sha256-pinned) ends with `rand_chacha-0.3.1/src/guts.rs`; that plus the code shape is the crate link (no pinned xref from FN or the wrapper to `0x1e6959`). Behavioural proof runs the **real function bytes** under Unicorn on ChaCha20/12/8 reference vectors (ndr=10/6/4); outputs are byte-identical and the in-state counter advances by 4.
@@ -7,7 +11,7 @@ Finding (bytes + emulation): `0x4e13780` is an SSE4x ChaCha block. ABI `(state, 
 ## Rerun
 
 Emulation tests (`test_output_pin_and_expectations`,
-`test_emu_tamper_expand_breaks_vector`, `test_exact_counts_emu_byte_identical`) run only when `unicorn` is importable (`unittest.skipUnless`); static pins and `--no-emu` JSON hash always run. `verify.py` under bare `python3` (no unicorn) runs static checks, reports `emu=skipped`, and exits 0 when those pass; with unicorn it matches the committed full JSON.
+`test_emu_tamper_expand_breaks_vector`, `test_exact_counts_emu_byte_identical`) run only after separate explicit authorization, with `HL_ALLOW_CAPTURED_CRYPTO_EMULATION=1` and `unicorn` importable; static pins and `--no-emu` JSON hash always run. `verify.py` under bare `python3` (no unicorn) runs static checks, reports `emu=skipped`, and exits 0 when those pass; with explicit `--emulate` after authorization it matches the committed full JSON.
 
 ```
 python3 -m venv .venv && .venv/bin/pip install unicorn

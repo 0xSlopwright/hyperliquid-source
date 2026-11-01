@@ -28,6 +28,7 @@ import json
 import struct
 import sys
 from pathlib import Path
+from crypto_emulation_guard import run_bounded
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT / "artifacts" / "node" / "94" / "hl-node"
@@ -194,9 +195,9 @@ def count_rol_immediates(data: bytes, segs) -> dict:
     blob = read_va(data, segs, FN, FN_END - FN)
     counts = {"0x20": 0, "0x28": 0, "0x30": 0, "1": 0}
     i = 0
-    while i + 3 < len(blob):
+    while i + 2 < len(blob):
         b0, b1, b2 = blob[i], blob[i + 1], blob[i + 2]
-        if b0 in (0x48, 0x49) and b1 == 0xC1 and (b2 & 0xF8) == 0xC0:
+        if i + 4 <= len(blob) and b0 in (0x48, 0x49) and b1 == 0xC1 and (b2 & 0xF8) == 0xC0:
             imm = blob[i + 3]
             if imm == 0x20:
                 counts["0x20"] += 1
@@ -227,6 +228,10 @@ def parse_eip152_input(inp: bytes):
 
 def emulate_carved(data: bytes, segs, rounds: int, h: bytes, m: bytes, t: bytes, f: int) -> bytes:
     """Run the carved function bytes under Unicorn. Proof of THIS binary's code."""
+    if type(rounds) is not int or not 0 <= rounds <= 12 or f not in (0, 1):
+        raise ValueError("fixture rounds must be 0..12 and final flag 0/1")
+    if tuple(map(len, (h, m, t))) != (64, 128, 16):
+        raise ValueError("fixture state/block/counter lengths must be 64/128/16")
     try:
         from unicorn import Uc, UC_ARCH_X86, UC_MODE_64, UcError
         from unicorn.x86_const import (
@@ -286,7 +291,9 @@ def emulate_carved(data: bytes, segs, rounds: int, h: bytes, m: bytes, t: bytes,
         UC_X86_REG_R12, UC_X86_REG_R13, UC_X86_REG_R14, UC_X86_REG_R15,
     ):
         mu.reg_write(reg, 0)
-    mu.emu_start(FN, STOP, timeout=10_000_000)
+    run_bounded(mu, FN, STOP, code_ranges=((FN, FN_RET + 1),),
+                writable_ranges=((STACK, STACK + 0x20000), (H_ADDR, H_ADDR + 64)),
+                timeout=10_000_000, count=2_000_000)
     return bytes(mu.mem_read(H_ADDR, 64))
 
 
@@ -367,7 +374,7 @@ def wiring_pins(data: bytes, segs) -> dict:
     }
 
 
-def analyse(data: bytes, check_sha: bool = True, run_emu: bool = True) -> dict:
+def analyse(data: bytes, check_sha: bool = True, run_emu: bool = False) -> dict:
     if check_sha:
         got = hashlib.sha256(data).hexdigest()
         if got != BINARY_SHA256:
@@ -534,10 +541,11 @@ def render(result: dict) -> str:
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--binary", type=Path, default=TARGET)
+    ap.add_argument("--emulate", action="store_true", help="run captured code only after separate explicit authorization")
     ap.add_argument("--no-emu", action="store_true")
     args = ap.parse_args(argv)
     data = args.binary.read_bytes()
-    result = analyse(data, run_emu=not args.no_emu)
+    result = analyse(data, run_emu=args.emulate and not args.no_emu)
     text = render(result)
     sys.stdout.write(text)
     errs = expectation_errors(result)
