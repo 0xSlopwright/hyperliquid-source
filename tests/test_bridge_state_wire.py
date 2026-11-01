@@ -122,6 +122,78 @@ class Decode(unittest.TestCase):
         self.assertNotEqual(self.run_case(tool.wire(state)), ("ok", tool.pack(tool.bridge_shape(state), 0).hex()))
 
 
+class MultiplyOverflow(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.image = tool.load_image()
+
+    def test_native_decimal_imul_drives_jo(self):
+        # These instruction starts/bytes were checked against native objdump.
+        for va in (0x1515000, 0x151A6FF):
+            imul = tool.row_at(self.image, va)
+            jump = tool.row_at(self.image, imul.next)
+            self.assertEqual((imul.op, imul.width), ("imul3" if va == 0x1515000 else "imul2", 8))
+            self.assertEqual((jump.op, jump.cc), ("jcc", 0))
+            for value in ((2**63 - 1) // 10, (2**63 - 1) // 10 + 1,
+                          -(2**63 // 10), -(2**63 // 10) - 1):
+                with self.subTest(va=hex(va), value=value):
+                    machine = tool.Machine(self.image)
+                    if imul.op == "imul3":
+                        machine.regs[tool.RSI] = value & tool.MASK[8]
+                    else:
+                        machine.regs[tool.RAX] = value & tool.MASK[8]
+                        machine.regs[tool.R8] = tool.STACK_TOP - 0x40
+                        machine.regs[tool.RDX] = 0
+                        machine.memory.write(tool.STACK_TOP - 0x40, 8, 10)
+                    overflow = not -(2**63) <= value * 10 < 2**63
+                    machine.cf = machine.of = not overflow
+                    machine.step(imul)
+                    self.assertEqual((machine.cf, machine.of), (overflow, overflow))
+                    self.assertEqual(machine.step(jump), jump.target if overflow else jump.next)
+
+    def test_signed_imul_operand_widths_and_flag_clearing(self):
+        # Independently encoded instructions; only the Python model is run.
+        for prefix, width in ((b"\x66", 2), (b"", 4), (b"\x48", 8)):
+            for tail, op in ((bytes.fromhex("6bf60a"), "imul3"),
+                             (bytes.fromhex("0faff7"), "imul2")):
+                raw = prefix + tail + b"\x90" * 16
+                ins = tool.decode(lambda va, count: raw[va:va + count], 0)
+                self.assertEqual((ins.op, ins.width), (op, width))
+                bound = 1 << (8 * width - 1)
+                for a, b in ((0, 10), ((bound - 1) // 10, 10),
+                             ((bound - 1) // 10 + 1, 10), (-bound, -1)):
+                    if op == "imul3" and b != 10:
+                        continue
+                    with self.subTest(width=width, op=op, a=a, b=b):
+                        machine = tool.Machine(self.image)
+                        machine.regs[tool.RSI] = a & tool.MASK[width]
+                        machine.regs[tool.RDI] = b & tool.MASK[width]
+                        overflow = not -bound <= a * b < bound
+                        machine.cf = machine.of = not overflow
+                        machine.step(ins)
+                        self.assertEqual(machine.regs[tool.RSI] & tool.MASK[width], a * b & tool.MASK[width])
+                        self.assertEqual((machine.cf, machine.of), (overflow, overflow))
+
+    def test_wrapping_year_is_rejected_by_all_decoder_copies(self):
+        rows = tool.field_rows(tool.State())
+        for entry in (tool.DECODE_ROOT,) + tool.DECODE_COPIES:
+            for year in (2**64, 2**64 + 1, 2**64 + 2023):
+                text = f"+{year}-11-14T22:13:20"
+                fields = tool.tracker_edit(rows, "finished_withdrawal_to_time",
+                                          lambda _: [[tool.un_shape((55, tool.USER)), text]])
+                case = tool.De("wrapping_year", tool.pack(tool.Pairs(*fields), 1), None, entry)
+                with self.subTest(entry=hex(entry), year=year):
+                    self.assertEqual(tool.Harness(self.image).decode(case),
+                                     ("error", 6, "input is out of range"))
+
+    def test_valid_explicit_year_retains_its_value(self):
+        state = tool.State(times=[((55, tool.USER), (2023, 318, 80000, 0))])
+        fields = tool.tracker_edit(tool.field_rows(tool.State()), "finished_withdrawal_to_time",
+                                  lambda _: [[tool.un_shape((55, tool.USER)), "+2023-11-14T22:13:20"]])
+        case = tool.De("valid_year", tool.pack(tool.Pairs(*fields), 1), None)
+        self.assertEqual(tool.Harness(self.image).decode(case), tool.ok(state))
+
+
 class Stored(unittest.TestCase):
     def test_manifest_matches_files(self):
         for line in (FOLDER / "MANIFEST.sha256").read_text().splitlines():

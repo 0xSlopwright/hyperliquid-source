@@ -99,7 +99,7 @@ Not yet implemented. No Rust is added. A byte-exact implementation needs the rul
 - 2 decoder copies match the same rules on the light case set in `copies.tsv`.
 - 190 sampled byte edits (one in 6 of condition and immediate rows): 148 killed, 42 survived,
   and survivors carry a class label only, they are not read one by one.
-- Tests: 20 pass with negative controls for the digest, a misaligned address, an edited status immediate, a wrong
+- Tests: 24 pass with negative controls for the digest, a misaligned address, an edited status immediate, a wrong
   rule, a wrong sort and stored files.
 
 Limits:
@@ -112,3 +112,28 @@ Limits:
 
 Next question: which caller sets the named flag for `0x3753600`, and do the JSON writers `0x2215860`, `0x374b450`
 agree with this field order.
+
+## Review correction: signed multiply overflow
+
+The original PR #1052 head `14b2c29154e350d8902b29cd49b834f483a5429c` left CF and OF
+unchanged for two- and three-operand IMUL. The native decimal parser has
+`imul rsi,rsi,10` at `0x1515000` followed by `jo` at `0x1515004`; the scaling path
+has `imul rax,[r8+rdx*8]` at `0x151a6ff` followed by `jo` at `0x151a704`.
+Both are 64-bit instructions. GNU objdump 2.47.20260726 independently confirmed
+their instruction starts, bytes and operands, bound to the target digest above.
+
+The submitted evaluator accepted `+18446744073709553639-11-14T22:13:20` and
+round-tripped it as year 2023 because its signed multiply wrapped. The corrected
+Python evaluator sets CF/OF from the signed full product at the decoded operand
+width and takes the native overflow branch, returning `input is out of range`.
+`review-original-overflow.json` retains the original acceptance and corrected
+abstract result; no captured target was executed. `original-submission/` keeps
+the source, tests, README, manifest and all original exports with hash binding.
+
+Four added tests check the two native IMUL/JO pairs on both sides of overflow,
+independently encoded 16-, 32- and 64-bit signed multiply boundaries and flag
+clearing, overflowing years through all three decoder copies, and unchanged
+acceptance of `+2023`. These are controls of the Python evaluator against the
+native operands, not a captured-node differential run. `review-regeneration.json`
+compares each original export with a fresh corrected generation. The Bridge2
+schema and valid original fixtures are unchanged.

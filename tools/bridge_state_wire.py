@@ -823,7 +823,14 @@ class Machine:
             self.regs[RDX] = product >> 64
             self.cf = self.of = self.regs[RDX] != 0
         elif op == "imul3":
-            self.put(row.a, width, self.get(row.b, width) * row.target)
+            bits = 8 * width
+            left = self.get(row.b, width)
+            right = row.target & MASK[width]
+            left -= (left >> (bits - 1)) << bits
+            right -= (right >> (bits - 1)) << bits
+            product = left * right
+            self.cf = self.of = not -SIGN[width] <= product < SIGN[width]
+            self.put(row.a, width, product)
         elif op in ("shl", "shr", "sar"):
             count = (self.regs[RCX] if row.b[0] == "r" else row.b[1]) & (63 if width == 8 else 31)
             value = self.get(row.a, width)
@@ -850,7 +857,13 @@ class Machine:
         elif op == "cdqe":
             self.regs[RAX] = (self.regs[RAX] & MASK[4]) | (MASK[8] ^ MASK[4] if self.regs[RAX] & SIGN[4] else 0)
         elif op == "imul2":
-            self.put(row.a, width, self.get(row.a, width) * self.get(row.b, width))
+            bits = 8 * width
+            left, right = self.get(row.a, width), self.get(row.b, width)
+            left -= (left >> (bits - 1)) << bits
+            right -= (right >> (bits - 1)) << bits
+            product = left * right
+            self.cf = self.of = not -SIGN[width] <= product < SIGN[width]
+            self.put(row.a, width, product)
         elif op == "nop":
             pass
         elif op == "bswap":
