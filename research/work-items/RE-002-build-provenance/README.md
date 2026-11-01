@@ -95,12 +95,12 @@ Selected #94 versions (exact, from registry paths): `revm 19.2.0`, `revm-interpr
 
 | Fork | #94 | #115 | visor | Base version |
 | --- | --- | --- | --- | --- |
-| hyper-fork | local path, 198 occ. | `z_forks`, 200 occ. | `z_forks` | unknown |
-| hyper-tls-fork | local path | `z_forks` | `z_forks` | unknown |
-| bincode-fork | local path | `z_forks` | absent | unknown |
-| hyper-alloy-core-fork | local path, 6 occ. | absent | absent | unknown |
+| hyper-fork | local path, 198 occ. | `z_forks`, 200 occ. | `z_forks` | 0.14.16 (inferred, [fork bases](../RE-002-fork-bases/README.md)) |
+| hyper-tls-fork | local path | `z_forks` | `z_forks` | 0.5.0 (inferred, two points) |
+| bincode-fork | local path | `z_forks` | absent | 2.0.0 or 2.0.1 (inferred) |
+| hyper-alloy-core-fork | local path, 6 occ. | absent | absent | alloy-core 0.8.20–0.8.26 (inferred) |
 | reth | git `reth-e231042ee7db3fb7` rev `3212af2` | `z_forks/reth-{chainspec, ethereum-forks, rpc-eth-types, rpc-server-types}` | absent | #94 short rev `3212af2` only |
-| revm-precompile | crates.io `16.0.0` | `z_forks/revm-precompile`, 12 occ. | absent | unknown in #115 |
+| revm-precompile | crates.io `16.0.0` | `z_forks/revm-precompile`, 12 occ. | absent | #115: 35.0.0–41.0.1 (inferred) |
 
 The checkout directory hash `e231042ee7db3fb7` is Cargo's hash of the git URL, so it identifies the URL only for someone who already knows the URL.
 
@@ -137,7 +137,7 @@ This plan describes the build for anyone who has the source. It has not been run
 | `opt_level` | A rebuild of a known function at each opt level, compared by instruction pattern |
 | `lto` | Cross-crate inlining evidence, or a matched rebuild |
 | `codegen_units` | Function order and partitioning in a matched rebuild |
-| `overflow_checks` | Callers of the core overflow panic helpers inside first-party code |
+| `overflow_checks` | Resolved as inferred `true` for all crates with arithmetic sites in [fork bases](../RE-002-fork-bases/README.md); profile-wide vs `package."*"` remains open |
 | `target_cpu_features` | Unconditional AVX or BMI use outside runtime-dispatched paths |
 | `frame_pointers` | A prologue survey over FDE-bounded functions |
 | `rustflags` | The original build config |
@@ -148,7 +148,7 @@ This plan describes the build for anyone who has the source. It has not been run
 Two more questions are open:
 
 - The `clang version 2x.1.0-rc2` stamps match the toolchain's LLVM major version, not Ubuntu 24.04's packaged clang. They may come from C objects in the Rust toolchain itself. Which input object carries them is not checked.
-- The base versions of every fork are unknown.
+- Fork base versions: see [fork bases](../RE-002-fork-bases/README.md). The #115 `reth-*` fork bases are still unknown.
 
 The [stock Rust carrier investigation](../RE-002-std-clang-carriers/EVIDENCE.md)
 now records signed-distribution comment carriers and a code-compatible builtin
