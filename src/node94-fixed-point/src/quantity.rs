@@ -65,6 +65,7 @@ macro_rules! raw_quantity {
 }
 
 raw_quantity!(Wei, u64);
+raw_quantity!(InternalAmount, u64);
 raw_quantity!(Price, u64);
 raw_quantity!(Notional, u64);
 raw_quantity!(BigNotional, u128);

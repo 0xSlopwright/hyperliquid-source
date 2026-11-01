@@ -6,15 +6,17 @@
 #![forbid(unsafe_code)]
 
 mod arithmetic;
+mod evm;
 mod quantity;
 mod scale;
 mod spot_wire;
 mod tick;
 
 pub use arithmetic::{ArithmeticOutcome, ArithmeticStatus};
+pub use evm::{EvmAmountError, INTERNAL_AMOUNT_EXCLUSIVE_MAX, U256, evm_amount_to_internal};
 pub use quantity::{
-    AdmissionError, BigNotional, Notional, Price, QuantityKind, SignedNotional, SignedSize, Size,
-    Wei,
+    AdmissionError, BigNotional, InternalAmount, Notional, Price, QuantityKind, SignedNotional,
+    SignedSize, Size, Wei,
 };
 pub use scale::{ScaleError, TokenDecimals, checked_pow10};
 pub use spot_wire::{SpotWireError, parse_spot_wire_price, parse_spot_wire_size};
