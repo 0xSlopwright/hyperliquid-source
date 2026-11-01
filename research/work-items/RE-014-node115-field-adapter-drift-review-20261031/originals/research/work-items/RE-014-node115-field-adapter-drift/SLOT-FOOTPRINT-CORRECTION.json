@@ -1,0 +1,8 @@
+{
+  "actual_before_proof_sha256": "b11201e3ddc8c1590860f898eae5e4b45946259809bc7dc298b7cb6684e9402e",
+  "after_source_sha256": "be144319213e86575535976eb9649b963bc720aaa1f47a182c66300db5f7b8b9",
+  "before_source_sha256": "a4106b0baaaf2576771fa64bc506f4be93b832682192a84c68e559472d393fdd",
+  "correction": "Map/read every used pointer slot8bytes through unique file-backed section and PT_LOAD before accepting itsRELATIVE addend. Recordactualslotfileoffset/section/rawbytes. No new nominalsection or ABI requirement.",
+  "finding": "SelectedGOTpointer slot footprint was not independently mapped; validaddend mapping alone did not enclose the actual8B read.",
+  "opaque_valid_mapped_addend_acceptance_remains": true
+}

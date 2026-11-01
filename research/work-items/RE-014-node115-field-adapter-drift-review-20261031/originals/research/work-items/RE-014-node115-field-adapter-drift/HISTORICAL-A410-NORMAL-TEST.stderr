@@ -1,0 +1,15 @@
+test_actual_literal_bytes_and_vtable_fixed_header_are_not_masked (test_node115_field_adapter_drift.ActualNode115Bindings.test_actual_literal_bytes_and_vtable_fixed_header_are_not_masked) ... ok
+test_actual_parent_fields_data_and_exact_selected_extents (test_node115_field_adapter_drift.ActualNode115Bindings.test_actual_parent_fields_data_and_exact_selected_extents) ... ok
+test_generate_reproduces_the_same_bounded_record (test_node115_field_adapter_drift.ActualNode115Bindings.test_generate_reproduces_the_same_bounded_record) ... ok
+test_opaque_changes_stay_unqualified_and_never_transfer_622_mask (test_node115_field_adapter_drift.ActualNode115Bindings.test_opaque_changes_stay_unqualified_and_never_transfer_622_mask) ... ok
+test_real_fde_extent_cie_binding_and_duplicate_selected_index_refuse (test_node115_field_adapter_drift.ActualNode115Bindings.test_real_fde_extent_cie_binding_and_duplicate_selected_index_refuse) ... ok
+test_real_source_rela_shapes_and_defined_wrong_symbols_refuse (test_node115_field_adapter_drift.ActualNode115Bindings.test_real_source_rela_shapes_and_defined_wrong_symbols_refuse) ... ok
+test_real_typed_pointer_records_and_selected_adapter_links_refuse (test_node115_field_adapter_drift.ActualNode115Bindings.test_real_typed_pointer_records_and_selected_adapter_links_refuse) ... ok
+test_unmasked_parent_byte_and_each_real_target_displacement_refuse (test_node115_field_adapter_drift.ActualNode115Bindings.test_unmasked_parent_byte_and_each_real_target_displacement_refuse) ... ok
+test_existing_output_precedes_input_reads_and_failures_export_nothing (test_node115_field_adapter_drift.AdmissionAndPublicationControls.test_existing_output_precedes_input_reads_and_failures_export_nothing) ... ok
+test_wrong_full_input_identities_are_not_evidence (test_node115_field_adapter_drift.AdmissionAndPublicationControls.test_wrong_full_input_identities_are_not_evidence) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 5.943s
+
+OK
