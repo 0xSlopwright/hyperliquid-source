@@ -49,4 +49,77 @@ The full repo test suite (one `unittest discover` over about 5,000 tests) needs 
 
 ### Targeted checks (commands + output)
 
-PENDING — to be filled with exact commands and output once the heavy slot is free (ASI run has it first).
+All checks below ran at head `e7ed47ba`. Output is verbatim; the full repository suite was not run (see above).
+
+head `e7ed47ba`:
+
+```text
+$ .venv/bin/python -I -B research/work-items/RE-036-token-full-name-len-94/verify.py
+verify: key_insns=15 strings=2 direct_calls=1 errors=0
+[exit 0]
+```
+
+head `e7ed47ba`:
+
+```text
+$ .venv/bin/python -O -B research/work-items/RE-036-token-full-name-len-94/verify.py
+verify: key_insns=15 strings=2 direct_calls=1 errors=0
+[exit 0]
+```
+
+head `e7ed47ba`:
+
+```text
+$ .venv/bin/python -I -B research/work-items/RE-036-token-full-name-len-94/independent_verify.py
+PASS carve=64084d429162ad92 e8=1 strings=2 key_insns=15
+[exit 0]
+```
+
+head `e7ed47ba`:
+
+```text
+$ .venv/bin/python -O -B research/work-items/RE-036-token-full-name-len-94/independent_verify.py
+PASS carve=64084d429162ad92 e8=1 strings=2 key_insns=15
+[exit 0]
+```
+
+head `e7ed47ba`:
+
+```text
+$ .venv/bin/python -m unittest tests.test_token_full_name_len -v
+test_committed_json_pins (tests.test_token_full_name_len.TokenFullNameLenStaticTests.test_committed_json_pins) ... ok
+test_error_string_bytes_verbatim (tests.test_token_full_name_len.TokenFullNameLenStaticTests.test_error_string_bytes_verbatim) ... ok
+test_mutation_tamper_carve (tests.test_token_full_name_len.TokenFullNameLenStaticTests.test_mutation_tamper_carve) ... ok
+test_mutation_tamper_len_imm (tests.test_token_full_name_len.TokenFullNameLenStaticTests.test_mutation_tamper_len_imm) ... ok
+test_mutation_tamper_option_jno (tests.test_token_full_name_len.TokenFullNameLenStaticTests.test_mutation_tamper_option_jno) ... ok
+test_negative_controls_per_rule (tests.test_token_full_name_len.TokenFullNameLenStaticTests.test_negative_controls_per_rule) ... ok
+test_range_gate_truth_table (tests.test_token_full_name_len.TokenFullNameLenStaticTests.test_range_gate_truth_table) ... ok
+test_static_output_pin_and_expectations (tests.test_token_full_name_len.TokenFullNameLenStaticTests.test_static_output_pin_and_expectations) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 85.267s
+
+OK
+[exit 0]
+```
+
+head `e7ed47ba`:
+
+```text
+$ .venv/bin/python tools/catalogue.py --check
+Stale catalogue: research/catalogue/components.json; run make catalogue
+[exit 1]
+```
+
+head `e7ed47ba` (packet manifest, before this documentation commit):
+
+```text
+$ sha256sum -c MANIFEST.sha256
+README.md: OK
+independent_verify.py: OK
+pr-body.md: OK
+token_full_name_len.json: OK
+verify.py: OK
+```
+
+Note: `tools/catalogue.py --check` exits 1 here because of a pre-existing condition. The same command, run on an unmodified checkout of the base commit `cec50f68` (origin/main), prints the same "Stale catalogue: research/catalogue/components.json" message and also exits 1. This branch changes no catalogue file.
