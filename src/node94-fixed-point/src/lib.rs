@@ -5,8 +5,10 @@
 
 #![forbid(unsafe_code)]
 
+mod arithmetic;
 mod quantity;
 
+pub use arithmetic::{ArithmeticOutcome, ArithmeticStatus};
 pub use quantity::{
     AdmissionError, BigNotional, Notional, QuantityKind, SignedNotional, SignedSize, Size, Wei,
 };
