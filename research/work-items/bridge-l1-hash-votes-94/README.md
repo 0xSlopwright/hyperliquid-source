@@ -6,7 +6,7 @@ This packet maps arm 87, the last action variant and one with no reference handl
 - Target release and full SHA-256: node #94 `artifacts/node/94/hl-node`, `3b7179cd967d1b13b683e05debfc685ad4c750e918226402d5d575eff1c0459f`
 - Source commit / reference commit: repository `1f8c67c63ca4794c9689235471c60297f8a5c985`, `references/can1357-hl` at `999556f6e0a474b8312db96ec3149e1c44e97c23` (searched for leads only, it has no handler for this arm, nothing copied)
 - Claim status: observation for bytes, branch order, constants, signed bytes up to the digest call, status text, serde keys, node layouts and call sites; inference for what the digest function is, for `0x2761b20` being a block step, for the meaning of the key `lhvt`, and for what `hard` and `hot` mean; unresolved items are under limits
-- Scope included and excluded: included are 28 functions run as real bytes (`path.tsv`): the wrapper `0x1e5f010`, the core `0x394ac70`, the signed bytes path from `0x37e5620` through `0x32478a0` to the MessagePack writers, the height scan `0x3b45c80`, the signature map collect from `0x3315a60`, the prune from `0x3942c90`, and the list filter `0x3bc3150`. Excluded, and stubs here: the tracker `0x39438e0` (bound by #871, so its result is chosen per scenario and its arguments are checked), recovery `0x14c6f50`, the three digest functions at slots `0x57700c0`, `0x57700c8`, `0x57700d0`, `0x33690c0` (#133, #425), `0x3369500` (#879), the removed row reader `0x3941930`, and drops. The digest stub is SHA-256 of the same bytes, used only so a wrong input to recovery fails a stub check; no digest value is claimed. Shared generic code is run but not claimed for this path: the MessagePack writers, `0x2fb4520`, `0x2fc0390` and the iterators, so their unreached rows are expected. `tools/l1_hash_vote_path.py` holds no parser of its own for sections or unwind tables.
+- Scope included and excluded: included are 28 functions run as real bytes (`path.tsv`): the wrapper `0x1e5f010`, the core `0x394ac70`, the signed bytes path from `0x37e5620` through `0x32478a0` to the MessagePack writers, the height scan `0x3b45c80`, the signature map collect from `0x3315a60`, the prune from `0x3942c90`, and the list filter `0x3bc3150`. Excluded, and stubs here: the tracker `0x39438e0` (only call-site membership is recorded by #871; its body remains unresolved, so its result is chosen per scenario and its arguments are checked), recovery `0x14c6f50`, the three digest functions at slots `0x57700c0`, `0x57700c8`, `0x57700d0`, `0x33690c0` (#133, #425), `0x3369500` (#879), the removed row reader `0x3941930`, and drops. The digest stub is SHA-256 of the same bytes, used only so a wrong input to recovery fails a stub check; no digest value is claimed. Shared generic code is run but not claimed for this path: the MessagePack writers, `0x2fb4520`, `0x2fc0390` and the iterators, so their unreached rows are expected. `tools/l1_hash_vote_path.py` holds no parser of its own for sections or unwind tables.
 
 ## Reproduce
 
@@ -112,7 +112,7 @@ The tool decodes each function from ELF bytes and runs it in a small x86-64 mode
 ## Results and limitations
 
 - The signed bytes are observed up to the digest call. BLAKE3 is an inference from the start words; `0x14f93e0` and `0x14fa010` are stubs, and no digest value or test vector is claimed.
-- `0x39438e0` is a stub, so when a result appears, and how signatures enter the maps, belong to #871. `hard_voter_to_signature` is an opaque triple here.
+- `0x39438e0` is a stub. When a result appears and how signatures enter its maps remain unresolved here; #871 does not establish that helper body. `hard_voter_to_signature` is an opaque triple here.
 - `0x3941930` is a stub. By reading, it writes only its locals and frees, using the f64 at tracker `+0x20`, so it looks like a dropped log value; this is not run.
 - `0x14c6f50`, `0x33690c0`, `0x3369500` are stubs, so their results are fixture inputs.
 - The key of the map at state `+0x8f8 + 0x150` is `0x58` bytes and only its bytes `+0x38..+0x4c` are read; who fills it is not established. Who is in the set at `+0x36a0` is not in the binary.
@@ -121,3 +121,7 @@ The tool decodes each function from ELF bytes and runs it in a small x86-64 mode
 - The consumer past the filter is not followed: the list stays in a local of `0x2761b20`.
 
 Next question: arm 48 and its tracker `0x3946a80`, which has the same shape with `quorum_app_hashes`, and what other callers of `0x37e5620` (`0x44adfa0`, `0x4742f00`) sign with the same bytes.
+
+## Integration review clarification
+
+The original README and manifest are preserved in README.original.md and MANIFEST.original.sha256. Review confirmed that #871 supplies caller membership, not body semantics, for the tracker at0x39438e0. This corrects the dependency wording only; all original byte records, cases, stubs and scope limits remain unchanged.
