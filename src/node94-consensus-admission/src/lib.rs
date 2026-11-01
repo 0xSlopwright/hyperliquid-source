@@ -10,11 +10,13 @@
 
 mod auth;
 mod error;
+mod qc;
 mod stake;
 mod types;
 
 pub use auth::{AdmissionAuthenticator, AuthenticationError};
-pub use error::{AdmissionError, FatalAdmissionError};
+pub use error::{AdmissionError, FatalAdmissionError, VerificationFailure};
+pub use qc::verify_qc;
 pub use stake::{
     has_strict_two_thirds, Quorum, StakeHistory, StakeSnapshot, RECENT_ROUND_SPAN, STAKE_LAG_ROUNDS,
 };

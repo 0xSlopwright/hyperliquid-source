@@ -68,3 +68,21 @@ pub enum FatalAdmissionError {
     StakeOverflow,
     NewerHardforkWithQuorum,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum VerificationFailure {
+    Rejected(AdmissionError),
+    Fatal(FatalAdmissionError),
+}
+
+impl From<AdmissionError> for VerificationFailure {
+    fn from(error: AdmissionError) -> Self {
+        Self::Rejected(error)
+    }
+}
+
+impl From<FatalAdmissionError> for VerificationFailure {
+    fn from(error: FatalAdmissionError) -> Self {
+        Self::Fatal(error)
+    }
+}
