@@ -5,9 +5,13 @@
 
 #![forbid(unsafe_code)]
 
+mod requirements;
 mod tiers;
 mod types;
 
+pub use requirements::{
+    RequirementError, initial_requirement, maintenance_requirement, select_tier,
+};
 pub use tiers::TierConstructionError;
 pub use types::{
     LATER_TIER_LOWER_INCLUSIVE_MAX, MAX_DESCRIPTION_BYTES, MAX_LEVERAGE, MAX_TIERS, MarginTable,
