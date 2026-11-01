@@ -111,6 +111,8 @@ def relocations(data):
                 symbol = symbol_section['offset'] + (info >> 32) * entry_size
                 if symbol + 4 > len(data):
                     raise ValueError('Receiver symbol entry outside file')
+                if symbol + entry_size > symbol_section['offset'] + symbol_section['size']:
+                    raise ValueError('Receiver dynamic symbol entry outside symbol table')
                 name_offset = struct.unpack_from('<I', data, symbol)[0]
                 if name_offset >= string_section['size']:
                     raise ValueError('Receiver dynamic symbol name offset outside string table')
