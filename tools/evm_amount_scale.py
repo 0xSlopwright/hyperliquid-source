@@ -170,7 +170,7 @@ class Image:
         if off + size > len(self.data) or size % 24:
             raise EvidenceError('.rela.dyn truncated')
         _, sym_off, _ = self.section('.dynsym')
-        _, str_off, _ = self.section('.dynstr')
+        _, str_off, str_size = self.section('.dynstr')
         got = self.section('.got')
         stubs = {b'memset': MEMSET_STUB, b'memcpy': MEMCPY_STUB}
         out = {}
@@ -182,7 +182,14 @@ class Image:
                 out[where] = addend & MASK
             elif typ == 6:
                 n = struct.unpack_from('<I', self.data, sym_off + sym * 24)[0]
-                name = self.data[str_off + n:self.data.index(b'\0', str_off + n)]
+                # The symbol name has to end inside .dynstr. A NUL in the next
+                # section is not this symbol's terminator.
+                if n >= str_size:
+                    raise EvidenceError('dynamic symbol name outside .dynstr')
+                end = self.data.find(b'\0', str_off + n, str_off + str_size)
+                if end < 0:
+                    raise EvidenceError('unterminated dynamic symbol name')
+                name = self.data[str_off + n:end]
                 if name in stubs:
                     out[where] = stubs[name]
         return out
@@ -317,7 +324,7 @@ def disassemble(binary, start, end):
         raise EvidenceError(f'{why}; the listing parser reads GNU objdump Intel syntax only')
     cmd = [objdump, '-d', '-M', 'intel', '--no-show-raw-insn',
            f'--start-address={start:#x}', f'--stop-address={end:#x}', str(binary)]
-    return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
+    return subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8').stdout
 
 
 LINE_RE = re.compile(r'^\s*([0-9a-f]+):\t(.*)$')
@@ -1232,18 +1239,22 @@ def analyse(binary, data):
 
 def write_outputs(out, result, table, bounds, data):
     out.mkdir(parents=True, exist_ok=True)
-    (out / 'evidence.json').write_text(json.dumps(result, indent=1, sort_keys=True) + '\n')
+    (out / 'evidence.json').write_text(json.dumps(result, indent=1, sort_keys=True) + '\n',
+                                       encoding='utf-8', newline='\n')
     lines = ['exponent_i8\tabs\tpower_or_none']
     lines += [f'{e}\t{k}\t{p if p is not None else "none"}' for e, k, p in table]
-    (out / 'exponent-table.tsv').write_text('\n'.join(lines) + '\n')
+    (out / 'exponent-table.tsv').write_text('\n'.join(lines) + '\n',
+                                             encoding='utf-8', newline='\n')
     lines = ['exponent_i8\tpower\tlargest_admitted_amount\tresult_there\tfirst_rejected_amount']
     lines += ['\t'.join(str(v) for v in row) for row in bounds]
-    (out / 'boundaries.tsv').write_text('\n'.join(lines) + '\n')
+    (out / 'boundaries.tsv').write_text('\n'.join(lines) + '\n',
+                                         encoding='utf-8', newline='\n')
     img = Image(data)
     rows = [f'# {SCALE:#x}..{SCALE_END:#x} raw bytes, VA then hex']
     for va in range(SCALE, SCALE_END, 16):
         rows.append(f'{va:#x} {img.read(va, min(16, SCALE_END - va)).hex()}')
-    (out / 'function-bytes.txt').write_text('\n'.join(rows) + '\n')
+    (out / 'function-bytes.txt').write_text('\n'.join(rows) + '\n',
+                                             encoding='utf-8', newline='\n')
 
 
 def main(argv=None):

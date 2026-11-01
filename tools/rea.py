@@ -24,7 +24,7 @@ def _unique_object(pairs):
 
 
 def load_config(path):
-    return json.loads(Path(path).read_text(), object_pairs_hook=_unique_object)
+    return json.loads(Path(path).read_text(encoding='utf-8'), object_pairs_hook=_unique_object)
 
 
 CONFIG = load_config(ROOT / 'config/rea.json')
@@ -56,7 +56,7 @@ def find_node():
         candidates += [str(p) for p in sorted((Path.home() / '.nvm/versions/node').glob('*/bin/node'), reverse=True)]
     for item in dict.fromkeys(c for c in candidates if c):
         try:
-            result = subprocess.run([item, '--version'], capture_output=True, text=True, timeout=5)
+            result = subprocess.run([item, '--version'], capture_output=True, text=True, timeout=5, encoding='utf-8')
             if result.returncode == 0 and supported_node(result.stdout):
                 return Path(item).resolve()
         except (OSError, subprocess.TimeoutExpired):
@@ -72,7 +72,7 @@ def find_java_home(java):
         # resolver without dumping potentially private JVM properties.
         try:
             result = subprocess.run(['/usr/libexec/java_home'], capture_output=True,
-                                    text=True, timeout=5)
+                                    text=True, timeout=5, encoding='utf-8')
         except (OSError, subprocess.TimeoutExpired):
             return None
         if result.returncode or not result.stdout.strip():
@@ -123,6 +123,37 @@ def target(name):
     return {'path': str(ROOT / relative), 'sha256': item['sha256'], 'provider_id': CONFIG['provider']}
 
 
+def npm_shim(node, platform=None):
+    """Return the npm entry point beside `node` for this platform.
+
+    Node ships an extensionless POSIX `npm` script and an `npm.cmd` batch shim
+    side by side on Windows. Picking `npm` there hands a shell script to
+    CreateProcess, so `make rea-install` fails before npm sees an argument.
+    """
+    platform = os.name if platform is None else platform
+    names = ('npm.cmd', 'npm.bat') if platform == 'nt' else ('npm',)
+    for name in names:
+        candidate = node.parent / name
+        if candidate.is_file():
+            return candidate
+    raise ValueError(f'npm missing beside {node}; install npm for this runtime')
+
+
+def run_install(node, env, windows=None):
+    """Run `npm ci` for the pinned REA package.
+
+    POSIX replaces the launcher process as before. Windows cannot exec a batch
+    shim, so it runs it and returns the status for the caller to propagate.
+    """
+    windows = os.name == 'nt' if windows is None else windows
+    npm = npm_shim(node, 'nt' if windows else 'posix')
+    command = [str(npm), 'ci', '--ignore-scripts', '--no-audit', '--no-fund']
+    if windows:
+        return subprocess.run(command, env=env).returncode
+    os.execvpe(command[0], command, env)
+    return None
+
+
 def main(argv=None):
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == 'target':
@@ -153,20 +184,20 @@ def main(argv=None):
             raise ValueError('config/rea.json profile missing disabled_analyzers')
         env['REA_GHIDRA_DISABLED_ANALYZERS'] = ','.join(profile['disabled_analyzers'])
     if args and args[0] == 'install':
-        npm = node.parent / 'npm'
-        if not npm.is_file():
-            raise ValueError(f'npm missing beside {node}; install npm for this runtime')
-        command = [str(npm), 'ci', '--ignore-scripts', '--no-audit', '--no-fund']
-    else:
-        package = ROOT / 'node_modules/rea-agents'
-        if not (package / 'package.json').is_file():
-            raise ValueError('Pinned REA package is absent. Run make rea-install.')
-        metadata = json.loads((package / 'package.json').read_text())
-        if 'version' not in CONFIG:
-            raise ValueError('config/rea.json missing version')
-        if metadata.get('version') != CONFIG['version']:
-            raise ValueError('REA package version differs from config/rea.json; run make rea-install')
-        command = [str(node), str(package / 'scripts/rea.mjs'), *(args or ['--help'])]
+        os.chdir(ROOT)
+        status = run_install(node, env)
+        if status is not None:
+            raise SystemExit(status)
+        return
+    package = ROOT / 'node_modules/rea-agents'
+    if not (package / 'package.json').is_file():
+        raise ValueError('Pinned REA package is absent. Run make rea-install.')
+    metadata = json.loads((package / 'package.json').read_text(encoding='utf-8'))
+    if 'version' not in CONFIG:
+        raise ValueError('config/rea.json missing version')
+    if metadata.get('version') != CONFIG['version']:
+        raise ValueError('REA package version differs from config/rea.json; run make rea-install')
+    command = [str(node), str(package / 'scripts/rea.mjs'), *(args or ['--help'])]
     os.chdir(ROOT)
     if sys.platform == 'win32':
         # Windows exec overlays do not return the child's failure status.

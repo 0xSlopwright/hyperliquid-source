@@ -1,3 +1,4 @@
+import shutil
 """RE-005 decode-side tests: pinned output, tamper controls, determinism, objdump cross-check."""
 import hashlib
 import os
@@ -47,6 +48,20 @@ def boundary_misses(sites):
 
 def scan_mutated(buf):
     return dv.scan(buf, expected_sha256=hashlib.sha256(buf).hexdigest())
+
+
+class JumpTableBounds(unittest.TestCase):
+    def test_table_ending_on_the_last_section_byte_is_read(self):
+        data = struct.pack('<iiii', 1, 2, 3, 4) + b'\xff' * 8
+        secs = {'.rodata': {'addr': 0x2000, 'offset': 0, 'size': 16}}
+        self.assertEqual(dv.rel32_table(data, secs, 0x2000), (0x2001, 0x2002, 0x2003, 0x2004))
+
+    def test_table_that_leaves_its_section_is_rejected(self):
+        # Only the first rel32 sits in .rodata. The other three are the next file bytes.
+        data = struct.pack('<iiii', 0x10, 0x20, 0x30, 0x40)
+        secs = {'.rodata': {'addr': 0x2000, 'offset': 0, 'size': 4}}
+        with self.assertRaisesRegex(bv.EvidenceError, r'jump table 0x2000\+16 leaves its section'):
+            dv.rel32_table(data, secs, 0x2000)
 
 
 class Pinned(unittest.TestCase):
@@ -158,6 +173,20 @@ class Binutils(unittest.TestCase):
             shifted[i] = (sites[i][0] + 1, sites[i][1])
             self.assertEqual(boundary_misses(shifted), [sites[i][0] + 1])
 
+
+
+
+class AnchorBounds(unittest.TestCase):
+    def test_anchor_inside_section_is_returned(self):
+        raw = bytes.fromhex('81f9fb000000')
+        secs = {'.text': {'addr': 0x1000, 'offset': 0, 'size': len(raw)}}
+        self.assertEqual(dv.section_slice(raw, secs, 0x1000, len(raw)), (0, raw))
+
+    def test_anchor_that_leaves_section_is_rejected(self):
+        raw = bytes.fromhex('81f9fb000000')
+        secs = {'.text': {'addr': 0x1000, 'offset': 0, 'size': 2}}
+        with self.assertRaisesRegex(bv.EvidenceError, r'range 0x1000\+6 leaves its section'):
+            dv.section_slice(raw, secs, 0x1000, len(raw))
 
 if __name__ == '__main__':
     unittest.main()

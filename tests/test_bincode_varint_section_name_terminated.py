@@ -49,7 +49,8 @@ def build_valid():
     for i, off in enumerate(offs):
         struct.pack_into('<IIQQQQIIQQ', data, shoff + i * 64,
                          off, 1, 0, 0, data_start, 0x10, 0, 0, 1, 0)
-    struct.pack_into('<Q', data, shoff + (nsec - 1) * 64 + 24, shstr_off)
+    struct.pack_into('<I', data, shoff + (nsec - 1) * 64 + 4, 3)
+    struct.pack_into('<QQ', data, shoff + (nsec - 1) * 64 + 24, shstr_off, len(blob))
     data[shstr_off:shstr_off + len(blob)] = blob
     return bytes(data)
 

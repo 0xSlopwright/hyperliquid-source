@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Authenticate and export node #94 receiver poll/terminal-path static evidence."""
 import argparse
+import sys
 import hashlib
 import json
 from pathlib import Path
@@ -138,7 +139,7 @@ def generate(binary, output):
     data = binary.read_bytes()
     instruction_controls(data)
     jump_tables, relocation_rows = tables(data), relocations(data)
-    frames = subprocess.check_output(['readelf', '-wf', str(binary)], text=True)
+    frames = subprocess.check_output(['readelf', '-wf', str(binary)], text=True, encoding='utf-8')
     extents = [(int(a, 16), int(b, 16)) for a, b in
                re.findall(r'FDE[^\n]*pc=([0-9a-f]+)\.\.([0-9a-f]+)', frames)]
     output.mkdir(parents=True, exist_ok=True)
@@ -151,11 +152,11 @@ def generate(binary, output):
         ranges[name] = {'start_va': hex(begin), 'end_va': hex(end), 'file_offset': hex(offset),
                         'bytes': len(body), 'sha256': hashlib.sha256(body).hexdigest()}
         result = subprocess.check_output(['objdump', '-d', f'--start-address={begin:#x}',
-                                          f'--stop-address={end:#x}', str(binary)], text=True)
+                                          f'--stop-address={end:#x}', str(binary)], text=True, encoding='utf-8')
         (output / (name + '.objdump.txt')).write_text(result.replace(str(binary), '<authenticated-node94>'), encoding='utf-8', newline='\n')
     (output / 'frames.txt').write_text('\n'.join(line for line in frames.splitlines()
         if 'FDE' in line and any(f'pc={a:016x}..{b:016x}' in line for a, b in RANGES.values())) + '\n', encoding='utf-8', newline='\n')
-    raw_rela = subprocess.check_output(['readelf', '-rW', str(binary)], text=True)
+    raw_rela = subprocess.check_output(['readelf', '-rW', str(binary)], text=True, encoding='utf-8')
     slots = {*RELATIVE, 0x5777378}
     (output / 'relocations.txt').write_text('\n'.join(line for line in raw_rela.splitlines()
         if re.match(r'^[0-9a-f]+\s', line) and int(line.split()[0], 16) in slots) + '\n', encoding='utf-8', newline='\n')
@@ -172,4 +173,8 @@ if __name__ == '__main__':
     parser.add_argument('--binary', type=Path, default=ROOT / 'artifacts/node/94/hl-node')
     parser.add_argument('--output', type=Path, default=ROOT / 'work/receiver-poll-94')
     args = parser.parse_args()
-    print(json.dumps(generate(args.binary.resolve(), args.output), indent=2))
+    try:
+        print(json.dumps(generate(args.binary.resolve(), args.output), indent=2))
+    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+        print(f'receiver_poll_static: {error}', file=sys.stderr)
+        raise SystemExit(1)
