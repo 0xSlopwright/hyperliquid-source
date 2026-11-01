@@ -9,6 +9,7 @@ mod arithmetic;
 mod quantity;
 mod scale;
 mod spot_wire;
+mod tick;
 
 pub use arithmetic::{ArithmeticOutcome, ArithmeticStatus};
 pub use quantity::{
@@ -17,3 +18,7 @@ pub use quantity::{
 };
 pub use scale::{ScaleError, TokenDecimals, checked_pow10};
 pub use spot_wire::{SpotWireError, parse_spot_wire_price, parse_spot_wire_size};
+pub use tick::{
+    Tick, TickError, is_tick_divisible, next_tick, perp_tick, require_tick_divisible,
+    round_down_to_tick, significant_tick, spot_tick,
+};
